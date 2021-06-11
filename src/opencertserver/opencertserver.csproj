@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <RootNamespace>OpenCertServer.Est</RootNamespace>
+        <AssemblyName>opencertserver.est</AssemblyName>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+    <Import Project="../../shared.proj" />
+    <ItemGroup>
+      <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="5.0.7" />
+      <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="5.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.ca\opencertserver.ca.csproj" />
+    </ItemGroup>
+
+</Project>

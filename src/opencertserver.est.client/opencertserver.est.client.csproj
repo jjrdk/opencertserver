@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <RootNamespace>OpenCertServer.Est.Client</RootNamespace>
+    </PropertyGroup>
+    <Import Project="../../shared.proj" />
+
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
+    </ItemGroup>
+
+</Project>

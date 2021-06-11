@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <RootNamespace>OpenCertServer.Ca</RootNamespace>
+    </PropertyGroup>
+    <Import Project="../../shared.proj"/>
+
+    <ItemGroup>
+        <!--<PackageReference Include="BouncyCastle" Version="1.8.9" />-->
+        <PackageReference Include="BouncyCastle.NetCore" Version="1.8.8" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
+        <PackageReference Include="System.Security.Cryptography.Cng" Version="5.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
+    </ItemGroup>
+
+</Project>
