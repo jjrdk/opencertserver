@@ -1,13 +1,17 @@
 <Project>
     <PropertyGroup>
-        <Version>1.0.0</Version>
+        <Version>0.1.0</Version>
         <Authors>Jacob Reimers</Authors>
         <Company>Reimers.dk</Company>
         <Product>OpenCertServer</Product>
-        <Copyright>Reimers.dk © 2016 - 2021</Copyright>
+        <Copyright>Reimers.dk © 2020 - 2021</Copyright>
         <RepositoryType>git</RepositoryType>
+        <PackageProjectUrl>https://github.com/jjrdk/opencertserver</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/jjrdk/opencertserver</RepositoryUrl>
+        <Tags>X509 Certificate EST RFC7030</Tags>
+        <Description>ASP.NET Core implementation of RFC 7030 certificate authority and issuer.</Description>
+        <ReleaseNotes>Initial Commit</ReleaseNotes>
         <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-        <LangVersion>latest</LangVersion>
         <langVersion>latest</langVersion>
         <Nullable>enable</Nullable>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

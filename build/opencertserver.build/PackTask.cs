@@ -28,6 +28,8 @@ namespace OpenCertServer.Build
 
             context.DotNetCorePack("./src/opencertserver.est.client/opencertserver.est.client.csproj", packSettings);
             context.DotNetCorePack("./src/opencertserver.ca.utils/opencertserver.ca.utils.csproj", packSettings);
+            context.DotNetCorePack("./src/opencertserver.ca/opencertserver.ca.csproj", packSettings);
+            context.DotNetCorePack("./src/opencertserver/opencertserver.csproj", packSettings);
         }
     }
 }
