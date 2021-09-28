@@ -14,9 +14,9 @@ namespace OpenCertServer.Est.Tests
     public class TestMessageHandler : HttpMessageHandler
     {
         private readonly TestServer _server;
-        private readonly X509Certificate2 _certificate;
+        private readonly X509Certificate2? _certificate;
 
-        public TestMessageHandler(TestServer server, X509Certificate2 certificate = null)
+        public TestMessageHandler(TestServer server, X509Certificate2? certificate = null)
         {
             _server = server;
             _certificate = certificate;

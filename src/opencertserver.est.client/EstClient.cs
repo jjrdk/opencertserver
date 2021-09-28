@@ -40,8 +40,6 @@
             var collection = new X509Certificate2Collection();
             collection.Import(bytes.FromPkcs7());
             return collection[0].CopyWithPrivateKey(key);
-            //var cert = new X509Certificate2(bytes.FromPkcs12()).CopyWithPrivateKey(key);
-            //return cert;
         }
 
         public async Task<X509Certificate2> Enroll(
