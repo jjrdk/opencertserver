@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
         <RunWorkingDirectory>$(MSBuildProjectDirectory)</RunWorkingDirectory>
         <RootNamespace>OpenCertServer.Build</RootNamespace>
     </PropertyGroup>
     <Import Project="../../shared.proj" />
     <ItemGroup>
         <PackageReference Include="Cake.Docker" Version="1.0.0" />
-        <PackageReference Include="Cake.Frosting" Version="1.2.0" />
+        <PackageReference Include="Cake.Frosting" Version="1.3.0" />
     </ItemGroup>
 </Project>

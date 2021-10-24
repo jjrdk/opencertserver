@@ -63,8 +63,19 @@
             X509KeyUsageFlags usageFlags,
             CancellationToken cancellationToken = default)
         {
-            var privateKey = certificate.GetRSAPrivateKey();
-            var certRequest = CreateCertificateRequest(certificate.SubjectName, privateKey, usageFlags);
+            var oidValue = certificate.PublicKey.Oid.Value;
+
+            var certRequest = oidValue switch
+            {
+                "1.2.840.10045.2.1" => CreateCertificateRequest(
+                    certificate.SubjectName,
+                    certificate.GetECDsaPrivateKey()!,
+                    usageFlags),
+                "1.2.840.113549.1.1.1" => CreateCertificateRequest(certificate.SubjectName,
+                    certificate.GetRSAPrivateKey()!,
+                    usageFlags),
+                _ => throw new NotSupportedException($"{oidValue} is not supported")
+            };
             var content = new StringContent(certRequest.ToPkcs10(), Encoding.UTF8, "application/pkcs10-mime");
             var requestUriBuilder = new UriBuilder(
                 Uri.UriSchemeHttps,
@@ -88,14 +99,14 @@
             var client = new HttpClient(_messageHandler);
             var response = await client.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken)
                 .ConfigureAwait(false);
-            var bytes = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var bytes = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             var s = new X509Certificate2Collection();
             s.Import(bytes.FromPkcs7());
-            return certificate.PublicKey.Oid.Value switch
+            return oidValue switch
             {
-                "1.2.840.10045.2.1" => s[0].CopyWithPrivateKey(certificate.GetECDsaPrivateKey()),
-                "1.2.840.113549.1.1.1" => s[0].CopyWithPrivateKey(certificate.GetRSAPrivateKey()),
-                _ => throw new NotSupportedException($"{certificate.PublicKey.Oid.Value} is not supported")
+                "1.2.840.10045.2.1" => s[0].CopyWithPrivateKey(certificate.GetECDsaPrivateKey()!),
+                "1.2.840.113549.1.1.1" => s[0].CopyWithPrivateKey(certificate.GetRSAPrivateKey()!),
+                _ => throw new NotSupportedException($"{oidValue} is not supported")
             };
         }
 
@@ -133,7 +144,7 @@
             var client = new HttpClient(_messageHandler);
             var response = await client.SendAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken)
                 .ConfigureAwait(false);
-            var bytes = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var bytes = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             return bytes;
         }
 

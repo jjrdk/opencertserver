@@ -1,17 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
         <RootNamespace>OpenCertServer.Ca</RootNamespace>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
-    <Import Project="../../shared.proj"/>
+    <Import Project="../../shared.proj" />
 
     <ItemGroup>
         <!--<PackageReference Include="BouncyCastle" Version="1.8.9" />-->
         <PackageReference Include="BouncyCastle.NetCore" Version="1.8.8" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
-        <PackageReference Include="System.Security.Cryptography.Cng" Version="5.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0-rc.2.21480.5" />
+        <PackageReference Include="System.Security.Cryptography.Cng" Version="6.0.0-preview.4.21253.7" />
     </ItemGroup>
 
     <ItemGroup>
