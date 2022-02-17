@@ -2,6 +2,7 @@
 {
     using System;
     using System.Security.Cryptography.X509Certificates;
+    using System.Text;
 
     public static class CertificateRequestsExtensions
     {
@@ -15,15 +16,19 @@
         public static string ToPkcs10(this CertificateRequest request)
         {
             var bytes = request.CreateSigningRequest();
-            return $@"{CertificateRequestHeader}
-{Convert.ToBase64String(bytes, Base64FormattingOptions.InsertLineBreaks)}
-{CertificateRequestFooter}".Replace("\r", string.Empty);
+            var builder = new StringBuilder();
+            builder.Append(CertificateRequestHeader)
+                .Append('\n')
+                .Append(Convert.ToBase64String(bytes, Base64FormattingOptions.InsertLineBreaks))
+                .Append('\n')
+                .Append(CertificateRequestFooter);
+            return builder.ToString();
         }
 
         public static byte[] FromPkcs12(this string pkcs12)
         {
-            var value = pkcs12.Replace(Pkcs12Header, string.Empty)
-                .Replace(Pkcs12Footer, string.Empty)
+            var value = pkcs12.Replace(Pkcs12Header, "")
+                .Replace(Pkcs12Footer, "")
                 .Replace("\r", "")
                 .Replace("\n", "")
                 .Trim();
@@ -32,8 +37,8 @@
 
         public static byte[] FromPkcs7(this string pkcs7)
         {
-            var value = pkcs7.Replace(Pkcs7Header, string.Empty)
-                .Replace(Pkcs7Footer, string.Empty)
+            var value = pkcs7.Replace(Pkcs7Header, "")
+                .Replace(Pkcs7Footer, "")
                 .Replace("\r", "")
                 .Replace("\n", "")
                 .Trim();

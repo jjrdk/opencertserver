@@ -16,7 +16,7 @@ namespace OpenCertServer.Ca.Tests
         public CertificateAuthorityTests()
         {
             using var ecdsa = ECDsa.Create();
-            var ecdsaReq = new CertificateRequest("CN=Test Server", ecdsa, HashAlgorithmName.SHA256);
+            var ecdsaReq = new CertificateRequest("CN=Test Server", ecdsa!, HashAlgorithmName.SHA256);
             ecdsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
             var ecdsaCert = ecdsaReq.CreateSelfSigned(
                 DateTimeOffset.UtcNow.Date,
@@ -64,8 +64,8 @@ namespace OpenCertServer.Ca.Tests
             var cert = _authority.SignCertificateRequest(b64) as SignCertificateResponse.Success;
 
             Assert.Equal(
-                string.Join(string.Empty, req.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)),
-                string.Join(string.Empty, cert.Certificate.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)));
+                string.Join("", req.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)),
+                string.Join("", cert.Certificate.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)));
         }
 
         private static CertificateRequest CreateCertificateRequest(RSA rsa)

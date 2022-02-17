@@ -139,8 +139,8 @@
 
         public SignCertificateResponse SignCertificateRequest(string request)
         {
-            request = request.Replace(Header, string.Empty, StringComparison.OrdinalIgnoreCase)
-                .Replace(Footer, string.Empty, StringComparison.OrdinalIgnoreCase)
+            request = request.Replace(Header, "", StringComparison.OrdinalIgnoreCase)
+                .Replace(Footer, "", StringComparison.OrdinalIgnoreCase)
                 .Trim();
 
             var bytes = Convert.FromBase64String(request);
