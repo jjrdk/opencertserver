@@ -1,6 +1,6 @@
 namespace OpenCertServer.Build
 {
-    using Cake.Common.Tools.DotNetCore;
+    using Cake.Common.Tools.DotNet;
     using Cake.Common.Tools.DotNetCore.MSBuild;
     using Cake.Common.Tools.DotNetCore.Pack;
     using Cake.Core.Diagnostics;
@@ -26,10 +26,10 @@ namespace OpenCertServer.Build
                     .SetVersion(context.BuildVersion)
             };
 
-            context.DotNetCorePack("./src/opencertserver.est.client/opencertserver.est.client.csproj", packSettings);
-            context.DotNetCorePack("./src/opencertserver.ca.utils/opencertserver.ca.utils.csproj", packSettings);
-            context.DotNetCorePack("./src/opencertserver.ca/opencertserver.ca.csproj", packSettings);
-            context.DotNetCorePack("./src/opencertserver/opencertserver.csproj", packSettings);
+            context.DotNetPack("./src/opencertserver.est.client/opencertserver.est.client.csproj", packSettings);
+            context.DotNetPack("./src/opencertserver.ca.utils/opencertserver.ca.utils.csproj", packSettings);
+            context.DotNetPack("./src/opencertserver.ca/opencertserver.ca.csproj", packSettings);
+            context.DotNetPack("./src/opencertserver/opencertserver.csproj", packSettings);
         }
     }
 }

@@ -1,6 +1,6 @@
 namespace OpenCertServer.Build
 {
-    using Cake.Common.Tools.DotNetCore;
+    using Cake.Common.Tools.DotNet;
     using Cake.Common.Tools.DotNetCore.MSBuild;
     using Cake.Frosting;
 
@@ -15,7 +15,7 @@ namespace OpenCertServer.Build
                 .SetVersion(context.BuildVersion)
                 .SetInformationalVersion(context.InformationalVersion);
             //.SetFileVersion(versionInfo.SemVer + versionInfo.Sha);
-            context.DotNetCoreMSBuild(context.SolutionName, buildSettings);
+            context.DotNetMSBuild(context.SolutionName, buildSettings);
         }
     }
 }

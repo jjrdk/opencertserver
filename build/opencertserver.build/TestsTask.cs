@@ -1,8 +1,8 @@
 namespace OpenCertServer.Build
 {
     using Cake.Common.IO;
-    using Cake.Common.Tools.DotNetCore;
-    using Cake.Common.Tools.DotNetCore.Test;
+    using Cake.Common.Tools.DotNet;
+    using Cake.Common.Tools.DotNet.Test;
     using Cake.Core;
     using Cake.Core.Diagnostics;
     using Cake.Frosting;
@@ -32,7 +32,7 @@ namespace OpenCertServer.Build
 
                 context.Log.Information(reportName);
 
-                var coreTestSettings = new DotNetCoreTestSettings
+                var coreTestSettings = new DotNetTestSettings
                 {
                     NoBuild = true,
                     NoRestore = true,
@@ -41,7 +41,7 @@ namespace OpenCertServer.Build
                     ArgumentCustomization = x => x.Append("--logger \"trx;LogFileName=" + reportName + "\"")
                 };
 
-                context.DotNetCoreTest(project.FullPath, coreTestSettings);
+                context.DotNetTest(project.FullPath, coreTestSettings);
             }
         }
     }
