@@ -10,12 +10,15 @@
     /// </summary>
     public class Order
     {
-        public Order(Model.Order model,
-            IEnumerable<string> authorizationUrls, string finalizeUrl, string certificateUrl)
+        public Order(
+            Model.Order model,
+            IEnumerable<string> authorizationUrls,
+            string finalizeUrl,
+            string certificateUrl)
         {
             if (model is null)
             {
-                throw new System.ArgumentNullException(nameof(model));
+                throw new ArgumentNullException(nameof(model));
             }
 
             if (authorizationUrls is null)
@@ -25,16 +28,16 @@
 
             if (string.IsNullOrEmpty(finalizeUrl))
             {
-                throw new System.ArgumentNullException(nameof(finalizeUrl));
+                throw new ArgumentNullException(nameof(finalizeUrl));
             }
 
             if (string.IsNullOrEmpty(certificateUrl))
             {
-                throw new System.ArgumentNullException(nameof(certificateUrl));
+                throw new ArgumentNullException(nameof(certificateUrl));
             }
 
             Status = EnumMappings.GetEnumString(model.Status);
-            
+
             Expires = model.Expires?.ToString("o", CultureInfo.InvariantCulture);
             NotBefore = model.NotBefore?.ToString("o", CultureInfo.InvariantCulture);
             NotAfter = model.NotAfter?.ToString("o", CultureInfo.InvariantCulture);
@@ -43,17 +46,17 @@
 
             Authorizations = new List<string>(authorizationUrls);
 
-            if(model.Status == Model.OrderStatus.Ready)
+            if (model.Status == Model.OrderStatus.Ready)
             {
                 Finalize = finalizeUrl;
             }
 
-            if(model.Status == Model.OrderStatus.Valid)
+            if (model.Status == Model.OrderStatus.Valid)
             {
                 Certificate = certificateUrl;
             }
 
-            if(model.Error != null)
+            if (model.Error != null)
             {
                 Error = new AcmeError(model.Error);
             }
@@ -70,7 +73,7 @@
         public AcmeError? Error { get; }
 
         public List<string> Authorizations { get; }
-        
+
         public string? Finalize { get; }
         public string? Certificate { get; }
     }

@@ -21,7 +21,8 @@
 
         [Route("/new-order", Name = "NewOrder")]
         [HttpPost]
-        public async Task<ActionResult<Abstractions.HttpModel.Order>> CreateOrder(AcmePayload<CreateOrderRequest> payload)
+        public async Task<ActionResult<Abstractions.HttpModel.Order>> CreateOrder(
+            AcmePayload<CreateOrderRequest> payload)
         {
             var account = await _accountService.FromRequestAsync(HttpContext.RequestAborted);
 
@@ -32,21 +33,20 @@
                 throw new MalformedRequestException("No identifiers submitted");
             }
 
-            foreach (var i in orderRequest.Identifiers)
+            foreach (var i in orderRequest.Identifiers.Where(
+                         i => string.IsNullOrWhiteSpace(i.Type) || string.IsNullOrWhiteSpace(i.Value)))
             {
-                if (string.IsNullOrWhiteSpace(i.Type) || string.IsNullOrWhiteSpace(i.Value))
-                {
-                    throw new MalformedRequestException($"Malformed identifier: (Type: {i.Type}, Value: {i.Value})");
-                }
+                throw new MalformedRequestException($"Malformed identifier: (Type: {i.Type}, Value: {i.Value})");
             }
 
-            var identifiers = orderRequest.Identifiers.Select(x =>
-                new Abstractions.Model.Identifier(x.Type!, x.Value!)
-            );
+            var identifiers =
+                orderRequest.Identifiers.Select(x => new Abstractions.Model.Identifier(x.Type!, x.Value!));
 
             var order = await _orderService.CreateOrderAsync(
-                account, identifiers,
-                orderRequest.NotBefore, orderRequest.NotAfter,
+                account,
+                identifiers,
+                orderRequest.NotBefore,
+                orderRequest.NotAfter,
                 HttpContext.RequestAborted);
 
             GetOrderUrls(order, out var authorizationUrls, out var finalizeUrl, out var certificateUrl);
@@ -56,10 +56,17 @@
             return new CreatedResult(orderUrl, orderResponse);
         }
 
-        private void GetOrderUrls(Order order, out IEnumerable<string> authorizationUrls, out string finalizeUrl, out string certificateUrl)
+        private void GetOrderUrls(
+            Order order,
+            out IEnumerable<string> authorizationUrls,
+            out string finalizeUrl,
+            out string certificateUrl)
         {
-            authorizationUrls = order.Authorizations
-                .Select(x => Url.RouteUrl(nameof(GetAuthorization), new { orderId = order.OrderId, authId = x.AuthorizationId }, "https")!);
+            authorizationUrls = order.Authorizations.Select(
+                x => Url.RouteUrl(
+                    nameof(GetAuthorization),
+                    new { orderId = order.OrderId, authId = x.AuthorizationId },
+                    "https")!);
             finalizeUrl = Url.RouteUrl(nameof(FinalizeOrder), new { orderId = order.OrderId }, "https")!;
             certificateUrl = Url.RouteUrl(nameof(GetCertificate), new { orderId = order.OrderId }, "https")!;
         }
@@ -84,7 +91,9 @@
 
         [Route("/order/{orderId}/auth/{authId}", Name = "GetAuthorization")]
         [HttpPost]
-        public async Task<ActionResult<Abstractions.HttpModel.Authorization>> GetAuthorization(string orderId, string authId)
+        public async Task<ActionResult<Abstractions.HttpModel.Authorization>> GetAuthorization(
+            string orderId,
+            string authId)
         {
             var account = await _accountService.FromRequestAsync(HttpContext.RequestAborted);
             var order = await _orderService.GetOrderAsync(account, orderId, HttpContext.RequestAborted);
@@ -100,8 +109,8 @@
                 return NotFound();
             }
 
-            var challenges = authZ.Challenges
-                .Select(challenge =>
+            var challenges = authZ.Challenges.Select(
+                challenge =>
                 {
                     var challengeUrl = GetChallengeUrl(challenge);
 
@@ -115,7 +124,8 @@
 
         private string GetChallengeUrl(Challenge challenge)
         {
-            return Url.RouteUrl("AcceptChallenge",
+            return Url.RouteUrl(
+                "AcceptChallenge",
                 new
                 {
                     orderId = challenge.Authorization.Order.OrderId,
@@ -128,10 +138,18 @@
         [Route("/order/{orderId}/auth/{authId}/chall/{challengeId}", Name = "AcceptChallenge")]
         [HttpPost]
         [AcmeLocation("GetOrder")]
-        public async Task<ActionResult<Abstractions.HttpModel.Challenge>> AcceptChallenge(string orderId, string authId, string challengeId)
+        public async Task<ActionResult<Abstractions.HttpModel.Challenge>> AcceptChallenge(
+            string orderId,
+            string authId,
+            string challengeId)
         {
             var account = await _accountService.FromRequestAsync(HttpContext.RequestAborted);
-            var challenge = await _orderService.ProcessChallengeAsync(account, orderId, authId, challengeId, HttpContext.RequestAborted);
+            var challenge = await _orderService.ProcessChallengeAsync(
+                account,
+                orderId,
+                authId,
+                challengeId,
+                HttpContext.RequestAborted);
 
             if (challenge == null)
             {
@@ -145,7 +163,9 @@
         [Route("/order/{orderId}/finalize", Name = "FinalizeOrder")]
         [HttpPost]
         [AcmeLocation("GetOrder")]
-        public async Task<ActionResult<Abstractions.HttpModel.Order>> FinalizeOrder(string orderId, AcmePayload<FinalizeOrderRequest> payload)
+        public async Task<ActionResult<Abstractions.HttpModel.Order>> FinalizeOrder(
+            string orderId,
+            AcmePayload<FinalizeOrderRequest> payload)
         {
             var account = await _accountService.FromRequestAsync(HttpContext.RequestAborted);
             var order = await _orderService.ProcessCsr(account, orderId, payload.Value.Csr, HttpContext.RequestAborted);
