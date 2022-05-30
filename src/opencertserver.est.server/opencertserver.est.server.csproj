@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <RootNamespace>OpenCertServer.Est.Server</RootNamespace>
+        <AssemblyName>opencertserver.est.server</AssemblyName>
+        <Nullable>enable</Nullable>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    </PropertyGroup>
+    <Import Project="../../shared.proj" />
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="6.0.5" />
+        <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.ca\opencertserver.ca.csproj" />
+    </ItemGroup>
+
+</Project>

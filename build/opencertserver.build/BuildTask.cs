@@ -1,7 +1,7 @@
 namespace OpenCertServer.Build
 {
     using Cake.Common.Tools.DotNet;
-    using Cake.Common.Tools.DotNetCore.MSBuild;
+    using Cake.Common.Tools.DotNet.MSBuild;
     using Cake.Frosting;
 
     [TaskName("Build")]
@@ -11,7 +11,7 @@ namespace OpenCertServer.Build
         /// <inheritdoc />
         public override void Run(BuildContext context)
         {
-            var buildSettings = new DotNetCoreMSBuildSettings().SetConfiguration(context.BuildConfiguration)
+            var buildSettings = new DotNetMSBuildSettings().SetConfiguration(context.BuildConfiguration)
                 .SetVersion(context.BuildVersion)
                 .SetInformationalVersion(context.InformationalVersion);
             //.SetFileVersion(versionInfo.SemVer + versionInfo.Sha);

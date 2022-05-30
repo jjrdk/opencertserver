@@ -133,7 +133,7 @@
             var errors = chain.ChainStatus.Select(
                     chainStatus => $"Certificate chain error: {chainStatus.Status} {chainStatus.StatusInformation}")
                 .ToArray();
-            _logger.LogError(string.Join(";", errors));
+            _logger.LogError("{errors}", string.Join(";", errors));
             return new SignCertificateResponse.Error(errors);
         }
 

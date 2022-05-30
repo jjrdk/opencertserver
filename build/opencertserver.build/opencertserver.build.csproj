@@ -8,6 +8,5 @@
     <Import Project="../../shared.proj" />
     <ItemGroup>
 	    <PackageReference Include="Cake.Frosting" Version="2.2.0" />
-        <PackageReference Include="Cake.Docker" Version="1.1.2" />
     </ItemGroup>
 </Project>

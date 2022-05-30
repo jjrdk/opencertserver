@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29519.181
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32519.379
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.ca", "src\opencertserver.ca\opencertserver.ca.csproj", "{3A019C52-D40C-4D7C-8235-1DF23F8EF4FE}"
 EndProject
@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.ca.tests", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.ca.utils", "src\opencertserver.ca.utils\opencertserver.ca.utils.csproj", "{7FE8BA8E-20F8-4FC1-B896-69CB38A83D8E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver", "src\opencertserver\opencertserver.csproj", "{F986A56E-7597-4392-B4C7-A211CB6D60D5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.est.server", "src\opencertserver.est.server\opencertserver.est.server.csproj", "{F986A56E-7597-4392-B4C7-A211CB6D60D5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CAF9420D-D77B-410A-B94F-0113A294CD62}"
 	ProjectSection(SolutionItems) = preProject
@@ -26,7 +26,17 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.est.client",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.build", "build\opencertserver.build\opencertserver.build.csproj", "{B65D5F84-585E-4744-850E-8B319158D1FD}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.tests", "tests\opencertserver.tests\opencertserver.tests.csproj", "{90D40B2B-4FD7-4F16-AC51-F42028B34197}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.est.server.tests", "tests\opencertserver.est.server.tests\opencertserver.est.server.tests.csproj", "{90D40B2B-4FD7-4F16-AC51-F42028B34197}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.acme.abstractions", "src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj", "{229D508E-2711-4E62-9680-76F203C44459}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.acme.server", "src\opencertserver.acme.server\opencertserver.acme.server.csproj", "{DBF7BA87-91AB-46EA-ADCA-A9DC59C40050}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.acme.aspnetclient", "src\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj", "{1F5337F3-DD0F-46C1-850F-6ADFD36CCB68}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.acme.aspnetclient.tests", "tests\opencertserver.acme.aspnetclient.tests\opencertserver.acme.aspnetclient.tests.csproj", "{940FC4CD-D8A3-416B-9511-CA13C473AE1D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.acme.abstractions.tests", "tests\opencertserver.acme.abstractions.tests\opencertserver.acme.abstractions.tests.csproj", "{3348563E-5BD3-48EE-A7DF-35263D6E4341}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -62,6 +72,26 @@ Global
 		{90D40B2B-4FD7-4F16-AC51-F42028B34197}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{90D40B2B-4FD7-4F16-AC51-F42028B34197}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{90D40B2B-4FD7-4F16-AC51-F42028B34197}.Release|Any CPU.Build.0 = Release|Any CPU
+		{229D508E-2711-4E62-9680-76F203C44459}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{229D508E-2711-4E62-9680-76F203C44459}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{229D508E-2711-4E62-9680-76F203C44459}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{229D508E-2711-4E62-9680-76F203C44459}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DBF7BA87-91AB-46EA-ADCA-A9DC59C40050}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBF7BA87-91AB-46EA-ADCA-A9DC59C40050}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBF7BA87-91AB-46EA-ADCA-A9DC59C40050}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBF7BA87-91AB-46EA-ADCA-A9DC59C40050}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1F5337F3-DD0F-46C1-850F-6ADFD36CCB68}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F5337F3-DD0F-46C1-850F-6ADFD36CCB68}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F5337F3-DD0F-46C1-850F-6ADFD36CCB68}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F5337F3-DD0F-46C1-850F-6ADFD36CCB68}.Release|Any CPU.Build.0 = Release|Any CPU
+		{940FC4CD-D8A3-416B-9511-CA13C473AE1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{940FC4CD-D8A3-416B-9511-CA13C473AE1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{940FC4CD-D8A3-416B-9511-CA13C473AE1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{940FC4CD-D8A3-416B-9511-CA13C473AE1D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3348563E-5BD3-48EE-A7DF-35263D6E4341}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3348563E-5BD3-48EE-A7DF-35263D6E4341}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3348563E-5BD3-48EE-A7DF-35263D6E4341}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3348563E-5BD3-48EE-A7DF-35263D6E4341}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -69,6 +99,8 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{A6B443BF-FCE5-4098-BB98-40C2C76C8A02} = {AFDECE32-C433-482E-ADE6-06AF64D20C7B}
 		{90D40B2B-4FD7-4F16-AC51-F42028B34197} = {AFDECE32-C433-482E-ADE6-06AF64D20C7B}
+		{940FC4CD-D8A3-416B-9511-CA13C473AE1D} = {AFDECE32-C433-482E-ADE6-06AF64D20C7B}
+		{3348563E-5BD3-48EE-A7DF-35263D6E4341} = {AFDECE32-C433-482E-ADE6-06AF64D20C7B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {00C80AF6-1993-4D5E-9C5E-28D108E7E3B9}

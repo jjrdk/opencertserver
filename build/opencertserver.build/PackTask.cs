@@ -1,8 +1,8 @@
 namespace OpenCertServer.Build
 {
     using Cake.Common.Tools.DotNet;
-    using Cake.Common.Tools.DotNetCore.MSBuild;
-    using Cake.Common.Tools.DotNetCore.Pack;
+    using Cake.Common.Tools.DotNet.MSBuild;
+    using Cake.Common.Tools.DotNet.Pack;
     using Cake.Core.Diagnostics;
     using Cake.Frosting;
 
@@ -15,21 +15,24 @@ namespace OpenCertServer.Build
         {
             context.Log.Information("Package version: " + context.BuildVersion);
 
-            var packSettings = new DotNetCorePackSettings
+            var packSettings = new DotNetPackSettings
             {
                 Configuration = context.BuildConfiguration,
                 NoBuild = true,
                 NoRestore = true,
                 OutputDirectory = "./artifacts/packages",
                 IncludeSymbols = true,
-                MSBuildSettings = new DotNetCoreMSBuildSettings().SetConfiguration(context.BuildConfiguration)
+                MSBuildSettings = new DotNetMSBuildSettings().SetConfiguration(context.BuildConfiguration)
                     .SetVersion(context.BuildVersion)
             };
 
             context.DotNetPack("./src/opencertserver.est.client/opencertserver.est.client.csproj", packSettings);
             context.DotNetPack("./src/opencertserver.ca.utils/opencertserver.ca.utils.csproj", packSettings);
             context.DotNetPack("./src/opencertserver.ca/opencertserver.ca.csproj", packSettings);
-            context.DotNetPack("./src/opencertserver/opencertserver.csproj", packSettings);
+            context.DotNetPack("./src/opencertserver.est.server/opencertserver.est.server.csproj", packSettings);
+            context.DotNetPack("./src/opencertserver.acme.abstractions/opencertserver.acme.abstractions.csproj", packSettings);
+            context.DotNetPack("./src/opencertserver.acme.server/opencertserver.acme.server.csproj", packSettings);
+            context.DotNetPack("./src/opencertserver.acme.aspnetclient/opencertserver.acme.aspnetclient.csproj", packSettings);
         }
     }
 }
