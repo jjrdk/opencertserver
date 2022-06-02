@@ -4,16 +4,18 @@
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Options;
 
+    //[Route(nameof(Directory))]
     public class DirectoryController : ControllerBase
     {
-        private readonly IOptions<ACMEServerOptions> _options;
+        private readonly IOptions<AcmeServerOptions> _options;
 
-        public DirectoryController(IOptions<ACMEServerOptions> options)
+        public DirectoryController(IOptions<AcmeServerOptions> options)
         {
             _options = options;
         }
 
-        [Route("/", Name = "Directory")]
+        [Route("/directory", Name = "Directory")]
+        [HttpGet]
         public ActionResult<Abstractions.HttpModel.Directory> GetDirectory()
         {
             var options = _options.Value;

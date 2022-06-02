@@ -2,6 +2,7 @@ namespace OpenCertServer.Acme.Server.Extensions
 {
     using Abstractions.RequestServices;
     using Abstractions.Services;
+    using Abstractions.Storage;
     using Abstractions.Workers;
     using BackgroundServices;
     using Configuration;
@@ -19,10 +20,12 @@ namespace OpenCertServer.Acme.Server.Extensions
         public static IServiceCollection AddAcmeServer(
             this IServiceCollection services,
             IConfiguration configuration,
+            Func<IServiceProvider, HttpClient>? httpClient = null,
+            AcmeServerOptions? acmeServerOptions = null,
             string sectionName = "AcmeServer")
         {
-            services.AddControllers();
-            
+            services.AddControllers().AddApplicationPart(typeof(ServiceCollectionExtensions).Assembly);
+
             services.AddScoped<IAcmeRequestProvider, DefaultRequestProvider>();
 
             services.AddScoped<IRequestValidationService, DefaultRequestValidationService>();
@@ -35,9 +38,18 @@ namespace OpenCertServer.Acme.Server.Extensions
             services.AddScoped<IIssuanceWorker, IssuanceWorker>();
             services.AddScoped<IValidationWorker, ValidationWorker>();
 
-            services.AddHttpClient<Http01ChallangeValidator>();
-            services.AddScoped<Dns01ChallangeValidator>();
-            services.AddScoped<IChallangeValidatorFactory, DefaultChallangeValidatorFactory>();
+            if (httpClient == null)
+            {
+                services.AddHttpClient<IHttp01ChallengeValidator, Http01ChallengeValidator>();
+            }
+            else
+            {
+                services.AddTransient(httpClient);
+                services.AddTransient<IHttp01ChallengeValidator, Http01ChallengeValidator>();
+            }
+
+            services.AddScoped<IDns01ChallengeValidator, Dns01ChallengeValidator>();
+            services.AddScoped<IChallangeValidatorFactory, DefaultChallengeValidatorFactory>();
 
             services.AddScoped<AddNextNonceFilter>();
 
@@ -55,10 +67,26 @@ namespace OpenCertServer.Acme.Server.Extensions
                 });
 
             var acmeServerConfig = configuration.GetSection(sectionName);
-            var acmeServerOptions = new ACMEServerOptions();
+            acmeServerOptions ??= new AcmeServerOptions();
             acmeServerConfig.Bind(acmeServerOptions);
 
-            services.Configure<ACMEServerOptions>(acmeServerConfig);
+            services.Configure<AcmeServerOptions>(acmeServerConfig);
+
+            return services;
+        }
+
+        public static IServiceCollection AddAcmeFileStore(
+            this IServiceCollection services,
+            IConfiguration configuration,
+            string sectionName = "AcmeFileStore")
+        {
+            services.AddScoped<INonceStore, NonceStore>();
+            services.AddScoped<IAccountStore, AccountStore>();
+            services.AddScoped<IOrderStore, OrderStore>();
+
+            services.AddOptions<FileStoreOptions>()
+                .Bind(configuration.GetSection(sectionName))
+                .ValidateDataAnnotations();
 
             return services;
         }

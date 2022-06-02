@@ -83,7 +83,7 @@
             }
 
             ChallengeId = info.GetRequiredString(nameof(ChallengeId));
-            Status = (ChallengeStatus)info.GetInt32(nameof(Status));
+            Status = Enum.Parse<ChallengeStatus>(info.GetString(nameof(Status))!); //(ChallengeStatus)info.GetInt32(nameof(Status));
 
             Type = info.GetRequiredString(nameof(Type));
             Token = info.GetRequiredString(nameof(Token));

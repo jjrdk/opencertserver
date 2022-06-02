@@ -26,7 +26,7 @@
             _csrValidator = csrValidator;
         }
 
-        public async Task<Order> CreateOrderAsync(
+        public async Task<Order> CreateOrder(
             Account account,
             IEnumerable<Identifier> identifiers,
             DateTimeOffset? notBefore,
@@ -39,7 +39,7 @@
 
             _authorizationFactory.CreateAuthorizations(order);
 
-            await _orderStore.SaveOrderAsync(order, cancellationToken);
+            await _orderStore.SaveOrder(order, cancellationToken);
 
             return order;
         }
@@ -47,7 +47,7 @@
         public async Task<byte[]> GetCertificate(Account account, string orderId, CancellationToken cancellationToken)
         {
             ValidateAccount(account);
-            var order = await HandleLoadOrderAsync(account, orderId, OrderStatus.Valid, cancellationToken);
+            var order = await HandleLoadOrder(account, orderId, OrderStatus.Valid, cancellationToken);
 
             return order.Certificate!;
         }
@@ -55,12 +55,12 @@
         public async Task<Order?> GetOrderAsync(Account account, string orderId, CancellationToken cancellationToken)
         {
             ValidateAccount(account);
-            var order = await HandleLoadOrderAsync(account, orderId, null, cancellationToken);
+            var order = await HandleLoadOrder(account, orderId, null, cancellationToken);
 
             return order;
         }
 
-        public async Task<Challenge> ProcessChallengeAsync(
+        public async Task<Challenge> ProcessChallenge(
             Account account,
             string orderId,
             string authId,
@@ -68,7 +68,7 @@
             CancellationToken cancellationToken)
         {
             ValidateAccount(account);
-            var order = await HandleLoadOrderAsync(account, orderId, OrderStatus.Pending, cancellationToken);
+            var order = await HandleLoadOrder(account, orderId, OrderStatus.Pending, cancellationToken);
 
             var authZ = order.GetAuthorization(authId);
             var challenge = authZ?.GetChallenge(challengeId);
@@ -91,7 +91,7 @@
             challenge.SetStatus(ChallengeStatus.Processing);
             authZ.SelectChallenge(challenge);
 
-            await _orderStore.SaveOrderAsync(order, cancellationToken);
+            await _orderStore.SaveOrder(order, cancellationToken);
 
             return challenge;
         }
@@ -103,7 +103,7 @@
             CancellationToken cancellationToken)
         {
             ValidateAccount(account);
-            var order = await HandleLoadOrderAsync(account, orderId, OrderStatus.Ready, cancellationToken);
+            var order = await HandleLoadOrder(account, orderId, OrderStatus.Ready, cancellationToken);
 
             if (string.IsNullOrWhiteSpace(csr))
             {
@@ -123,7 +123,7 @@
                 order.SetStatus(OrderStatus.Invalid);
             }
 
-            await _orderStore.SaveOrderAsync(order, cancellationToken);
+            await _orderStore.SaveOrder(order, cancellationToken);
             return order;
         }
 
@@ -140,13 +140,13 @@
             }
         }
 
-        private async Task<Order> HandleLoadOrderAsync(
+        private async Task<Order> HandleLoadOrder(
             Account account,
             string orderId,
             OrderStatus? expectedStatus,
             CancellationToken cancellationToken)
         {
-            var order = await _orderStore.LoadOrderAsync(orderId, cancellationToken);
+            var order = await _orderStore.LoadOrder(orderId, cancellationToken);
             if (order == null)
             {
                 throw new NotFoundException();

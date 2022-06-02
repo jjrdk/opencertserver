@@ -3,11 +3,12 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
+    using Certes;
     using Certificates;
     using global::Certes;
     using Microsoft.Extensions.Logging;
 
-    internal class PersistenceService : IPersistenceService
+    public class PersistenceService : IPersistenceService
     {
         //private const string DnsChallengeNameFormat = "_acme-challenge.{0}";
         //private const string WildcardRegex = "^\\*\\.";

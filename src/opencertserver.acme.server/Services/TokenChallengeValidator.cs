@@ -9,13 +9,13 @@ namespace OpenCertServer.Acme.Server.Services
 
     public abstract class TokenChallengeValidator : IChallengeValidator
     {
-        protected abstract Task<(List<string>? Contents, AcmeError? Error)> LoadChallengeResponseAsync(
+        protected abstract Task<(List<string>? Contents, AcmeError? Error)> LoadChallengeResponse(
             Challenge challenge,
             CancellationToken cancellationToken);
 
         protected abstract string GetExpectedContent(Challenge challenge, Account account);
 
-        public async Task<(bool IsValid, AcmeError? error)> ValidateChallengeAsync(
+        public virtual async Task<(bool IsValid, AcmeError? error)> ValidateChallenge(
             Challenge challenge,
             Account account,
             CancellationToken cancellationToken)
@@ -48,7 +48,7 @@ namespace OpenCertServer.Acme.Server.Services
                 return (false, new AcmeError("custom:orderExpired", "Order expired"));
             }
 
-            var (challengeContent, error) = await LoadChallengeResponseAsync(challenge, cancellationToken);
+            var (challengeContent, error) = await LoadChallengeResponse(challenge, cancellationToken);
             if (error != null)
             {
                 return (false, error);

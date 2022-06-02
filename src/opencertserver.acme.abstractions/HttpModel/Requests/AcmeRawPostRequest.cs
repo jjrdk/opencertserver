@@ -1,15 +1,16 @@
 ﻿namespace OpenCertServer.Acme.Abstractions.HttpModel.Requests
 {
+    using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Model.Exceptions;
 
+    [DataContract]
     public class AcmeRawPostRequest
     {
         private string? _header;
         private string? _signature;
-
-        private AcmeRawPostRequest() { }
-
+        
+        [DataMember(Name = "protected")]
         [JsonPropertyName("protected")]
         public string Header
         {

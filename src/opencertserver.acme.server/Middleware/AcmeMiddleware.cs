@@ -1,7 +1,5 @@
 ﻿namespace OpenCertServer.Acme.Server.Middleware
 {
-    using System.Text.Json;
-    using Abstractions.HttpModel.Requests;
     using Abstractions.RequestServices;
     using Microsoft.AspNetCore.Http;
 
@@ -28,20 +26,14 @@
 
             if (HttpMethods.IsPost(context.Request.Method))
             {
-                var result = await context.Request.ReadAcmeRequest() ?? throw new BadHttpRequestException("Invalid content");
-                requestProvider.Initialize(result);
+                var result = await context.Request.ReadAcmeRequest();
+                if (result != null)
+                {
+                    requestProvider.Initialize(result);
+                }
             }
 
             await _next(context);
-        }
-    }
-
-    public static class AcmeRequestReader
-    {
-        public static async Task<AcmeRawPostRequest?> ReadAcmeRequest(this HttpRequest request)
-        {
-            var result = await JsonSerializer.DeserializeAsync<AcmeRawPostRequest>(request.Body);
-            return result;
         }
     }
 }

@@ -19,6 +19,37 @@ namespace OpenCertServer.Est.Server
 
         public static IServiceCollection AddEstServer(
             this IServiceCollection services,
+            X500DistinguishedName distinguishedName,
+            Func<X509Chain, bool>? chainValidation = null)
+        {
+            services.AddSingleton(
+                    sp =>
+                    {
+                        var certificateAuthority = new CertificateAuthority(
+                            distinguishedName,
+                            TimeSpan.FromDays(90),
+                            chainValidation ?? (_ => true),
+                            sp.GetRequiredService<ILogger<CertificateAuthority>>(),
+                            new OwnCertificateValidation(
+                                sp.GetRequiredService<X509Certificate2Collection>(),
+                                sp.GetRequiredService<ILogger<OwnCertificateValidation>>()),
+                            new DistinguishedNameValidation());
+                        return certificateAuthority;
+                    })
+                .AddSingleton<ICertificateAuthority>(sp => sp.GetRequiredService<CertificateAuthority>())
+                .AddSingleton<IProvideRootCertificates>(sp => sp.GetRequiredService<CertificateAuthority>())
+                .AddSingleton<X509Certificate2Collection>(
+                    sp =>
+                    {
+                        var ca = sp.GetRequiredService<IProvideRootCertificates>();
+                        return ca.GetRootCertificates();
+                    });
+
+            return services.InnerAddEstServer();
+        }
+
+        public static IServiceCollection AddEstServer(
+            this IServiceCollection services,
             X509Certificate2 rsaCertificate,
             X509Certificate2 ecdsaCertificate,
             Func<X509Chain, bool>? chainValidation = null)
@@ -35,38 +66,43 @@ namespace OpenCertServer.Est.Server
 
             var collection = new X509Certificate2Collection { rsaCertificate, ecdsaCertificate, };
 
-            services.AddSingleton(collection);
-            services.AddTransient<CaCertHandler>()
-                .AddTransient<SimpleEnrollHandler>()
-                .AddTransient<SimpleReEnrollHandler>();
-            services.AddSingleton<ICertificateAuthority>(
-                sp => new CertificateAuthority(
-                    rsaCertificate,
-                    ecdsaCertificate,
-                    TimeSpan.FromDays(90),
-                    chainValidation ?? (_ => true),
-                    sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                    new OwnCertificateValidation(
-                        sp.GetRequiredService<X509Certificate2Collection>(),
-                        sp.GetRequiredService<ILogger<OwnCertificateValidation>>()),
-                    new DistinguishedNameValidation()));
-            services.AddCertificateForwarding(
-                o => { o.HeaderConverter = x => new X509Certificate2(Convert.FromBase64String(x)); });
+            return services.AddSingleton(collection)
+                  .AddSingleton<ICertificateAuthority>(
+                  sp => new CertificateAuthority(
+                      rsaCertificate,
+                      ecdsaCertificate,
+                      TimeSpan.FromDays(90),
+                      chainValidation ?? (_ => true),
+                      sp.GetRequiredService<ILogger<CertificateAuthority>>(),
+                      new OwnCertificateValidation(
+                          sp.GetRequiredService<X509Certificate2Collection>(),
+                          sp.GetRequiredService<ILogger<OwnCertificateValidation>>()),
+                      new DistinguishedNameValidation()))
+                  .InnerAddEstServer();
+        }
 
-            services.AddRouting();
-            return services;
+        private static IServiceCollection InnerAddEstServer(this IServiceCollection services)
+        {
+            return services.AddTransient<CaCertHandler>()
+                .AddTransient<SimpleEnrollHandler>()
+                .AddTransient<SimpleReEnrollHandler>()
+                .AddCertificateForwarding(
+                    o => { o.HeaderConverter = x => new X509Certificate2(Convert.FromBase64String(x)); })
+                .AddRouting();
         }
 
         public static IApplicationBuilder UseEstServer(this IApplicationBuilder app, IAuthorizeData? enrollPolicy = null, IAuthorizeData? reEnrollPolicy = null)
         {
             const string? wellKnownEst = "/.well-known/est";
-            return app.UseCertificateForwarding()
+            return app
+                //.UseCertificateForwarding()
+                //.UseAuthentication()
+                //.UseAuthorization()
                 .UseRouting()
-                .UseAuthentication()
-                .UseAuthorization()
                 .UseEndpoints(
                     e =>
                     {
+                        e.MapControllers();
                         e.MapGet(
                             wellKnownEst + "/cacert",
                             async ctx =>

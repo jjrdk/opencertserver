@@ -24,7 +24,7 @@
         public async Task<ActionResult<Abstractions.HttpModel.Order>> CreateOrder(
             AcmePayload<CreateOrderRequest> payload)
         {
-            var account = await _accountService.FromRequestAsync(HttpContext.RequestAborted);
+            var account = await _accountService.FromRequest(HttpContext.RequestAborted);
 
             var orderRequest = payload.Value;
 
@@ -42,7 +42,7 @@
             var identifiers =
                 orderRequest.Identifiers.Select(x => new Abstractions.Model.Identifier(x.Type!, x.Value!));
 
-            var order = await _orderService.CreateOrderAsync(
+            var order = await _orderService.CreateOrder(
                 account,
                 identifiers,
                 orderRequest.NotBefore,
@@ -75,7 +75,7 @@
         [HttpPost]
         public async Task<ActionResult<Abstractions.HttpModel.Order>> GetOrder(string orderId)
         {
-            var account = await _accountService.FromRequestAsync(HttpContext.RequestAborted);
+            var account = await _accountService.FromRequest(HttpContext.RequestAborted);
             var order = await _orderService.GetOrderAsync(account, orderId, HttpContext.RequestAborted);
 
             if (order == null)
@@ -95,7 +95,7 @@
             string orderId,
             string authId)
         {
-            var account = await _accountService.FromRequestAsync(HttpContext.RequestAborted);
+            var account = await _accountService.FromRequest(HttpContext.RequestAborted);
             var order = await _orderService.GetOrderAsync(account, orderId, HttpContext.RequestAborted);
 
             if (order == null)
@@ -143,8 +143,8 @@
             string authId,
             string challengeId)
         {
-            var account = await _accountService.FromRequestAsync(HttpContext.RequestAborted);
-            var challenge = await _orderService.ProcessChallengeAsync(
+            var account = await _accountService.FromRequest(HttpContext.RequestAborted);
+            var challenge = await _orderService.ProcessChallenge(
                 account,
                 orderId,
                 authId,
@@ -167,7 +167,7 @@
             string orderId,
             AcmePayload<FinalizeOrderRequest> payload)
         {
-            var account = await _accountService.FromRequestAsync(HttpContext.RequestAborted);
+            var account = await _accountService.FromRequest(HttpContext.RequestAborted);
             var order = await _orderService.ProcessCsr(account, orderId, payload.Value.Csr, HttpContext.RequestAborted);
 
             GetOrderUrls(order, out var authorizationUrls, out var finalizeUrl, out var certificateUrl);
@@ -181,7 +181,7 @@
         [AcmeLocation("GetOrder")]
         public async Task<IActionResult> GetCertificate(string orderId)
         {
-            var account = await _accountService.FromRequestAsync(HttpContext.RequestAborted);
+            var account = await _accountService.FromRequest(HttpContext.RequestAborted);
             var certificate = await _orderService.GetCertificate(account, orderId, HttpContext.RequestAborted);
 
             return File(certificate, "application/pem-certificate-chain");

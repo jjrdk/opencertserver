@@ -7,13 +7,13 @@
 
     public interface IAccountService
     {
-        Task<Account> CreateAccountAsync(Jwk jwk, List<string>? contact,
-            bool termsOfServiceAgreed, CancellationToken cancellationToken);
+        Task<Account> CreateAccount(Jwk jwk, IEnumerable<string>? contact = null,
+            bool termsOfServiceAgreed = false, CancellationToken cancellationToken = default);
 
-        Task<Account?> FindAccountAsync(Jwk jwk, CancellationToken cancellationToken);
+        Task<Account?> FindAccount(Jwk jwk, CancellationToken cancellationToken = default);
 
-        Task<Account?> LoadAcountAsync(string accountId, CancellationToken cancellationToken);
+        Task<Account?> LoadAcount(string accountId, CancellationToken cancellationToken = default);
 
-        Task<Account> FromRequestAsync(CancellationToken cancellationToken);
+        Task<Account> FromRequest(CancellationToken cancellationToken = default);
     }
 }

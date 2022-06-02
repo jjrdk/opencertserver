@@ -40,13 +40,13 @@
                 order.SetStatus(OrderStatus.Invalid);
                 order.Error = error;
             }
-            else if (certificate != null)
+            else
             {
                 order.Certificate = certificate;
                 order.SetStatus(OrderStatus.Valid);
             }
 
-            await _orderStore.SaveOrderAsync(order, cancellationToken);
+            await _orderStore.SaveOrder(order, cancellationToken);
         }
     }
 }

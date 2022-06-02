@@ -29,6 +29,10 @@
                 throw new NotInitializedException();
             }
 
+            if (string.IsNullOrEmpty(_header.Kid))
+            {
+                _header.Jwk!.SecurityKey.Kid = _header.Jwk?.KeyHash;
+            }
             return _header;
         }
 

@@ -8,7 +8,7 @@
 
     public interface IOrderService
     {
-        Task<Order> CreateOrderAsync(Account account,
+        Task<Order> CreateOrder(Account account,
             IEnumerable<Identifier> identifiers, 
             DateTimeOffset? notBefore, DateTimeOffset? notAfter, 
             CancellationToken cancellationToken);
@@ -19,6 +19,6 @@
         Task<byte[]> GetCertificate(Account account, string orderId, CancellationToken cancellationToken);
 
 
-        Task<Challenge> ProcessChallengeAsync(Account account, string orderId, string authId, string challengeId, CancellationToken cancellationToken);
+        Task<Challenge> ProcessChallenge(Account account, string orderId, string authId, string challengeId, CancellationToken cancellationToken);
     }
 }

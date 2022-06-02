@@ -23,7 +23,7 @@
             var nonce = new Nonce(GuidString.NewValue());
 
             await _nonceStore.SaveNonceAsync(nonce, cancellationToken);
-            _logger.LogInformation($"Created and saved new nonce: {nonce.Token}.");
+            _logger.LogInformation("Created and saved new nonce: {token}.", nonce.Token);
 
             return nonce;
         }

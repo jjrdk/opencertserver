@@ -6,7 +6,7 @@
 
     public interface IAccountStore
     {
-        Task SaveAccountAsync(Account account, CancellationToken cancellationToken);
-        Task<Account?> LoadAccountAsync(string accountId, CancellationToken cancellationToken);
+        Task SaveAccount(Account account, CancellationToken cancellationToken);
+        Task<Account?> LoadAccount(string accountId, CancellationToken cancellationToken);
     }
 }

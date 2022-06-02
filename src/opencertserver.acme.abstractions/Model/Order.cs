@@ -9,7 +9,7 @@
     [Serializable]
     public class Order : IVersioned, ISerializable
     {
-        private static readonly Dictionary<OrderStatus, OrderStatus[]> _validStatusTransitions =
+        private static readonly Dictionary<OrderStatus, OrderStatus[]> ValidStatusTransitions =
             new()
             {
                 { OrderStatus.Pending, new [] { OrderStatus.Ready, OrderStatus.Invalid } },
@@ -32,10 +32,10 @@
         public string AccountId { get; }
 
         public OrderStatus Status { get; private set; }
-        
+
         public List<Identifier> Identifiers { get; private set; }
         public List<Authorization> Authorizations { get; private set; }
-        
+
         public DateTimeOffset? NotBefore { get; set; }
         public DateTimeOffset? NotAfter { get; set; }
         public DateTimeOffset? Expires { get; set; }
@@ -56,12 +56,12 @@
 
         public void SetStatus(OrderStatus nextStatus)
         {
-            if (!_validStatusTransitions.ContainsKey(Status))
+            if (!ValidStatusTransitions.ContainsKey(Status))
             {
                 throw new InvalidOperationException($"Cannot do challenge status transition from '{Status}'.");
             }
 
-            if (!_validStatusTransitions[Status].Contains(nextStatus))
+            if (!ValidStatusTransitions[Status].Contains(nextStatus))
             {
                 throw new InvalidOperationException($"Cannot do challenge status transition from '{Status}' to {nextStatus}.");
             }
@@ -75,8 +75,7 @@
             {
                 SetStatus(OrderStatus.Ready);
             }
-
-            if (Authorizations.Any(a => a.Status.IsInvalid()))
+            else if (Authorizations.Any(a => a.Status.IsInvalid()))
             {
                 SetStatus(OrderStatus.Invalid);
             }
@@ -96,7 +95,7 @@
             OrderId = info.GetRequiredString(nameof(OrderId));
             AccountId = info.GetRequiredString(nameof(AccountId));
 
-            Status = (OrderStatus)info.GetInt32(nameof(Status));
+            Status = Enum.Parse<OrderStatus>(info.GetString(nameof(Status))!); //(OrderStatus)info.GetInt32(nameof(Status));
 
             Identifiers = info.GetRequiredValue<List<Identifier>>(nameof(Identifiers));
             Authorizations = info.GetRequiredValue<List<Authorization>>(nameof(Authorizations));
@@ -133,7 +132,7 @@
 
             info.AddValue(nameof(Identifiers), Identifiers);
             info.AddValue(nameof(Authorizations), Authorizations);
-            
+
             info.AddValue(nameof(NotBefore), NotBefore);
             info.AddValue(nameof(NotAfter), NotAfter);
             info.AddValue(nameof(Expires), Expires);

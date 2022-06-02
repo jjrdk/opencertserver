@@ -88,7 +88,7 @@
             }
 
             AuthorizationId = info.GetRequiredString(nameof(AuthorizationId));
-            Status = (AuthorizationStatus)info.GetInt32(nameof(Status));
+            Status = Enum.Parse<AuthorizationStatus>(info.GetString(nameof(Status))!); //(AuthorizationStatus)info.GetInt32(nameof(Status));
 
             Identifier = info.GetRequiredValue<Identifier>(nameof(Identifier));
             Expires = info.GetValue<DateTimeOffset>(nameof(Expires));

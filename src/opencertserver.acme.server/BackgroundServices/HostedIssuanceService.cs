@@ -8,9 +8,9 @@
 
     public class HostedIssuanceService : TimedHostedService
     {
-        private readonly IOptions<ACMEServerOptions> _options;
+        private readonly IOptions<AcmeServerOptions> _options;
 
-        public HostedIssuanceService(IOptions<ACMEServerOptions> options, 
+        public HostedIssuanceService(IOptions<AcmeServerOptions> options,
             IServiceProvider services, ILogger<TimedHostedService> logger)
             : base(services, logger)
         {
@@ -19,7 +19,7 @@
 
         protected override bool EnableService
         {
-            get { return _options.Value.HostedWorkers.EnableIssuanceService == true; }
+            get { return _options.Value.HostedWorkers.EnableIssuanceService; }
         }
 
         protected override TimeSpan TimerInterval

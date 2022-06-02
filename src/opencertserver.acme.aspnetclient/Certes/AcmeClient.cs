@@ -44,7 +44,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
                 .ToArray();
 
             _logger.LogTrace(
-                "LetsEncrypt placed order for domains {Domains} with challenges {Challenges}",
+                "Acme placed order for domains {Domains} with challenges {Challenges}",
                 domains,
                 dtos);
 

@@ -1,7 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Server.Controllers
 {
     using Filters;
-    using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
 
     [ApiController]
@@ -9,17 +8,17 @@
     public class NonceController : ControllerBase
     {
         [Route("/new-nonce", Name = "NewNonce")]
-        [HttpGet, HttpHead]
+        [HttpHead]
+        public ActionResult GetNewNonceHead()
+        {
+            return Ok();
+        }
+
+        [Route("/new-nonce", Name = "NewNonce")]
+        [HttpGet]
         public ActionResult GetNewNonce()
         {
-            if (HttpMethods.IsGet(HttpContext.Request.Method))
-            {
-                return NoContent();
-            }
-            else
-            {
-                return Ok();
-            }
+            return NoContent();
         }
     }
 }

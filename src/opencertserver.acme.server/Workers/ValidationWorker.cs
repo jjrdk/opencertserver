@@ -12,22 +12,24 @@
     {
         private readonly IOrderStore _orderStore;
         private readonly IAccountStore _accountStore;
-        private readonly IChallangeValidatorFactory _challangeValidatorFactory;
+        private readonly IChallangeValidatorFactory _challengeValidatorFactory;
 
-        public ValidationWorker(IOrderStore orderStore, IAccountStore accountStore,
-            IChallangeValidatorFactory challangeValidatorFactory)
+        public ValidationWorker(
+            IOrderStore orderStore,
+            IAccountStore accountStore,
+            IChallangeValidatorFactory challengeValidatorFactory)
         {
             _orderStore = orderStore;
             _accountStore = accountStore;
-            _challangeValidatorFactory = challangeValidatorFactory;
+            _challengeValidatorFactory = challengeValidatorFactory;
         }
 
         public async Task RunAsync(CancellationToken cancellationToken)
         {
             var orders = await _orderStore.GetValidatableOrders(cancellationToken);
-            
+
             var tasks = new Task[orders.Count];
-            for(var i = 0; i < orders.Count; ++i)
+            for (var i = 0; i < orders.Count; ++i)
             {
                 tasks[i] = ValidateOrder(orders[i], cancellationToken);
             }
@@ -37,21 +39,22 @@
 
         private async Task ValidateOrder(Order order, CancellationToken cancellationToken)
         {
-            var account = await _accountStore.LoadAccountAsync(order.AccountId, cancellationToken);
+            var account = await _accountStore.LoadAccount(order.AccountId, cancellationToken);
             if (account == null)
             {
                 order.SetStatus(OrderStatus.Invalid);
                 order.Error = new AcmeError("TODO", "Account could not be located. Order will be marked invalid.");
-                await _orderStore.SaveOrderAsync(order, cancellationToken);
+                await _orderStore.SaveOrder(order, cancellationToken);
 
                 return;
             }
 
-            var pendingAuthZs = order.Authorizations.Where(a => a.Challenges.Any(c => c.Status == ChallengeStatus.Processing));
+            var pendingAuthZs =
+                order.Authorizations.Where(a => a.Challenges.Any(c => c.Status == ChallengeStatus.Processing));
 
-            foreach(var pendingAuthZ in pendingAuthZs)
+            foreach (var pendingAuthZ in pendingAuthZs)
             {
-                if(pendingAuthZ.Expires <= DateTimeOffset.UtcNow)
+                if (pendingAuthZ.Expires <= DateTimeOffset.UtcNow)
                 {
                     pendingAuthZ.ClearChallenges();
                     pendingAuthZ.SetStatus(AuthorizationStatus.Expired);
@@ -60,14 +63,15 @@
 
                 var challenge = pendingAuthZ.Challenges[0];
 
-                var validator = _challangeValidatorFactory.GetValidator(challenge);
-                var (isValid, error) = await validator.ValidateChallengeAsync(challenge, account, cancellationToken);
+                var validator = _challengeValidatorFactory.GetValidator(challenge);
+                var (isValid, error) = await validator.ValidateChallenge(challenge, account, cancellationToken);
 
                 if (isValid)
                 {
                     challenge.SetStatus(ChallengeStatus.Valid);
                     pendingAuthZ.SetStatus(AuthorizationStatus.Valid);
-                } else
+                }
+                else
                 {
                     challenge.Error = error!;
                     challenge.SetStatus(ChallengeStatus.Invalid);
@@ -76,7 +80,7 @@
             }
 
             order.SetStatusFromAuthorizations();
-            await _orderStore.SaveOrderAsync(order, cancellationToken);
+            await _orderStore.SaveOrder(order, cancellationToken);
         }
     }
 }

@@ -2,12 +2,14 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
 {
     using System.Threading.Tasks;
     using global::Certes;
+    using global::Certes.Acme;
     using Microsoft.Extensions.Logging;
     using Persistence;
 
     public class AcmeClientFactory : IAcmeClientFactory
     {
         private readonly AcmeOptions _options;
+        private readonly HttpClient _httpClient;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger _logger;
         private readonly IPersistenceService _persistenceService;
@@ -16,9 +18,11 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
         public AcmeClientFactory(
             IPersistenceService persistenceService,
             AcmeOptions options,
+            HttpClient httpClient,
             ILoggerFactory loggerFactory)
         {
             _options = options;
+            _httpClient = httpClient;
             _loggerFactory = loggerFactory;
             _persistenceService = persistenceService;
             _logger = loggerFactory.CreateLogger<AcmeClientFactory>();
@@ -39,21 +43,23 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
             }
 
             var existingAccountKey = await _persistenceService.GetPersistedAccountCertificate();
+            var acme = new AcmeContext(
+                _options.AcmeServerUri,
+                existingAccountKey,
+                new AcmeHttpClient(_options.AcmeServerUri, _httpClient));
             if (existingAccountKey != null)
             {
-                _logger.LogDebug("Using existing LetsEncrypt account.");
-                var acme = new AcmeContext(_options.AcmeServerUri, existingAccountKey);
+                _logger.LogDebug("Using existing ACME account.");
+                
                 await acme.Account();
                 return _acme = acme;
             }
-            else
-            {
-                _logger.LogDebug("Creating LetsEncrypt account with email {EmailAddress}.", _options.Email);
-                var acme = new AcmeContext(_options.AcmeServerUri);
-                await acme.NewAccount(_options.Email, true);
-                await _persistenceService.PersistAccountCertificate(acme.AccountKey);
-                return _acme = acme;
-            }
+
+            _logger.LogDebug("Creating ACME account with email {EmailAddress}.", _options.Email);
+
+            await acme.NewAccount(_options.Email, true);
+            await _persistenceService.PersistAccountCertificate(acme.AccountKey);
+            return _acme = acme;
         }
     }
 }

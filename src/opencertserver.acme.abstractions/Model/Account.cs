@@ -43,7 +43,7 @@
             }
 
             AccountId = info.GetRequiredString(nameof(AccountId));
-            Status = (AccountStatus)info.GetInt32(nameof(Status));
+            Status = Enum.Parse<AccountStatus>(info.GetString(nameof(Status))!);//.GetInt32(nameof(Status));
             Jwk = info.GetRequiredValue<Jwk>(nameof(Jwk));
 
             Contacts = info.GetValue<List<string>>(nameof(Contacts));

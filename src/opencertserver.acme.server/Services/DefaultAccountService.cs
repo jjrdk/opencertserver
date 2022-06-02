@@ -21,40 +21,44 @@
             _accountStore = accountStore;
         }
 
-        public async Task<Account> CreateAccountAsync(Jwk jwk, List<string>? contacts,
-            bool termsOfServiceAgreed, CancellationToken cancellationToken)
+        public async Task<Account> CreateAccount(
+            Jwk jwk,
+            IEnumerable<string>? contacts = null,
+            bool termsOfServiceAgreed = false,
+            CancellationToken cancellationToken = default)
         {
             var newAccount = new Account(jwk, contacts, termsOfServiceAgreed ? DateTimeOffset.UtcNow : null);
 
-            await _accountStore.SaveAccountAsync(newAccount, cancellationToken);
+            await _accountStore.SaveAccount(newAccount, cancellationToken);
             return newAccount;
         }
 
-        public Task<Account?> FindAccountAsync(Jwk jwk, CancellationToken cancellationToken)
+        public async Task<Account?> FindAccount(Jwk jwk, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var account = await CreateAccount(jwk, cancellationToken: cancellationToken);
+            return account;
         }
 
-        public async Task<Account> FromRequestAsync(CancellationToken cancellationToken)
+        public async Task<Account> FromRequest(CancellationToken cancellationToken)
         {
             var requestHeader = _requestProvider.GetHeader();
 
-            if (string.IsNullOrEmpty(requestHeader.Kid))
-            {
-                throw new MalformedRequestException("Kid header is missing");
-            }
+            //if (string.IsNullOrEmpty(requestHeader.Kid))
+            //{
+            //    throw new MalformedRequestException("Kid header is missing");
+            //}
 
             //TODO: Get accountId from Kid?
             var accountId = requestHeader.GetAccountId();
-            var account = await LoadAcountAsync(accountId, cancellationToken);
+            var account = await LoadAcount(accountId, cancellationToken);
             ValidateAccount(account);
 
             return account!;
         }
 
-        public async Task<Account?> LoadAcountAsync(string accountId, CancellationToken cancellationToken)
+        public async Task<Account?> LoadAcount(string accountId, CancellationToken cancellationToken)
         {
-            return await _accountStore.LoadAccountAsync(accountId, cancellationToken);
+            return await _accountStore.LoadAccount(accountId, cancellationToken);
         }
 
         private static void ValidateAccount(Account? account)

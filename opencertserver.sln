@@ -38,6 +38,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.acme.aspnetc
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.acme.abstractions.tests", "tests\opencertserver.acme.abstractions.tests\opencertserver.acme.abstractions.tests.csproj", "{3348563E-5BD3-48EE-A7DF-35263D6E4341}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.certserver", "src\opencertserver.certserver\opencertserver.certserver.csproj", "{8B1D6B40-E5C5-4AEF-8F6A-FFE124CB5588}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "opencertserver.certserver.tests", "tests\opencertserver.certserver.tests\opencertserver.certserver.tests.csproj", "{E06C6F61-57B2-4E37-97B2-53E28DF4F148}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -92,6 +96,14 @@ Global
 		{3348563E-5BD3-48EE-A7DF-35263D6E4341}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3348563E-5BD3-48EE-A7DF-35263D6E4341}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3348563E-5BD3-48EE-A7DF-35263D6E4341}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B1D6B40-E5C5-4AEF-8F6A-FFE124CB5588}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B1D6B40-E5C5-4AEF-8F6A-FFE124CB5588}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B1D6B40-E5C5-4AEF-8F6A-FFE124CB5588}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B1D6B40-E5C5-4AEF-8F6A-FFE124CB5588}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E06C6F61-57B2-4E37-97B2-53E28DF4F148}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E06C6F61-57B2-4E37-97B2-53E28DF4F148}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E06C6F61-57B2-4E37-97B2-53E28DF4F148}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E06C6F61-57B2-4E37-97B2-53E28DF4F148}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -101,6 +113,7 @@ Global
 		{90D40B2B-4FD7-4F16-AC51-F42028B34197} = {AFDECE32-C433-482E-ADE6-06AF64D20C7B}
 		{940FC4CD-D8A3-416B-9511-CA13C473AE1D} = {AFDECE32-C433-482E-ADE6-06AF64D20C7B}
 		{3348563E-5BD3-48EE-A7DF-35263D6E4341} = {AFDECE32-C433-482E-ADE6-06AF64D20C7B}
+		{E06C6F61-57B2-4E37-97B2-53E28DF4F148} = {AFDECE32-C433-482E-ADE6-06AF64D20C7B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {00C80AF6-1993-4D5E-9C5E-28D108E7E3B9}

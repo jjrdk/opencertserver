@@ -7,9 +7,9 @@
 
     public interface IOrderStore
     {
-        Task<Order?> LoadOrderAsync(string orderId, CancellationToken cancellationToken);
+        Task<Order?> LoadOrder(string orderId, CancellationToken cancellationToken);
 
-        Task SaveOrderAsync(Order order, CancellationToken cancellationToken);
+        Task SaveOrder(Order order, CancellationToken cancellationToken);
 
         Task<List<Order>> GetValidatableOrders(CancellationToken cancellationToken);
         Task<List<Order>> GetFinalizableOrders(CancellationToken cancellationToken);

@@ -4,7 +4,7 @@
     using System.Threading.Tasks;
     using Certificates;
 
-    internal class MemoryCertificatePersistenceStrategy : ICertificatePersistenceStrategy
+    public class MemoryCertificatePersistenceStrategy : ICertificatePersistenceStrategy
 	{
         private IKeyCertificate? _accountCertificate;
         private IAbstractCertificate? _siteCertificate;

@@ -4,7 +4,7 @@
     using System.Linq;
     using System.Threading.Tasks;
 
-    internal class MemoryChallengePersistenceStrategy : IChallengePersistenceStrategy
+    public class MemoryChallengePersistenceStrategy : IChallengePersistenceStrategy
 	{
 		private IEnumerable<ChallengeDto> _challenges;
 

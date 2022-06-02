@@ -6,6 +6,9 @@
 
     public interface IChallengeValidator
     {
-        Task<(bool IsValid, AcmeError? error)> ValidateChallengeAsync(Challenge challenge, Account account, CancellationToken cancellationToken);
+        Task<(bool IsValid, AcmeError? error)> ValidateChallenge(Challenge challenge, Account account, CancellationToken cancellationToken);
     }
+
+    public interface IHttp01ChallengeValidator : IChallengeValidator { }
+    public interface IDns01ChallengeValidator : IChallengeValidator { }
 }

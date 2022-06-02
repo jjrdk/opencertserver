@@ -19,12 +19,14 @@
 
         public string GetAccountId()
         {
-            if (Kid == null)
+            var kid = Kid ?? Jwk?.SecurityKey.Kid ?? Jwk?.KeyHash;
+            if (kid == null)
             {
                 throw new InvalidOperationException();
             }
 
-            return Kid.Split('/').Last();
+            var lastIndex = kid.LastIndexOf('/');
+            return lastIndex == -1 ? kid : kid[(lastIndex + 1)..];//.Split('/').Last();
         }
     }
 }

@@ -6,13 +6,14 @@ namespace OpenCertServer.Acme.Server.Services
     using System.Threading;
     using System.Threading.Tasks;
     using Abstractions.Model;
+    using Abstractions.Services;
     using Microsoft.IdentityModel.Tokens;
 
-    public sealed class Http01ChallangeValidator : TokenChallengeValidator
+    public sealed class Http01ChallengeValidator : TokenChallengeValidator, IHttp01ChallengeValidator
     {
         private readonly HttpClient _httpClient;
 
-        public Http01ChallangeValidator(HttpClient httpClient)
+        public Http01ChallengeValidator(HttpClient httpClient)
         {
             _httpClient = httpClient;
         }
@@ -26,7 +27,7 @@ namespace OpenCertServer.Acme.Server.Services
             return expectedContent;
         }
 
-        protected override async Task<(List<string>? Contents, AcmeError? Error)> LoadChallengeResponseAsync(Challenge challenge, CancellationToken cancellationToken)
+        protected override async Task<(List<string>? Contents, AcmeError? Error)> LoadChallengeResponse(Challenge challenge, CancellationToken cancellationToken)
         {
             var challengeUrl = $"http://{challenge.Authorization.Identifier.Value}/.well-known/acme-challenge/{challenge.Token}";
 
@@ -41,7 +42,7 @@ namespace OpenCertServer.Acme.Server.Services
 
                 var content = await response.Content.ReadAsStringAsync(cancellationToken);
                 return (new List<string> { content }, null);
-            } 
+            }
             catch (HttpRequestException ex)
             {
                 var error = new AcmeError("connection", ex.Message, challenge.Authorization.Identifier);

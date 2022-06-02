@@ -14,7 +14,7 @@
     using Utils;
     using cms = Org.BouncyCastle.Asn1.Cms;
 
-    public class CertificateAuthority : ICertificateAuthority
+    public class CertificateAuthority : ICertificateAuthority, IProvideRootCertificates
     {
         private const string Header = "-----BEGIN CERTIFICATE REQUEST-----";
         private const string Footer = "-----END CERTIFICATE REQUEST-----";
@@ -30,8 +30,8 @@
                                                      | X509KeyUsageFlags.NonRepudiation;
 
         private readonly ILogger<CertificateAuthority> _logger;
-        private readonly X509Certificate2? _rsaCertificate;
-        private readonly X509Certificate2? _ecdsaCertificate;
+        private readonly X509Certificate2 _rsaCertificate;
+        private readonly X509Certificate2 _ecdsaCertificate;
         private readonly TimeSpan _certificateValidity;
         private readonly Func<X509Chain, bool> _x509ChainValidation;
         private readonly IValidateCertificateRequests[] _validators;
@@ -55,8 +55,8 @@
         }
 
         public CertificateAuthority(
-            X509Certificate2? rsaCertificate,
-            X509Certificate2? ecdsaCertificate,
+            X509Certificate2 rsaCertificate,
+            X509Certificate2 ecdsaCertificate,
             TimeSpan certificateValidity,
             Func<X509Chain, bool> x509ChainValidation,
             ILogger<CertificateAuthority> logger,
@@ -286,6 +286,12 @@
             GC.SuppressFinalize(this);
             _rsaCertificate?.Dispose();
             _ecdsaCertificate?.Dispose();
+        }
+
+        /// <inheritdoc />
+        public X509Certificate2Collection GetRootCertificates()
+        {
+            return new X509Certificate2Collection { _rsaCertificate, _ecdsaCertificate };
         }
     }
 }

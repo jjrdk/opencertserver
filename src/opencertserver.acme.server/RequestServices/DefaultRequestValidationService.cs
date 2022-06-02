@@ -20,7 +20,7 @@ namespace OpenCertServer.Acme.Server.RequestServices
 
         private readonly ILogger<DefaultRequestValidationService> _logger;
 
-        private readonly string[] _supportedAlgs = new[] { "RS256" };
+        private readonly string[] _supportedAlgs = new[] { "RS256", "ES256" };
 
         public DefaultRequestValidationService(IAccountService accountService, INonceStore nonceStore,
             ILogger<DefaultRequestValidationService> logger)
@@ -128,7 +128,7 @@ namespace OpenCertServer.Acme.Server.RequestServices
                 try
                 {
                     var accountId = header.GetAccountId();
-                    var account = await _accountService.LoadAcountAsync(accountId, cancellationToken);
+                    var account = await _accountService.LoadAcount(accountId, cancellationToken);
                     jwk = account?.Jwk;
                 } 
                 catch (InvalidOperationException)

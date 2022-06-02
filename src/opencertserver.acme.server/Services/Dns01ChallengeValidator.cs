@@ -7,14 +7,15 @@ namespace OpenCertServer.Acme.Server.Services
     using System.Threading;
     using System.Threading.Tasks;
     using Abstractions.Model;
+    using Abstractions.Services;
     using DnsClient;
     using Microsoft.IdentityModel.Tokens;
 
-    public sealed class Dns01ChallangeValidator : TokenChallengeValidator
+    public sealed class Dns01ChallengeValidator : TokenChallengeValidator, IDns01ChallengeValidator
     {
-        //private readonly ILogger<Dns01ChallangeValidator> _logger;
+        //private readonly ILogger<Dns01ChallengeValidator> _logger;
 
-        //public Dns01ChallangeValidator(ILogger<Dns01ChallangeValidator> logger)
+        //public Dns01ChallengeValidator(ILogger<Dns01ChallengeValidator> logger)
         //{
         //    _logger = logger;
         //}
@@ -33,7 +34,7 @@ namespace OpenCertServer.Acme.Server.Services
             return digest;
         }
 
-        protected override async Task<(List<string>? Contents, AcmeError? Error)> LoadChallengeResponseAsync(Challenge challenge, CancellationToken cancellationToken)
+        protected override async Task<(List<string>? Contents, AcmeError? Error)> LoadChallengeResponse(Challenge challenge, CancellationToken cancellationToken)
         {
             try
             {
@@ -45,7 +46,7 @@ namespace OpenCertServer.Acme.Server.Services
                 var contents = new List<string>(dnsResponse.Answers.TxtRecords().SelectMany(x => x.Text));
 
                 return (contents, null);
-            } 
+            }
             catch (DnsResponseException)
             {
                 return (null, new AcmeError("dns", "Could not read from DNS"));
