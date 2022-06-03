@@ -6,6 +6,6 @@
 
     public interface ICsrValidator
     {
-        Task<(bool isValid, AcmeError? error)> ValidateCsrAsync(Order order, string csr, CancellationToken cancellationToken);
+        Task<(bool isValid, AcmeError? error)> ValidateCsr(Order order, string csr, CancellationToken cancellationToken);
     }
 }

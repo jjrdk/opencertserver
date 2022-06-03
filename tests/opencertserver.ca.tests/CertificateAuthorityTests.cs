@@ -32,8 +32,7 @@ namespace OpenCertServer.Ca.Tests
                 ecdsaCert,
                 TimeSpan.FromDays(90),
                 _ => true,
-                new NullLogger<CertificateAuthority>(),
-                new DistinguishedNameValidation());
+                new NullLogger<CertificateAuthority>());
         }
 
         [Fact]

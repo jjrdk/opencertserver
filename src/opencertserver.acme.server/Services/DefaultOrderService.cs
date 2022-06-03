@@ -2,6 +2,8 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Security.Cryptography.X509Certificates;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Abstractions.IssuanceServices;
@@ -9,21 +11,27 @@
     using Abstractions.Model.Exceptions;
     using Abstractions.Services;
     using Abstractions.Storage;
+    using Ca.Utils;
+    using Certes;
+    using Certes.Acme;
 
     public class DefaultOrderService : IOrderService
     {
         private readonly IOrderStore _orderStore;
         private readonly IAuthorizationFactory _authorizationFactory;
         private readonly ICsrValidator _csrValidator;
+        private readonly ICertificateIssuer _issuer;
 
         public DefaultOrderService(
             IOrderStore orderStore,
             IAuthorizationFactory authorizationFactory,
-            ICsrValidator csrValidator)
+            ICsrValidator csrValidator,
+            ICertificateIssuer issuer)
         {
             _orderStore = orderStore;
             _authorizationFactory = authorizationFactory;
             _csrValidator = csrValidator;
+            _issuer = issuer;
         }
 
         public async Task<Order> CreateOrder(
@@ -48,8 +56,8 @@
         {
             ValidateAccount(account);
             var order = await HandleLoadOrder(account, orderId, OrderStatus.Valid, cancellationToken);
-
-            return order.Certificate!;
+            var chain = new CertificateChain(Encoding.UTF8.GetString(order.Certificate!)).ToPem();
+            return Encoding.UTF8.GetBytes(chain);
         }
 
         public async Task<Order?> GetOrderAsync(Account account, string orderId, CancellationToken cancellationToken)
@@ -68,7 +76,14 @@
             CancellationToken cancellationToken)
         {
             ValidateAccount(account);
-            var order = await HandleLoadOrder(account, orderId, OrderStatus.Pending, cancellationToken);
+
+            var order = await _orderStore.LoadOrder(
+                orderId,
+                cancellationToken); //await HandleLoadOrder(account, orderId, OrderStatus.Pending, cancellationToken);
+            if (order == null)
+            {
+                throw new NotFoundException();
+            }
 
             var authZ = order.GetAuthorization(authId);
             var challenge = authZ?.GetChallenge(challengeId);
@@ -78,19 +93,20 @@
                 throw new NotFoundException();
             }
 
-            if (authZ.Status != AuthorizationStatus.Pending)
+            if (authZ.Status != AuthorizationStatus.Pending || challenge.Status != ChallengeStatus.Pending)
             {
-                throw new ConflictRequestException(AuthorizationStatus.Pending, authZ.Status);
+                return challenge;
+                //throw new ConflictRequestException(AuthorizationStatus.Pending, authZ.Status);
             }
 
-            if (challenge.Status != ChallengeStatus.Pending)
-            {
-                throw new ConflictRequestException(ChallengeStatus.Pending, challenge.Status);
-            }
+            //if (challenge.Status != ChallengeStatus.Pending)
+            //{
+            //    throw new ConflictRequestException(ChallengeStatus.Pending, challenge.Status);
+            //}
 
             challenge.SetStatus(ChallengeStatus.Processing);
             authZ.SelectChallenge(challenge);
-
+            order.SetStatusFromAuthorizations();
             await _orderStore.SaveOrder(order, cancellationToken);
 
             return challenge;
@@ -110,12 +126,23 @@
                 throw new MalformedRequestException("CSR may not be empty.");
             }
 
-            var (isValid, error) = await _csrValidator.ValidateCsrAsync(order, csr, cancellationToken);
+            var (isValid, error) = await _csrValidator.ValidateCsr(order, csr, cancellationToken);
 
             if (isValid)
             {
-                order.CertificateSigningRequest = csr;
                 order.SetStatus(OrderStatus.Processing);
+                order.CertificateSigningRequest = csr;
+                var (certificate, acmeError) =
+                    await _issuer.IssueCertificate(csr, order.Identifiers, cancellationToken);
+                if (certificate != null)
+                {
+                    order.Certificate = certificate;
+                    order.SetStatus(OrderStatus.Valid);
+                }
+                else if (acmeError != null)
+                {
+                    order.SetStatus(OrderStatus.Invalid);
+                }
             }
             else
             {

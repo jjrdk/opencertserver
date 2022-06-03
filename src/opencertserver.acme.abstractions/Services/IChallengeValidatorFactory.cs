@@ -2,7 +2,7 @@
 {
     using Model;
 
-    public interface IChallangeValidatorFactory
+    public interface IChallengeValidatorFactory
     {
         IChallengeValidator GetValidator(Challenge challenge);
     }

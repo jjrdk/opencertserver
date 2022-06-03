@@ -35,7 +35,6 @@ namespace OpenCertServer.Acme.Server.Extensions
 
             services.AddScoped<IAuthorizationFactory, DefaultAuthorizationFactory>();
 
-            services.AddScoped<IIssuanceWorker, IssuanceWorker>();
             services.AddScoped<IValidationWorker, ValidationWorker>();
 
             if (httpClient == null)
@@ -49,12 +48,11 @@ namespace OpenCertServer.Acme.Server.Extensions
             }
 
             services.AddScoped<IDns01ChallengeValidator, Dns01ChallengeValidator>();
-            services.AddScoped<IChallangeValidatorFactory, DefaultChallengeValidatorFactory>();
+            services.AddScoped<IChallengeValidatorFactory, DefaultChallengeValidatorFactory>();
 
             services.AddScoped<AddNextNonceFilter>();
 
             services.AddHostedService<HostedValidationService>();
-            services.AddHostedService<HostedIssuanceService>();
 
             services.Configure<MvcOptions>(
                 opt =>

@@ -2,6 +2,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
 {
     using System;
     using System.Linq;
+    using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
     using Exceptions;
     using global::Certes;
@@ -84,7 +85,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
 
             var keyPair = KeyFactory.NewKey(_options.KeyAlgorithm);
 
-            var certificateChain = await order.Generate(_options.CertificateSigningRequest, keyPair);
+            var certificateChain = await order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10);
 
             var pfxBuilder = certificateChain.ToPfx(keyPair);
 
@@ -93,7 +94,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
             var pfxBytes = pfxBuilder.Build(CertificateFriendlyName, nameof(OpenCertServer));
 
             _logger.LogInformation("Certificate acquired.");
-
+            var c =new X509Certificate2(pfxBytes, nameof(OpenCertServer));
             return pfxBytes;
         }
 
@@ -111,7 +112,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
                     break;
                 }
 
-                await Task.Delay(1000);
+                await Task.Delay(5000);
                 challenges = await Task.WhenAll(challengeContexts.Select(x => x.Resource()));
             }
 

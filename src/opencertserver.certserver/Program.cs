@@ -7,10 +7,8 @@ namespace opencertserver.certserver;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Acme.Abstractions.IssuanceServices;
-using OpenCertServer.Acme.Abstractions.Model;
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Middleware;
-using OpenCertServer.Ca;
 using OpenCertServer.Est.Server;
 
 public class Program
@@ -27,43 +25,5 @@ public class Program
         var app = builder.Build();
         app.UseAcmeServer().UseEstServer();
         await app.RunAsync();
-    }
-}
-
-internal class DefaultCsrValidator : ICsrValidator
-{
-    /// <inheritdoc />
-    public Task<(bool isValid, AcmeError? error)> ValidateCsrAsync(Order order, string csr, CancellationToken cancellationToken)
-    {
-        return Task.FromResult((true, (AcmeError?)null));
-    }
-}
-
-internal class DefaultIssuer : ICertificateIssuer
-{
-    private readonly ICertificateAuthority _ca;
-
-    public DefaultIssuer(ICertificateAuthority ca)
-    {
-        _ca = ca;
-    }
-
-    /// <inheritdoc />
-    public Task<(bool isValid, AcmeError? error)> ValidateCsrAsync(Order order, string csr, CancellationToken cancellationToken)
-    {
-        return Task.FromResult((true, (AcmeError?)null));
-    }
-
-    /// <inheritdoc />
-    public async Task<(byte[]? certificate, AcmeError? error)> IssueCertificate(string csr, CancellationToken cancellationToken)
-    {
-        await Task.Yield();
-        var cert = _ca.SignCertificateRequest(csr);
-        return cert switch
-        {
-            SignCertificateResponse.Success success => (success.Certificate.RawData, null),
-            SignCertificateResponse.Error error => (null, new AcmeError(string.Join(", ", error.Errors), "")),
-            _ => throw new ArgumentException()
-        };
     }
 }

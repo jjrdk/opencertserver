@@ -10,6 +10,7 @@ using Acme.Server.Configuration;
 using Acme.Server.Extensions;
 using Acme.Server.Middleware;
 using Acme.Server.Services;
+using Ca;
 using Certes;
 using Est.Server;
 using Microsoft.AspNetCore;
@@ -46,7 +47,7 @@ public class CertServerTests : IDisposable
     }
 
     [Fact]
-    public async Task CanStartServer()
+    public async Task CanCompleteCertificateFlow()
     {
         var factory = new AcmeClientFactory(
             new PersistenceService(
@@ -62,7 +63,7 @@ public class CertServerTests : IDisposable
             },
             _server.CreateClient(),
             NullLoggerFactory.Instance);
-        //await _server.Host.StartAsync();
+
         var client = await factory.GetClient();
 
         var placedOrder = await client.PlaceOrder("localhost");
@@ -78,10 +79,4 @@ public class CertServerTests : IDisposable
         _server.Dispose();
         GC.SuppressFinalize(this);
     }
-}
-
-public class TestAcmeOptions : AcmeOptions
-{
-    /// <inheritdoc />
-    public override Uri AcmeServerUri { get; } = new Uri("http://localhost/directory", UriKind.Absolute);
 }

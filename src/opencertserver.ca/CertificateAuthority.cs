@@ -14,7 +14,7 @@
     using Utils;
     using cms = Org.BouncyCastle.Asn1.Cms;
 
-    public class CertificateAuthority : ICertificateAuthority, IProvideRootCertificates
+    public class CertificateAuthority : ICertificateAuthority
     {
         private const string Header = "-----BEGIN CERTIFICATE REQUEST-----";
         private const string Footer = "-----END CERTIFICATE REQUEST-----";
@@ -67,7 +67,15 @@
             _ecdsaCertificate = ecdsaCertificate;
             _certificateValidity = certificateValidity;
             _x509ChainValidation = x509ChainValidation;
-            _validators = validators;
+            _validators = validators.Concat(
+                    new IValidateCertificateRequests[]
+                    {
+                        new OwnCertificateValidation(
+                            new X509Certificate2Collection { _rsaCertificate, _ecdsaCertificate },
+                            _logger),
+                        new DistinguishedNameValidation()
+                    })
+                .ToArray();
         }
 
         public SignCertificateResponse SignCertificateRequest(
@@ -81,15 +89,15 @@
                 return new SignCertificateResponse.Error(error);
             }
 
-            _logger.LogInformation($"Creating certificate for {request.SubjectName.Name}");
+            _logger.LogInformation("Creating certificate for {subjectName}", request.SubjectName.Name);
             var cert = request.PublicKey.Oid.Value switch
             {
-                "1.2.840.113549.1.1.1" when _rsaCertificate != null => request.Create(
+                "1.2.840.113549.1.1.1" => request.Create(
                        _rsaCertificate,
                        DateTimeOffset.UtcNow.Date,
                        DateTimeOffset.UtcNow.Date.Add(_certificateValidity),
                        BitConverter.GetBytes(DateTime.UtcNow.Ticks)),
-                "1.2.840.10045.2.1" when _ecdsaCertificate != null => request.Create(
+                "1.2.840.10045.2.1" => request.Create(
                     _ecdsaCertificate,
                     DateTimeOffset.UtcNow.Date,
                     DateTimeOffset.UtcNow.Date.Add(_certificateValidity),
@@ -113,21 +121,24 @@
                 }
             };
 
-            if (_rsaCertificate != null)
-            {
-                chain.ChainPolicy.ExtraStore.Add(_rsaCertificate);
-            }
-
-            if (_ecdsaCertificate != null)
-            {
-                chain.ChainPolicy.ExtraStore.Add(_ecdsaCertificate);
-            }
+            chain.ChainPolicy.ExtraStore.Add(_rsaCertificate);
+            chain.ChainPolicy.ExtraStore.Add(_ecdsaCertificate);
 
             var chainBuilt = _standAlone || chain.Build(cert);
 
             if (chainBuilt || _x509ChainValidation(chain))
             {
-                return new SignCertificateResponse.Success(cert);
+                return new SignCertificateResponse.Success(
+                    cert,
+                    new X509Certificate2Collection
+                    {
+                        request.PublicKey.Oid.Value switch
+                        {
+                            "1.2.840.113549.1.1.1" => _rsaCertificate,
+                            "1.2.840.10045.2.1" => _ecdsaCertificate,
+                            _ => throw new InvalidOperationException($"Invalid Oid: {request.PublicKey.Oid.Value}")
+                        }
+                    });
             }
 
             var errors = chain.ChainStatus.Select(
@@ -143,7 +154,7 @@
                 .Replace(Footer, "", StringComparison.OrdinalIgnoreCase)
                 .Trim();
 
-            var bytes = Convert.FromBase64String(request);
+            var bytes = Base64DecodeBytes(request);
 
             return SignCertificateRequest(bytes);
         }
@@ -263,13 +274,13 @@
             {
                 foreach (var s2 in s.OfType<DerSequence>())
                 {
-                    var deroid = s2.OfType<DerObjectIdentifier>().First()!;
+                    var derOid = s2.OfType<DerObjectIdentifier>().First();
                     var octetString = s2.OfType<DerOctetString>().First();
-                    var derbool = s2.OfType<DerBoolean>().FirstOrDefault();
-                    var critical = derbool?.IsTrue == true;
-                    var oid = Oid.FromOidValue(deroid.Id, OidGroup.All);
+                    var derBool = s2.OfType<DerBoolean>().FirstOrDefault();
+                    var critical = derBool?.IsTrue == true;
+                    var oid = Oid.FromOidValue(derOid.Id, OidGroup.All);
                     var data = new AsnEncodedData(octetString.GetOctets());
-                    yield return deroid.Id switch
+                    yield return derOid.Id switch
                     {
                         "2.5.29.14" => new X509SubjectKeyIdentifierExtension(data, critical),
                         "2.5.29.15" => new X509KeyUsageExtension(data, critical),
@@ -283,15 +294,66 @@
 
         public void Dispose()
         {
+            _rsaCertificate.Dispose();
+            _ecdsaCertificate.Dispose();
             GC.SuppressFinalize(this);
-            _rsaCertificate?.Dispose();
-            _ecdsaCertificate?.Dispose();
         }
 
-        /// <inheritdoc />
-        public X509Certificate2Collection GetRootCertificates()
+        /// <summary>
+        /// Base64 decode.
+        /// </summary>
+        /// <param name="base64EncodedData">The base64 encoded data.</param>
+        /// <returns></returns>
+        private static byte[] Base64DecodeBytes(string base64EncodedData)
         {
-            return new X509Certificate2Collection { _rsaCertificate, _ecdsaCertificate };
+            var s = base64EncodedData.Trim().Replace(" ", "+").Replace('-', '+').Replace('_', '/');
+            switch (s.Length % 4)
+            {
+                case 0:
+                    return Convert.FromBase64String(s);
+                case 2:
+                    s += "==";
+                    goto case 0;
+                case 3:
+                    s += "=";
+                    goto case 0;
+                default:
+                    throw new InvalidOperationException("Illegal base64url string!");
+            }
+        }
+        private class OwnCertificateValidation : IValidateCertificateRequests
+        {
+            private readonly X509Certificate2Collection _serverCertificates;
+            private readonly ILogger _logger;
+
+            public OwnCertificateValidation(X509Certificate2Collection serverCertificates, ILogger logger)
+            {
+                _serverCertificates = serverCertificates;
+                _logger = logger;
+            }
+
+            public bool Validate(CertificateRequest request, X509Certificate2? reenrollingFrom = null)
+            {
+                var result = reenrollingFrom == null
+                             || _serverCertificates
+                                 .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);
+                if (!result)
+                {
+                    _logger.LogError("Could not validate re-enrollment from {reenrollingFrom}", reenrollingFrom!.IssuerName.Name);
+                }
+
+                return result;
+            }
+        }
+
+        private class DistinguishedNameValidation : IValidateCertificateRequests
+        {
+            public bool Validate(CertificateRequest request, X509Certificate2? reenrollingFrom = null)
+            {
+                return request.SubjectName.Format(true)
+                    .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+                    .Any(x => x.StartsWith("CN="));
+            }
         }
     }
 }

@@ -5,6 +5,6 @@
 
     public interface IValidationWorker
     {
-        Task RunAsync(CancellationToken cancellationToken);
+        Task Run(CancellationToken cancellationToken);
     }
 }

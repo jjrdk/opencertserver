@@ -12,19 +12,19 @@
     {
         private readonly IOrderStore _orderStore;
         private readonly IAccountStore _accountStore;
-        private readonly IChallangeValidatorFactory _challengeValidatorFactory;
+        private readonly IChallengeValidatorFactory _challengeValidatorFactory;
 
         public ValidationWorker(
             IOrderStore orderStore,
             IAccountStore accountStore,
-            IChallangeValidatorFactory challengeValidatorFactory)
+            IChallengeValidatorFactory challengeValidatorFactory)
         {
             _orderStore = orderStore;
             _accountStore = accountStore;
             _challengeValidatorFactory = challengeValidatorFactory;
         }
 
-        public async Task RunAsync(CancellationToken cancellationToken)
+        public async Task Run(CancellationToken cancellationToken)
         {
             var orders = await _orderStore.GetValidatableOrders(cancellationToken);
 

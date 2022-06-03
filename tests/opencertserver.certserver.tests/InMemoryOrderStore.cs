@@ -23,14 +23,16 @@ internal class InMemoryOrderStore : IOrderStore
     /// <inheritdoc />
     public Task<List<Order>> GetValidatableOrders(CancellationToken cancellationToken)
     {
-        var orders = _orders.Values.Where(o => o.Status == OrderStatus.Pending).ToList();
+        var orders = _orders.Values.Where(
+                o => o.Authorizations.Any(a => a.Challenges.Any(c => c.Status == ChallengeStatus.Processing)))
+            .ToList();
         return Task.FromResult(orders);
     }
 
     /// <inheritdoc />
     public Task<List<Order>> GetFinalizableOrders(CancellationToken cancellationToken)
     {
-        var orders = _orders.Values.Where(o => o.Status == OrderStatus.Valid).ToList();
+        var orders = _orders.Values.Where(o => o.Status == OrderStatus.Processing).ToList();
         return Task.FromResult(orders);
     }
 }

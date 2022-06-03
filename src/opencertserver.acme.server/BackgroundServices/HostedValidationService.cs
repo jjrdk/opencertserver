@@ -31,7 +31,7 @@
         protected override async Task DoWork(IServiceProvider services, CancellationToken cancellationToken)
         {
             var validationWorker = services.GetRequiredService<IValidationWorker>();
-            await validationWorker.RunAsync(cancellationToken);
+            await validationWorker.Run(cancellationToken);
         }
     }
 }

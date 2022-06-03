@@ -9,6 +9,7 @@
 	<Import Project="../../shared.proj" />
 
 	<ItemGroup>
+		<PackageReference Include="Certes" Version="3.0.3" />
 		<PackageReference Include="DnsClient" Version="1.6.0" />
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
@@ -22,6 +23,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
+		<ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
 	</ItemGroup>
 
 </Project>

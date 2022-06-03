@@ -6,12 +6,15 @@
     {
         public class Success : SignCertificateResponse
         {
-            internal Success(X509Certificate2 certificate)
+            internal Success(X509Certificate2 certificate, X509Certificate2Collection issuers)
             {
                 Certificate = certificate;
+                Issuers = issuers;
             }
 
             public X509Certificate2 Certificate { get; }
+
+            public X509Certificate2Collection Issuers { get; }
         }
 
         public class Error : SignCertificateResponse

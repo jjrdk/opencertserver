@@ -10,7 +10,7 @@
     [Serializable]
     public class Challenge : ISerializable
     {
-        private static readonly Dictionary<ChallengeStatus, ChallengeStatus[]> _validStatusTransitions = 
+        private static readonly Dictionary<ChallengeStatus, ChallengeStatus[]> ValidStatusTransitions = 
             new()
             {
                 { ChallengeStatus.Pending, new [] { ChallengeStatus.Processing } },
@@ -58,12 +58,12 @@
 
         public void SetStatus(ChallengeStatus nextStatus)
         {
-            if (!_validStatusTransitions.ContainsKey(Status))
+            if (!ValidStatusTransitions.ContainsKey(Status))
             {
                 throw new ConflictRequestException(nextStatus);
             }
 
-            if (!_validStatusTransitions[Status].Contains(nextStatus))
+            if (!ValidStatusTransitions[Status].Contains(nextStatus))
             {
                 throw new ConflictRequestException(nextStatus);
             }

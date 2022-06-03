@@ -1,9 +1,13 @@
 ﻿namespace OpenCertServer.Acme.Server.Controllers
 {
+    using System.Security.Cryptography.X509Certificates;
     using Abstractions.HttpModel.Requests;
     using Abstractions.Model;
     using Abstractions.Model.Exceptions;
     using Abstractions.Services;
+    using Ca.Utils;
+    using Certes;
+    using Certes.Acme;
     using Filters;
     using Microsoft.AspNetCore.Mvc;
 
@@ -182,9 +186,9 @@
         public async Task<IActionResult> GetCertificate(string orderId)
         {
             var account = await _accountService.FromRequest(HttpContext.RequestAborted);
-            var certificate = await _orderService.GetCertificate(account, orderId, HttpContext.RequestAborted);
-
-            return File(certificate, "application/pem-certificate-chain");
+            var certificateChainBytes = await _orderService.GetCertificate(account, orderId, HttpContext.RequestAborted);
+            
+            return File(certificateChainBytes, "application/pem-certificate-chain");
         }
     }
 }

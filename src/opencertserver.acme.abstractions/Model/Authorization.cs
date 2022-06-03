@@ -10,12 +10,17 @@
     [Serializable]
     public class Authorization : ISerializable
     {
-        private static readonly Dictionary<AuthorizationStatus, AuthorizationStatus[]> _validStatusTransitions =
-            new()
+        private static readonly Dictionary<AuthorizationStatus, AuthorizationStatus[]> ValidStatusTransitions = new()
+        {
             {
-                { AuthorizationStatus.Pending, new [] { AuthorizationStatus.Invalid, AuthorizationStatus.Expired, AuthorizationStatus.Valid } },
-                { AuthorizationStatus.Valid, new [] { AuthorizationStatus.Revoked, AuthorizationStatus.Deactivated, AuthorizationStatus.Expired } }
-            };
+                AuthorizationStatus.Pending,
+                new[] { AuthorizationStatus.Invalid, AuthorizationStatus.Expired, AuthorizationStatus.Valid }
+            },
+            {
+                AuthorizationStatus.Valid,
+                new[] { AuthorizationStatus.Revoked, AuthorizationStatus.Deactivated, AuthorizationStatus.Expired }
+            }
+        };
 
         private Order? _order;
 
@@ -63,12 +68,12 @@
 
         public void SetStatus(AuthorizationStatus nextStatus)
         {
-            if (!_validStatusTransitions.ContainsKey(Status))
+            if (!ValidStatusTransitions.ContainsKey(Status))
             {
                 throw new InvalidOperationException($"Cannot do challenge status transition from '{Status}'.");
             }
 
-            if (!_validStatusTransitions[Status].Contains(nextStatus))
+            if (!ValidStatusTransitions[Status].Contains(nextStatus))
             {
                 throw new InvalidOperationException($"Cannot do challenge status transition from '{Status}' to {nextStatus}.");
             }

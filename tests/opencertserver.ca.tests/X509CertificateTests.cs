@@ -22,8 +22,7 @@ namespace OpenCertServer.Ca.Tests
                 new X500DistinguishedName("CN=Test"),
                 TimeSpan.FromHours(1),
                 _ => true,
-                new NullLogger<CertificateAuthority>(),
-                new DistinguishedNameValidation());
+                new NullLogger<CertificateAuthority>());
         }
 
         [Fact]

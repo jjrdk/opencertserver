@@ -29,21 +29,10 @@ namespace OpenCertServer.Est.Server
                             distinguishedName,
                             TimeSpan.FromDays(90),
                             chainValidation ?? (_ => true),
-                            sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                            new OwnCertificateValidation(
-                                sp.GetRequiredService<X509Certificate2Collection>(),
-                                sp.GetRequiredService<ILogger<OwnCertificateValidation>>()),
-                            new DistinguishedNameValidation());
+                            sp.GetRequiredService<ILogger<CertificateAuthority>>());
                         return certificateAuthority;
                     })
-                .AddSingleton<ICertificateAuthority>(sp => sp.GetRequiredService<CertificateAuthority>())
-                .AddSingleton<IProvideRootCertificates>(sp => sp.GetRequiredService<CertificateAuthority>())
-                .AddSingleton<X509Certificate2Collection>(
-                    sp =>
-                    {
-                        var ca = sp.GetRequiredService<IProvideRootCertificates>();
-                        return ca.GetRootCertificates();
-                    });
+                .AddSingleton<ICertificateAuthority>(sp => sp.GetRequiredService<CertificateAuthority>());
 
             return services.InnerAddEstServer();
         }
@@ -73,11 +62,7 @@ namespace OpenCertServer.Est.Server
                       ecdsaCertificate,
                       TimeSpan.FromDays(90),
                       chainValidation ?? (_ => true),
-                      sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                      new OwnCertificateValidation(
-                          sp.GetRequiredService<X509Certificate2Collection>(),
-                          sp.GetRequiredService<ILogger<OwnCertificateValidation>>()),
-                      new DistinguishedNameValidation()))
+                      sp.GetRequiredService<ILogger<CertificateAuthority>>()))
                   .InnerAddEstServer();
         }
 
