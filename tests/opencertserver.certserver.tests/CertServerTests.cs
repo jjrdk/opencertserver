@@ -58,7 +58,7 @@ public class CertServerTests : IDisposable
             {
                 Email = "test@test.com",
                 Domains = new[] { "localhost" },
-                KeyAlgorithm = KeyAlgorithm.RS256,
+                //KeyAlgorithm = KeyAlgorithm.RS256,
                 CertificateSigningRequest = new CsrInfo { CommonName = "test", CountryName = "DK" }
             },
             _server.CreateClient(),

@@ -9,16 +9,19 @@ namespace OpenCertServer.Acme.Server.Services
     using Abstractions.Model;
     using Abstractions.Services;
     using DnsClient;
+    using Microsoft.Extensions.Logging;
     using Microsoft.IdentityModel.Tokens;
 
     public sealed class Dns01ChallengeValidator : TokenChallengeValidator, IDns01ChallengeValidator
     {
-        //private readonly ILogger<Dns01ChallengeValidator> _logger;
+        private readonly ILogger<Dns01ChallengeValidator> _logger;
+        private readonly ILookupClient _client;
 
-        //public Dns01ChallengeValidator(ILogger<Dns01ChallengeValidator> logger)
-        //{
-        //    _logger = logger;
-        //}
+        public Dns01ChallengeValidator(ILogger<Dns01ChallengeValidator> logger, ILookupClient client)
+        {
+            _logger = logger;
+            _client = client;
+        }
 
         protected override string GetExpectedContent(Challenge challenge, Account account)
         {
@@ -38,11 +41,11 @@ namespace OpenCertServer.Acme.Server.Services
         {
             try
             {
-                var dnsClient = new LookupClient();
                 var dnsBaseUrl = challenge.Authorization.Identifier.Value.Replace("*.", "", StringComparison.OrdinalIgnoreCase);
                 var dnsRecordName = $"_acme-challenge.{dnsBaseUrl}";
+                _logger.LogInformation("Validating {dnsRecord}", dnsRecordName);
 
-                var dnsResponse = await dnsClient.QueryAsync(dnsRecordName, QueryType.TXT, cancellationToken: cancellationToken);
+                var dnsResponse = await _client.QueryAsync(dnsRecordName, QueryType.TXT, cancellationToken: cancellationToken);
                 var contents = new List<string>(dnsResponse.Answers.TxtRecords().SelectMany(x => x.Text));
 
                 return (contents, null);

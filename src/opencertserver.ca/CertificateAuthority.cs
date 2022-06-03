@@ -239,12 +239,11 @@
             X509KeyUsageFlags usageFlags,
             TimeSpan certificateValidity)
         {
-            using var parent = RSA.Create(4096);
+            using var parent = ECDsa.Create();
             var parentReq = new CertificateRequest(
                 distinguishedName,
                 parent,
-                HashAlgorithmName.SHA256,
-                RSASignaturePadding.Pkcs1);
+                HashAlgorithmName.SHA256);
 
             return SignCert(usageFlags, certificateValidity, parentReq);
         }

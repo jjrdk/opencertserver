@@ -6,6 +6,7 @@ namespace OpenCertServer.Acme.Server.Extensions
     using Abstractions.Workers;
     using BackgroundServices;
     using Configuration;
+    using DnsClient;
     using Filters;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Configuration;
@@ -47,6 +48,7 @@ namespace OpenCertServer.Acme.Server.Extensions
                 services.AddTransient<IHttp01ChallengeValidator, Http01ChallengeValidator>();
             }
 
+            services.AddScoped<ILookupClient, LookupClient>();
             services.AddScoped<IDns01ChallengeValidator, Dns01ChallengeValidator>();
             services.AddScoped<IChallengeValidatorFactory, DefaultChallengeValidatorFactory>();
 
