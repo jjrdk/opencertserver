@@ -46,8 +46,12 @@ public class CertServerTests : IDisposable
                 .Configure(app => app.UseAcmeServer().UseEstServer()));
     }
 
-    [Fact]
-    public async Task CanCompleteCertificateFlow()
+    [Theory]
+    [InlineData(KeyAlgorithm.RS256)]
+    [InlineData(KeyAlgorithm.ES256)]
+    [InlineData(KeyAlgorithm.ES384)]
+    [InlineData(KeyAlgorithm.ES512)]
+    public async Task CanCompleteCertificateFlow(KeyAlgorithm keyAlgorithm)
     {
         var factory = new AcmeClientFactory(
             new PersistenceService(
@@ -58,7 +62,7 @@ public class CertServerTests : IDisposable
             {
                 Email = "test@test.com",
                 Domains = new[] { "localhost" },
-                //KeyAlgorithm = KeyAlgorithm.RS256,
+                KeyAlgorithm = keyAlgorithm,
                 CertificateSigningRequest = new CsrInfo { CommonName = "test", CountryName = "DK" }
             },
             _server.CreateClient(),
