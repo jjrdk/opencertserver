@@ -2,6 +2,7 @@ namespace OpenCertServer.Est.Server
 {
     using System;
     using System.Security.Cryptography.X509Certificates;
+    using Ca.Utils;
     using Handlers;
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Builder;
@@ -14,9 +15,6 @@ namespace OpenCertServer.Est.Server
     /// </summary>
     public static class CertificateServerExtensions
     {
-        private const string RsaOid = "1.2.840.113549.1.1.1";
-        private const string EcdsaOid = "1.2.840.10045.2.1";
-
         public static IServiceCollection AddEstServer(
             this IServiceCollection services,
             X500DistinguishedName distinguishedName,
@@ -43,12 +41,12 @@ namespace OpenCertServer.Est.Server
             X509Certificate2 ecdsaCertificate,
             Func<X509Chain, bool>? chainValidation = null)
         {
-            if (rsaCertificate.PublicKey.Oid.Value != RsaOid)
+            if (rsaCertificate.PublicKey.Oid.Value != CertificateConstants.RsaOid)
             {
                 throw new ArgumentException("Must be an RSA key certificate");
             }
 
-            if (ecdsaCertificate.PublicKey.Oid.Value != EcdsaOid)
+            if (ecdsaCertificate.PublicKey.Oid.Value != CertificateConstants.EcdsaOid)
             {
                 throw new ArgumentException("Must be an ECDSA key certificate");
             }

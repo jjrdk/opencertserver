@@ -92,12 +92,12 @@
             _logger.LogInformation("Creating certificate for {subjectName}", request.SubjectName.Name);
             var cert = request.PublicKey.Oid.Value switch
             {
-                "1.2.840.113549.1.1.1" => request.Create(
+                CertificateConstants.RsaOid => request.Create(
                        _rsaCertificate,
                        DateTimeOffset.UtcNow.Date,
                        DateTimeOffset.UtcNow.Date.Add(_certificateValidity),
                        BitConverter.GetBytes(DateTime.UtcNow.Ticks)),
-                "1.2.840.10045.2.1" => request.Create(
+                CertificateConstants.EcdsaOid => request.Create(
                     _ecdsaCertificate,
                     DateTimeOffset.UtcNow.Date,
                     DateTimeOffset.UtcNow.Date.Add(_certificateValidity),

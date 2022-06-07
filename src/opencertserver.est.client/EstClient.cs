@@ -67,11 +67,11 @@
 
             var certRequest = oidValue switch
             {
-                "1.2.840.10045.2.1" => CreateCertificateRequest(
+                CertificateConstants.EcdsaOid => CreateCertificateRequest(
                     certificate.SubjectName,
                     certificate.GetECDsaPrivateKey()!,
                     usageFlags),
-                "1.2.840.113549.1.1.1" => CreateCertificateRequest(certificate.SubjectName,
+                CertificateConstants.RsaOid => CreateCertificateRequest(certificate.SubjectName,
                     certificate.GetRSAPrivateKey()!,
                     usageFlags),
                 _ => throw new NotSupportedException($"{oidValue} is not supported")

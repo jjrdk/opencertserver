@@ -6,6 +6,7 @@
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
+    using Ca.Utils;
     using Microsoft.AspNetCore.Http;
     using Microsoft.Extensions.Primitives;
     using OpenCertServer.Ca;
@@ -51,11 +52,11 @@
 
             var request = cert.PublicKey.Oid.Value switch
             {
-                "1.2.840.10045.2.1" => new CertificateRequest(
+                CertificateConstants.EcdsaOid => new CertificateRequest(
                     cert.SubjectName,
                     cert.GetECDsaPublicKey()!,
                     HashAlgorithmName.SHA256),
-                "1.2.840.113549.1.1.1" => new CertificateRequest(
+                CertificateConstants.RsaOid => new CertificateRequest(
                     cert.SubjectName,
                     cert.GetRSAPublicKey()!,
                     HashAlgorithmName.SHA256,
