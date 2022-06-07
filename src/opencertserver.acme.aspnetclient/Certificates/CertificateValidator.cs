@@ -2,6 +2,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certificates
 {
     using System;
     using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
     using Certes;
     using Microsoft.Extensions.Logging;
 
@@ -18,7 +19,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certificates
             _logger = logger;
         }
 
-        public bool IsCertificateValid(IAbstractCertificate? certificate)
+        public bool IsCertificateValid(X509Certificate2? certificate)
         {
             try
             {

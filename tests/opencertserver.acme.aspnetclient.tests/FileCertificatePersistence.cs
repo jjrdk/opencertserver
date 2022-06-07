@@ -2,8 +2,8 @@
 {
     using System;
     using System.IO;
+    using System.Text;
     using System.Threading.Tasks;
-    using Certificates;
     using FluentAssertions;
     using global::Certes;
     using Persistence;
@@ -34,39 +34,38 @@
         [Fact]
         public async Task MissingAccountCertificateReturnsNull()
         {
-            var retrievedCert = (AccountKeyCertificate?)await Strategy.RetrieveAccountCertificate();
+            var retrievedCert = await Strategy.RetrieveAccountCertificate();
             Assert.Null(retrievedCert);
         }
 
         [Fact]
         public async Task MissingSiteCertificateReturnsNull()
         {
-            var retrievedCert = (LetsEncryptX509Certificate?)await Strategy.RetrieveSiteCertificate();
+            var retrievedCert = await Strategy.RetrieveSiteCertificate();
             Assert.Null(retrievedCert);
         }
 
         [Fact]
         public async Task AccountCertificateRoundTrip()
         {
-            var testCert = new AccountKeyCertificate(KeyFactory.NewKey(KeyAlgorithm.ES256));
+            var testCert = Encoding.UTF8.GetBytes(KeyFactory.NewKey(KeyAlgorithm.ES256).ToPem());
             KeyFactory.NewKey(KeyAlgorithm.ES256);
 
             await Strategy.Persist(CertificateType.Account, testCert);
 
-            var retrievedCert = (AccountKeyCertificate?)await Strategy.RetrieveAccountCertificate();
+            var retrievedCert = await Strategy.RetrieveAccountCertificate();
 
-            testCert.RawData.Should().Equal(retrievedCert?.RawData);
+            retrievedCert.Should().Equal(testCert);
         }
 
         [Fact]
         public async Task SiteCertificateRoundTrip()
         {
             var testCert = SelfSignedCertificate.Make(new DateTime(2020, 5, 24), new DateTime(2020, 5, 26));
-            ;
 
-            await Strategy.Persist(CertificateType.Site, testCert);
+            await Strategy.Persist(CertificateType.Site, testCert.RawData);
 
-            var retrievedCert = (LetsEncryptX509Certificate?)await Strategy.RetrieveSiteCertificate();
+            var retrievedCert = await Strategy.RetrieveSiteCertificate();
 
             testCert.RawData.Should().Equal(retrievedCert?.RawData);
         }

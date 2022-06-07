@@ -1,8 +1,8 @@
 ﻿namespace OpenCertServer.Acme.AspNetClient.Persistence
 {
     using System;
+    using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
-    using Certificates;
 
     public class CustomCertificatePersistenceStrategy : ICertificatePersistenceStrategy
 	{
@@ -17,25 +17,21 @@
 			_retrieve = retrieve;
 		}
 
-		public Task Persist(CertificateType persistenceType, IPersistableCertificate certificate)
+		public Task Persist(CertificateType persistenceType, byte[] certificate)
 		{
-			return _persist(persistenceType, certificate.RawData);
+			return _persist(persistenceType, certificate);
 		}
 
-		public async Task<IKeyCertificate?> RetrieveAccountCertificate()
+		public async Task<byte[]?> RetrieveAccountCertificate()
 		{
 			var bytes = await _retrieve(CertificateType.Account);
-			return bytes == null ? null : new AccountKeyCertificate(bytes);
+			return bytes;
         }
 
-		public async Task<IAbstractCertificate?> RetrieveSiteCertificate()
+		public async Task<X509Certificate2?> RetrieveSiteCertificate()
 		{
 			var bytes = await _retrieve(CertificateType.Account);
-			if (bytes == null)
-			{
-				return null;
-			}
-			return new LetsEncryptX509Certificate(bytes);
-		}
+			return bytes == null ? null : new X509Certificate2(bytes);
+        }
 	}
 }

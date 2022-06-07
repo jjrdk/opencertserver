@@ -22,8 +22,8 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
         private readonly ICertificateValidator _certificateValidator;
         private readonly IAcmeClientFactory _letsEncryptClientFactory;
         private readonly IAcmeClient _letsEncryptClient;
-        private readonly CertificateProvider _sut ;
-        
+        private readonly CertificateProvider _sut;
+
         public LetsEncryptClientTests()
         {
             var persistenceService = Substitute.For<IPersistenceService>();
@@ -62,11 +62,11 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
             _sut = sut;
         }
 
-        private static IAbstractCertificate ValidCert { get; } = SelfSignedCertificate.Make(
+        private static X509Certificate2 ValidCert { get; } = SelfSignedCertificate.Make(
             DateTime.Now,
             DateTime.Now.AddDays(90));
 
-        private static IAbstractCertificate InvalidCert { get; } = SelfSignedCertificate.Make(
+        private static X509Certificate2 InvalidCert { get; } = SelfSignedCertificate.Make(
             DateTime.Now.Subtract(180.Days()),
             DateTime.Now.Subtract(90.Days()));
 
@@ -76,7 +76,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
             _persistenceService.GetPersistedSiteCertificate()!
                 .Returns(Task.FromResult(ValidCert));
 
-            var output = await _sut.RenewCertificateIfNeeded();
+            var output = await _sut.RenewCertificateIfNeeded("test");
 
             output.Status.Should().Be(CertificateRenewalStatus.LoadedFromStore);
             Assert.Equal(ValidCert, output.Certificate);
@@ -86,7 +86,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
         public async Task OnValidMemoryCertificate_ShouldNotAttemptRenewal()
         {
             var input = ValidCert;
-            var output = await _sut.RenewCertificateIfNeeded(input);
+            var output = await _sut.RenewCertificateIfNeeded("test", input);
 
             output.Status.Should().Be(CertificateRenewalStatus.Unchanged);
             ReferenceEquals(input, output.Certificate).Should().BeTrue();
@@ -100,7 +100,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
 
             _persistenceService.GetPersistedSiteCertificate()!.Returns(Task.FromResult(stored));
 
-            var output = await _sut.RenewCertificateIfNeeded(input);
+            var output = await _sut.RenewCertificateIfNeeded("test", input);
 
             output.Status.Should().Be(CertificateRenewalStatus.LoadedFromStore);
             Assert.Equal(stored, output.Certificate);
@@ -122,19 +122,19 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
 
             var newCertBytes = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90)).RawData;
 
-            _letsEncryptClient.FinalizeOrder(placedOrder).Returns(Task.FromResult(new PfxCertificate(newCertBytes)));
+            _letsEncryptClient.FinalizeOrder(placedOrder, "test").Returns(Task.FromResult(new X509Certificate2(newCertBytes)));
 
-            var newCertificate = new LetsEncryptX509Certificate(newCertBytes) as IPersistableCertificate;
+            var newCertificate = new X509Certificate2(newCertBytes);
             _persistenceService.PersistSiteCertificate(newCertificate).Returns(Task.CompletedTask);
 
             // act
 
-            var output = await _sut.RenewCertificateIfNeeded(current: null);
+            var output = await _sut.RenewCertificateIfNeeded("test", current: null);
 
             // assert
 
             output.Status.Should().Be(CertificateRenewalStatus.Renewed);
-            ((LetsEncryptX509Certificate?)output.Certificate)?.RawData.Should().BeEquivalentTo(newCertBytes);
+            output.Certificate?.RawData.Should().BeEquivalentTo(newCertBytes);
 
             _certificateValidator.Received(1).IsCertificateValid(null);
             await _persistenceService.Received(1).GetPersistedSiteCertificate();
@@ -143,7 +143,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
             await _persistenceService.Received(1).PersistChallenges(dtos);
             await _persistenceService.Received(1).DeleteChallenges(dtos);
             await _persistenceService.Received(1).PersistChallenges(dtos);
-            await _letsEncryptClient.Received(1).FinalizeOrder(placedOrder);
+            await _letsEncryptClient.Received(1).FinalizeOrder(placedOrder, "test");
             await _letsEncryptClientFactory.Received(1).GetClient();
         }
 
@@ -152,11 +152,12 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
         {
             // arrange
 
-            var pemCert = CertToPem(((LetsEncryptX509Certificate)ValidCert).GetCertificate());
+            var pemCert = CertToPem(ValidCert);
             var certChain = new CertificateChain(pemCert);
             var readyOrder = new Order
             {
-                Status = OrderStatus.Ready, Identifiers = new[] { new Identifier { Value = "example.com" } }
+                Status = OrderStatus.Ready,
+                Identifiers = new[] { new Identifier { Value = "example.com" } }
             };
             var validOrder = new Order { Status = OrderStatus.Valid };
             var orderContext = Substitute.For<IOrderContext>();
@@ -186,12 +187,12 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
 
             // act
 
-            var result = await client.FinalizeOrder(placedOrder);
+            var result = await client.FinalizeOrder(placedOrder, "");
 
             // assert
 
-            var cert = new LetsEncryptX509Certificate(result?.Bytes!);
-            pemCert.Should().Be(CertToPem(cert.GetCertificate()));
+            var cert = new X509Certificate2(result.RawData);
+            pemCert.Should().Be(CertToPem(cert));
             await challenge1.Received().Validate();
             await challenge2.Received().Validate();
             await challenge2.Received().Resource();

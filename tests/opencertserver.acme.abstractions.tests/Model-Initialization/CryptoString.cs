@@ -7,7 +7,7 @@
         [Fact]
         public void CryptoString_Seems_Filled()
         {
-            var sut = Model.CryptoString.NewValue(48);
+            var sut = Model.CryptoString.NewValue();
 
             Assert.False(string.IsNullOrWhiteSpace(sut));
             Assert.Equal(64, sut.Length);

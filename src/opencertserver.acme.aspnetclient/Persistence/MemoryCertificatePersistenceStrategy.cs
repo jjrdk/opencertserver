@@ -1,38 +1,38 @@
 ﻿namespace OpenCertServer.Acme.AspNetClient.Persistence
 {
     using System;
+    using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
-    using Certificates;
 
     public class MemoryCertificatePersistenceStrategy : ICertificatePersistenceStrategy
-	{
-        private IKeyCertificate? _accountCertificate;
-        private IAbstractCertificate? _siteCertificate;
+    {
+        private byte[]? _accountCertificate;
+        private byte[]? _siteCertificate;
 
-		public Task Persist(CertificateType persistenceType, IPersistableCertificate certificate)
-		{
-			switch (persistenceType)
-			{
-				case CertificateType.Account:
-					_accountCertificate = (IKeyCertificate)certificate;
-					break;
-				case CertificateType.Site:
-					_siteCertificate = certificate;
-					break;
-				default:
-					throw new ArgumentException("Unhandled persistence type", nameof(persistenceType));
-			}
-			return Task.CompletedTask;
-		}
+        public Task Persist(CertificateType persistenceType, byte[] certificate)
+        {
+            switch (persistenceType)
+            {
+                case CertificateType.Account:
+                    _accountCertificate = certificate;
+                    break;
+                case CertificateType.Site:
+                    _siteCertificate = certificate;
+                    break;
+                default:
+                    throw new ArgumentException("Unhandled persistence type", nameof(persistenceType));
+            }
+            return Task.CompletedTask;
+        }
 
-		public Task<IKeyCertificate?> RetrieveAccountCertificate()
-		{
-			return Task.FromResult(_accountCertificate);
-		}
+        public Task<byte[]?> RetrieveAccountCertificate()
+        {
+            return Task.FromResult(_accountCertificate);
+        }
 
-		public Task<IAbstractCertificate?> RetrieveSiteCertificate()
-		{
-			return Task.FromResult(_siteCertificate);
-		}
-	}
+        public Task<X509Certificate2?> RetrieveSiteCertificate()
+        {
+            return Task.FromResult(_siteCertificate == null ? null : new X509Certificate2(_siteCertificate));
+        }
+    }
 }

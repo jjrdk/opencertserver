@@ -1,7 +1,6 @@
 ﻿namespace OpenCertServer.Acme.AspNetClient
 {
     using Certes;
-    using Certificates;
     using Microsoft.AspNetCore.Server.Kestrel.Core;
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Options;
@@ -17,14 +16,14 @@
         
         public void Configure(KestrelServerOptions options)
         {
-            if (AcmeRenewalService.Certificate is LetsEncryptX509Certificate x509Certificate)
+            if (AcmeRenewalService.Certificate != null)
             {
                 options.ConfigureHttpsDefaults(o =>
                 {
-                    o.ServerCertificateSelector = (_, _) => x509Certificate.GetCertificate();
+                    o.ServerCertificateSelector = (_, _) => AcmeRenewalService.Certificate;
                 });
             }
-            else if(AcmeRenewalService.Certificate != null)
+            else //if(AcmeRenewalService.Certificate != null)
             {
                 _logger.LogError("This certificate cannot be used with Kestrel");
             }

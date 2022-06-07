@@ -37,7 +37,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
             _semaphoreSlim = new SemaphoreSlim(1);
         }
 
-        internal static IAbstractCertificate? Certificate { get; private set; }
+        internal static X509Certificate2? Certificate { get; private set; }
 
         public Uri LetsEncryptUri
         {
@@ -87,7 +87,8 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
 
             try
             {
-                var result = await _certificateProvider.RenewCertificateIfNeeded(Certificate);
+                // TODO: set password
+                var result = await _certificateProvider.RenewCertificateIfNeeded("TODO",Certificate);
 
                 if (result.Status != Unchanged)
                 {
@@ -100,9 +101,9 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
                         }
                     };
 
-                    if (result.Certificate is LetsEncryptX509Certificate x509Cert)
+                    if (result.Certificate != null)
                     {
-                        if (chain.Build(x509Cert.GetCertificate()))
+                        if (chain.Build(result.Certificate))
                         {
                             _logger.LogInformation("Successfully built certificate chain");
                         }

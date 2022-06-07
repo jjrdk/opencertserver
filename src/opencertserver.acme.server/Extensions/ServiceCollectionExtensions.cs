@@ -14,6 +14,7 @@ namespace OpenCertServer.Acme.Server.Extensions
     using ModelBinding;
     using RequestServices;
     using Services;
+    using Stores;
     using Workers;
 
     public static class ServiceCollectionExtensions
@@ -88,6 +89,16 @@ namespace OpenCertServer.Acme.Server.Extensions
                 .Bind(configuration.GetSection(sectionName))
                 .ValidateDataAnnotations();
 
+            return services;
+        }
+
+        public static IServiceCollection AddAcmeInMemoryStore(
+            this IServiceCollection services)
+        {
+            services.AddSingleton<INonceStore, InMemoryNonceStore>();
+            services.AddSingleton<IAccountStore, InMemoryAccountStore>();
+            services.AddSingleton<IOrderStore, InMemoryOrderStore>();
+            
             return services;
         }
     }

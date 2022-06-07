@@ -1,23 +1,23 @@
 ﻿namespace OpenCertServer.Acme.AspNetClient.Persistence
 {
+    using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
-    using Certificates;
 
     public interface ICertificatePersistenceStrategy
 	{
 		/// <summary>
 		/// Optional. The async method to use for persisting some data for later use (if server restarts).
 		/// </summary>
-		Task Persist(CertificateType persistenceType, IPersistableCertificate certificate);
+		Task Persist(CertificateType persistenceType, byte[] certificate);
 		
 		/// <summary>
 		/// Optional. The async method to use for fetching previously generated data for a given key.
 		/// </summary>
-		Task<IKeyCertificate?> RetrieveAccountCertificate();
+		Task<byte[]?> RetrieveAccountCertificate();
 
 		/// <summary>
 		/// Optional. The async method to use for fetching previously generated data for a given key.
 		/// </summary>
-		Task<IAbstractCertificate?> RetrieveSiteCertificate();
+		Task<X509Certificate2?> RetrieveSiteCertificate();
 	}
 }

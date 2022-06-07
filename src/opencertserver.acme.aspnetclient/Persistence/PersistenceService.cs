@@ -2,9 +2,9 @@
 {
     using System.Collections.Generic;
     using System.Linq;
+    using System.Security.Cryptography.X509Certificates;
+    using System.Text;
     using System.Threading.Tasks;
-    using Certes;
-    using Certificates;
     using global::Certes;
     using Microsoft.Extensions.Logging;
 
@@ -30,22 +30,22 @@
 
         public async Task PersistAccountCertificate(IKey certificate)
         {
-            await PersistCertificateAsync(
+            await PersistCertificate(
                 CertificateType.Account,
-                new AccountKeyCertificate(certificate),
+                Encoding.UTF8.GetBytes(certificate.ToPem()),
                 _certificatePersistenceStrategies);
         }
 
-        public async Task PersistSiteCertificate(IPersistableCertificate certificate)
+        public async Task PersistSiteCertificate(X509Certificate2 certificate)
         {
-            await PersistCertificateAsync(CertificateType.Site, certificate, _certificatePersistenceStrategies);
+            await PersistCertificate(CertificateType.Site, certificate.RawData, _certificatePersistenceStrategies);
             _logger.LogInformation("Certificate persisted for later use.");
         }
 
         public async Task PersistChallenges(ChallengeDto[] challenges)
         {
-            _logger.LogTrace("Using ({Strategies}) for persisting challenge", (object)_challengePersistenceStrategies);
-            await PersistChallengesAsync(challenges, _challengePersistenceStrategies);
+            _logger.LogTrace("Using ({Strategies}) for persisting challenge", _challengePersistenceStrategies);
+            await PersistChallenges(challenges, _challengePersistenceStrategies);
         }
 
         public async Task DeleteChallenges(ChallengeDto[] challenges)
@@ -61,9 +61,9 @@
         //	return dnsName;
         //}
 
-        private async Task PersistCertificateAsync(
+        private async Task PersistCertificate(
             CertificateType persistenceType,
-            IPersistableCertificate certificate,
+            byte[] certificate,
             IEnumerable<ICertificatePersistenceStrategy> strategies)
         {
             _logger.LogTrace("Persisting {type} certificate through strategies", persistenceType);
@@ -72,7 +72,7 @@
             await Task.WhenAll(tasks);
         }
 
-        private async Task PersistChallengesAsync(
+        private async Task PersistChallenges(
             IEnumerable<ChallengeDto> challenges,
             IEnumerable<IChallengePersistenceStrategy> strategies)
         {
@@ -88,7 +88,7 @@
             await Task.WhenAll(tasks);
         }
 
-        public async Task<IAbstractCertificate?> GetPersistedSiteCertificate()
+        public async Task<X509Certificate2?> GetPersistedSiteCertificate()
         {
             foreach (var strategy in _certificatePersistenceStrategies)
             {
@@ -112,7 +112,7 @@
                 var certificate = await strategy.RetrieveAccountCertificate();
                 if (certificate != null)
                 {
-                    return certificate.Key;
+                    return KeyFactory.FromPem(Encoding.UTF8.GetString(certificate));
                 }
             }
 

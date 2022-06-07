@@ -2,6 +2,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certificates
 {
     using System;
     using System.Linq;
+    using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
     using Certes;
     using Microsoft.Extensions.Logging;
@@ -37,7 +38,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certificates
             _logger = logger;
         }
 
-        public async Task<CertificateRenewalResult> RenewCertificateIfNeeded(IAbstractCertificate? current = null)
+        public async Task<CertificateRenewalResult> RenewCertificateIfNeeded(string password, X509Certificate2? current = null)
         {
             _logger.LogInformation("Checking to see if in-memory LetsEncrypt certificate needs renewal.");
             if (_certificateValidator.IsCertificateValid(current))
@@ -55,11 +56,11 @@ namespace OpenCertServer.Acme.AspNetClient.Certificates
             }
 			
             _logger.LogInformation("No valid certificate was found. Requesting new certificate from LetsEncrypt.");
-            var newCertificate = await RequestNewLetsEncryptCertificate();
+            var newCertificate = await RequestNewLetsEncryptCertificate(password);
             return new CertificateRenewalResult(newCertificate, CertificateRenewalStatus.Renewed);
         }
         
-        private async Task<IAbstractCertificate?> RequestNewLetsEncryptCertificate()
+        private async Task<X509Certificate2?> RequestNewLetsEncryptCertificate(string password)
         {
             var client = await _clientFactory.GetClient();
 
@@ -69,13 +70,11 @@ namespace OpenCertServer.Acme.AspNetClient.Certificates
 
             try
             {
-                var pfxCertificateBytes = await client.FinalizeOrder(placedOrder);
+                var pfxCertificateBytes = await client.FinalizeOrder(placedOrder, password);
 
-                await _persistenceService.PersistSiteCertificate(new LetsEncryptX509Certificate(pfxCertificateBytes.Bytes));
-
-                //const string password = nameof(OpenCertServer);
-				
-                return new LetsEncryptX509Certificate(pfxCertificateBytes.Bytes);
+                await _persistenceService.PersistSiteCertificate(pfxCertificateBytes);
+                
+                return new X509Certificate2(pfxCertificateBytes.RawData);
             }
             finally
             {

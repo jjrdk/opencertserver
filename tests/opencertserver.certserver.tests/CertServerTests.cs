@@ -10,6 +10,7 @@ using Acme.Server.Configuration;
 using Acme.Server.Extensions;
 using Acme.Server.Middleware;
 using Acme.Server.Services;
+using Acme.Server.Stores;
 using Ca;
 using Certes;
 using Est.Server;
@@ -39,9 +40,7 @@ public class CertServerTests : IDisposable
                         .AddSingleton<ICsrValidator, DefaultCsrValidator>()
                         .AddSingleton<ICertificateIssuer, DefaultIssuer>()
                         .Replace(new ServiceDescriptor(typeof(IHttp01ChallengeValidator), typeof(PassAllChallengeValidator), ServiceLifetime.Transient))
-                        .AddSingleton<IOrderStore, InMemoryOrderStore>()
-                        .AddSingleton<INonceStore, InMemoryNonceStore>()
-                        .AddSingleton<IAccountStore, InMemoryAccountStore>()
+                        .AddAcmeInMemoryStore()
                     )
                 .Configure(app => app.UseAcmeServer().UseEstServer()));
     }

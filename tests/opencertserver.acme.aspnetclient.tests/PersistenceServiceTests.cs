@@ -51,7 +51,7 @@
 
             await PersistenceService.PersistSiteCertificate(testCert);
 
-            var retrievedCert = (LetsEncryptX509Certificate?)await PersistenceService.GetPersistedSiteCertificate();
+            var retrievedCert = await PersistenceService.GetPersistedSiteCertificate();
             
             Assert.Equal(testCert.RawData, retrievedCert?.RawData);
         }

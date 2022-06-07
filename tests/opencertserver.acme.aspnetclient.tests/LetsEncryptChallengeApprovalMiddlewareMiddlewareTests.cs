@@ -3,6 +3,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
     using System;
     using System.Linq;
     using System.Net;
+    using System.Security.Cryptography.X509Certificates;
     using System.Threading;
     using System.Threading.Tasks;
     using AspNet.EncryptWeMust;
@@ -95,7 +96,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
             var finalizationTimeout = await Task.WhenAny(Task.Delay(10000, _fakeClient.OrderFinalizedCts.Token));
             Assert.True(finalizationTimeout.IsCanceled, "Fake LE client finalization timed out");
 
-            var appCert = (AcmeRenewalService.Certificate as LetsEncryptX509Certificate)?.RawData;
+            var appCert = AcmeRenewalService.Certificate?.RawData;
             var fakeCert = FakeLetsEncryptClient.FakeCert.RawData;
 
             Assert.True(appCert?.SequenceEqual(fakeCert), "Certificates do not match");
@@ -103,7 +104,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
 
         private class FakeLetsEncryptClient : IAcmeClient
         {
-            public static readonly LetsEncryptX509Certificate FakeCert = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90));
+            public static readonly X509Certificate2 FakeCert = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90));
 
             public CancellationTokenSource OrderPlacedCts { get; }
             public CancellationTokenSource OrderFinalizedCts { get; }
@@ -126,13 +127,13 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
                     Array.Empty<IChallengeContext>()));
             }
 
-            public async Task<PfxCertificate> FinalizeOrder(PlacedOrder placedOrder)
+            public async Task<X509Certificate2> FinalizeOrder(PlacedOrder placedOrder, string password)
             {
                 await Task.Delay(500);
 
                 OrderFinalizedCts.CancelAfter(250);
 
-                return new PfxCertificate(FakeCert.RawData);
+                return new X509Certificate2(FakeCert.RawData);
             }
         }
     }

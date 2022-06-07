@@ -25,10 +25,17 @@
 
         public static void WritePrivateKeyPem(this RSA certificate, Stream outputStream)
         {
-            var writer = new PemUtils.PemWriter(outputStream, disposeStream: true, encoding: Encoding.UTF8);
+            using var writer = new PemUtils.PemWriter(outputStream, disposeStream: false, encoding: Encoding.UTF8);
             writer.WritePrivateKey(certificate);
         }
 
+        public static string WritePrivateKeyPem(this RSA certificate)
+        {
+            using var outputStream = new MemoryStream();
+            certificate.WritePrivateKeyPem(outputStream);
+            return Encoding.UTF8.GetString(outputStream.ToArray());
+        }
+        
         public static void WritePublicKeyPem(this RSA certificate, Stream outputStream)
         {
             var publicWriter = new PemUtils.PemWriter(outputStream, disposeStream: true, encoding: Encoding.UTF8);

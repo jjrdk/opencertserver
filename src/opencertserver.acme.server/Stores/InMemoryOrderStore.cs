@@ -1,7 +1,7 @@
-﻿namespace OpenCertServer.CertServer.Tests;
+﻿namespace OpenCertServer.Acme.Server.Stores;
 
-using Acme.Abstractions.Model;
-using Acme.Abstractions.Storage;
+using Abstractions.Model;
+using Abstractions.Storage;
 
 internal class InMemoryOrderStore : IOrderStore
 {

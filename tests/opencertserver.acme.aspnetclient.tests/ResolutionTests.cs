@@ -34,7 +34,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
                             State = "StateStuff"
                         }
                     });
-
+                    services.AddTransient<HttpClient>();
                     services.AddAcmeFileCertificatePersistence();
                     services.AddAcmeFileChallengePersistence();
                 })

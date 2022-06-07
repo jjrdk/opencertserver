@@ -1,10 +1,6 @@
-﻿namespace OpenCertServer.Acme.Server
+﻿namespace OpenCertServer.Acme.Server.Stores
 {
-    using System;
     using System.Globalization;
-    using System.IO;
-    using System.Threading;
-    using System.Threading.Tasks;
     using Abstractions.Model;
     using Abstractions.Storage;
     using Configuration;

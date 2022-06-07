@@ -52,11 +52,25 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
             return new PlacedOrder(dtos, order, nonNullChallengeContexts);
         }
 
-        public async Task<PfxCertificate> FinalizeOrder(PlacedOrder placedOrder)
+        public async Task<X509Certificate2> FinalizeOrder(PlacedOrder placedOrder, string password)
         {
             await ValidateChallenges(placedOrder.ChallengeContexts);
-            var bytes = await AcquireCertificateBytesFromOrder(placedOrder.Order);
-            return new PfxCertificate(bytes);
+            
+            _logger.LogInformation("Acquiring certificate through signing request.");
+
+            var keyPair = KeyFactory.NewKey(_options.KeyAlgorithm);
+
+            var certificateChain = await placedOrder.Order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10);
+
+            var pfxBuilder = certificateChain.ToPfx(keyPair);
+
+            pfxBuilder.FullChain = true;
+
+            var pfxBytes = pfxBuilder.Build(CertificateFriendlyName, password);
+
+            _logger.LogInformation("Certificate acquired.");
+
+            return new X509Certificate2(pfxBytes);
         }
 
         private async Task ValidateChallenges(IChallengeContext[] challengeContexts)
@@ -79,25 +93,6 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
             }
         }
 
-        private async Task<byte[]> AcquireCertificateBytesFromOrder(IOrderContext order)
-        {
-            _logger.LogInformation("Acquiring certificate through signing request.");
-
-            var keyPair = KeyFactory.NewKey(_options.KeyAlgorithm);
-
-            var certificateChain = await order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10);
-
-            var pfxBuilder = certificateChain.ToPfx(keyPair);
-
-            pfxBuilder.FullChain = true;
-
-            var pfxBytes = pfxBuilder.Build(CertificateFriendlyName, nameof(OpenCertServer));
-
-            _logger.LogInformation("Certificate acquired.");
-            var c =new X509Certificate2(pfxBytes, nameof(OpenCertServer));
-            return pfxBytes;
-        }
-
         private static async Task<Challenge[]> InnerValidateChallenges(IChallengeContext[] challengeContexts)
         {
             var challenges = await Task.WhenAll(challengeContexts.Select(x => x.Validate()));
@@ -112,7 +107,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
                     break;
                 }
 
-                await Task.Delay(5000);
+                await Task.Delay(1000);
                 challenges = await Task.WhenAll(challengeContexts.Select(x => x.Resource()));
             }
 
