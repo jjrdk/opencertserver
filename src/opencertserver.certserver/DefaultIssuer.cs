@@ -1,12 +1,10 @@
 namespace opencertserver.certserver;
 
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using OpenCertServer.Acme.Abstractions.IssuanceServices;
 using OpenCertServer.Acme.Abstractions.Model;
 using OpenCertServer.Ca;
 using OpenCertServer.Ca.Utils;
-using Org.BouncyCastle.Pkcs;
 
 internal class DefaultIssuer : ICertificateIssuer
 {

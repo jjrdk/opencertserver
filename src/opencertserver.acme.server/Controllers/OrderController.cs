@@ -1,13 +1,9 @@
 ﻿namespace OpenCertServer.Acme.Server.Controllers
 {
-    using System.Security.Cryptography.X509Certificates;
     using Abstractions.HttpModel.Requests;
     using Abstractions.Model;
     using Abstractions.Model.Exceptions;
     using Abstractions.Services;
-    using Ca.Utils;
-    using Certes;
-    using Certes.Acme;
     using Filters;
     using Microsoft.AspNetCore.Mvc;
 

@@ -3,7 +3,6 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
     using System;
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
-    using Certificates;
 
     public static class SelfSignedCertificate
     {

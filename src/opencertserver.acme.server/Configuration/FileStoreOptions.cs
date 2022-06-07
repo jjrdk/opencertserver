@@ -8,10 +8,25 @@
     {
         public string BasePath { get; set; } = "./";
 
-        public string NoncePath => Path.Combine(BasePath, "Nonces");
-        public string AccountPath => Path.Combine(BasePath, "Accounts");
-        public string OrderPath => Path.Combine(BasePath, "Orders");
-        public string WorkingPath => Path.Combine(BasePath, "_work");
+        public string NoncePath
+        {
+            get { return Path.Combine(BasePath, "Nonces"); }
+        }
+
+        public string AccountPath
+        {
+            get { return Path.Combine(BasePath, "Accounts"); }
+        }
+
+        public string OrderPath
+        {
+            get { return Path.Combine(BasePath, "Orders"); }
+        }
+
+        public string WorkingPath
+        {
+            get { return Path.Combine(BasePath, "_work"); }
+        }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {

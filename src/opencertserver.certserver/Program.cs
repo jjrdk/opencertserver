@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 
 namespace opencertserver.certserver;
 
-using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Acme.Abstractions.IssuanceServices;
 using OpenCertServer.Acme.Server.Extensions;

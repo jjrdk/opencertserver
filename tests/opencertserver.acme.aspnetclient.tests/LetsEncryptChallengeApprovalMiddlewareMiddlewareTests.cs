@@ -8,7 +8,6 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
     using System.Threading.Tasks;
     using AspNet.EncryptWeMust;
     using Certes;
-    using Certificates;
     using global::Certes;
     using global::Certes.Acme;
     using Microsoft.AspNetCore;

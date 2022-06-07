@@ -2,7 +2,6 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Security.Cryptography.X509Certificates;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -11,7 +10,6 @@
     using Abstractions.Model.Exceptions;
     using Abstractions.Services;
     using Abstractions.Storage;
-    using Ca.Utils;
     using Certes;
     using Certes.Acme;
 
@@ -79,7 +77,7 @@
 
             var order = await _orderStore.LoadOrder(
                 orderId,
-                cancellationToken); //await HandleLoadOrder(account, orderId, OrderStatus.Pending, cancellationToken);
+                cancellationToken); 
             if (order == null)
             {
                 throw new NotFoundException();
@@ -96,14 +94,8 @@
             if (authZ.Status != AuthorizationStatus.Pending || challenge.Status != ChallengeStatus.Pending)
             {
                 return challenge;
-                //throw new ConflictRequestException(AuthorizationStatus.Pending, authZ.Status);
             }
-
-            //if (challenge.Status != ChallengeStatus.Pending)
-            //{
-            //    throw new ConflictRequestException(ChallengeStatus.Pending, challenge.Status);
-            //}
-
+            
             challenge.SetStatus(ChallengeStatus.Processing);
             authZ.SelectChallenge(challenge);
             order.SetStatusFromAuthorizations();
