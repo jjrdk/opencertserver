@@ -9,7 +9,7 @@
         <RepositoryType>git</RepositoryType>
         <PackageProjectUrl>https://github.com/jjrdk/opencertserver</PackageProjectUrl>
         <RepositoryUrl>https://github.com/jjrdk/opencertserver</RepositoryUrl>
-        <PackageTags>X509 Certificate SSL TLS EST ACME RFC7030 RFC8555</PackageTags>
+        <PackageTags>X509 Certificate SSL TLS EST ACME LetsEncrypt RFC7030 RFC8555</PackageTags>
         <Description>ASP.NET Core implementation of RFC 7030 certificate authority and issuer and RFC8555 client and server.</Description>
         <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
         <langVersion>latest</langVersion>

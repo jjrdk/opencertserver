@@ -54,8 +54,7 @@ namespace OpenCertServer.Est.Tests
                         sc.AddAuthorization()
                             .AddEstServer(rsaPrivate, ecdsaPrivate)
                             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
-                            .AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
-                            .AddCertificate();
+                            .AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme);
                     })
                 .Configure(app => app.UseEstServer());
             webBuilder.ConfigureKestrel(

@@ -74,7 +74,8 @@ namespace OpenCertServer.Est.Server
                     o => { o.HeaderConverter = x => new X509Certificate2(Convert.FromBase64String(x)); })
                 .AddRouting()
                 .AddAuthorization()
-                .AddAuthentication().Services;
+                .AddAuthentication()
+                .AddCertificate().Services;
         }
 
         public static IApplicationBuilder UseEstServer(this IApplicationBuilder app, IAuthorizeData? enrollPolicy = null, IAuthorizeData? reEnrollPolicy = null)

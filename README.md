@@ -34,10 +34,9 @@ The EST profile requires certificate authentication, and must be configured as a
 ```csharp
 public IServiceCollection ConfigureServices(IServiceCollection sc)
 {
-    sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme).AddCertificate();
-    sc.AddAuthorization();
+    sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme);
     sc.ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
-    sc.AddCertificateServer(rsaPrivate, ecdsaPrivate);
+    sc.AddEstServer(rsaPrivate, ecdsaPrivate);
 }
 ```
 
@@ -48,7 +47,7 @@ In the example above ```rsaPrivate``` and ```ecdsaPrivate``` are certificate aut
 ```csharp
 public void Configure(IApplicationBuilder app)
 {
-    app.UseCertificateServer();
+    app.UseEstServer();
 }
 ```
 
@@ -137,8 +136,8 @@ A certificate has a _key_ to distinguish between certificates, since there is bo
 ### File persistence
 
 ```csharp
-services.AddLetsEncryptFileCertificatePersistence();
-services.AddLetsEncryptFileChallengePersistence();
+services.AddAcmeFileCertificatePersistence();
+services.AddAcmeFileChallengePersistence();
 ```
 
 ### Custom persistence
