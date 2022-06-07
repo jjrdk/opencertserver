@@ -6,7 +6,7 @@
     {
         public static IApplicationBuilder UseAcmeServer(this IApplicationBuilder builder)
         {
-            return builder.UseMiddleware<AcmeMiddleware>();
+            return builder.UseMiddleware<AcmeMiddleware>().UseRouting().UseEndpoints(e=>e.MapControllers());
         }
     }
 }

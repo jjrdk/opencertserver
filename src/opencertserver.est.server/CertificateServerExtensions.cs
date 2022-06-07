@@ -66,26 +66,28 @@ namespace OpenCertServer.Est.Server
 
         private static IServiceCollection InnerAddEstServer(this IServiceCollection services)
         {
-            return services.AddTransient<CaCertHandler>()
+            return services
+                .AddTransient<CaCertHandler>()
                 .AddTransient<SimpleEnrollHandler>()
                 .AddTransient<SimpleReEnrollHandler>()
                 .AddCertificateForwarding(
                     o => { o.HeaderConverter = x => new X509Certificate2(Convert.FromBase64String(x)); })
-                .AddRouting();
+                .AddRouting()
+                .AddAuthorization()
+                .AddAuthentication().Services;
         }
 
         public static IApplicationBuilder UseEstServer(this IApplicationBuilder app, IAuthorizeData? enrollPolicy = null, IAuthorizeData? reEnrollPolicy = null)
         {
             const string? wellKnownEst = "/.well-known/est";
             return app
-                //.UseCertificateForwarding()
-                //.UseAuthentication()
-                //.UseAuthorization()
+                .UseCertificateForwarding()
+                .UseAuthentication()
                 .UseRouting()
+                .UseAuthorization()
                 .UseEndpoints(
                     e =>
                     {
-                        e.MapControllers();
                         e.MapGet(
                             wellKnownEst + "/cacert",
                             async ctx =>

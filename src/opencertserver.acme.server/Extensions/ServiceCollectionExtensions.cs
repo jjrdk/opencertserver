@@ -8,6 +8,7 @@ namespace OpenCertServer.Acme.Server.Extensions
     using Configuration;
     using DnsClient;
     using Filters;
+    using Microsoft.AspNetCore.Authorization.Infrastructure;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
@@ -28,7 +29,7 @@ namespace OpenCertServer.Acme.Server.Extensions
         {
             services.AddControllers().AddApplicationPart(typeof(ServiceCollectionExtensions).Assembly);
 
-            services.AddScoped<IAcmeRequestProvider, DefaultRequestProvider>();
+            services.AddScoped<IAcmeRequestProvider, DefaultRequestProvider>();//.AddAuthorization();
 
             services.AddScoped<IRequestValidationService, DefaultRequestValidationService>();
             services.AddScoped<INonceService, DefaultNonceService>();

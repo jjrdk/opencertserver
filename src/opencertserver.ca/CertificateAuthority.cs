@@ -5,6 +5,7 @@
     using System.Linq;
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
+    using System.Text.RegularExpressions;
     using Microsoft.Extensions.Logging;
     using Org.BouncyCastle.Asn1;
     using Org.BouncyCastle.Asn1.Pkcs;
@@ -305,7 +306,13 @@
         /// <returns></returns>
         private static byte[] Base64DecodeBytes(string base64EncodedData)
         {
-            var s = base64EncodedData.Trim().Replace(" ", "+").Replace('-', '+').Replace('_', '/');
+            var s = base64EncodedData
+                .Replace(" ", "+")
+                .Replace('-', '+')
+                .Replace('_', '/')
+                .Replace("\n", "")
+                .Replace("\r", "")
+                .Trim();
             switch (s.Length % 4)
             {
                 case 0:

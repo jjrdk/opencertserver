@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<RootNamespace>OpenCertServer.Acme.Abstractions</RootNamespace>
@@ -6,7 +6,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<AssemblyName>opencertserver.acme.abstractions</AssemblyName>
 	</PropertyGroup>
-	<Import Project="../../shared.proj"/>
+	<Import Project="../../shared.proj" />
 
 	<ItemGroup>
 	  <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="6.18.0" />
