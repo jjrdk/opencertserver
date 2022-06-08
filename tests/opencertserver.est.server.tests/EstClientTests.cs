@@ -24,7 +24,7 @@ namespace OpenCertServer.Est.Tests
         public EstClientTests()
         {
             using var ecdsa = ECDsa.Create();
-            var ecdsaReq = new CertificateRequest("CN=Test Server", ecdsa!, HashAlgorithmName.SHA256);
+            var ecdsaReq = new CertificateRequest("CN=Test Server", ecdsa, HashAlgorithmName.SHA256);
             ecdsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
             var ecdsaCert = ecdsaReq.CreateSelfSigned(
                 DateTimeOffset.UtcNow.Date,
@@ -52,24 +52,24 @@ namespace OpenCertServer.Est.Tests
             webBuilder.ConfigureServices(
                     sc =>
                     {
-                        sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme).AddCertificate();
-                        sc.AddAuthorization().AddEstServer(rsaPrivate, ecdsaPrivate);
+                        sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme);
+                        sc.AddEstServer(rsaPrivate, ecdsaPrivate);
                         sc.ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
                     })
-                .Configure(app => app.UseEstServer());
-            webBuilder.ConfigureKestrel(
+                .Configure(app => app.UseEstServer())
+                .ConfigureKestrel(
                 k =>
                 {
                     k.AddServerHeader = false;
-                    k.ConfigureEndpointDefaults(d => { d.Protocols = HttpProtocols.Http1AndHttp2; });
+                    k.ConfigureEndpointDefaults(
+                        d =>
+                        {
+                            d.Protocols = HttpProtocols.Http1AndHttp2;
+                        });
                     k.ConfigureHttpsDefaults(
                         d =>
                         {
-                            if (webCert != null)
-                            {
-                                d.ServerCertificate = webCert;
-                            }
-
+                            d.ServerCertificate = webCert;
                             d.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
                             d.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
                             d.AllowAnyClientCertificate();

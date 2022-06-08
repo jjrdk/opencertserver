@@ -3,7 +3,7 @@ namespace OpenCertServer.Acme.Server.Services;
 using Abstractions.Model;
 using Abstractions.Services;
 
-public class PassAllChallengeValidator : TokenChallengeValidator, IHttp01ChallengeValidator
+public class PassAllChallenges : TokenChallengeValidator, IValidateHttp01Challenges
 {
     /// <inheritdoc />
     public override Task<(bool IsValid, AcmeError? error)> ValidateChallenge(Challenge challenge, Account account, CancellationToken cancellationToken)

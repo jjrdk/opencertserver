@@ -128,7 +128,7 @@ namespace OpenCertServer.Acme.Server.RequestServices
                 try
                 {
                     var accountId = header.GetAccountId();
-                    var account = await _accountService.LoadAcount(accountId, cancellationToken);
+                    var account = await _accountService.LoadAccount(accountId, cancellationToken);
                     jwk = account?.Jwk;
                 } 
                 catch (InvalidOperationException)

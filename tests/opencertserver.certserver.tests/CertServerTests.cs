@@ -28,17 +28,26 @@ public class CertServerTests : IDisposable
     public CertServerTests()
     {
         _server = new TestServer(
-            WebHost.CreateDefaultBuilder().UseUrls("http://localhost")
+            WebHost.CreateDefaultBuilder()
+                .UseUrls("http://localhost")
                 .ConfigureAppConfiguration(c => c.AddEnvironmentVariables())
                 .ConfigureServices(
-                    (ctx, services) => services
-                        .AddEstServer(new X500DistinguishedName("CN=reimers.io"))
-                        .AddAcmeServer(ctx.Configuration, _ => _server!.CreateClient(), new AcmeServerOptions { HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false } })
+                    (ctx, services) => services.AddEstServer(new X500DistinguishedName("CN=reimers.io"))
+                        .AddAcmeServer(
+                            ctx.Configuration,
+                            _ => _server!.CreateClient(),
+                            new AcmeServerOptions
+                            {
+                                HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false }
+                            })
                         .AddSingleton<ICsrValidator, DefaultCsrValidator>()
                         .AddSingleton<ICertificateIssuer, DefaultIssuer>()
-                        .Replace(new ServiceDescriptor(typeof(IHttp01ChallengeValidator), typeof(PassAllChallengeValidator), ServiceLifetime.Transient))
-                        .AddAcmeInMemoryStore()
-                    )
+                        .Replace(
+                            new ServiceDescriptor(
+                                typeof(IValidateHttp01Challenges),
+                                typeof(PassAllChallenges),
+                                ServiceLifetime.Transient))
+                        .AddAcmeInMemoryStore())
                 .Configure(app => app.UseAcmeServer().UseEstServer()));
     }
 
@@ -51,8 +60,8 @@ public class CertServerTests : IDisposable
     {
         var factory = new AcmeClientFactory(
             new PersistenceService(
-                new List<ICertificatePersistenceStrategy> { new MemoryCertificatePersistenceStrategy() },
-                new List<IChallengePersistenceStrategy> { new MemoryChallengePersistenceStrategy() },
+                new List<ICertificatePersistenceStrategy> { new InMemoryCertificatePersistenceStrategy() },
+                new List<IChallengePersistenceStrategy> { new InMemoryChallengePersistenceStrategy() },
                 NullLogger<IPersistenceService>.Instance),
             new TestAcmeOptions
             {

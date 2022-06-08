@@ -12,12 +12,12 @@ namespace OpenCertServer.Acme.Server.Services
     using Microsoft.Extensions.Logging;
     using Microsoft.IdentityModel.Tokens;
 
-    public sealed class Dns01ChallengeValidator : TokenChallengeValidator, IDns01ChallengeValidator
+    public sealed class ValidateDns01Challenges : TokenChallengeValidator, IValidateDns01Challenges
     {
-        private readonly ILogger<Dns01ChallengeValidator> _logger;
+        private readonly ILogger<ValidateDns01Challenges> _logger;
         private readonly ILookupClient _client;
 
-        public Dns01ChallengeValidator(ILogger<Dns01ChallengeValidator> logger, ILookupClient client)
+        public ValidateDns01Challenges(ILogger<ValidateDns01Challenges> logger, ILookupClient client)
         {
             _logger = logger;
             _client = client;

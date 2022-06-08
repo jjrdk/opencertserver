@@ -55,7 +55,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
                                         State = "StateStuff"
                                     }
                                 })
-                            .AddAcmeMemoryCertficatesPersistence()
+                            .AddAcmeInMemoryCertificatesPersistence()
                             .AddAcmeMemoryChallengePersistence();
 
                         // mock communication with LetsEncrypt
@@ -95,7 +95,8 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
             var finalizationTimeout = await Task.WhenAny(Task.Delay(10000, _fakeClient.OrderFinalizedCts.Token));
             Assert.True(finalizationTimeout.IsCanceled, "Fake LE client finalization timed out");
 
-            var appCert = AcmeRenewalService.Certificate?.RawData;
+            var acmeRenewalService = (AcmeRenewalService)server.Services.GetService<IAcmeRenewalService>();
+            var appCert = acmeRenewalService!.Certificate?.RawData;
             var fakeCert = FakeLetsEncryptClient.FakeCert.RawData;
 
             Assert.True(appCert?.SequenceEqual(fakeCert), "Certificates do not match");
@@ -114,7 +115,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
                 OrderFinalizedCts = new CancellationTokenSource();
             }
 
-            public Task<PlacedOrder> PlaceOrder(string[] domains)
+            public Task<PlacedOrder> PlaceOrder(params string[] domains)
             {
                 var challengeDtos = new[] { new ChallengeDto(AcmeToken, AcmeResponse, Array.Empty<string>()) };
 

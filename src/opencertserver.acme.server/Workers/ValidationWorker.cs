@@ -10,13 +10,13 @@
 
     public class ValidationWorker : IValidationWorker
     {
-        private readonly IOrderStore _orderStore;
-        private readonly IAccountStore _accountStore;
+        private readonly IStoreOrders _orderStore;
+        private readonly IStoreAccounts _accountStore;
         private readonly IChallengeValidatorFactory _challengeValidatorFactory;
 
         public ValidationWorker(
-            IOrderStore orderStore,
-            IAccountStore accountStore,
+            IStoreOrders orderStore,
+            IStoreAccounts accountStore,
             IChallengeValidatorFactory challengeValidatorFactory)
         {
             _orderStore = orderStore;

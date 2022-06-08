@@ -13,7 +13,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
 
     public class AcmeRenewalService : IAcmeRenewalService
     {
-        private readonly ICertificateProvider _certificateProvider;
+        private readonly IProvideCertificates _certificateProvider;
         private readonly IEnumerable<ICertificateRenewalLifecycleHook> _lifecycleHooks;
         private readonly ILogger<IAcmeRenewalService> _logger;
         private readonly IHostApplicationLifetime _lifetime;
@@ -23,7 +23,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
         private Timer? _timer;
 
         public AcmeRenewalService(
-            ICertificateProvider certificateProvider,
+            IProvideCertificates certificateProvider,
             IEnumerable<ICertificateRenewalLifecycleHook> lifecycleHooks,
             IHostApplicationLifetime lifetime,
             ILogger<IAcmeRenewalService> logger,
@@ -37,7 +37,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
             _semaphoreSlim = new SemaphoreSlim(1);
         }
 
-        internal static X509Certificate2? Certificate { get; private set; }
+        internal X509Certificate2? Certificate { get; private set; }
 
         public Uri LetsEncryptUri
         {
@@ -59,7 +59,6 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
                 await lifecycleHook.OnStart();
             }
 
-            ;
             _timer = new Timer(async state => await RunOnceWithErrorHandling(), null, Timeout.InfiniteTimeSpan, TimeSpan.FromHours(1));
 
             _lifetime.ApplicationStarted.Register(OnApplicationStarted);

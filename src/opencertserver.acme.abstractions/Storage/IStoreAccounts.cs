@@ -4,7 +4,7 @@
     using System.Threading.Tasks;
     using Model;
 
-    public interface IAccountStore
+    public interface IStoreAccounts
     {
         Task SaveAccount(Account account, CancellationToken cancellationToken);
         Task<Account?> LoadAccount(string accountId, CancellationToken cancellationToken);

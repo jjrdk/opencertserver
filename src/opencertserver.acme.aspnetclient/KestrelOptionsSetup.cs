@@ -7,20 +7,22 @@
 
     internal class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptions>
     {
+        private readonly AcmeRenewalService _renewalService;
         private readonly ILogger<KestrelOptionsSetup> _logger;
 
-        public KestrelOptionsSetup(ILogger<KestrelOptionsSetup> logger)
+        public KestrelOptionsSetup(AcmeRenewalService renewalService, ILogger<KestrelOptionsSetup> logger)
         {
+            _renewalService = renewalService;
             _logger = logger;
         }
-        
+
         public void Configure(KestrelServerOptions options)
         {
-            if (AcmeRenewalService.Certificate != null)
+            if (_renewalService.Certificate != null)
             {
                 options.ConfigureHttpsDefaults(o =>
                 {
-                    o.ServerCertificateSelector = (_, _) => AcmeRenewalService.Certificate;
+                    o.ServerCertificateSelector = (_, _) => _renewalService.Certificate;
                 });
             }
             else //if(AcmeRenewalService.Certificate != null)

@@ -14,8 +14,8 @@
         public PersistenceServiceTests()
         {
             PersistenceService = new PersistenceService(
-                new[] {new MemoryCertificatePersistenceStrategy()},
-                new[] {new MemoryChallengePersistenceStrategy()},
+                new[] {new InMemoryCertificatePersistenceStrategy()},
+                new[] {new InMemoryChallengePersistenceStrategy()},
                 NullLogger<IPersistenceService>.Instance);
         }
 

@@ -7,6 +7,5 @@
     public interface INonceService
     {
         Task<Nonce> CreateNonceAsync(CancellationToken cancellationToken);
-
     }
 }

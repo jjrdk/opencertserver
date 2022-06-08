@@ -6,7 +6,7 @@
     using Configuration;
     using Microsoft.Extensions.Options;
 
-    public class AccountStore : StoreBase, IAccountStore
+    public class AccountStore : StoreBase, IStoreAccounts
     {
         public AccountStore(IOptions<FileStoreOptions> options)
             : base(options)

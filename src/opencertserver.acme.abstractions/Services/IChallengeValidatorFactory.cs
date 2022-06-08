@@ -4,6 +4,6 @@
 
     public interface IChallengeValidatorFactory
     {
-        IChallengeValidator GetValidator(Challenge challenge);
+        IValidateChallenges GetValidator(Challenge challenge);
     }
 }

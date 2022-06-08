@@ -73,8 +73,8 @@
         public void Dispose()
         {
             _timer?.Dispose();
-            _interlock?.Dispose();
-            _cancellationTokenSource?.Dispose();
+            _interlock.Dispose();
+            _cancellationTokenSource.Dispose();
         }
     }
 }

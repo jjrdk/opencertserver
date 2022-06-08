@@ -7,4 +7,4 @@ RUN addgroup -S certificateservergroup && adduser -S certificateserveruser -G ce
 USER certificateserveruser
 COPY artifacts/publish/inmemory/ app/
 WORKDIR /app
-ENTRYPOINT ["./opencertserver.est"]
+ENTRYPOINT ["./opencertserver.certserver"]

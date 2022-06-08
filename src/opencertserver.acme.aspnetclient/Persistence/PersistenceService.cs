@@ -14,7 +14,7 @@
         //private const string WildcardRegex = "^\\*\\.";
 
         private readonly IEnumerable<ICertificatePersistenceStrategy> _certificatePersistenceStrategies;
-        private readonly IEnumerable<IChallengePersistenceStrategy> _challengePersistenceStrategies;
+        private readonly IChallengePersistenceStrategy[] _challengePersistenceStrategies;
 
         private readonly ILogger<IPersistenceService> _logger;
 
@@ -24,7 +24,7 @@
             ILogger<IPersistenceService> logger)
         {
             _certificatePersistenceStrategies = certificatePersistenceStrategies;
-            _challengePersistenceStrategies = challengePersistenceStrategies;
+            _challengePersistenceStrategies = challengePersistenceStrategies.ToArray();
             _logger = logger;
         }
 
@@ -36,7 +36,9 @@
                 _certificatePersistenceStrategies);
         }
 
-        public async Task PersistSiteCertificate(X509Certificate2 certificate)
+        public async Task PersistSiteCertificate(
+            X509Certificate2 certificate,
+            CancellationToken cancellationToken = default)
         {
             await PersistCertificate(CertificateType.Site, certificate.RawData, _certificatePersistenceStrategies);
             _logger.LogInformation("Certificate persisted for later use.");
@@ -74,11 +76,11 @@
 
         private async Task PersistChallenges(
             IEnumerable<ChallengeDto> challenges,
-            IEnumerable<IChallengePersistenceStrategy> strategies)
+            IChallengePersistenceStrategy[] strategies)
         {
             _logger.LogTrace("Persisting challenges ({challenges}) through strategies.", challenges);
 
-            if (!strategies.Any())
+            if (strategies.Length == 0)
             {
                 _logger.LogWarning("There are no challenges persistence strategies - challenges will not be stored");
             }
@@ -88,7 +90,7 @@
             await Task.WhenAll(tasks);
         }
 
-        public async Task<X509Certificate2?> GetPersistedSiteCertificate()
+        public async Task<X509Certificate2?> GetPersistedSiteCertificate(CancellationToken cancellationToken = default)
         {
             foreach (var strategy in _certificatePersistenceStrategies)
             {

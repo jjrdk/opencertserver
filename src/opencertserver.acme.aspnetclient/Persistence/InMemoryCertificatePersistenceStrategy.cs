@@ -4,7 +4,7 @@
     using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
 
-    public class MemoryCertificatePersistenceStrategy : ICertificatePersistenceStrategy
+    internal class InMemoryCertificatePersistenceStrategy : ICertificatePersistenceStrategy
     {
         private byte[]? _accountCertificate;
         private byte[]? _siteCertificate;

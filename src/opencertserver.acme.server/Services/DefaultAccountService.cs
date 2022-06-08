@@ -13,9 +13,9 @@
     public class DefaultAccountService : IAccountService
     {
         private readonly IAcmeRequestProvider _requestProvider;
-        private readonly IAccountStore _accountStore;
+        private readonly IStoreAccounts _accountStore;
 
-        public DefaultAccountService(IAcmeRequestProvider requestProvider, IAccountStore accountStore)
+        public DefaultAccountService(IAcmeRequestProvider requestProvider, IStoreAccounts accountStore)
         {
             _requestProvider = requestProvider;
             _accountStore = accountStore;
@@ -50,13 +50,13 @@
 
             //TODO: Get accountId from Kid?
             var accountId = requestHeader.GetAccountId();
-            var account = await LoadAcount(accountId, cancellationToken);
+            var account = await LoadAccount(accountId, cancellationToken);
             ValidateAccount(account);
 
             return account!;
         }
 
-        public async Task<Account?> LoadAcount(string accountId, CancellationToken cancellationToken)
+        public async Task<Account?> LoadAccount(string accountId, CancellationToken cancellationToken)
         {
             return await _accountStore.LoadAccount(accountId, cancellationToken);
         }

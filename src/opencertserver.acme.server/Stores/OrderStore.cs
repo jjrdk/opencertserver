@@ -8,7 +8,7 @@
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Options;
 
-    public class OrderStore : StoreBase, IOrderStore
+    public class OrderStore : StoreBase, IStoreOrders
     {
         private readonly ILogger<OrderStore> _logger;
 
@@ -133,38 +133,6 @@
                 }
                 catch (Exception ex) {
                     _logger.LogError(ex, "Could not load validatable orders.");
-                }
-            }
-
-            return result;
-        }
-
-        public async Task<List<Order>> GetFinalizableOrders(CancellationToken cancellationToken)
-        {
-            var result = new List<Order>();
-
-            var workPath = Path.Combine(Options.Value.WorkingPath, "process");
-            if (!Directory.Exists(workPath))
-            {
-                return result;
-            }
-
-            var files = Directory.EnumerateFiles(workPath);
-            foreach (var filePath in files)
-            {
-                try
-                {
-                    var orderId = Path.GetFileName(filePath);
-                    var order = await LoadOrder(orderId, cancellationToken);
-
-                    if (order != null)
-                    {
-                        result.Add(order);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Could not load finalizable orders.");
                 }
             }
 

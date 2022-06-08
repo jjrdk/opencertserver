@@ -9,11 +9,11 @@ namespace OpenCertServer.Acme.Server.Services
     using Abstractions.Services;
     using Microsoft.IdentityModel.Tokens;
 
-    public sealed class Http01ChallengeValidator : TokenChallengeValidator, IHttp01ChallengeValidator
+    public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidateHttp01Challenges
     {
         private readonly HttpClient _httpClient;
 
-        public Http01ChallengeValidator(HttpClient httpClient)
+        public ValidateHttp01Challenges(HttpClient httpClient)
         {
             _httpClient = httpClient;
         }

@@ -6,26 +6,26 @@
 
     public class DefaultChallengeValidatorFactory : IChallengeValidatorFactory
     {
-        private readonly IHttp01ChallengeValidator _http01ChallengeValidator;
-        private readonly IDns01ChallengeValidator _dns01ChallengeValidator;
+        private readonly IValidateHttp01Challenges _validateHttp01Challenges;
+        private readonly IValidateDns01Challenges _validateDns01Challenges;
 
-        public DefaultChallengeValidatorFactory(IHttp01ChallengeValidator http01ChallengeValidator, IDns01ChallengeValidator dns01ChallengeValidator)
+        public DefaultChallengeValidatorFactory(IValidateHttp01Challenges validateHttp01Challenges, IValidateDns01Challenges validateDns01Challenges)
         {
-            _http01ChallengeValidator = http01ChallengeValidator;
-            _dns01ChallengeValidator = dns01ChallengeValidator;
+            _validateHttp01Challenges = validateHttp01Challenges;
+            _validateDns01Challenges = validateDns01Challenges;
         }
 
-        public IChallengeValidator GetValidator(Challenge challenge)
+        public IValidateChallenges GetValidator(Challenge challenge)
         {
             if (challenge is null)
             {
                 throw new ArgumentNullException(nameof(challenge));
             }
 
-            IChallengeValidator validator = challenge.Type switch
+            IValidateChallenges validator = challenge.Type switch
             {
-                ChallengeTypes.Http01 => _http01ChallengeValidator,
-                ChallengeTypes.Dns01 => _dns01ChallengeValidator,
+                ChallengeTypes.Http01 => _validateHttp01Challenges,
+                ChallengeTypes.Dns01 => _validateDns01Challenges,
                 _ => throw new InvalidOperationException("Unknown Challenge Type")
             };
 

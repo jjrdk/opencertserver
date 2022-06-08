@@ -1,6 +1,7 @@
 ﻿
 using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("opencertserver.acme.aspnetclient.tests")]
+[assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
 // ReSharper disable once CheckNamespace
 namespace OpenCertServer.AspNet.EncryptWeMust
@@ -100,25 +101,30 @@ namespace OpenCertServer.AspNet.EncryptWeMust
 
         public static IServiceCollection AddAcmeMemoryChallengePersistence(this IServiceCollection services)
         {
-            return AddAcmeChallengePersistence(services, new MemoryChallengePersistenceStrategy());
+            return AddAcmeChallengePersistence(services, new InMemoryChallengePersistenceStrategy());
         }
 
-        public static IServiceCollection AddAcmeMemoryCertficatesPersistence(this IServiceCollection services)
+        public static IServiceCollection AddAcmeInMemoryCertificatesPersistence(this IServiceCollection services)
         {
-            return AddAcmeCertificatePersistence(services, new MemoryCertificatePersistenceStrategy());
+            return AddAcmeCertificatePersistence(services, new InMemoryCertificatePersistenceStrategy());
         }
 
         public static IServiceCollection AddAcmeClient<TOptions>(this IServiceCollection services, TOptions options)
         where TOptions : AcmeOptions
         {
+            if (options.Domains?.Distinct().Any() != true)
+            {
+                throw new ArgumentException("Domains configuration invalid");
+            }
+
             return services.AddTransient<IConfigureOptions<KestrelServerOptions>, KestrelOptionsSetup>()
                 .AddAcmePersistenceService()
                 .AddSingleton(options)
                 .AddSingleton<AcmeOptions>(sp => sp.GetRequiredService<TOptions>())
-                .AddSingleton<ICertificateValidator, CertificateValidator>()
-                .AddSingleton<ICertificateProvider, CertificateProvider>()
-                .AddTransient<IHostedService, AcmeRenewalService>()
-                .AddTransient<IAcmeRenewalService, AcmeRenewalService>()
+                .AddSingleton<IValidateCertificates, CertificateValidator>()
+                .AddSingleton<IProvideCertificates, CertificateProvider>()
+                .AddTransient<IHostedService>(sp => sp.GetRequiredService<IAcmeRenewalService>())
+                .AddSingleton<IAcmeRenewalService, AcmeRenewalService>()
                 .AddSingleton<IAcmeClientFactory, AcmeClientFactory>();
         }
 

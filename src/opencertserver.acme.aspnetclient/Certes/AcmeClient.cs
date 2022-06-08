@@ -26,7 +26,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
             _options = options;
         }
 
-        public async Task<PlacedOrder> PlaceOrder(string[] domains)
+        public async Task<PlacedOrder> PlaceOrder(params string[] domains)
         {
             _logger.LogInformation("Ordering LetsEncrypt certificate for domains {domains}.", string.Join(", ", domains));
             var order = await _acme.NewOrder(domains);

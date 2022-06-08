@@ -15,13 +15,13 @@
 
     public class DefaultOrderService : IOrderService
     {
-        private readonly IOrderStore _orderStore;
+        private readonly IStoreOrders _orderStore;
         private readonly IAuthorizationFactory _authorizationFactory;
         private readonly ICsrValidator _csrValidator;
         private readonly ICertificateIssuer _issuer;
 
         public DefaultOrderService(
-            IOrderStore orderStore,
+            IStoreOrders orderStore,
             IAuthorizationFactory authorizationFactory,
             ICsrValidator csrValidator,
             ICertificateIssuer issuer)

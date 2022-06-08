@@ -8,37 +8,30 @@ namespace OpenCertServer.Acme.AspNetClient.Certificates
     using Microsoft.Extensions.Logging;
     using Persistence;
 
-    public class CertificateProvider : ICertificateProvider
+    public class CertificateProvider : IProvideCertificates
     {
         private readonly IPersistenceService _persistenceService;
         private readonly IAcmeClientFactory _clientFactory;
-        private readonly ICertificateValidator _certificateValidator;
+        private readonly IValidateCertificates _certificateValidator;
 
         private readonly ILogger<CertificateProvider> _logger;
 
-        private readonly string[] _domains;
-
         public CertificateProvider(
-            AcmeOptions options,
-            ICertificateValidator certificateValidator,
+            IValidateCertificates certificateValidator,
             IPersistenceService persistenceService,
             IAcmeClientFactory clientFactory,
             ILogger<CertificateProvider> logger)
         {
-            var domains = options.Domains?.Distinct().ToArray();
-            if (domains == null || domains.Length == 0)
-            {
-                throw new ArgumentException("Domains configuration invalid");
-            }
-
-            _domains = domains;
             _persistenceService = persistenceService;
             _clientFactory = clientFactory;
             _certificateValidator = certificateValidator;
             _logger = logger;
         }
 
-        public async Task<CertificateRenewalResult> RenewCertificateIfNeeded(string password, X509Certificate2? current = null)
+        public async Task<CertificateRenewalResult> RenewCertificateIfNeeded(
+            string password,
+            X509Certificate2? current = null,
+            CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Checking to see if in-memory LetsEncrypt certificate needs renewal.");
             if (_certificateValidator.IsCertificateValid(current))
@@ -46,25 +39,25 @@ namespace OpenCertServer.Acme.AspNetClient.Certificates
                 _logger.LogInformation("Current in-memory LetsEncrypt certificate is valid.");
                 return new CertificateRenewalResult(current, CertificateRenewalStatus.Unchanged);
             }
-			
+
             _logger.LogInformation("Checking to see if existing LetsEncrypt certificate has been persisted and is valid.");
-            var persistedSiteCertificate = await _persistenceService.GetPersistedSiteCertificate();
+            var persistedSiteCertificate = await _persistenceService.GetPersistedSiteCertificate(cancellationToken);
             if (_certificateValidator.IsCertificateValid(persistedSiteCertificate))
             {
                 _logger.LogInformation("A persisted non-expired LetsEncrypt certificate was found and will be used: {Thumbprint}", persistedSiteCertificate?.Thumbprint);
                 return new CertificateRenewalResult(persistedSiteCertificate, CertificateRenewalStatus.LoadedFromStore);
             }
-			
+
             _logger.LogInformation("No valid certificate was found. Requesting new certificate from LetsEncrypt.");
-            var newCertificate = await RequestNewLetsEncryptCertificate(password);
+            var newCertificate = await RequestNewLetsEncryptCertificate(password, cancellationToken);
             return new CertificateRenewalResult(newCertificate, CertificateRenewalStatus.Renewed);
         }
-        
-        private async Task<X509Certificate2?> RequestNewLetsEncryptCertificate(string password)
+
+        private async Task<X509Certificate2?> RequestNewLetsEncryptCertificate(string password, CancellationToken cancellationToken)
         {
             var client = await _clientFactory.GetClient();
 
-            var placedOrder = await client.PlaceOrder(_domains);
+            var placedOrder = await client.PlaceOrder();
 
             await _persistenceService.PersistChallenges(placedOrder.Challenges);
 
@@ -72,9 +65,14 @@ namespace OpenCertServer.Acme.AspNetClient.Certificates
             {
                 var pfxCertificateBytes = await client.FinalizeOrder(placedOrder, password);
 
-                await _persistenceService.PersistSiteCertificate(pfxCertificateBytes);
-                
+                await _persistenceService.PersistSiteCertificate(pfxCertificateBytes, cancellationToken);
+
                 return new X509Certificate2(pfxCertificateBytes.RawData);
+            }
+            catch (TaskCanceledException canceled)
+            {
+                _logger.LogError(canceled, "Cancelled persisting site certificate");
+                return null;
             }
             finally
             {

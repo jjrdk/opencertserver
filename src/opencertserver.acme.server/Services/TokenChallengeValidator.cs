@@ -7,7 +7,7 @@ namespace OpenCertServer.Acme.Server.Services
     using Abstractions.Model;
     using Abstractions.Services;
 
-    public abstract class TokenChallengeValidator : IChallengeValidator
+    public abstract class TokenChallengeValidator : IValidateChallenges
     {
         protected abstract Task<(List<string>? Contents, AcmeError? Error)> LoadChallengeResponse(
             Challenge challenge,

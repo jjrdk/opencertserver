@@ -42,16 +42,16 @@ namespace OpenCertServer.Acme.Server.Extensions
 
             if (httpClient == null)
             {
-                services.AddHttpClient<IHttp01ChallengeValidator, Http01ChallengeValidator>();
+                services.AddHttpClient<IValidateHttp01Challenges, ValidateHttp01Challenges>();
             }
             else
             {
                 services.AddTransient(httpClient);
-                services.AddTransient<IHttp01ChallengeValidator, Http01ChallengeValidator>();
+                services.AddTransient<IValidateHttp01Challenges, ValidateHttp01Challenges>();
             }
 
             services.AddScoped<ILookupClient, LookupClient>();
-            services.AddScoped<IDns01ChallengeValidator, Dns01ChallengeValidator>();
+            services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();
             services.AddScoped<IChallengeValidatorFactory, DefaultChallengeValidatorFactory>();
 
             services.AddScoped<AddNextNonceFilter>();
@@ -83,8 +83,8 @@ namespace OpenCertServer.Acme.Server.Extensions
             string sectionName = "AcmeFileStore")
         {
             services.AddScoped<INonceStore, NonceStore>();
-            services.AddScoped<IAccountStore, AccountStore>();
-            services.AddScoped<IOrderStore, OrderStore>();
+            services.AddScoped<IStoreAccounts, AccountStore>();
+            services.AddScoped<IStoreOrders, OrderStore>();
 
             services.AddOptions<FileStoreOptions>()
                 .Bind(configuration.GetSection(sectionName))
@@ -97,8 +97,8 @@ namespace OpenCertServer.Acme.Server.Extensions
             this IServiceCollection services)
         {
             services.AddSingleton<INonceStore, InMemoryNonceStore>();
-            services.AddSingleton<IAccountStore, InMemoryAccountStore>();
-            services.AddSingleton<IOrderStore, InMemoryOrderStore>();
+            services.AddSingleton<IStoreAccounts, InMemoryAccountStore>();
+            services.AddSingleton<IStoreOrders, InMemoryOrderStore>();
             
             return services;
         }

@@ -4,11 +4,11 @@
     using System.Linq;
     using System.Threading.Tasks;
 
-    public class MemoryChallengePersistenceStrategy : IChallengePersistenceStrategy
+    internal class InMemoryChallengePersistenceStrategy : IChallengePersistenceStrategy
 	{
 		private IEnumerable<ChallengeDto> _challenges;
 
-		public MemoryChallengePersistenceStrategy()
+		public InMemoryChallengePersistenceStrategy()
 		{
 			_challenges = new List<ChallengeDto>();
 		}

@@ -19,7 +19,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
     public class LetsEncryptClientTests
     {
         private readonly IPersistenceService _persistenceService;
-        private readonly ICertificateValidator _certificateValidator;
+        private readonly IValidateCertificates _certificateValidator;
         private readonly IAcmeClientFactory _letsEncryptClientFactory;
         private readonly IAcmeClient _letsEncryptClient;
         private readonly CertificateProvider _sut;
@@ -36,7 +36,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
                 UseStaging = true,
             };
 
-            var certificateValidator = Substitute.For<ICertificateValidator>();
+            var certificateValidator = Substitute.For<IValidateCertificates>();
 
             certificateValidator.IsCertificateValid(null).Returns(false);
             certificateValidator.IsCertificateValid(RefEq(InvalidCert)).Returns(false);
@@ -48,7 +48,6 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
             factory.GetClient().Returns(Task.FromResult(client));
 
             var sut = new CertificateProvider(
-                options,
                 certificateValidator,
                 persistenceService,
                 factory,
@@ -116,7 +115,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
             var dtos = new[] { new ChallengeDto("ping", "pong", new[] { "test.com" }) };
             var placedOrder = new PlacedOrder(dtos, Substitute.For<IOrderContext>(), Array.Empty<IChallengeContext>());
 
-            _letsEncryptClient.PlaceOrder(SeqEq(new[] { "test.com" })).Returns(Task.FromResult(placedOrder));
+            _letsEncryptClient.PlaceOrder().Returns(Task.FromResult(placedOrder));
             _persistenceService.PersistChallenges(dtos).Returns(Task.CompletedTask);
             _persistenceService.DeleteChallenges(dtos).Returns(Task.CompletedTask);
 
@@ -139,7 +138,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
             _certificateValidator.Received(1).IsCertificateValid(null);
             await _persistenceService.Received(1).GetPersistedSiteCertificate();
             _certificateValidator.Received(1).IsCertificateValid(InvalidCert);
-            await _letsEncryptClient.Received(1).PlaceOrder(SeqEq(new[] { "test.com" }));
+            await _letsEncryptClient.Received(1).PlaceOrder();
             await _persistenceService.Received(1).PersistChallenges(dtos);
             await _persistenceService.Received(1).DeleteChallenges(dtos);
             await _persistenceService.Received(1).PersistChallenges(dtos);

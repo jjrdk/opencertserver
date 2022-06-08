@@ -3,7 +3,7 @@
 using Abstractions.Model;
 using Abstractions.Storage;
 
-internal class InMemoryOrderStore : IOrderStore
+internal class InMemoryOrderStore : IStoreOrders
 {
     private readonly Dictionary<string, Order> _orders = new();
     /// <inheritdoc />
@@ -26,13 +26,6 @@ internal class InMemoryOrderStore : IOrderStore
         var orders = _orders.Values.Where(
                 o => o.Authorizations.Any(a => a.Challenges.Any(c => c.Status == ChallengeStatus.Processing)))
             .ToList();
-        return Task.FromResult(orders);
-    }
-
-    /// <inheritdoc />
-    public Task<List<Order>> GetFinalizableOrders(CancellationToken cancellationToken)
-    {
-        var orders = _orders.Values.Where(o => o.Status == OrderStatus.Processing).ToList();
         return Task.FromResult(orders);
     }
 }

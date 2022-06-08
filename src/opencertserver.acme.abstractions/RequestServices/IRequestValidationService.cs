@@ -6,7 +6,10 @@ namespace OpenCertServer.Acme.Abstractions.RequestServices
 
     public interface IRequestValidationService
     {
-        Task ValidateRequestAsync(AcmeRawPostRequest request, AcmeHeader header,
-            string requestUrl, CancellationToken cancellationToken);
+        Task ValidateRequestAsync(
+            AcmeRawPostRequest request,
+            AcmeHeader header,
+            string requestUrl,
+            CancellationToken cancellationToken);
     }
 }
