@@ -5,10 +5,6 @@
         <RootNamespace>OpenCertServer.Ca.Utils</RootNamespace>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
-    <Import Project="../../shared.proj"/>
-
-    <ItemGroup>
-        <PackageReference Include="PemUtils" Version="3.0.0.82" />
-    </ItemGroup>
+    <Import Project="../../shared.proj" />
 
 </Project>

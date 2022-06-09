@@ -30,15 +30,15 @@ namespace OpenCertServer.Ca.Tests
         {
             var cert = _ca.SignCertificateRequest(
                 new CertificateRequest(
-                        new X500DistinguishedName("CN=Someone"),
-                        RSA.Create(),
-                        HashAlgorithmName.SHA256,
-                        RSASignaturePadding.Pss)
-                { CertificateExtensions = { new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false) } }) as SignCertificateResponse.Success;
+                    new X500DistinguishedName("CN=Someone"),
+                    RSA.Create(),
+                    HashAlgorithmName.SHA256,
+                    RSASignaturePadding.Pss)
+                {
+                    CertificateExtensions = { new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false) }
+                }) as SignCertificateResponse.Success;
             using var ms = new MemoryStream();
-            cert.Certificate.GetRSAPublicKey().WritePublicKeyPem(ms);
-
-            var key = Encoding.UTF8.GetString(ms.ToArray());
+            var key = cert!.Certificate.GetRSAPublicKey();
 
             Assert.NotNull(key);
         }
