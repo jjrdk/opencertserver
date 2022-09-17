@@ -7,7 +7,7 @@
     using Extensions;
 
     [Serializable]
-    public class Account : IVersioned, ISerializable
+    public sealed class Account : IVersioned, ISerializable
     {
         public Account(Jwk jwk, IEnumerable<string>? contacts, DateTimeOffset? tosAccepted)
         {
@@ -35,7 +35,7 @@
 
         // --- Serialization Methods --- //
 
-        protected Account(SerializationInfo info, StreamingContext streamingContext)
+        private Account(SerializationInfo info, StreamingContext streamingContext)
         {
             if (info is null)
             {

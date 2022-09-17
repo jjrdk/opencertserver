@@ -4,7 +4,7 @@
     using Abstractions.Model;
     using Abstractions.Services;
 
-    public class DefaultChallengeValidatorFactory : IChallengeValidatorFactory
+    public sealed class DefaultChallengeValidatorFactory : IChallengeValidatorFactory
     {
         private readonly IValidateHttp01Challenges _validateHttp01Challenges;
         private readonly IValidateDns01Challenges _validateDns01Challenges;

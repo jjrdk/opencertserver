@@ -2,7 +2,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certificates
 {
     using System.Security.Cryptography.X509Certificates;
 
-    public class CertificateRenewalResult
+    public sealed class CertificateRenewalResult
     {
         public CertificateRenewalResult(X509Certificate2? certificate, CertificateRenewalStatus status)
         {

@@ -13,7 +13,7 @@ namespace OpenCertServer.Acme.Server.RequestServices
     using Microsoft.Extensions.Logging;
     using Microsoft.IdentityModel.Tokens;
 
-    public class DefaultRequestValidationService : IRequestValidationService
+    public sealed class DefaultRequestValidationService : IRequestValidationService
     {
         private readonly IAccountService _accountService;
         private readonly INonceStore _nonceStore;

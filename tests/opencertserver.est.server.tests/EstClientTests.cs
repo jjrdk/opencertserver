@@ -17,7 +17,7 @@ namespace OpenCertServer.Est.Tests
     using Server;
     using Xunit;
 
-    public class EstClientTests : IDisposable
+    public sealed class EstClientTests : IDisposable
     {
         private readonly TestServer _server;
 

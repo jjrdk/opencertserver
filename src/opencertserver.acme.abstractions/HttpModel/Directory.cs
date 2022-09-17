@@ -4,7 +4,7 @@
     /// Describes the HTTP-Response-Model for an ACME Directory
     /// https://tools.ietf.org/html/rfc8555#section-7.1.1
     /// </summary>
-    public class Directory
+    public sealed class Directory
     {
         public string? NewNonce { get; set; }
         public string? NewAccount { get; set; }

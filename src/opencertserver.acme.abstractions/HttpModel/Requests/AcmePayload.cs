@@ -1,6 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Abstractions.HttpModel.Requests
 {
-    public class AcmePayload<TPayload>
+    public sealed class AcmePayload<TPayload>
     {
         public AcmePayload(TPayload value)
         {

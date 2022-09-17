@@ -7,7 +7,7 @@
     using Extensions;
 
     [Serializable]
-    public class Order : IVersioned, ISerializable
+    public sealed class Order : IVersioned, ISerializable
     {
         private static readonly Dictionary<OrderStatus, OrderStatus[]> ValidStatusTransitions =
             new()
@@ -85,7 +85,7 @@
 
         // --- Serialization Methods --- //
 
-        protected Order(SerializationInfo info, StreamingContext streamingContext)
+        private Order(SerializationInfo info, StreamingContext streamingContext)
         {
             if (info is null)
             {

@@ -57,7 +57,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
         public TimeSpan RenewalServiceStartupDelay { get; set; } = TimeSpan.Zero;
     }
 
-    public class LetsEncryptOptions : AcmeOptions
+    public sealed class LetsEncryptOptions : AcmeOptions
     {
         /// <summary>
 		/// Gets the uri which will be used to talk to LetsEncrypt servers.

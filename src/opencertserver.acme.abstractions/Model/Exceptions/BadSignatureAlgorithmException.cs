@@ -1,6 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Abstractions.Model.Exceptions
 {
-    public class BadSignatureAlgorithmException : AcmeException
+    public sealed class BadSignatureAlgorithmException : AcmeException
     {
         private const string Detail = "The ALG is not supported.";
 

@@ -11,7 +11,7 @@ namespace OpenCertServer.Ca.Tests
     using Utils;
     using Xunit;
 
-    public class X509CertificateTests : IDisposable
+    public sealed class X509CertificateTests : IDisposable
     {
         private readonly CertificateAuthority _ca;
         private readonly RSA _rsa = RSA.Create();

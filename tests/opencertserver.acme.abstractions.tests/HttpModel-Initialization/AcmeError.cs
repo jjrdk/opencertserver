@@ -3,7 +3,7 @@
     using System.Collections.Generic;
     using Xunit;
 
-    public class AcmeError
+    public sealed class AcmeError
     {
         [Fact]
         public void Ctor_Initializes_Type_And_Detail()

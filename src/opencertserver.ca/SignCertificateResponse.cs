@@ -4,7 +4,7 @@
 
     public abstract class SignCertificateResponse
     {
-        public class Success : SignCertificateResponse
+        public sealed class Success : SignCertificateResponse
         {
             internal Success(X509Certificate2 certificate, X509Certificate2Collection issuers)
             {
@@ -17,7 +17,7 @@
             public X509Certificate2Collection Issuers { get; }
         }
 
-        public class Error : SignCertificateResponse
+        public sealed class Error : SignCertificateResponse
         {
             internal Error(params string[] errors)
             {

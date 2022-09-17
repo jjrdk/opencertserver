@@ -8,7 +8,7 @@
     using Extensions;
 
     [Serializable]
-    public class Challenge : ISerializable
+    public sealed class Challenge : ISerializable
     {
         private static readonly Dictionary<ChallengeStatus, ChallengeStatus[]> ValidStatusTransitions = 
             new()
@@ -75,7 +75,7 @@
 
         // --- Serialization Methods --- //
 
-        protected Challenge(SerializationInfo info, StreamingContext streamingContext)
+        private Challenge(SerializationInfo info, StreamingContext streamingContext)
         {
             if (info is null)
             {

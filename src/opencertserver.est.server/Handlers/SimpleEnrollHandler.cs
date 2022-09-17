@@ -17,7 +17,7 @@
         public const string TextPlainMimeType = "text/plain";
     }
 
-    internal class SimpleEnrollHandler
+    internal sealed class SimpleEnrollHandler
     {
         private readonly ICertificateAuthority _certificateAuthority;
 

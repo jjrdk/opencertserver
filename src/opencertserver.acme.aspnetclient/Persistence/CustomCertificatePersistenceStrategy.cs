@@ -4,7 +4,7 @@
     using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
 
-    public class CustomCertificatePersistenceStrategy : ICertificatePersistenceStrategy
+    public sealed class CustomCertificatePersistenceStrategy : ICertificatePersistenceStrategy
 	{
 		private readonly Func<CertificateType, byte[], Task> _persist;
 		private readonly Func<CertificateType, Task<byte[]?>> _retrieve;

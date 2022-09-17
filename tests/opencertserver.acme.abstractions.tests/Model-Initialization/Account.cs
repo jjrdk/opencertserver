@@ -5,7 +5,7 @@
     using Model;
     using Xunit;
 
-    public class Account
+    public sealed class Account
     {
         [Fact]
         public void Ctor_Populates_All_Properties()
@@ -25,17 +25,17 @@
         }
     }
 
-    public class Authorization
+    public sealed class Authorization
     {
         
     }
 
-    public class Challenge
+    public sealed class Challenge
     {
 
     }
 
-    public class Order
+    public sealed class Order
     {
 
     }

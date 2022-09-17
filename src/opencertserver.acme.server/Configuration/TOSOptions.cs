@@ -1,6 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Server.Configuration
 {
-    public class TOSOptions
+    public sealed class TOSOptions
     {
         public bool RequireAgreement { get; set; }
         public string? Url { get; set; }

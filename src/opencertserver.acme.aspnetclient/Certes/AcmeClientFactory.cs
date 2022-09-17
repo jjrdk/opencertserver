@@ -6,7 +6,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
     using Microsoft.Extensions.Logging;
     using Persistence;
 
-    public class AcmeClientFactory : IAcmeClientFactory
+    public sealed class AcmeClientFactory : IAcmeClientFactory
     {
         private readonly AcmeOptions _options;
         private readonly HttpClient _httpClient;

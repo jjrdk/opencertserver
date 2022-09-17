@@ -6,7 +6,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certificates
     using Certes;
     using Microsoft.Extensions.Logging;
 
-    public class CertificateValidator : IValidateCertificates
+    public sealed class CertificateValidator : IValidateCertificates
     {
         private readonly LetsEncryptOptions _options;
         private readonly ILogger<CertificateValidator> _logger;

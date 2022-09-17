@@ -11,7 +11,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
     using Microsoft.Extensions.Logging;
     using Persistence;
 
-    public class AcmeClient : IAcmeClient
+    public sealed class AcmeClient : IAcmeClient
     {
         private const string CertificateFriendlyName = "OpenCertServerAcmeCertificate";
 

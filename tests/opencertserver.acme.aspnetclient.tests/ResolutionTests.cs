@@ -10,7 +10,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
     using Microsoft.Extensions.Logging;
     using Xunit;
 
-    public class ResolutionTests
+    public sealed class ResolutionTests
     {
         [Fact]
         public void Go()

@@ -4,7 +4,7 @@
     using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
 
-    public class FileCertificatePersistenceStrategy : ICertificatePersistenceStrategy
+    public sealed class FileCertificatePersistenceStrategy : ICertificatePersistenceStrategy
     {
         private readonly string _relativeFilePath;
 

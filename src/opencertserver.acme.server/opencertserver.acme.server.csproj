@@ -10,7 +10,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Certes" Version="3.0.3" />
-		<PackageReference Include="DnsClient" Version="1.6.0" />
+		<PackageReference Include="DnsClient" Version="1.6.1" />
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Options" Version="6.0.0" />

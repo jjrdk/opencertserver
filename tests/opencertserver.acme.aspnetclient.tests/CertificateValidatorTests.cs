@@ -9,7 +9,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
     using Microsoft.Extensions.Logging.Abstractions;
     using Xunit;
 
-    public class CertificateValidatorTests
+    public sealed class CertificateValidatorTests
     {
         [Fact]
         public void IsCertificateValid_OnNullCert_ShouldReturnFalse()
@@ -68,13 +68,13 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
 
             public override string ToString()
             {
-                string Show(TimeSpan? ts) => ts == null ? "Never" : ts.Value.ToString("g");
+                static string Show(TimeSpan? ts) => ts == null ? "Never" : ts.Value.ToString("g");
                 
                 return $"ValidatorSettings: ({Show(TimeUntilExpiryBeforeRenewal)}, {Show(TimeAfterIssueDateBeforeRenewal)})";
             }
         }
         
-        private static IEnumerable<object[]> ValidateCertificateDate()
+        public static IEnumerable<object[]> ValidateCertificateDate()
         {
             // fresh certificate
             yield return Make(
@@ -118,7 +118,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
                 TimeSpan.FromDays(30), 
                 false); 
             
-            object[] Make(
+            static object[] Make(
                 DateTime certStart,
                 DateTime certEnd,
                 TimeSpan? timeUntilExpiryBeforeRenewal,

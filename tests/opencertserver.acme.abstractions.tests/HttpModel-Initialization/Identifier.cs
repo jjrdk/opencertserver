@@ -2,7 +2,7 @@
 {
     using Xunit;
 
-    public class Identifier
+    public sealed class Identifier
     {
         [Fact]
         public void Ctor_Intializes_All_Properties()

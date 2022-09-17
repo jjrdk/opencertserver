@@ -6,7 +6,7 @@
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Options;
 
-    public class HostedValidationService : TimedHostedService
+    public sealed class HostedValidationService : TimedHostedService
     {
         private readonly IOptions<AcmeServerOptions> _options;
 

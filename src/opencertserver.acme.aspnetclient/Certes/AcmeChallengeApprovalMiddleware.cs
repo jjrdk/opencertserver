@@ -6,7 +6,7 @@
     using Microsoft.Extensions.Logging;
     using Persistence;
 
-    public class AcmeChallengeApprovalMiddleware : ILetsEncryptChallengeApprovalMiddleware
+    public sealed class AcmeChallengeApprovalMiddleware : ILetsEncryptChallengeApprovalMiddleware
     {
         private const string MagicPrefix = "/.well-known/acme-challenge";
         private static readonly PathString MagicPrefixSegments = new(MagicPrefix);

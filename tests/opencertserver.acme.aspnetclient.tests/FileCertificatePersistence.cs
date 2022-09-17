@@ -9,7 +9,7 @@
     using Persistence;
     using Xunit;
 
-    public class FileCertificatePersistence : IDisposable
+    public sealed class FileCertificatePersistence : IDisposable
     {
         private readonly string _testFolder;
         private ICertificatePersistenceStrategy Strategy { get; }

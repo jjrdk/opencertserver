@@ -7,7 +7,7 @@
     using System.Threading.Tasks;
     using Newtonsoft.Json;
 
-    public class FileChallengePersistenceStrategy : IChallengePersistenceStrategy
+    public sealed class FileChallengePersistenceStrategy : IChallengePersistenceStrategy
     {
         private readonly string _relativeFilePath;
 

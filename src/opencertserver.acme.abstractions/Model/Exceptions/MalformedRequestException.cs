@@ -12,28 +12,28 @@ namespace OpenCertServer.Acme.Abstractions.Model.Exceptions
         }
     }
 
-    public class NotAuthorizedException : MalformedRequestException
+    public sealed class NotAuthorizedException : MalformedRequestException
     {
         public NotAuthorizedException()
             :base("The request could not be authorized.")
         { }
     }
 
-    public class NotFoundException : MalformedRequestException
+    public sealed class NotFoundException : MalformedRequestException
     {
         public NotFoundException()
             :base("The requested resource could not be found.")
         { }
     }
 
-    public class NotAllowedException : MalformedRequestException
+    public sealed class NotAllowedException : MalformedRequestException
     {
         public NotAllowedException()
             : base("The requested resoruce may not be accessed.")
         { }
     }
 
-    public class ConflictRequestException : MalformedRequestException
+    public sealed class ConflictRequestException : MalformedRequestException
     {
         private ConflictRequestException(string resourceType, string attemptedStatus)
             : base($"The {resourceType} could not be set to the status of '{attemptedStatus}'")

@@ -11,7 +11,7 @@
     using Microsoft.Extensions.Primitives;
     using OpenCertServer.Ca;
 
-    internal class SimpleReEnrollHandler
+    internal sealed class SimpleReEnrollHandler
     {
         private readonly ICertificateAuthority _certificateAuthority;
 

@@ -92,7 +92,7 @@ services.AddAcmeClient(new LetsEncryptOptions() // see below
 	}
 });
 
-The `LetEncryptOptions` class is a sub-class of `AcmeOptions` which is configured to use the LetsEncrypt endpoints. To use a custom ACME server, create your own options class which inherits from `AcmeOptions`.
+The `LetEncryptOptions` sealed class is a sub-class of `AcmeOptions` which is configured to use the LetsEncrypt endpoints. To use a custom ACME server, create your own options sealed class which inherits from `AcmeOptions`.
 
 //the following line tells the library to persist the certificate to a file, so that if the server restarts, the certificate can be re-used without generating a new one.
 services.AddAcmeFileCertificatePersistence();

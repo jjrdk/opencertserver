@@ -2,7 +2,7 @@
 {
     using System.Collections.Generic;
 
-    public class CreateOrGetAccount
+    public sealed class CreateOrGetAccount
     {
         public List<string>? Contact { get; set; }
 

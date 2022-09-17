@@ -51,38 +51,39 @@ namespace OpenCertServer.Est.Server
                 throw new ArgumentException("Must be an ECDSA key certificate");
             }
 
-            var collection = new X509Certificate2Collection { rsaCertificate, ecdsaCertificate, };
-
-            return services.AddSingleton(collection)
-                  .AddSingleton<ICertificateAuthority>(
-                  sp => new CertificateAuthority(
-                      rsaCertificate,
-                      ecdsaCertificate,
-                      TimeSpan.FromDays(90),
-                      chainValidation ?? (_ => true),
-                      sp.GetRequiredService<ILogger<CertificateAuthority>>()))
-                  .InnerAddEstServer();
+            return services.AddSingleton<ICertificateAuthority>(
+                    sp => new CertificateAuthority(
+                        rsaCertificate,
+                        ecdsaCertificate,
+                        TimeSpan.FromDays(90),
+                        chainValidation ?? (_ => true),
+                        sp.GetRequiredService<ILogger<CertificateAuthority>>()))
+                .InnerAddEstServer();
         }
 
         private static IServiceCollection InnerAddEstServer(this IServiceCollection services)
         {
-            return services
-                .AddTransient<CaCertHandler>()
+            return services.AddTransient<CaCertHandler>()
                 .AddTransient<SimpleEnrollHandler>()
                 .AddTransient<SimpleReEnrollHandler>()
+                .AddTransient(
+                    sp => sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates())
                 .AddCertificateForwarding(
                     o => { o.HeaderConverter = x => new X509Certificate2(Convert.FromBase64String(x)); })
                 .AddRouting()
                 .AddAuthorization()
                 .AddAuthentication()
-                .AddCertificate().Services;
+                .AddCertificate()
+                .Services;
         }
 
-        public static IApplicationBuilder UseEstServer(this IApplicationBuilder app, IAuthorizeData? enrollPolicy = null, IAuthorizeData? reEnrollPolicy = null)
+        public static IApplicationBuilder UseEstServer(
+            this IApplicationBuilder app,
+            IAuthorizeData? enrollPolicy = null,
+            IAuthorizeData? reEnrollPolicy = null)
         {
             const string? wellKnownEst = "/.well-known/est";
-            return app
-                .UseCertificateForwarding()
+            return app.UseCertificateForwarding()
                 .UseAuthentication()
                 .UseRouting()
                 .UseAuthorization()
@@ -90,14 +91,14 @@ namespace OpenCertServer.Est.Server
                     e =>
                     {
                         e.MapGet(
-                            wellKnownEst + "/cacert",
+                            $"{wellKnownEst}/cacert",
                             async ctx =>
                             {
                                 var handler = ctx.RequestServices.GetRequiredService<CaCertHandler>();
                                 await handler.Handle(ctx).ConfigureAwait(false);
                             });
                         var enrollBuilder = e.MapPost(
-                            wellKnownEst + "/simpleenroll",
+                            $"{wellKnownEst}/simpleenroll",
                             async ctx =>
                             {
                                 var handler = ctx.RequestServices.GetRequiredService<SimpleEnrollHandler>();
@@ -111,13 +112,14 @@ namespace OpenCertServer.Est.Server
                         {
                             enrollBuilder.RequireAuthorization();
                         }
+
                         var reEnrollBuilder = e.MapPost(
-                                 wellKnownEst + "/simplereenroll",
-                                 async ctx =>
-                                 {
-                                     var handler = ctx.RequestServices.GetRequiredService<SimpleReEnrollHandler>();
-                                     await handler.Handle(ctx).ConfigureAwait(false);
-                                 });
+                            $"{wellKnownEst}/simplereenroll",
+                            async ctx =>
+                            {
+                                var handler = ctx.RequestServices.GetRequiredService<SimpleReEnrollHandler>();
+                                await handler.Handle(ctx).ConfigureAwait(false);
+                            });
                         if (reEnrollPolicy != null)
                         {
                             reEnrollBuilder.RequireAuthorization(reEnrollPolicy);

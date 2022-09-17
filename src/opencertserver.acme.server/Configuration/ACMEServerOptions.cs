@@ -1,6 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Server.Configuration
 {
-    public class AcmeServerOptions
+    public sealed class AcmeServerOptions
     {
         public BackgroundServiceOptions HostedWorkers { get; set; } = new();
 

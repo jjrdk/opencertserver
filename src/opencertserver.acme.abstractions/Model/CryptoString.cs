@@ -2,7 +2,7 @@
 {
     using Microsoft.IdentityModel.Tokens;
 
-    public class CryptoString
+    public sealed class CryptoString
     {
         private CryptoString(int byteCount)
         {

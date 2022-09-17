@@ -8,7 +8,7 @@ namespace OpenCertServer.Build
 
     [TaskName("Pack")]
     [IsDependentOn(typeof(TestsTask))]
-    public class PackTask : FrostingTask<BuildContext>
+    public sealed class PackTask : FrostingTask<BuildContext>
     {
         /// <inheritdoc />
         public override void Run(BuildContext context)

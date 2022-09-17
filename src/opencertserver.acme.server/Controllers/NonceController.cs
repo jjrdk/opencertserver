@@ -5,7 +5,7 @@
 
     [ApiController]
     [AddNextNonce]
-    public class NonceController : ControllerBase
+    public sealed class NonceController : ControllerBase
     {
         [Route("/new-nonce", Name = "NewNonce")]
         [HttpHead]

@@ -16,7 +16,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
     using Persistence;
     using Xunit;
 
-    public class LetsEncryptClientTests
+    public sealed class LetsEncryptClientTests
     {
         private readonly IPersistenceService _persistenceService;
         private readonly IValidateCertificates _certificateValidator;

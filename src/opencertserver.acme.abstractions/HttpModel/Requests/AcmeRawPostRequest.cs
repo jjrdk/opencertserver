@@ -5,7 +5,7 @@
     using Model.Exceptions;
 
     [DataContract]
-    public class AcmeRawPostRequest
+    public sealed class AcmeRawPostRequest
     {
         private string? _header;
         private string? _signature;

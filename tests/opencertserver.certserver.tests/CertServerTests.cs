@@ -18,10 +18,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
-using opencertserver.certserver;
 using Xunit;
 
-public class CertServerTests : IDisposable
+public sealed class CertServerTests : IDisposable
 {
     private readonly TestServer _server;
 

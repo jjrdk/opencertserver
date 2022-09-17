@@ -3,7 +3,7 @@
     using Exceptions;
     using Microsoft.IdentityModel.Tokens;
 
-    public class Jwk
+    public sealed class Jwk
     {
         private JsonWebKey? _jsonWebKey;
         

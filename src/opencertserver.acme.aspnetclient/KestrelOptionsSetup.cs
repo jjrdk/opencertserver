@@ -5,7 +5,7 @@
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Options;
 
-    internal class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptions>
+    internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptions>
     {
         private readonly AcmeRenewalService _renewalService;
         private readonly ILogger<KestrelOptionsSetup> _logger;

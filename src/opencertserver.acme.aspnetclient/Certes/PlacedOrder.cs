@@ -4,7 +4,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
     using global::Certes.Acme;
     using Persistence;
 
-    public class PlacedOrder
+    public sealed class PlacedOrder
     {
         public ChallengeDto[] Challenges { get; }
         public IOrderContext Order { get; }

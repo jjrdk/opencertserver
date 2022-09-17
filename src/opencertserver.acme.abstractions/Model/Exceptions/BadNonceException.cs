@@ -1,6 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Abstractions.Model.Exceptions
 {
-    public class BadNonceException : AcmeException
+    public sealed class BadNonceException : AcmeException
     {
         private const string Detail = "The nonce could not be accepted.";
 

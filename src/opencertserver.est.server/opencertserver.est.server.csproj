@@ -9,7 +9,7 @@
     </PropertyGroup>
     <Import Project="../../shared.proj" />
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="6.0.5" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="6.0.8" />
         <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
     </ItemGroup>

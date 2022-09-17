@@ -4,7 +4,7 @@
     using System.Collections.Generic;
     using Xunit;
 
-    public class Challenge
+    public sealed class Challenge
     {
         private (Model.Challenge challenge, string challengeUrl) CreateTestModel()
         {

@@ -4,7 +4,7 @@
     using Abstractions.Model;
     using Abstractions.Services;
 
-    public class DefaultAuthorizationFactory : IAuthorizationFactory
+    public sealed class DefaultAuthorizationFactory : IAuthorizationFactory
     {
         public void CreateAuthorizations(Order order)
         {

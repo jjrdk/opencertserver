@@ -3,7 +3,7 @@
 using Abstractions.Model;
 using Abstractions.Storage;
 
-internal class InMemoryNonceStore : INonceStore
+internal sealed class InMemoryNonceStore : INonceStore
 {
     private readonly HashSet<Nonce> _nonces = new();
 

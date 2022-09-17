@@ -9,7 +9,7 @@ namespace OpenCertServer.Build
 
     [TaskName("Tests")]
     [IsDependentOn(typeof(BuildTask))]
-    public class TestsTask : FrostingTask<BuildContext>
+    public sealed class TestsTask : FrostingTask<BuildContext>
     {
         /// <inheritdoc />
         public override void Run(BuildContext context)

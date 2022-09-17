@@ -5,7 +5,7 @@ namespace OpenCertServer.Acme.Server.Filters
     using Microsoft.AspNetCore.Mvc.Filters;
     using Microsoft.Extensions.Logging;
 
-    public class AcmeExceptionFilter : IExceptionFilter
+    public sealed class AcmeExceptionFilter : IExceptionFilter
     {
         private readonly ILogger<AcmeExceptionFilter> _logger;
 

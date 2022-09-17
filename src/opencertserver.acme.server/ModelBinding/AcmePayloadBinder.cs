@@ -5,7 +5,7 @@
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc.ModelBinding;
 
-    public class AcmePayloadBinder<TPayload> : IModelBinder
+    public sealed class AcmePayloadBinder<TPayload> : IModelBinder
     {
         private readonly IAcmeRequestProvider _requestProvider;
 

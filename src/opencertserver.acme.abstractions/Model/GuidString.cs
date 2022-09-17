@@ -3,7 +3,7 @@
     using System;
     using Microsoft.IdentityModel.Tokens;
 
-    public class GuidString
+    public sealed class GuidString
     {
         private GuidString()
         {

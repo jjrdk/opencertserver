@@ -8,7 +8,7 @@ namespace OpenCertServer.Acme.Abstractions.Model
     using Extensions;
 
     [Serializable]
-    public class AcmeError : ISerializable
+    public sealed class AcmeError : ISerializable
     {
         private string? _type;
         private string? _detail;
@@ -49,7 +49,7 @@ namespace OpenCertServer.Acme.Abstractions.Model
 
         // --- Serialization Methods --- //
 
-        protected AcmeError(SerializationInfo info, StreamingContext streamingContext)
+        private AcmeError(SerializationInfo info, StreamingContext streamingContext)
         {
             if (info is null)
             {
@@ -75,12 +75,12 @@ namespace OpenCertServer.Acme.Abstractions.Model
             info.AddValue(nameof(Type), Type);
             info.AddValue(nameof(Detail), Detail);
 
-            if(Identifier != null)
+            if (Identifier != null)
             {
                 info.AddValue(nameof(Identifier), Identifier);
             }
 
-            if(SubErrors != null)
+            if (SubErrors != null)
             {
                 info.AddValue(nameof(SubErrors), SubErrors);
             }

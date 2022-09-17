@@ -11,7 +11,7 @@
 
     //[AllowAnonymous]
     [AddNextNonce]
-    public class AccountController : ControllerBase
+    public sealed class AccountController : ControllerBase
     {
         private readonly IAccountService _accountService;
 

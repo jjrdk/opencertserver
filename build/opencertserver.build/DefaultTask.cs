@@ -4,7 +4,7 @@ namespace OpenCertServer.Build
 
     [TaskName("Default")]
     [IsDependentOn(typeof(PackTask))]
-    public class DefaultTask : FrostingTask
+    public sealed class DefaultTask : FrostingTask
     {
     }
 }

@@ -3,7 +3,7 @@
 using Abstractions.Model;
 using Abstractions.Storage;
 
-internal class InMemoryOrderStore : IStoreOrders
+internal sealed class InMemoryOrderStore : IStoreOrders
 {
     private readonly Dictionary<string, Order> _orders = new();
     /// <inheritdoc />

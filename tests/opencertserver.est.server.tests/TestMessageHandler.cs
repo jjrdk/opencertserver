@@ -9,7 +9,7 @@ namespace OpenCertServer.Est.Tests
     using Microsoft.AspNetCore.TestHost;
     using Microsoft.Extensions.Primitives;
 
-    public class TestMessageHandler : HttpMessageHandler
+    public sealed class TestMessageHandler : HttpMessageHandler
     {
         private readonly TestServer _server;
         private readonly X509Certificate2? _certificate;

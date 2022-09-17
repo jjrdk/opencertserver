@@ -21,7 +21,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
     using Persistence;
     using Xunit;
 
-    public class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
+    public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
     {
         private static readonly string AcmeToken = Guid.NewGuid().ToString();
         private static readonly string AcmeResponse = $"{Guid.NewGuid()}-{Guid.NewGuid()}";
@@ -95,14 +95,14 @@ namespace OpenCertServer.Acme.AspNetClient.Tests
             var finalizationTimeout = await Task.WhenAny(Task.Delay(10000, _fakeClient.OrderFinalizedCts.Token));
             Assert.True(finalizationTimeout.IsCanceled, "Fake LE client finalization timed out");
 
-            var acmeRenewalService = (AcmeRenewalService)server.Services.GetService<IAcmeRenewalService>();
+            var acmeRenewalService = (AcmeRenewalService)server.Services.GetRequiredService<IAcmeRenewalService>();
             var appCert = acmeRenewalService!.Certificate?.RawData;
             var fakeCert = FakeLetsEncryptClient.FakeCert.RawData;
 
             Assert.True(appCert?.SequenceEqual(fakeCert), "Certificates do not match");
         }
 
-        private class FakeLetsEncryptClient : IAcmeClient
+        private sealed class FakeLetsEncryptClient : IAcmeClient
         {
             public static readonly X509Certificate2 FakeCert = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90));
 

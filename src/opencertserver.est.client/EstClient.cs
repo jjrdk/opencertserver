@@ -10,7 +10,7 @@
     using System.Threading.Tasks;
     using Ca.Utils;
 
-    public class EstClient
+    public sealed class EstClient
     {
         private const string TimeStamping = "1.3.6.1.5.5.7.3.8";
         private readonly Uri _estUri;

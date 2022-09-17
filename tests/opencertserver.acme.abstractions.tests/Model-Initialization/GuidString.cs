@@ -2,7 +2,7 @@
 {
     using Xunit;
 
-    public class GuidString
+    public sealed class GuidString
     {
         [Fact]
         public void GuidString_Seems_Filled()

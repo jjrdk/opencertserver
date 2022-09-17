@@ -5,7 +5,7 @@
     using Converters;
     using Model;
 
-    public class AcmeHeader
+    public sealed class AcmeHeader
     {
         public string? Nonce { get; set; }
         public string? Url { get; set; }

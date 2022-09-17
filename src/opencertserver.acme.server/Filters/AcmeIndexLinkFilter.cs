@@ -4,7 +4,7 @@
     using Microsoft.AspNetCore.Mvc.Filters;
     using Microsoft.AspNetCore.Mvc.Routing;
 
-    public class AcmeIndexLinkFilter : IActionFilter
+    public sealed class AcmeIndexLinkFilter : IActionFilter
     {
         private readonly IUrlHelperFactory _urlHelperFactory;
 

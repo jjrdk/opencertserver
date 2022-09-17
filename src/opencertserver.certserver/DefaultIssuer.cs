@@ -1,4 +1,4 @@
-namespace opencertserver.certserver;
+namespace OpenCertServer.CertServer;
 
 using System.Text;
 using OpenCertServer.Acme.Abstractions.IssuanceServices;
@@ -6,7 +6,7 @@ using OpenCertServer.Acme.Abstractions.Model;
 using OpenCertServer.Ca;
 using OpenCertServer.Ca.Utils;
 
-internal class DefaultIssuer : ICertificateIssuer
+internal sealed class DefaultIssuer : ICertificateIssuer
 {
     private readonly ICertificateAuthority _ca;
 
@@ -26,9 +26,10 @@ internal class DefaultIssuer : ICertificateIssuer
         var cert = _ca.SignCertificateRequest(csr);
         return cert switch
         {
-            SignCertificateResponse.Success success => (Encoding.UTF8.GetBytes(success.Certificate.ToPemChain(success.Issuers)), null),
-            SignCertificateResponse.Error error => (null, new AcmeError(string.Join(", ", error.Errors), "")),
-            _ => throw new ArgumentException()
+            SignCertificateResponse.Success success => (
+                Encoding.UTF8.GetBytes(success.Certificate.ToPemChain(success.Issuers)), null),
+            SignCertificateResponse.Error error => (null, new AcmeError("multiple", string.Join(", ", error.Errors))),
+            _ => throw new ArgumentException("Invalid response")
         };
     }
 }

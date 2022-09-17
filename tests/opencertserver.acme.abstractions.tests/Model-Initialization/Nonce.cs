@@ -2,7 +2,7 @@
 {
     using Xunit;
 
-    public class Nonce
+    public sealed class Nonce
     {
         [Fact]
         public void Ctor_Populates_All_Properties()

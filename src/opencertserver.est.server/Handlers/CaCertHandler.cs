@@ -5,7 +5,7 @@
     using System.Threading.Tasks;
     using Microsoft.AspNetCore.Http;
 
-    internal class CaCertHandler
+    internal sealed class CaCertHandler
     {
         private readonly X509Certificate2Collection _certificateStore;
 

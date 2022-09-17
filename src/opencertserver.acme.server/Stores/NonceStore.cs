@@ -6,7 +6,7 @@
     using Configuration;
     using Microsoft.Extensions.Options;
 
-    public class NonceStore : INonceStore
+    public sealed class NonceStore : INonceStore
     {
         private readonly IOptions<FileStoreOptions> _options;
 

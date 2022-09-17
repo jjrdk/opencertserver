@@ -8,7 +8,7 @@
     using global::Certes;
     using Microsoft.Extensions.Logging;
 
-    public class PersistenceService : IPersistenceService
+    public sealed class PersistenceService : IPersistenceService
     {
         //private const string DnsChallengeNameFormat = "_acme-challenge.{0}";
         //private const string WildcardRegex = "^\\*\\.";

@@ -5,7 +5,7 @@ namespace OpenCertServer.Est.Tests.Configuration
     using Microsoft.AspNetCore.Authentication.Certificate;
     using Microsoft.Extensions.Options;
 
-    public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<CertificateAuthenticationOptions>
+    public sealed class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<CertificateAuthenticationOptions>
     {
         private readonly X509Certificate2Collection _certificate2Collection;
 

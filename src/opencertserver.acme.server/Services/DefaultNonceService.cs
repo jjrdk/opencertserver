@@ -7,7 +7,7 @@
     using Abstractions.Storage;
     using Microsoft.Extensions.Logging;
 
-    public class DefaultNonceService : INonceService
+    public sealed class DefaultNonceService : INonceService
     {
         private readonly INonceStore _nonceStore;
         private readonly ILogger<DefaultNonceService> _logger;

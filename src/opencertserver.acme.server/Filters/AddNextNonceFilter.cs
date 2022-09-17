@@ -6,14 +6,14 @@
     using Microsoft.AspNetCore.Mvc.Filters;
     using Microsoft.Extensions.Logging;
 
-    public class AddNextNonceAttribute : ServiceFilterAttribute
+    public sealed class AddNextNonceAttribute : ServiceFilterAttribute
     {
         public AddNextNonceAttribute()
             : base(typeof(AddNextNonceFilter))
         { }
     }
 
-    public class AddNextNonceFilter : IAsyncActionFilter, IAsyncExceptionFilter
+    public sealed class AddNextNonceFilter : IAsyncActionFilter, IAsyncExceptionFilter
     {
         private readonly INonceService _nonceService;
         private readonly ILogger<AddNextNonceFilter> _logger;

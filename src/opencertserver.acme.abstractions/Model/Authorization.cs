@@ -8,7 +8,7 @@
     using Extensions;
 
     [Serializable]
-    public class Authorization : ISerializable
+    public sealed class Authorization : ISerializable
     {
         private static readonly Dictionary<AuthorizationStatus, AuthorizationStatus[]> ValidStatusTransitions = new()
         {
@@ -85,7 +85,7 @@
 
         // --- Serialization Methods --- //
 
-        protected Authorization(SerializationInfo info, StreamingContext streamingContext)
+        private Authorization(SerializationInfo info, StreamingContext streamingContext)
         {
             if (info is null)
             {

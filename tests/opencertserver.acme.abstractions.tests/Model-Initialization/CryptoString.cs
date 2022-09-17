@@ -2,7 +2,7 @@
 {
     using Xunit;
 
-    public class CryptoString
+    public sealed class CryptoString
     {
         [Fact]
         public void CryptoString_Seems_Filled()

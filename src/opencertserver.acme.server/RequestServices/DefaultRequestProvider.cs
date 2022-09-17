@@ -7,7 +7,7 @@
     using Abstractions.RequestServices;
     using Microsoft.IdentityModel.Tokens;
 
-    public class DefaultRequestProvider : IAcmeRequestProvider
+    public sealed class DefaultRequestProvider : IAcmeRequestProvider
     {
         private AcmeRawPostRequest? _request;
         private AcmeHeader? _header;

@@ -4,7 +4,7 @@
     using Microsoft.AspNetCore.Mvc.ModelBinding;
     using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 
-    public class AcmeModelBindingProvider : IModelBinderProvider
+    public sealed class AcmeModelBindingProvider : IModelBinderProvider
     {
         public IModelBinder? GetBinder(ModelBinderProviderContext context)
         {

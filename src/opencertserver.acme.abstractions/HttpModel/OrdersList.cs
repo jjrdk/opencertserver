@@ -6,7 +6,7 @@
     /// <summary>
     /// Represents a list of order urls
     /// </summary>
-    public class OrdersList
+    public sealed class OrdersList
     {
         public OrdersList(IEnumerable<string> orders)
         {

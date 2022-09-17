@@ -4,7 +4,7 @@
     using System.Collections.Generic;
     using System.Threading.Tasks;
 
-    public class CustomChallengePersistenceStrategy : IChallengePersistenceStrategy
+    public sealed class CustomChallengePersistenceStrategy : IChallengePersistenceStrategy
     {
         private readonly Func<IEnumerable<ChallengeDto>, Task> _persist;
         private readonly Func<IEnumerable<ChallengeDto>, Task> _delete;

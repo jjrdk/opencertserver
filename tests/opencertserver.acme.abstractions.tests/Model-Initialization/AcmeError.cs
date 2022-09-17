@@ -2,7 +2,7 @@
 {
     using Xunit;
 
-    public class AcmeError
+    public sealed class AcmeError
     {
         [Fact]
         public void Ctor_Populates_All_Properties()

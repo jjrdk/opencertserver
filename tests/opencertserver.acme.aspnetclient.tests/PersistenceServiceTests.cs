@@ -7,7 +7,7 @@
     using Persistence;
     using Xunit;
 
-    public class PersistenceServiceTests
+    public sealed class PersistenceServiceTests
     {
         private IPersistenceService PersistenceService { get; set; } = null!;
         

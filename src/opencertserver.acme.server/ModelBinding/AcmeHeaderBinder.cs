@@ -3,7 +3,7 @@
     using Abstractions.RequestServices;
     using Microsoft.AspNetCore.Mvc.ModelBinding;
 
-    public class AcmeHeaderBinder : IModelBinder
+    public sealed class AcmeHeaderBinder : IModelBinder
     {
         private readonly IAcmeRequestProvider _requestProvider;
 

@@ -6,7 +6,7 @@
     /// Represents an ACME challenge
     /// https://tools.ietf.org/html/rfc8555#section-7.1.5
     /// </summary>
-    public class Challenge
+    public sealed class Challenge
     {
         public Challenge(Model.Challenge model, string challengeUrl)
         {

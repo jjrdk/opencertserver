@@ -3,7 +3,7 @@
     /// <summary>
     /// Defines an identifier as used in orders or authorizations
     /// </summary>
-    public class Identifier
+    public sealed class Identifier
     {
         public Identifier(Model.Identifier model)
         {

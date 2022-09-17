@@ -2,7 +2,7 @@
 {
     using System;
 
-    public class ConcurrencyException : InvalidOperationException
+    public sealed class ConcurrencyException : InvalidOperationException
     {
         public ConcurrencyException()
             : base($"Object has been changed since loading")

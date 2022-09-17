@@ -7,7 +7,7 @@
     using Persistence;
     using Xunit;
 
-    public class CustomCertificatePersistence
+    public sealed class CustomCertificatePersistence
     {
         private ICertificatePersistenceStrategy Strategy { get; }
 

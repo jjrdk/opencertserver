@@ -4,7 +4,7 @@ namespace OpenCertServer.Build
     using Cake.Core;
     using Cake.Frosting;
 
-    public class BuildContext : FrostingContext
+    public sealed class BuildContext : FrostingContext
     {
         public string BuildConfiguration { get; set; }
         public string BuildVersion { get; set; } = "0.0.1";

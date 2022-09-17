@@ -7,7 +7,7 @@
     using Extensions;
 
     [Serializable]
-    public class Identifier : ISerializable
+    public sealed class Identifier : ISerializable
     {
         private static readonly string[] SupportedTypes = { "dns" };
 
@@ -49,7 +49,7 @@
 
         // --- Serialization Methods --- //
 
-        protected Identifier(SerializationInfo info, StreamingContext streamingContext)
+        private Identifier(SerializationInfo info, StreamingContext streamingContext)
         {
             if (info is null)
             {

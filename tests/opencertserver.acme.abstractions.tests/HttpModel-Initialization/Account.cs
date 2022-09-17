@@ -5,7 +5,7 @@
     using Model;
     using Xunit;
 
-    public class Account
+    public sealed class Account
     {
         [Fact]
         public void Ctor_Initializes_All_Properties()

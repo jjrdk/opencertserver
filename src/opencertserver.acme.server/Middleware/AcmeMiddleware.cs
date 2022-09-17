@@ -3,7 +3,7 @@
     using Abstractions.RequestServices;
     using Microsoft.AspNetCore.Http;
 
-    public class AcmeMiddleware
+    public sealed class AcmeMiddleware
     {
         private readonly RequestDelegate _next;
 

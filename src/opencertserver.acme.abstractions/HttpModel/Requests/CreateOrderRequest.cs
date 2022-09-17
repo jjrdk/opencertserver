@@ -3,7 +3,7 @@
     using System;
     using System.Collections.Generic;
 
-    public class CreateOrderRequest
+    public sealed class CreateOrderRequest
     {
         public List<Identifier>? Identifiers { get; set; }
 

@@ -9,7 +9,7 @@ namespace OpenCertServer.Ca.Tests
     using Utils;
     using Xunit;
 
-    public class CertificateAuthorityTests : IDisposable
+    public sealed class CertificateAuthorityTests : IDisposable
     {
         private readonly CertificateAuthority _authority;
 
@@ -65,6 +65,26 @@ namespace OpenCertServer.Ca.Tests
             Assert.Equal(
                 string.Join("", req.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)),
                 string.Join("", cert.Certificate.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)));
+        }
+
+        [Fact]
+        public void WhenCreatingWithBackupActionThenBacksUpCerts()
+        {
+            X509Certificate2 rsa = null;
+            X509Certificate2 ecdsa = null;
+            var ca = new CertificateAuthority(
+                new X500DistinguishedName("CN=test"),
+                TimeSpan.FromDays(1),
+                c => true,
+                NullLogger<CertificateAuthority>.Instance,
+                (c1, c2) =>
+                {
+                    rsa = c1;
+                    ecdsa = c2;
+                });
+
+            Assert.NotNull(rsa);
+            Assert.NotNull(ecdsa);
         }
 
         private static CertificateRequest CreateCertificateRequest(RSA rsa)

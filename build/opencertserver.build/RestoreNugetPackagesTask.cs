@@ -5,7 +5,7 @@ namespace OpenCertServer.Build
 
     [TaskName("Restore-Nuget-Packages")]
     [IsDependentOn(typeof(CleanTask))]
-    public class RestoreNugetPackagesTask : FrostingTask<BuildContext>
+    public sealed class RestoreNugetPackagesTask : FrostingTask<BuildContext>
     {
         /// <inheritdoc />
         public override void Run(BuildContext context)

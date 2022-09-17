@@ -10,7 +10,7 @@
     using Abstractions.Services;
     using Abstractions.Storage;
 
-    public class DefaultAccountService : IAccountService
+    public sealed class DefaultAccountService : IAccountService
     {
         private readonly IAcmeRequestProvider _requestProvider;
         private readonly IStoreAccounts _accountStore;

@@ -5,7 +5,7 @@ namespace OpenCertServer.Acme.Server.Filters
     using Microsoft.AspNetCore.Http.Extensions;
     using Microsoft.AspNetCore.Mvc.Filters;
 
-    public class ValidateAcmeRequestFilter : IAsyncActionFilter
+    public sealed class ValidateAcmeRequestFilter : IAsyncActionFilter
     {
         private readonly IAcmeRequestProvider _requestProvider;
         private readonly IRequestValidationService _validationService;

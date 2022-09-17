@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
@@ -15,7 +16,7 @@
     using Utils;
     using cms = Org.BouncyCastle.Asn1.Cms;
 
-    public class CertificateAuthority : ICertificateAuthority
+    public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
     {
         private const string Header = "-----BEGIN CERTIFICATE REQUEST-----";
         private const string Footer = "-----END CERTIFICATE REQUEST-----";
@@ -43,6 +44,7 @@
             TimeSpan certificateValidity,
             Func<X509Chain, bool> x509ChainValidation,
             ILogger<CertificateAuthority> logger,
+            Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
             params IValidateCertificateRequests[] validators)
             : this(
                 CreateSelfSignedRsaCert(distinguishedName, UsageFlags, certificateValidity),
@@ -50,6 +52,7 @@
                 certificateValidity,
                 x509ChainValidation,
                 logger,
+                certificateBackup,
                 validators)
         {
             _standAlone = true;
@@ -61,6 +64,7 @@
             TimeSpan certificateValidity,
             Func<X509Chain, bool> x509ChainValidation,
             ILogger<CertificateAuthority> logger,
+            Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
             params IValidateCertificateRequests[] validators)
         {
             _logger = logger;
@@ -77,6 +81,7 @@
                         new DistinguishedNameValidation()
                     })
                 .ToArray();
+            certificateBackup?.Invoke(_rsaCertificate, _ecdsaCertificate);
         }
 
         public SignCertificateResponse SignCertificateRequest(
@@ -175,6 +180,12 @@
             }
 
             return SignCertificateRequest(request);
+        }
+
+        /// <inheritdoc />
+        public X509Certificate2Collection GetRootCertificates()
+        {
+            return new X509Certificate2Collection { _rsaCertificate, _ecdsaCertificate };
         }
 
         private static CertificateRequest CreateCertificateRequest(
@@ -327,7 +338,7 @@
                     throw new InvalidOperationException("Illegal base64url string!");
             }
         }
-        private class OwnCertificateValidation : IValidateCertificateRequests
+        private sealed class OwnCertificateValidation : IValidateCertificateRequests
         {
             private readonly X509Certificate2Collection _serverCertificates;
             private readonly ILogger _logger;
@@ -352,7 +363,7 @@
             }
         }
 
-        private class DistinguishedNameValidation : IValidateCertificateRequests
+        private sealed class DistinguishedNameValidation : IValidateCertificateRequests
         {
             public bool Validate(CertificateRequest request, X509Certificate2? reenrollingFrom = null)
             {

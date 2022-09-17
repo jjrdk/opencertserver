@@ -11,7 +11,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certes
     using Microsoft.Extensions.Logging;
     using static Certificates.CertificateRenewalStatus;
 
-    public class AcmeRenewalService : IAcmeRenewalService
+    public sealed class AcmeRenewalService : IAcmeRenewalService
     {
         private readonly IProvideCertificates _certificateProvider;
         private readonly IEnumerable<ICertificateRenewalLifecycleHook> _lifecycleHooks;

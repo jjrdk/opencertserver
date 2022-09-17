@@ -4,7 +4,7 @@
     using System.ComponentModel.DataAnnotations;
     using System.IO;
 
-    public class FileStoreOptions : IValidatableObject
+    public sealed class FileStoreOptions : IValidatableObject
     {
         public string BasePath { get; set; } = "./";
 

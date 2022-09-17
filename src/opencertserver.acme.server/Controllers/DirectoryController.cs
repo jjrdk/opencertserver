@@ -5,7 +5,7 @@
     using Microsoft.Extensions.Options;
 
     //[Route(nameof(Directory))]
-    public class DirectoryController : ControllerBase
+    public sealed class DirectoryController : ControllerBase
     {
         private readonly IOptions<AcmeServerOptions> _options;
 

@@ -5,7 +5,7 @@
     using System.Text.Json.Serialization;
     using Model;
 
-    public class JwkConverter : JsonConverter<Jwk>
+    public sealed class JwkConverter : JsonConverter<Jwk>
     {
         public override Jwk Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {

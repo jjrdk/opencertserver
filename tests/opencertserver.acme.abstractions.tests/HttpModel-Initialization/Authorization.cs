@@ -4,7 +4,7 @@
     using System.Collections.Generic;
     using Xunit;
 
-    public class Authorization
+    public sealed class Authorization
     {
         private (Model.Authorization authorization, List<HttpModel.Challenge> challenges) CreateTestModel()
         {

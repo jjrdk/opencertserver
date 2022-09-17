@@ -8,7 +8,7 @@
     using Abstractions.Storage;
     using Abstractions.Workers;
 
-    public class ValidationWorker : IValidationWorker
+    public sealed class ValidationWorker : IValidationWorker
     {
         private readonly IStoreOrders _orderStore;
         private readonly IStoreAccounts _accountStore;

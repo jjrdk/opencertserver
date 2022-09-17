@@ -8,7 +8,7 @@ namespace OpenCertServer.Acme.AspNetClient.Certificates
     using Microsoft.Extensions.Logging;
     using Persistence;
 
-    public class CertificateProvider : IProvideCertificates
+    public sealed class CertificateProvider : IProvideCertificates
     {
         private readonly IPersistenceService _persistenceService;
         private readonly IAcmeClientFactory _clientFactory;

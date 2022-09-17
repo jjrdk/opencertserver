@@ -8,7 +8,7 @@
     using Microsoft.AspNetCore.Mvc;
 
     [AddNextNonce]
-    public class OrderController : ControllerBase
+    public sealed class OrderController : ControllerBase
     {
         private readonly IOrderService _orderService;
         private readonly IAccountService _accountService;

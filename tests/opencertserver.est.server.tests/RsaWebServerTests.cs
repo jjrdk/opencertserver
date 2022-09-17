@@ -12,7 +12,7 @@ namespace OpenCertServer.Est.Tests
     using Ca.Utils;
     using Xunit;
 
-    public class RsaWebServerTests : WebServerTests
+    public sealed class RsaWebServerTests : WebServerTests
     {
         [Fact]
         public async Task CanRequestEnroll()

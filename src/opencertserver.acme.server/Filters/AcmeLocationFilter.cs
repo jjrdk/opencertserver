@@ -5,7 +5,7 @@
     using Microsoft.AspNetCore.Mvc.Routing;
 
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-    public class AcmeLocationAttribute : Attribute, IFilterMetadata
+    public sealed class AcmeLocationAttribute : Attribute, IFilterMetadata
     {
         public AcmeLocationAttribute(string routeName)
         {
@@ -15,7 +15,7 @@
         public string RouteName { get; }
     }
 
-    public class AcmeLocationFilter : IActionFilter
+    public sealed class AcmeLocationFilter : IActionFilter
     {
         private readonly IUrlHelperFactory _urlHelperFactory;
 

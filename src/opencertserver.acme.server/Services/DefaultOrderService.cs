@@ -13,7 +13,7 @@
     using Certes;
     using Certes.Acme;
 
-    public class DefaultOrderService : IOrderService
+    public sealed class DefaultOrderService : IOrderService
     {
         private readonly IStoreOrders _orderStore;
         private readonly IAuthorizationFactory _authorizationFactory;

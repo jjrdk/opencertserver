@@ -12,7 +12,7 @@ namespace OpenCertServer.Est.Tests
     using Xunit;
     using Xunit.Abstractions;
 
-    public class EcDsaWebServerTests : WebServerTests
+    public sealed class EcDsaWebServerTests : WebServerTests
     {
         private readonly ITestOutputHelper _output;
 

@@ -8,7 +8,7 @@
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Options;
 
-    public class OrderStore : StoreBase, IStoreOrders
+    public sealed class OrderStore : StoreBase, IStoreOrders
     {
         private readonly ILogger<OrderStore> _logger;
 
