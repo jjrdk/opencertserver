@@ -18,6 +18,7 @@ namespace OpenCertServer.Est.Server
         public static IServiceCollection AddEstServer(
             this IServiceCollection services,
             X500DistinguishedName distinguishedName,
+            TimeSpan certificateValidity = default,
             Func<X509Chain, bool>? chainValidation = null)
         {
             services.AddSingleton(
@@ -25,7 +26,7 @@ namespace OpenCertServer.Est.Server
                     {
                         var certificateAuthority = new CertificateAuthority(
                             distinguishedName,
-                            TimeSpan.FromDays(90),
+                            certificateValidity == default ? TimeSpan.FromDays(90) : certificateValidity,
                             chainValidation ?? (_ => true),
                             sp.GetRequiredService<ILogger<CertificateAuthority>>());
                         return certificateAuthority;

@@ -2,6 +2,7 @@ namespace OpenCertServer.Ca.Tests
 {
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
@@ -34,7 +35,7 @@ namespace OpenCertServer.Ca.Tests
                 _ => true,
                 new NullLogger<CertificateAuthority>());
         }
-
+        
         [Fact]
         public void CanSerializeCertificateRequest()
         {

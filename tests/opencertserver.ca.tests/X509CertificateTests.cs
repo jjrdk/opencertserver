@@ -28,10 +28,11 @@ namespace OpenCertServer.Ca.Tests
         [Fact]
         public void CanWritePublicKey()
         {
+            using var rsa = RSA.Create();
             var cert = _ca.SignCertificateRequest(
                 new CertificateRequest(
                     new X500DistinguishedName("CN=Someone"),
-                    RSA.Create(),
+                    rsa,
                     HashAlgorithmName.SHA256,
                     RSASignaturePadding.Pss)
                 {
@@ -40,7 +41,7 @@ namespace OpenCertServer.Ca.Tests
             using var ms = new MemoryStream();
             var key = cert!.Certificate.GetRSAPublicKey();
 
-            Assert.NotNull(key);
+            Assert.Equal(rsa.ExportRSAPublicKey(), key.ExportRSAPublicKey());
         }
 
         [Fact]

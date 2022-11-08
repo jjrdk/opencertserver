@@ -29,6 +29,22 @@ The exact configuration of the authentication and authorization will depend on y
 
 The EST profile requires certificate authentication, and must be configured as an authentication scheme.
 
+
+## Configuration Values for Servers
+
+The certificate server can be customized by setting the environment variables defined below. In addition to the application specific variables below, the standard ASP.NET environments can also be passed.
+
+Note that some environment variables use double underscore ```__```. This is to ensure compatibility with the .NET conversion from environment variable to hierarchical configuration value.
+
+|Environment Variable|Type|Description|
+|---|---|---|
+|RSA_PEM|string|(optional) Sets the path to the CA RSA certificate in PEM format. If the value is missing the application cannot start.|
+|RSA_KEY|string|(optional) Set the path to the CA RSA key file.|
+|ECDSA_PEM|string|(optional) Sets the path to the CA ECDSA certificate in PEM format. If the value is missing the application cannot start.|
+|ECDSA_KEY|string|(optional) Set the path to the CA RSA key file.|
+|WEB_PEM|string|(optional) Sets the path to the PEM certificate to use to secure the web server.|
+|WEB_KEY|string|(optional) Set the path to the web server's PEM key.|
+
 #### Service collection configuration:
 
 ```csharp

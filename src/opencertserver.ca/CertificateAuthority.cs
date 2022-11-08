@@ -14,7 +14,7 @@
     using Org.BouncyCastle.Crypto.Parameters;
     using Org.BouncyCastle.Pkcs;
     using Utils;
-    using cms = Org.BouncyCastle.Asn1.Cms;
+    using Cms = Org.BouncyCastle.Asn1.Cms;
 
     public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
     {
@@ -243,7 +243,7 @@
                 HashAlgorithmName.SHA256,
                 RSASignaturePadding.Pkcs1);
 
-            return SignCert(usageFlags, certificateValidity, parentReq);
+            return SelfSignCert(usageFlags, certificateValidity, parentReq);
         }
 
         private static X509Certificate2 CreateSelfSignedEcDsaCert(
@@ -257,10 +257,10 @@
                 parent,
                 HashAlgorithmName.SHA256);
 
-            return SignCert(usageFlags, certificateValidity, parentReq);
+            return SelfSignCert(usageFlags, certificateValidity, parentReq);
         }
 
-        private static X509Certificate2 SignCert(
+        private static X509Certificate2 SelfSignCert(
             X509KeyUsageFlags usageFlags,
             TimeSpan certificateValidity,
             CertificateRequest parentReq)
@@ -280,7 +280,7 @@
 
         private static IEnumerable<X509Extension> ResolveRecursive(Asn1Sequence sequence)
         {
-            var attr = new cms.Attribute(sequence);
+            var attr = new Cms.Attribute(sequence);
             foreach (var s in attr.AttrValues.OfType<DerSequence>())
             {
                 foreach (var s2 in s.OfType<DerSequence>())

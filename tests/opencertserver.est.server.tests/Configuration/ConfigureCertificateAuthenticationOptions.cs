@@ -14,7 +14,7 @@ namespace OpenCertServer.Est.Tests.Configuration
             _certificate2Collection = certificate2Collection;
         }
 
-        public void PostConfigure(string name, CertificateAuthenticationOptions options)
+        public void PostConfigure(string? name, CertificateAuthenticationOptions options)
         {
             options.CustomTrustStore = _certificate2Collection;
             options.ChainTrustValidationMode = X509ChainTrustMode.CustomRootTrust;
