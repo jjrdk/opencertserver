@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<RootNamespace>OpenCertServer.Acme.Abstractions</RootNamespace>
-		<TargetFramework>net7.0</TargetFramework>
+		<TargetFrameworks>net6.0;net7.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<AssemblyName>opencertserver.acme.abstractions</AssemblyName>
 	</PropertyGroup>
