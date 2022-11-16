@@ -206,7 +206,7 @@
                             info.Subject.ToString(),
                             pk,
                             HashAlgorithmName.SHA256,
-                            RSASignaturePadding.Pkcs1);
+                            RSASignaturePadding.Pss);
                     }
                 case ECPublicKeyParameters ecp:
                     {
@@ -241,7 +241,7 @@
                 distinguishedName,
                 parent,
                 HashAlgorithmName.SHA256,
-                RSASignaturePadding.Pkcs1);
+                RSASignaturePadding.Pss);
 
             return SelfSignCert(usageFlags, certificateValidity, parentReq);
         }

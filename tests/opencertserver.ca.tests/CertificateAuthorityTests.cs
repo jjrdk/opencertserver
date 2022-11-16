@@ -6,6 +6,7 @@ namespace OpenCertServer.Ca.Tests
     using System.Linq;
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
+    using System.Text;
     using Microsoft.Extensions.Logging.Abstractions;
     using Utils;
     using Xunit;
@@ -23,7 +24,11 @@ namespace OpenCertServer.Ca.Tests
                 DateTimeOffset.UtcNow.Date,
                 DateTimeOffset.UtcNow.Date.AddYears(1));
             using var rsa = RSA.Create(4096);
-            var rsaReq = new CertificateRequest("CN=Test Server", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            var rsaReq = new CertificateRequest(
+                "CN=Test Server",
+                rsa,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pss);
             rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
             var rsaCert = rsaReq.CreateSelfSigned(
                 DateTimeOffset.UtcNow.Date,
@@ -35,7 +40,7 @@ namespace OpenCertServer.Ca.Tests
                 _ => true,
                 new NullLogger<CertificateAuthority>());
         }
-        
+
         [Fact]
         public void CanSerializeCertificateRequest()
         {
@@ -88,9 +93,42 @@ namespace OpenCertServer.Ca.Tests
             Assert.NotNull(ecdsa);
         }
 
+        //[Fact]
+        //public void WhenCreatingWithBackupActionThenBacksUpCerts2()
+        //{
+        //    using (var rsa = File.OpenWrite("rsa.pem"))
+        //    {
+        //        using var rsaKey = File.OpenWrite("rsa_key.pem");
+        //        using var ecdsa = File.OpenWrite("ecdsa.pem");
+        //        using var ecdsaKey = File.OpenWrite("ecdsa_key.pem");
+        //        var ca = new CertificateAuthority(
+        //            new X500DistinguishedName("CN=reimers.io,DC=reimers.io,O=OpenCertServer,C=Denmark"),
+        //            TimeSpan.FromDays(2 * 365),
+        //            c => true,
+        //            NullLogger<CertificateAuthority>.Instance,
+        //            (c1, c2) =>
+        //            {
+        //                rsa.Write(Encoding.UTF8.GetBytes(c1.ExportCertificatePem()));
+        //                rsaKey.Write(Encoding.UTF8.GetBytes(c1.GetRSAPrivateKey().ExportRSAPrivateKeyPem()));
+
+        //                ecdsa.Write(Encoding.UTF8.GetBytes(c2.ExportCertificatePem()));
+        //                ecdsaKey.Write(Encoding.UTF8.GetBytes(c2.GetECDsaPrivateKey().ExportECPrivateKeyPem()));
+        //            });
+        //    }
+
+        //    var ecdsaCert = X509Certificate2.CreateFromPemFile("ecdsa.pem", "ecdsa_key.pem");
+        //    Assert.True(ecdsaCert.HasPrivateKey);
+        //    var rsaCert = X509Certificate2.CreateFromPemFile("rsa.pem", "rsa_key.pem");
+        //    Assert.True(rsaCert.HasPrivateKey);
+        //}
+
         private static CertificateRequest CreateCertificateRequest(RSA rsa)
         {
-            var req = new CertificateRequest("CN=Test, OU=Test Department", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            var req = new CertificateRequest(
+                "CN=Test, OU=Test Department",
+                rsa,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pss);
 
             req.CertificateExtensions.Add(
                 new X509BasicConstraintsExtension(

@@ -34,7 +34,7 @@ namespace OpenCertServer.Est.Tests
                 "CN=Test Server",
                 rsa,
                 HashAlgorithmName.SHA256,
-                RSASignaturePadding.Pkcs1);
+                RSASignaturePadding.Pss);
             rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
             var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
 

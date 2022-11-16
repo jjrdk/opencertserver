@@ -6,6 +6,14 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<AssemblyName>opencertserver.acme.server</AssemblyName>
 	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+	  <WarningsNotAsErrors>IL2026</WarningsNotAsErrors>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+	  <WarningsNotAsErrors>IL2026</WarningsNotAsErrors>
+	</PropertyGroup>
 	<Import Project="../../shared.proj" />
 
 	<ItemGroup>

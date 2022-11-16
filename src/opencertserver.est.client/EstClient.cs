@@ -157,7 +157,7 @@
                 distinguishedName,
                 rsa,
                 HashAlgorithmName.SHA256,
-                RSASignaturePadding.Pkcs1)
+                RSASignaturePadding.Pss)
             {
                 CertificateExtensions =
                 {

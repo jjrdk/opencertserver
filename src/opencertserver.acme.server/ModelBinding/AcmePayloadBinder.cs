@@ -1,10 +1,12 @@
 ﻿namespace OpenCertServer.Acme.Server.ModelBinding
 {
+    using System.Diagnostics.CodeAnalysis;
     using Abstractions.HttpModel.Requests;
     using Abstractions.RequestServices;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc.ModelBinding;
-
+    
+    [RequiresUnreferencedCode("Uses unknown types")]
     public sealed class AcmePayloadBinder<TPayload> : IModelBinder
     {
         private readonly IAcmeRequestProvider _requestProvider;
@@ -13,7 +15,7 @@
         {
             _requestProvider = requestProvider;
         }
-
+        
         public Task BindModelAsync(ModelBindingContext bindingContext)
         {
             if (bindingContext is null)

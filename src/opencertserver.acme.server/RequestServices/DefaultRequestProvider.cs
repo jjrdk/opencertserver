@@ -1,6 +1,7 @@
 ﻿namespace OpenCertServer.Acme.Server.RequestServices
 {
     using System;
+    using System.Diagnostics.CodeAnalysis;
     using System.Text.Json;
     using Abstractions.HttpModel.Requests;
     using Abstractions.Model.Exceptions;
@@ -14,8 +15,8 @@
 
         private Type? _payloadType;
         private object? _payload;
-
         
+        [RequiresUnreferencedCode($"Uses {nameof(AcmeRawPostRequest)}")]
         public void Initialize(AcmeRawPostRequest rawPostRequest)
         {
             _request = rawPostRequest ?? throw new ArgumentNullException(nameof(rawPostRequest));
@@ -36,6 +37,7 @@
             return _header;
         }
 
+        [RequiresUnreferencedCode("Uses unknown types")]
         public T? GetPayload<T>()
         {
             if (_request is null)
@@ -54,7 +56,7 @@
             }
 
             _payloadType = typeof(T);
-            
+
             var payload = ReadPayload<T>(_request);
             _payload = payload;
 
@@ -71,9 +73,9 @@
             return _request;
         }
 
-
         private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
+        [RequiresUnreferencedCode($"Uses {nameof(AcmeHeader)}")]
         private static AcmeHeader? ReadHeader(AcmeRawPostRequest rawRequest)
         {
             if (rawRequest is null)
@@ -86,7 +88,8 @@
 
             return header;
         }
-
+        
+        [RequiresUnreferencedCode("Uses unknown type")]
         private static TPayload? ReadPayload<TPayload>(AcmeRawPostRequest rawRequest)
         {
             if (rawRequest is null)

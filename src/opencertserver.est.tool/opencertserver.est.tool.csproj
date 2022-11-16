@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<PackAsTool>true</PackAsTool>
+		<ToolCommandName>est</ToolCommandName>
+		<PackageOutputPath>../../artifacts/tools</PackageOutputPath>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+
+	</PropertyGroup>
+	<Import Project="../../shared.proj"/>
+</Project>

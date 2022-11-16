@@ -7,8 +7,16 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UserSecretsId>cb0364b8-e43a-47c6-aa32-5f49429f0388</UserSecretsId>
 		<OutputType>Exe</OutputType>
-		<SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+		<SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
 		<TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+	  <NoWarn>1701;1702;IL2026</NoWarn>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+	  <NoWarn>1701;1702;IL2026</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>

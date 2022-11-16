@@ -1,5 +1,7 @@
 ﻿namespace OpenCertServer.Acme.Server.Middleware
 {
+    using System.Diagnostics.CodeAnalysis;
+    using Abstractions.HttpModel.Requests;
     using Abstractions.RequestServices;
     using Microsoft.AspNetCore.Http;
 
@@ -12,6 +14,7 @@
             _next = next;
         }
 
+        [RequiresUnreferencedCode($"Uses {nameof(AcmeRawPostRequest)}")]
         public async Task InvokeAsync(HttpContext context, IAcmeRequestProvider requestProvider)
         {
             if (context is null)

@@ -30,11 +30,13 @@ namespace OpenCertServer.Est.Tests
                 DateTimeOffset.UtcNow.Date.AddYears(1));
 
             using var rsa = RSA.Create(4096);
-            var rsaReq = new CertificateRequest("CN=Test Server", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            var rsaReq = new CertificateRequest(
+                "CN=Test Server",
+                rsa,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pss);
             rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
-            var rsaCert = rsaReq.CreateSelfSigned(
-                DateTimeOffset.UtcNow.Date,
-                DateTimeOffset.UtcNow.Date.AddYears(1));
+            var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
             var rsaPublic = new X509Certificate2(ecdsaCert.GetRawCertData());
 
             Server = new TestServer(CreateHostBuilder(rsaCert, ecdsaCert, rsaPublic));
@@ -82,14 +84,13 @@ namespace OpenCertServer.Est.Tests
 
         protected static CertificateRequest CreateCertificateRequest(RSA rsa)
         {
-            var req = new CertificateRequest("CN=Test, OU=Test Department", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            var req = new CertificateRequest(
+                "CN=Test, OU=Test Department",
+                rsa,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pss);
 
-            req.CertificateExtensions.Add(
-                new X509BasicConstraintsExtension(
-                    false,
-                    false,
-                    0,
-                    false));
+            req.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
 
             req.CertificateExtensions.Add(
                 new X509KeyUsageExtension(
@@ -107,12 +108,7 @@ namespace OpenCertServer.Est.Tests
         {
             var req = new CertificateRequest("CN=Test, OU=Test Department", ecdsa, HashAlgorithmName.SHA256);
 
-            req.CertificateExtensions.Add(
-                new X509BasicConstraintsExtension(
-                    false,
-                    false,
-                    0,
-                    false));
+            req.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
 
             req.CertificateExtensions.Add(
                 new X509KeyUsageExtension(

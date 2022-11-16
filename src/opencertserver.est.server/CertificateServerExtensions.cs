@@ -4,6 +4,7 @@ namespace OpenCertServer.Est.Server
     using System.Security.Cryptography.X509Certificates;
     using Ca.Utils;
     using Handlers;
+    using Microsoft.AspNetCore.Authentication.JwtBearer;
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.Extensions.DependencyInjection;
@@ -74,6 +75,7 @@ namespace OpenCertServer.Est.Server
                 .AddRouting()
                 .AddAuthorization()
                 .AddAuthentication()
+                .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme)
                 .AddCertificate()
                 .Services;
         }

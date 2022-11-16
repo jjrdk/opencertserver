@@ -1,5 +1,6 @@
 namespace OpenCertServer.Acme.Server.Extensions
 {
+    using System.Diagnostics.CodeAnalysis;
     using Abstractions.RequestServices;
     using Abstractions.Services;
     using Abstractions.Storage;
@@ -20,6 +21,7 @@ namespace OpenCertServer.Acme.Server.Extensions
 
     public static class ServiceCollectionExtensions
     {
+        [RequiresUnreferencedCode($"Uses {nameof(AcmeServerOptions)}")]
         public static IServiceCollection AddAcmeServer(
             this IServiceCollection services,
             IConfiguration configuration,
@@ -76,7 +78,8 @@ namespace OpenCertServer.Acme.Server.Extensions
 
             return services;
         }
-
+        
+        [RequiresUnreferencedCode($"Uses {nameof(FileStoreOptions)}")]
         public static IServiceCollection AddAcmeFileStore(
             this IServiceCollection services,
             IConfiguration configuration,
