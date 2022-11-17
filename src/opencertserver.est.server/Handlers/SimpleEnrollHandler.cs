@@ -9,14 +9,6 @@
     using Microsoft.AspNetCore.Http;
     using OpenCertServer.Ca;
 
-    internal static class Constants
-    {
-        public const string EndPkcs7 = "-----END PKCS7-----";
-        public const string BeginPkcs7 = "-----BEGIN PKCS7-----";
-        public const string Pkcs7MimeType = "application/pkcs7-mime";
-        public const string TextPlainMimeType = "text/plain";
-    }
-
     internal sealed class SimpleEnrollHandler
     {
         private readonly ICertificateAuthority _certificateAuthority;

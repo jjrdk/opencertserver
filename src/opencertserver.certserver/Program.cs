@@ -34,12 +34,26 @@ public sealed class Program
         }
         else
         {
-            var rsaCert = await CreateRsaCert(args);
-            var ecdsaCert = await CreateEcdsaCert(args);
+            var rsaCert = await CreateCert(args, "--rsa", "--rsa-key");
+            var ecdsaCert = await CreateCert(args, "--ec", "--ec-key");
 
             services = services.AddEstServer(rsaCert, ecdsaCert);
         }
 
+        var forwardedHeadersOptions = CreateForwardedHeaderOptions();
+
+        _ = services.AddAcmeServer(builder.Configuration)
+            .AddAcmeInMemoryStore()
+            .AddSingleton<ICsrValidator, DefaultCsrValidator>()
+            .AddSingleton<ICertificateIssuer, DefaultIssuer>()
+            .ConfigureOptions<ConfigureJwtBearerOptions>();
+        var app = builder.Build();
+        app.UseForwardedHeaders(forwardedHeadersOptions).UseAcmeServer().UseEstServer();
+        await app.RunAsync();
+    }
+
+    private static ForwardedHeadersOptions CreateForwardedHeaderOptions()
+    {
         var forwardedHeadersOptions = new ForwardedHeadersOptions
         {
             ForwardedHeaders = ForwardedHeaders.All,
@@ -49,43 +63,21 @@ public sealed class Program
         forwardedHeadersOptions.KnownNetworks.Clear();
         forwardedHeadersOptions.KnownProxies.Clear();
 
-        _ = services.AddAcmeServer(builder.Configuration)
-            .AddAcmeFileStore(builder.Configuration)
-            .AddSingleton<ICsrValidator, DefaultCsrValidator>()
-            .AddSingleton<ICertificateIssuer, DefaultIssuer>()
-            .ConfigureOptions<ConfigureJwtBearerOptions>();
-        var app = builder.Build();
-        app.UseForwardedHeaders(forwardedHeadersOptions).UseAcmeServer().UseEstServer();
-        await app.RunAsync();
+        return forwardedHeadersOptions;
     }
 
-    private static async Task<X509Certificate2> CreateEcdsaCert(string[] args)
+    private static async Task<X509Certificate2> CreateCert(string[] args, string cert, string certKey)
     {
-        var ecdsa = args[Array.IndexOf(args, "--ec") + 1];
-        var ecdsaKeyIndex = Array.IndexOf(args, "--ec-key");
-        var ecdsaKey = ecdsaKeyIndex >= 0 ? args[ecdsaKeyIndex + 1] : null;
-        using var ecdsaFile = File.OpenText(ecdsa);
-        using var ecdsaKeyFile = ecdsaKey == null ? TextReader.Null : File.OpenText(ecdsaKey);
-        var ecdsaPem = await ecdsaFile.ReadToEndAsync();
-        var ecdsaKeyPem = await ecdsaKeyFile.ReadToEndAsync();
-        var ecdsaCert = ecdsaKey == null
-            ? X509Certificate2.CreateFromPem(ecdsaPem)
-            : X509Certificate2.CreateFromPem(ecdsaPem, ecdsaKeyPem);
-        return ecdsaCert;
-    }
-
-    private static async Task<X509Certificate2> CreateRsaCert(string[] args)
-    {
-        var rsa = args[Array.IndexOf(args, "--rsa") + 1];
-        var rsaKeyIndex = Array.IndexOf(args, "--rsa-key");
-        var rsaKey = rsaKeyIndex >= 0 ? args[rsaKeyIndex + 1] : null;
-        using var rsaFile = File.OpenText(rsa);
-        using var rsaKeyFile = rsaKey == null ? TextReader.Null : File.OpenText(rsaKey);
-        var rsaPem = await rsaFile.ReadToEndAsync();
-        var rsaKeyPem = await rsaKeyFile.ReadToEndAsync();
-        var rsaCert = rsaKey == null
-            ? X509Certificate2.CreateFromPem(rsaPem)
-            : X509Certificate2.CreateFromPem(rsaPem, rsaKeyPem);
-        return rsaCert;
+        var certIndex = args[Array.IndexOf(args, cert) + 1];
+        var keyIndex = Array.IndexOf(args, certKey);
+        var key = keyIndex >= 0 ? args[keyIndex + 1] : null;
+        using var file = File.OpenText(certIndex);
+        using var keyFile = key == null ? TextReader.Null : File.OpenText(key);
+        var pem = await file.ReadToEndAsync();
+        var keyPem = await keyFile.ReadToEndAsync();
+        var x509 = key == null
+            ? X509Certificate2.CreateFromPem(pem)
+            : X509Certificate2.CreateFromPem(pem, keyPem);
+        return x509;
     }
 }
