@@ -2,6 +2,7 @@
 {
     using System.Net;
     using System.Security.Cryptography.X509Certificates;
+    using System.Text;
     using System.Threading.Tasks;
     using Microsoft.AspNetCore.Http;
 
@@ -16,12 +17,12 @@
 
         public async Task Handle(HttpContext ctx)
         {
-            var export = _certificateStore.Export(X509ContentType.Pkcs7);
+            var export = _certificateStore.ExportCertificatePems();//.Export(X509ContentType.Pkcs7);
 
             ctx.Response.StatusCode = (int)HttpStatusCode.OK;
-            ctx.Response.ContentType = Constants.Pkcs7MimeType;
+            ctx.Response.ContentType = Constants.PemMimeType;
             var bodyWriter = ctx.Response.BodyWriter;
-            await bodyWriter.WriteAsync(export).ConfigureAwait(false);
+            await bodyWriter.WriteAsync(Encoding.UTF8.GetBytes(export)).ConfigureAwait(false);
             await bodyWriter.FlushAsync().ConfigureAwait(false);
             await bodyWriter.CompleteAsync().ConfigureAwait(false);
         }
