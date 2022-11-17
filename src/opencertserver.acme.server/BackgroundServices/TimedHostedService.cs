@@ -1,80 +1,79 @@
-﻿namespace OpenCertServer.Acme.Server.BackgroundServices
+﻿namespace OpenCertServer.Acme.Server.BackgroundServices;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+public abstract class TimedHostedService : IHostedService, IDisposable
 {
-    using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.Hosting;
-    using Microsoft.Extensions.Logging;
+    private readonly IServiceProvider _services;
+    private readonly ILogger<TimedHostedService> _logger;
 
-    public abstract class TimedHostedService : IHostedService, IDisposable
+    protected abstract bool EnableService { get; }
+    protected abstract TimeSpan TimerInterval { get; }
+
+    private Timer? _timer;
+    private readonly SemaphoreSlim _interlock;
+    private readonly CancellationTokenSource _cancellationTokenSource;
+
+    public TimedHostedService(IServiceProvider services, ILogger<TimedHostedService> logger)
     {
-        private readonly IServiceProvider _services;
-        private readonly ILogger<TimedHostedService> _logger;
+        _services = services ?? throw new ArgumentNullException(nameof(services));
+        _logger = logger;
 
-        protected abstract bool EnableService { get; }
-        protected abstract TimeSpan TimerInterval { get; }
+        _interlock = new SemaphoreSlim(1);
+        _cancellationTokenSource = new CancellationTokenSource();
+    }
 
-        private Timer? _timer;
-        private readonly SemaphoreSlim _interlock;
-        private readonly CancellationTokenSource _cancellationTokenSource;
-
-        public TimedHostedService(IServiceProvider services, ILogger<TimedHostedService> logger)
+    public Task StartAsync(CancellationToken stoppingToken)
+    {
+        if (EnableService)
         {
-            _services = services ?? throw new ArgumentNullException(nameof(services));
-            _logger = logger;
-
-            _interlock = new SemaphoreSlim(1);
-            _cancellationTokenSource = new CancellationTokenSource();
+            _logger.LogInformation("Timed Hosted Service running.");
+            _timer = new Timer(DoWorkCallback, null, TimeSpan.FromSeconds(15), TimerInterval);
         }
 
-        public Task StartAsync(CancellationToken stoppingToken)
-        {
-            if (EnableService)
-            {
-                _logger.LogInformation("Timed Hosted Service running.");
-                _timer = new Timer(DoWorkCallback, null, TimeSpan.FromSeconds(15), TimerInterval);
-            }
+        return Task.CompletedTask;
+    }
 
-            return Task.CompletedTask;
+    protected async void DoWorkCallback(object? state)
+    {
+        if(! await _interlock.WaitAsync(TimerInterval / 2, _cancellationTokenSource.Token))
+        {
+            _logger.LogInformation("Waited half an execution time, but did not get execution lock.");
+            return;
         }
 
-        protected async void DoWorkCallback(object? state)
+        try
         {
-            if(! await _interlock.WaitAsync(TimerInterval / 2, _cancellationTokenSource.Token))
-            {
-                _logger.LogInformation("Waited half an execution time, but did not get execution lock.");
-                return;
-            }
-
-            try
-            {
-                using var scopedServices = _services.CreateScope();
-                await DoWork(scopedServices.ServiceProvider, _cancellationTokenSource.Token);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "TimedHostedService failed with exception.");
-            }
-            finally {
-                _interlock.Release();
-            }
+            using var scopedServices = _services.CreateScope();
+            await DoWork(scopedServices.ServiceProvider, _cancellationTokenSource.Token);
         }
-
-        protected abstract Task DoWork(IServiceProvider services, CancellationToken cancellationToken);
-
-        public Task StopAsync(CancellationToken stoppingToken)
+        catch (Exception ex)
         {
-            _logger.LogInformation("Timed Hosted Service is stopping.");
-
-            _timer?.Change(Timeout.Infinite, Timeout.Infinite);
-            _cancellationTokenSource.Cancel();
-
-            return Task.CompletedTask;
+            _logger.LogError(ex, "TimedHostedService failed with exception.");
         }
-
-        public void Dispose()
-        {
-            _timer?.Dispose();
-            _interlock.Dispose();
-            _cancellationTokenSource.Dispose();
+        finally {
+            _interlock.Release();
         }
+    }
+
+    protected abstract Task DoWork(IServiceProvider services, CancellationToken cancellationToken);
+
+    public Task StopAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Timed Hosted Service is stopping.");
+
+        _timer?.Change(Timeout.Infinite, Timeout.Infinite);
+        _cancellationTokenSource.Cancel();
+
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        _interlock.Dispose();
+        _cancellationTokenSource.Dispose();
     }
 }

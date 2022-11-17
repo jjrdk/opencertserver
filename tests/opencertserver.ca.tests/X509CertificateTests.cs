@@ -1,103 +1,102 @@
-namespace OpenCertServer.Ca.Tests
+namespace OpenCertServer.Ca.Tests;
+
+using System;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging.Abstractions;
+using Utils;
+using Xunit;
+
+public sealed class X509CertificateTests : IDisposable
 {
-    using System;
-    using System.IO;
-    using System.Linq;
-    using System.Security.Cryptography;
-    using System.Security.Cryptography.X509Certificates;
-    using System.Text;
-    using System.Threading.Tasks;
-    using Microsoft.Extensions.Logging.Abstractions;
-    using Utils;
-    using Xunit;
+    private readonly CertificateAuthority _ca;
+    private readonly RSA _rsa = RSA.Create();
 
-    public sealed class X509CertificateTests : IDisposable
+    public X509CertificateTests()
     {
-        private readonly CertificateAuthority _ca;
-        private readonly RSA _rsa = RSA.Create();
+        _ca = new CertificateAuthority(
+            new X500DistinguishedName("CN=Test"),
+            TimeSpan.FromHours(1),
+            _ => true,
+            new NullLogger<CertificateAuthority>());
+    }
 
-        public X509CertificateTests()
-        {
-            _ca = new CertificateAuthority(
-                new X500DistinguishedName("CN=Test"),
-                TimeSpan.FromHours(1),
-                _ => true,
-                new NullLogger<CertificateAuthority>());
-        }
+    [Fact]
+    public void CanWritePublicKey()
+    {
+        using var rsa = RSA.Create();
+        var cert = _ca.SignCertificateRequest(
+            new CertificateRequest(
+                new X500DistinguishedName("CN=Someone"),
+                rsa,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pss)
+            {
+                CertificateExtensions = { new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false) }
+            }) as SignCertificateResponse.Success;
+        using var ms = new MemoryStream();
+        var key = cert!.Certificate.GetRSAPublicKey();
 
-        [Fact]
-        public void CanWritePublicKey()
-        {
-            using var rsa = RSA.Create();
-            var cert = _ca.SignCertificateRequest(
-                new CertificateRequest(
-                    new X500DistinguishedName("CN=Someone"),
-                    rsa,
-                    HashAlgorithmName.SHA256,
-                    RSASignaturePadding.Pss)
+        Assert.Equal(rsa.ExportRSAPublicKey(), key.ExportRSAPublicKey());
+    }
+
+    [Fact]
+    public async Task CanWritePfx()
+    {
+        var cert = _ca.SignCertificateRequest(
+            new CertificateRequest(
+                new X500DistinguishedName("CN=Someone"),
+                _rsa,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pss)
+            {
+                CertificateExtensions =
                 {
-                    CertificateExtensions = { new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false) }
-                }) as SignCertificateResponse.Success;
-            using var ms = new MemoryStream();
-            var key = cert!.Certificate.GetRSAPublicKey();
+                    new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false),
+                }
+            }) as SignCertificateResponse.Success;
+        await using var ms = new MemoryStream();
+        await cert.Certificate.WritePfx(ms).ConfigureAwait(false);
 
-            Assert.Equal(rsa.ExportRSAPublicKey(), key.ExportRSAPublicKey());
-        }
+        var newCert = new X509Certificate2(ms.ToArray());
 
-        [Fact]
-        public async Task CanWritePfx()
-        {
-            var cert = _ca.SignCertificateRequest(
-                new CertificateRequest(
-                    new X500DistinguishedName("CN=Someone"),
-                    _rsa,
-                    HashAlgorithmName.SHA256,
-                    RSASignaturePadding.Pss)
+        Assert.NotNull(newCert.PublicKey);
+    }
+
+    [Fact]
+    public async Task WhenCertificateRequestIncludesSanThenIncludesInCertificate()
+    {
+        var builder = new SubjectAlternativeNameBuilder();
+        builder.AddDnsName("http://localhost");
+        var cert = _ca.SignCertificateRequest(
+            new CertificateRequest(
+                new X500DistinguishedName("CN=Someone"),
+                _rsa,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pss)
+            {
+                CertificateExtensions =
                 {
-                    CertificateExtensions =
-                    {
-                        new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false),
-                    }
-                }) as SignCertificateResponse.Success;
-            await using var ms = new MemoryStream();
-            await cert.Certificate.WritePfx(ms).ConfigureAwait(false);
+                    new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false), builder.Build(true)
+                }
+            }) as SignCertificateResponse.Success;
 
-            var newCert = new X509Certificate2(ms.ToArray());
+        await using var ms = new MemoryStream();
+        var san = cert.Certificate.Extensions.OfType<X509Extension>()
+            .FirstOrDefault(e => e.Oid.Value == "2.5.29.17");
 
-            Assert.NotNull(newCert.PublicKey);
-        }
+        Assert.NotNull(san);
+    }
 
-        [Fact]
-        public async Task WhenCertificateRequestIncludesSanThenIncludesInCertificate()
-        {
-            var builder = new SubjectAlternativeNameBuilder();
-            builder.AddDnsName("http://localhost");
-            var cert = _ca.SignCertificateRequest(
-                new CertificateRequest(
-                    new X500DistinguishedName("CN=Someone"),
-                    _rsa,
-                    HashAlgorithmName.SHA256,
-                    RSASignaturePadding.Pss)
-                {
-                    CertificateExtensions =
-                    {
-                        new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false), builder.Build(true)
-                    }
-                }) as SignCertificateResponse.Success;
-
-            await using var ms = new MemoryStream();
-            var san = cert.Certificate.Extensions.OfType<X509Extension>()
-                .FirstOrDefault(e => e.Oid.Value == "2.5.29.17");
-
-            Assert.NotNull(san);
-        }
-
-        /// <inheritdoc />
-        public void Dispose()
-        {
-            GC.SuppressFinalize(this);
-            _ca?.Dispose();
-            _rsa?.Dispose();
-        }
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+        _ca?.Dispose();
+        _rsa?.Dispose();
     }
 }

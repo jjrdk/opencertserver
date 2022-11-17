@@ -1,76 +1,75 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model
+﻿namespace OpenCertServer.Acme.Abstractions.Model;
+
+using System;
+using System.Linq;
+using System.Runtime.Serialization;
+using Exceptions;
+using Extensions;
+
+[Serializable]
+public sealed class Identifier : ISerializable
 {
-    using System;
-    using System.Linq;
-    using System.Runtime.Serialization;
-    using Exceptions;
-    using Extensions;
+    private static readonly string[] SupportedTypes = { "dns" };
 
-    [Serializable]
-    public sealed class Identifier : ISerializable
+    private string _type = null!;
+    private string _value = null!;
+
+    public Identifier(string type, string value)
     {
-        private static readonly string[] SupportedTypes = { "dns" };
+        Type = type;
+        Value = value;
+    }
 
-        private string _type = null!;
-        private string _value = null!;
-
-        public Identifier(string type, string value)
+    public string Type
+    {
+        get { return _type; }
+        set
         {
-            Type = type;
-            Value = value;
-        }
-
-        public string Type
-        {
-            get { return _type; }
-            set
+            var normalizedType = value.Trim().ToLowerInvariant();
+            if (!SupportedTypes.Contains(normalizedType))
             {
-                var normalizedType = value.Trim().ToLowerInvariant();
-                if (!SupportedTypes.Contains(normalizedType))
-                {
-                    throw new MalformedRequestException($"Unsupported identifier type: {normalizedType}");
-                }
-
-                _type = normalizedType;
-            }
-        }
-
-        public string Value
-        {
-            get { return _value; }
-            set { _value = value.Trim().ToLowerInvariant(); }
-        }
-
-        public bool IsWildcard
-        {
-            get { return Value.StartsWith("*", StringComparison.InvariantCulture); }
-        }
-
-
-        // --- Serialization Methods --- //
-
-        private Identifier(SerializationInfo info, StreamingContext streamingContext)
-        {
-            if (info is null)
-            {
-                throw new ArgumentNullException(nameof(info));
+                throw new MalformedRequestException($"Unsupported identifier type: {normalizedType}");
             }
 
-            Type = info.GetRequiredString(nameof(Type));
-            Value = info.GetRequiredString(nameof(Value));
+            _type = normalizedType;
         }
+    }
 
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
+    public string Value
+    {
+        get { return _value; }
+        set { _value = value.Trim().ToLowerInvariant(); }
+    }
+
+    public bool IsWildcard
+    {
+        get { return Value.StartsWith("*", StringComparison.InvariantCulture); }
+    }
+
+
+    // --- Serialization Methods --- //
+
+    private Identifier(SerializationInfo info, StreamingContext streamingContext)
+    {
+        if (info is null)
         {
-            if (info is null)
-            {
-                throw new ArgumentNullException(nameof(info));
-            }
-
-            info.AddValue("SerializationVersion", 1);
-
-            info.AddValue(nameof(Type), Type);
-            info.AddValue(nameof(Value), Value);
+            throw new ArgumentNullException(nameof(info));
         }
+
+        Type = info.GetRequiredString(nameof(Type));
+        Value = info.GetRequiredString(nameof(Value));
+    }
+
+    public void GetObjectData(SerializationInfo info, StreamingContext context)
+    {
+        if (info is null)
+        {
+            throw new ArgumentNullException(nameof(info));
+        }
+
+        info.AddValue("SerializationVersion", 1);
+
+        info.AddValue(nameof(Type), Type);
+        info.AddValue(nameof(Value), Value);
     }
 }

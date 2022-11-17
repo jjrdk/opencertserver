@@ -1,11 +1,10 @@
-﻿namespace OpenCertServer.Acme.AspNetClient.Exceptions
-{
-    using System;
+﻿namespace OpenCertServer.Acme.AspNetClient.Exceptions;
 
-    internal sealed class OrderInvalidException : Exception
-	{
-		public OrderInvalidException(string message, Exception innerException) : base(message, innerException)
-		{
-		}
-	}
+using System;
+
+internal sealed class OrderInvalidException : Exception
+{
+    public OrderInvalidException(string message, Exception innerException) : base(message, innerException)
+    {
+    }
 }

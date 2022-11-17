@@ -1,23 +1,22 @@
-namespace OpenCertServer.Acme.AspNetClient.Certes
+namespace OpenCertServer.Acme.AspNetClient.Certes;
+
+using System;
+using global::Certes.Acme;
+using Persistence;
+
+public sealed class PlacedOrder
 {
-    using System;
-    using global::Certes.Acme;
-    using Persistence;
+    public ChallengeDto[] Challenges { get; }
+    public IOrderContext Order { get; }
+    public IChallengeContext[] ChallengeContexts { get; }
 
-    public sealed class PlacedOrder
+    public PlacedOrder(
+        ChallengeDto[]? challenges,
+        IOrderContext order,
+        IChallengeContext[] challengeContexts)
     {
-        public ChallengeDto[] Challenges { get; }
-        public IOrderContext Order { get; }
-        public IChallengeContext[] ChallengeContexts { get; }
-
-        public PlacedOrder(
-            ChallengeDto[]? challenges,
-            IOrderContext order,
-            IChallengeContext[] challengeContexts)
-        {
-            Challenges = challenges ?? Array.Empty<ChallengeDto>();
-            Order = order;
-            ChallengeContexts = challengeContexts;
-        }
+        Challenges = challenges ?? Array.Empty<ChallengeDto>();
+        Order = order;
+        ChallengeContexts = challengeContexts;
     }
 }

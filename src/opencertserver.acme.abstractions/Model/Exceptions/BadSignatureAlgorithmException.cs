@@ -1,14 +1,13 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model.Exceptions
+﻿namespace OpenCertServer.Acme.Abstractions.Model.Exceptions;
+
+public sealed class BadSignatureAlgorithmException : AcmeException
 {
-    public sealed class BadSignatureAlgorithmException : AcmeException
+    private const string Detail = "The ALG is not supported.";
+
+    public BadSignatureAlgorithmException() : base(Detail) { }
+
+    public override string ErrorType
     {
-        private const string Detail = "The ALG is not supported.";
-
-        public BadSignatureAlgorithmException() : base(Detail) { }
-
-        public override string ErrorType
-        {
-            get { return "badSignatureAlgorithm"; }
-        }
+        get { return "badSignatureAlgorithm"; }
     }
 }

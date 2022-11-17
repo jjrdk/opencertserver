@@ -1,22 +1,21 @@
-namespace OpenCertServer.Build
+namespace OpenCertServer.Build;
+
+using System.Linq;
+using Cake.Core;
+using Cake.Frosting;
+
+public sealed class BuildContext : FrostingContext
 {
-    using System.Linq;
-    using Cake.Core;
-    using Cake.Frosting;
+    public string BuildConfiguration { get; set; }
+    public string BuildVersion { get; set; } = "0.0.1";
+    public string InformationalVersion { get; set; } = "0.0.1";
 
-    public sealed class BuildContext : FrostingContext
+    public string SolutionName = "opencertserver.sln";
+
+    public BuildContext(ICakeContext context)
+        : base(context)
     {
-        public string BuildConfiguration { get; set; }
-        public string BuildVersion { get; set; } = "0.0.1";
-        public string InformationalVersion { get; set; } = "0.0.1";
-
-        public string SolutionName = "opencertserver.sln";
-
-        public BuildContext(ICakeContext context)
-            : base(context)
-        {
-            Environment.WorkingDirectory = Environment.WorkingDirectory.Combine("..").Combine("..").Collapse();
-            BuildConfiguration = context.Arguments.GetArguments("configuration").FirstOrDefault() ?? "Debug";
-        }
+        Environment.WorkingDirectory = Environment.WorkingDirectory.Combine("..").Combine("..").Collapse();
+        BuildConfiguration = context.Arguments.GetArguments("configuration").FirstOrDefault() ?? "Debug";
     }
 }

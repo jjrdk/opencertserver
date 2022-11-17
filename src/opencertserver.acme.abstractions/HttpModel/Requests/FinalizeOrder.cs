@@ -1,7 +1,6 @@
-﻿namespace OpenCertServer.Acme.Abstractions.HttpModel.Requests
+﻿namespace OpenCertServer.Acme.Abstractions.HttpModel.Requests;
+
+public sealed class FinalizeOrderRequest
 {
-    public sealed class FinalizeOrderRequest
-    {
-        public string? Csr { get; set; }
-    }
+    public string? Csr { get; set; }
 }

@@ -1,17 +1,16 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model
+﻿namespace OpenCertServer.Acme.Abstractions.Model;
+
+using System;
+using Microsoft.IdentityModel.Tokens;
+
+public sealed class GuidString
 {
-    using System;
-    using Microsoft.IdentityModel.Tokens;
-
-    public sealed class GuidString
+    private GuidString()
     {
-        private GuidString()
-        {
-            Value = Base64UrlEncoder.Encode(Guid.NewGuid().ToByteArray());
-        }
-
-        private string Value { get; }
-
-        public static string NewValue() => new GuidString().Value;
+        Value = Base64UrlEncoder.Encode(Guid.NewGuid().ToByteArray());
     }
+
+    private string Value { get; }
+
+    public static string NewValue() => new GuidString().Value;
 }

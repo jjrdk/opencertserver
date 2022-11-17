@@ -1,89 +1,88 @@
-namespace OpenCertServer.Acme.Abstractions.Model
+namespace OpenCertServer.Acme.Abstractions.Model;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization;
+using Exceptions;
+using Extensions;
+
+[Serializable]
+public sealed class AcmeError : ISerializable
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Runtime.Serialization;
-    using Exceptions;
-    using Extensions;
+    private string? _type;
+    private string? _detail;
 
-    [Serializable]
-    public sealed class AcmeError : ISerializable
+    private AcmeError() { }
+
+    public AcmeError(string type, string detail, Identifier? identifier = null, IEnumerable<AcmeError>? subErrors = null)
     {
-        private string? _type;
-        private string? _detail;
+        Type = type;
 
-        private AcmeError() { }
-
-        public AcmeError(string type, string detail, Identifier? identifier = null, IEnumerable<AcmeError>? subErrors = null)
+        if (!type.Contains(":"))
         {
-            Type = type;
-
-            if (!type.Contains(":"))
-            {
-                Type = "urn:ietf:params:acme:error:" + type;
-            }
-
-            Detail = detail;
-            Identifier = identifier;
-            SubErrors = subErrors?.ToList();
+            Type = "urn:ietf:params:acme:error:" + type;
         }
 
-        public string Type
+        Detail = detail;
+        Identifier = identifier;
+        SubErrors = subErrors?.ToList();
+    }
+
+    public string Type
+    {
+        get { return _type ?? throw new NotInitializedException(); }
+        private set { _type = value; }
+    }
+
+    public string Detail
+    {
+        get { return _detail ?? throw new NotInitializedException(); }
+        set { _detail = value; }
+    }
+
+    public Identifier? Identifier { get; }
+
+    public List<AcmeError>? SubErrors { get; }
+
+
+
+    // --- Serialization Methods --- //
+
+    private AcmeError(SerializationInfo info, StreamingContext streamingContext)
+    {
+        if (info is null)
         {
-            get { return _type ?? throw new NotInitializedException(); }
-            private set { _type = value; }
+            throw new ArgumentNullException(nameof(info));
         }
 
-        public string Detail
+        Type = info.GetRequiredString(nameof(Type));
+        Detail = info.GetRequiredString(nameof(Detail));
+
+        Identifier = info.TryGetValue<Identifier>(nameof(Identifier));
+        SubErrors = info.TryGetValue<List<AcmeError>>(nameof(SubErrors));
+    }
+
+    public void GetObjectData(SerializationInfo info, StreamingContext context)
+    {
+        if (info is null)
         {
-            get { return _detail ?? throw new NotInitializedException(); }
-            set { _detail = value; }
+            throw new ArgumentNullException(nameof(info));
         }
 
-        public Identifier? Identifier { get; }
+        info.AddValue("SerializationVersion", 1);
 
-        public List<AcmeError>? SubErrors { get; }
+        info.AddValue(nameof(Type), Type);
+        info.AddValue(nameof(Detail), Detail);
 
-
-
-        // --- Serialization Methods --- //
-
-        private AcmeError(SerializationInfo info, StreamingContext streamingContext)
+        if (Identifier != null)
         {
-            if (info is null)
-            {
-                throw new ArgumentNullException(nameof(info));
-            }
-
-            Type = info.GetRequiredString(nameof(Type));
-            Detail = info.GetRequiredString(nameof(Detail));
-
-            Identifier = info.TryGetValue<Identifier>(nameof(Identifier));
-            SubErrors = info.TryGetValue<List<AcmeError>>(nameof(SubErrors));
+            info.AddValue(nameof(Identifier), Identifier);
         }
 
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        if (SubErrors != null)
         {
-            if (info is null)
-            {
-                throw new ArgumentNullException(nameof(info));
-            }
-
-            info.AddValue("SerializationVersion", 1);
-
-            info.AddValue(nameof(Type), Type);
-            info.AddValue(nameof(Detail), Detail);
-
-            if (Identifier != null)
-            {
-                info.AddValue(nameof(Identifier), Identifier);
-            }
-
-            if (SubErrors != null)
-            {
-                info.AddValue(nameof(SubErrors), SubErrors);
-            }
+            info.AddValue(nameof(SubErrors), SubErrors);
         }
     }
 }

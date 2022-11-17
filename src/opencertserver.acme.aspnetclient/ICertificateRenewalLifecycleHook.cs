@@ -1,13 +1,12 @@
-﻿namespace OpenCertServer.Acme.AspNetClient
-{
-    using System;
-    using System.Threading.Tasks;
+﻿namespace OpenCertServer.Acme.AspNetClient;
 
-    public interface ICertificateRenewalLifecycleHook
-	{
-		Task OnStart();
-		Task OnStop();
-		Task OnRenewalSucceeded();
-		Task OnException(Exception error);
-	}
+using System;
+using System.Threading.Tasks;
+
+public interface ICertificateRenewalLifecycleHook
+{
+    Task OnStart();
+    Task OnStop();
+    Task OnRenewalSucceeded();
+    Task OnException(Exception error);
 }

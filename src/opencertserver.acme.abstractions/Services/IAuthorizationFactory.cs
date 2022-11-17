@@ -1,9 +1,8 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Services
-{
-    using Model;
+﻿namespace OpenCertServer.Acme.Abstractions.Services;
 
-    public interface IAuthorizationFactory
-    {
-        void CreateAuthorizations(Order order);
-    }
+using Model;
+
+public interface IAuthorizationFactory
+{
+    void CreateAuthorizations(Order order);
 }

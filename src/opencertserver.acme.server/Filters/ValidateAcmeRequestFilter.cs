@@ -1,33 +1,32 @@
-namespace OpenCertServer.Acme.Server.Filters
+namespace OpenCertServer.Acme.Server.Filters;
+
+using Abstractions.RequestServices;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Mvc.Filters;
+
+public sealed class ValidateAcmeRequestFilter : IAsyncActionFilter
 {
-    using Abstractions.RequestServices;
-    using Microsoft.AspNetCore.Http;
-    using Microsoft.AspNetCore.Http.Extensions;
-    using Microsoft.AspNetCore.Mvc.Filters;
+    private readonly IAcmeRequestProvider _requestProvider;
+    private readonly IRequestValidationService _validationService;
 
-    public sealed class ValidateAcmeRequestFilter : IAsyncActionFilter
+    public ValidateAcmeRequestFilter(IAcmeRequestProvider requestProvider, IRequestValidationService validationService)
     {
-        private readonly IAcmeRequestProvider _requestProvider;
-        private readonly IRequestValidationService _validationService;
+        _requestProvider = requestProvider;
+        _validationService = validationService;
+    }
 
-        public ValidateAcmeRequestFilter(IAcmeRequestProvider requestProvider, IRequestValidationService validationService)
+
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+        if (HttpMethods.IsPost(context.HttpContext.Request.Method))
         {
-            _requestProvider = requestProvider;
-            _validationService = validationService;
+            var acmeRequest = _requestProvider.GetRequest();
+            var acmeHeader = _requestProvider.GetHeader();
+            await _validationService.ValidateRequestAsync(acmeRequest, acmeHeader,
+                context.HttpContext.Request.GetDisplayUrl(), context.HttpContext.RequestAborted);
         }
 
-
-        public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
-        {
-            if (HttpMethods.IsPost(context.HttpContext.Request.Method))
-            {
-                var acmeRequest = _requestProvider.GetRequest();
-                var acmeHeader = _requestProvider.GetHeader();
-                await _validationService.ValidateRequestAsync(acmeRequest, acmeHeader,
-                    context.HttpContext.Request.GetDisplayUrl(), context.HttpContext.RequestAborted);
-            }
-
-            await next();
-        }
+        await next();
     }
 }

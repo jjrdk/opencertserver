@@ -1,9 +1,8 @@
-namespace OpenCertServer.Acme.AspNetClient.Certificates
+namespace OpenCertServer.Acme.AspNetClient.Certificates;
+
+public enum CertificateRenewalStatus
 {
-    public enum CertificateRenewalStatus
-    {
-        Unchanged,
-        LoadedFromStore,
-        Renewed
-    }
+    Unchanged,
+    LoadedFromStore,
+    Renewed
 }

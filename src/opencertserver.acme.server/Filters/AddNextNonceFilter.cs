@@ -1,52 +1,51 @@
-﻿namespace OpenCertServer.Acme.Server.Filters
+﻿namespace OpenCertServer.Acme.Server.Filters;
+
+using Abstractions.Services;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Logging;
+
+public sealed class AddNextNonceAttribute : ServiceFilterAttribute
 {
-    using Abstractions.Services;
-    using Microsoft.AspNetCore.Http;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.AspNetCore.Mvc.Filters;
-    using Microsoft.Extensions.Logging;
+    public AddNextNonceAttribute()
+        : base(typeof(AddNextNonceFilter))
+    { }
+}
 
-    public sealed class AddNextNonceAttribute : ServiceFilterAttribute
+public sealed class AddNextNonceFilter : IAsyncActionFilter, IAsyncExceptionFilter
+{
+    private readonly INonceService _nonceService;
+    private readonly ILogger<AddNextNonceFilter> _logger;
+
+    public AddNextNonceFilter(INonceService nonceService, ILogger<AddNextNonceFilter> logger)
     {
-        public AddNextNonceAttribute()
-            : base(typeof(AddNextNonceFilter))
-        { }
+        _nonceService = nonceService;
+        _logger = logger;
     }
 
-    public sealed class AddNextNonceFilter : IAsyncActionFilter, IAsyncExceptionFilter
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        private readonly INonceService _nonceService;
-        private readonly ILogger<AddNextNonceFilter> _logger;
-
-        public AddNextNonceFilter(INonceService nonceService, ILogger<AddNextNonceFilter> logger)
-        {
-            _nonceService = nonceService;
-            _logger = logger;
-        }
-
-        public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
-        {
-            await next.Invoke();
-            await AddNonceHeader(context.HttpContext);
-        }
-
-        public async Task OnExceptionAsync(ExceptionContext context)
-        {
-            await AddNonceHeader(context.HttpContext);
-        }
-
-        private async Task AddNonceHeader(HttpContext httpContext)
-        {
-            if (httpContext.Response.Headers.ContainsKey("Replay-Nonce"))
-            {
-                return;
-            }
-
-            var newNonce = await _nonceService.CreateNonceAsync(httpContext.RequestAborted);
-            httpContext.Response.Headers.Add("Replay-Nonce", newNonce.Token);
-
-            _logger.LogInformation("Added Replay-Nonce: {nonceToken}", newNonce.Token);
-        }
-
+        await next.Invoke();
+        await AddNonceHeader(context.HttpContext);
     }
+
+    public async Task OnExceptionAsync(ExceptionContext context)
+    {
+        await AddNonceHeader(context.HttpContext);
+    }
+
+    private async Task AddNonceHeader(HttpContext httpContext)
+    {
+        if (httpContext.Response.Headers.ContainsKey("Replay-Nonce"))
+        {
+            return;
+        }
+
+        var newNonce = await _nonceService.CreateNonceAsync(httpContext.RequestAborted);
+        httpContext.Response.Headers.Add("Replay-Nonce", newNonce.Token);
+
+        _logger.LogInformation("Added Replay-Nonce: {nonceToken}", newNonce.Token);
+    }
+
 }

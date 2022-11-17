@@ -1,10 +1,9 @@
-namespace OpenCertServer.Build
-{
-    using Cake.Frosting;
+namespace OpenCertServer.Build;
 
-    [TaskName("Default")]
-    [IsDependentOn(typeof(LinuxDockerBuildTask))]
-    public sealed class DefaultTask : FrostingTask
-    {
-    }
+using Cake.Frosting;
+
+[TaskName("Default")]
+[IsDependentOn(typeof(LinuxDockerBuildTask))]
+public sealed class DefaultTask : FrostingTask
+{
 }

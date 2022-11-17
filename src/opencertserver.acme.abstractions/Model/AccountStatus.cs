@@ -1,9 +1,8 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model
+﻿namespace OpenCertServer.Acme.Abstractions.Model;
+
+public enum AccountStatus
 {
-    public enum AccountStatus
-    {
-        Valid,
-        Deactivated,
-        Revoked
-    }
+    Valid,
+    Deactivated,
+    Revoked
 }

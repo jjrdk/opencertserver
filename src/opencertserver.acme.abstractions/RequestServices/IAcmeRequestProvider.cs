@@ -1,18 +1,17 @@
-﻿namespace OpenCertServer.Acme.Abstractions.RequestServices
+﻿namespace OpenCertServer.Acme.Abstractions.RequestServices;
+
+using System.Diagnostics.CodeAnalysis;
+using HttpModel.Requests;
+
+public interface IAcmeRequestProvider
 {
-    using System.Diagnostics.CodeAnalysis;
-    using HttpModel.Requests;
+    [RequiresUnreferencedCode($"Uses {nameof(AcmeRawPostRequest)}")]
+    void Initialize(AcmeRawPostRequest rawPostRequest);
 
-    public interface IAcmeRequestProvider
-    {
-        [RequiresUnreferencedCode($"Uses {nameof(AcmeRawPostRequest)}")]
-        void Initialize(AcmeRawPostRequest rawPostRequest);
+    AcmeRawPostRequest GetRequest();
 
-        AcmeRawPostRequest GetRequest();
-
-        AcmeHeader GetHeader();
+    AcmeHeader GetHeader();
         
-        [RequiresUnreferencedCode("Uses unknown types")]
-        TPayload? GetPayload<TPayload>();
-    }
+    [RequiresUnreferencedCode("Uses unknown types")]
+    TPayload? GetPayload<TPayload>();
 }

@@ -1,13 +1,12 @@
-﻿namespace OpenCertServer.Acme.Abstractions.HttpModel.Requests
+﻿namespace OpenCertServer.Acme.Abstractions.HttpModel.Requests;
+
+using System;
+using System.Collections.Generic;
+
+public sealed class CreateOrderRequest
 {
-    using System;
-    using System.Collections.Generic;
+    public List<Identifier>? Identifiers { get; set; }
 
-    public sealed class CreateOrderRequest
-    {
-        public List<Identifier>? Identifiers { get; set; }
-
-        public DateTimeOffset? NotBefore { get; set; }
-        public DateTimeOffset? NotAfter { get; set; }
-    }
+    public DateTimeOffset? NotBefore { get; set; }
+    public DateTimeOffset? NotAfter { get; set; }
 }

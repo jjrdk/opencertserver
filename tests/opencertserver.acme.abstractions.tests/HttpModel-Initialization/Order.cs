@@ -1,6 +1,5 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Tests.HttpModel_Initialization
+﻿namespace OpenCertServer.Acme.Abstractions.Tests.HttpModel_Initialization;
+
+sealed class Order
 {
-    sealed class Order
-    {
-    }
 }

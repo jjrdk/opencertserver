@@ -1,28 +1,27 @@
-﻿namespace OpenCertServer.Acme.Server.ModelBinding
+﻿namespace OpenCertServer.Acme.Server.ModelBinding;
+
+using Abstractions.RequestServices;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+
+public sealed class AcmeHeaderBinder : IModelBinder
 {
-    using Abstractions.RequestServices;
-    using Microsoft.AspNetCore.Mvc.ModelBinding;
+    private readonly IAcmeRequestProvider _requestProvider;
 
-    public sealed class AcmeHeaderBinder : IModelBinder
+    public AcmeHeaderBinder(IAcmeRequestProvider requestProvider)
     {
-        private readonly IAcmeRequestProvider _requestProvider;
+        _requestProvider = requestProvider;
+    }
 
-        public AcmeHeaderBinder(IAcmeRequestProvider requestProvider)
+    public Task BindModelAsync(ModelBindingContext bindingContext)
+    {
+        if (bindingContext is null)
         {
-            _requestProvider = requestProvider;
+            throw new ArgumentNullException(nameof(bindingContext));
         }
 
-        public Task BindModelAsync(ModelBindingContext bindingContext)
-        {
-            if (bindingContext is null)
-            {
-                throw new ArgumentNullException(nameof(bindingContext));
-            }
+        var acmeHeader = _requestProvider.GetHeader();
+        bindingContext.Result = ModelBindingResult.Success(acmeHeader);
 
-            var acmeHeader = _requestProvider.GetHeader();
-            bindingContext.Result = ModelBindingResult.Success(acmeHeader);
-
-            return Task.CompletedTask;
-        }
+        return Task.CompletedTask;
     }
 }

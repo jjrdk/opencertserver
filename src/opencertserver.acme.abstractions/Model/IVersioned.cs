@@ -1,7 +1,6 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model
+﻿namespace OpenCertServer.Acme.Abstractions.Model;
+
+public interface IVersioned
 {
-    public interface IVersioned
-    {
-        long Version { get; set; }
-    }
+    long Version { get; set; }
 }

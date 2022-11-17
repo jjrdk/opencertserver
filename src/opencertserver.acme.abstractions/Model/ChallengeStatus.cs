@@ -1,10 +1,9 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model
+﻿namespace OpenCertServer.Acme.Abstractions.Model;
+
+public enum ChallengeStatus
 {
-    public enum ChallengeStatus
-    {
-        Pending,
-        Processing,
-        Valid,
-        Invalid
-    }
+    Pending,
+    Processing,
+    Valid,
+    Invalid
 }

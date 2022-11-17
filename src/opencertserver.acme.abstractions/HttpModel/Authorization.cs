@@ -1,41 +1,40 @@
-﻿namespace OpenCertServer.Acme.Abstractions.HttpModel
+﻿namespace OpenCertServer.Acme.Abstractions.HttpModel;
+
+using System.Collections.Generic;
+using System.Globalization;
+
+/// <summary>
+/// Represents an ACME authorization object
+/// https://tools.ietf.org/html/rfc8555#section-7.1.4
+/// </summary>
+public sealed class Authorization
 {
-    using System.Collections.Generic;
-    using System.Globalization;
-
-    /// <summary>
-    /// Represents an ACME authorization object
-    /// https://tools.ietf.org/html/rfc8555#section-7.1.4
-    /// </summary>
-    public sealed class Authorization
+    public Authorization(Model.Authorization model, IEnumerable<Challenge> challenges)
     {
-        public Authorization(Model.Authorization model, IEnumerable<Challenge> challenges)
+        if (model is null)
         {
-            if (model is null)
-            {
-                throw new System.ArgumentNullException(nameof(model));
-            }
-
-            if (challenges is null)
-            {
-                throw new System.ArgumentNullException(nameof(challenges));
-            }
-
-            Status = EnumMappings.GetEnumString(model.Status);
-
-            Expires = model.Expires.ToString("o", CultureInfo.InvariantCulture);
-            Wildcard = model.IsWildcard;
-
-            Identifier = new Identifier(model.Identifier);
-            Challenges = new List<Challenge>(challenges);
+            throw new System.ArgumentNullException(nameof(model));
         }
 
-        public string Status { get; }
+        if (challenges is null)
+        {
+            throw new System.ArgumentNullException(nameof(challenges));
+        }
 
-        public Identifier Identifier { get; }
-        public string? Expires { get; }
-        public bool? Wildcard { get; }
+        Status = EnumMappings.GetEnumString(model.Status);
 
-        public IEnumerable<Challenge> Challenges { get; }
+        Expires = model.Expires.ToString("o", CultureInfo.InvariantCulture);
+        Wildcard = model.IsWildcard;
+
+        Identifier = new Identifier(model.Identifier);
+        Challenges = new List<Challenge>(challenges);
     }
+
+    public string Status { get; }
+
+    public Identifier Identifier { get; }
+    public string? Expires { get; }
+    public bool? Wildcard { get; }
+
+    public IEnumerable<Challenge> Challenges { get; }
 }

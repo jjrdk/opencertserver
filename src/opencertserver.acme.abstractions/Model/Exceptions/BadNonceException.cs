@@ -1,14 +1,13 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model.Exceptions
+﻿namespace OpenCertServer.Acme.Abstractions.Model.Exceptions;
+
+public sealed class BadNonceException : AcmeException
 {
-    public sealed class BadNonceException : AcmeException
+    private const string Detail = "The nonce could not be accepted.";
+
+    public BadNonceException() : base(Detail) { }
+
+    public override string ErrorType
     {
-        private const string Detail = "The nonce could not be accepted.";
-
-        public BadNonceException() : base(Detail) { }
-
-        public override string ErrorType
-        {
-            get { return "badNonce"; }
-        }
+        get { return "badNonce"; }
     }
 }

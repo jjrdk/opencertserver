@@ -1,35 +1,34 @@
-﻿namespace OpenCertServer.Acme.Abstractions.HttpModel
+﻿namespace OpenCertServer.Acme.Abstractions.HttpModel;
+
+using System.Collections.Generic;
+
+/// <summary>
+/// Represents the data of an ACME account
+/// https://tools.ietf.org/html/rfc8555#section-7.1.2
+/// </summary>
+public sealed class Account
 {
-    using System.Collections.Generic;
-
-    /// <summary>
-    /// Represents the data of an ACME account
-    /// https://tools.ietf.org/html/rfc8555#section-7.1.2
-    /// </summary>
-    public sealed class Account
+    public Account(Model.Account model, string ordersUrl)
     {
-        public Account(Model.Account model, string ordersUrl)
+        if (model is null)
         {
-            if (model is null)
-            {
-                throw new System.ArgumentNullException(nameof(model));
-            }
-
-            Status = EnumMappings.GetEnumString(model.Status);
-
-            Contact = model.Contacts;
-            TermsOfServiceAgreed = model.TOSAccepted.HasValue;
-
-            ExternalAccountBinding = null;
-            Orders = ordersUrl;
+            throw new System.ArgumentNullException(nameof(model));
         }
 
-        public string Status { get; set; }
-        public string? Orders { get; set; }
+        Status = EnumMappings.GetEnumString(model.Status);
 
-        public List<string>? Contact { get; set; }
-        public bool? TermsOfServiceAgreed { get; set; }
+        Contact = model.Contacts;
+        TermsOfServiceAgreed = model.TOSAccepted.HasValue;
 
-        public object? ExternalAccountBinding { get; set; }
+        ExternalAccountBinding = null;
+        Orders = ordersUrl;
     }
+
+    public string Status { get; set; }
+    public string? Orders { get; set; }
+
+    public List<string>? Contact { get; set; }
+    public bool? TermsOfServiceAgreed { get; set; }
+
+    public object? ExternalAccountBinding { get; set; }
 }

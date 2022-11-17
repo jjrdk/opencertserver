@@ -1,58 +1,57 @@
-﻿namespace OpenCertServer.Acme.AspNetClient.Persistence
+﻿namespace OpenCertServer.Acme.AspNetClient.Persistence;
+
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+
+public sealed class FileChallengePersistenceStrategy : IChallengePersistenceStrategy
 {
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using System.Text;
-    using System.Threading.Tasks;
-    using Newtonsoft.Json;
+    private readonly string _relativeFilePath;
 
-    public sealed class FileChallengePersistenceStrategy : IChallengePersistenceStrategy
+    public FileChallengePersistenceStrategy(string relativeFilePath)
     {
-        private readonly string _relativeFilePath;
+        _relativeFilePath = relativeFilePath;
+    }
 
-        public FileChallengePersistenceStrategy(string relativeFilePath)
+    public async Task Delete(IEnumerable<ChallengeDto> challenges)
+    {
+        var persistedChallenges = await Retrieve();
+        var challengesToPersist = persistedChallenges
+            .Where(x =>
+                challenges.All(y => y.Token != x.Token))
+            .ToList();
+
+        await Persist(challengesToPersist);
+    }
+
+    public Task Persist(IEnumerable<ChallengeDto> challenges)
+    {
+        var json = JsonConvert.SerializeObject(challenges.ToArray());
+
+        var bytes = Encoding.UTF8.GetBytes(json);
+
+        return File.WriteAllBytesAsync(GetChallengesStorePath(), bytes);
+    }
+
+    public async Task<IEnumerable<ChallengeDto>> Retrieve()
+    {
+        if (!File.Exists(GetChallengesStorePath()))
         {
-            _relativeFilePath = relativeFilePath;
+            return Enumerable.Empty<ChallengeDto>();
         }
 
-        public async Task Delete(IEnumerable<ChallengeDto> challenges)
-        {
-            var persistedChallenges = await Retrieve();
-            var challengesToPersist = persistedChallenges
-                .Where(x =>
-                    challenges.All(y => y.Token != x.Token))
-                .ToList();
+        var bytes = await File.ReadAllBytesAsync(GetChallengesStorePath());
+        var json = Encoding.UTF8.GetString(bytes);
+        var challenges = JsonConvert.DeserializeObject<IEnumerable<ChallengeDto>>(json);
 
-            await Persist(challengesToPersist);
-        }
+        return challenges ?? Enumerable.Empty<ChallengeDto>();
+    }
 
-        public Task Persist(IEnumerable<ChallengeDto> challenges)
-        {
-            var json = JsonConvert.SerializeObject(challenges.ToArray());
-
-            var bytes = Encoding.UTF8.GetBytes(json);
-
-            return File.WriteAllBytesAsync(GetChallengesStorePath(), bytes);
-        }
-
-        public async Task<IEnumerable<ChallengeDto>> Retrieve()
-        {
-            if (!File.Exists(GetChallengesStorePath()))
-            {
-                return Enumerable.Empty<ChallengeDto>();
-            }
-
-            var bytes = await File.ReadAllBytesAsync(GetChallengesStorePath());
-            var json = Encoding.UTF8.GetString(bytes);
-            var challenges = JsonConvert.DeserializeObject<IEnumerable<ChallengeDto>>(json);
-
-            return challenges ?? Enumerable.Empty<ChallengeDto>();
-        }
-
-        private string GetChallengesStorePath()
-        {
-            return _relativeFilePath + "_Challenges";
-        }
+    private string GetChallengesStorePath()
+    {
+        return _relativeFilePath + "_Challenges";
     }
 }

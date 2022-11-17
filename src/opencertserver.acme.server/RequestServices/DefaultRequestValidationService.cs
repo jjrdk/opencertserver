@@ -1,159 +1,158 @@
-namespace OpenCertServer.Acme.Server.RequestServices
+namespace OpenCertServer.Acme.Server.RequestServices;
+
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Abstractions.HttpModel.Requests;
+using Abstractions.Model;
+using Abstractions.Model.Exceptions;
+using Abstractions.RequestServices;
+using Abstractions.Services;
+using Abstractions.Storage;
+using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
+
+public sealed class DefaultRequestValidationService : IRequestValidationService
 {
-    using System;
-    using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Abstractions.HttpModel.Requests;
-    using Abstractions.Model;
-    using Abstractions.Model.Exceptions;
-    using Abstractions.RequestServices;
-    using Abstractions.Services;
-    using Abstractions.Storage;
-    using Microsoft.Extensions.Logging;
-    using Microsoft.IdentityModel.Tokens;
+    private readonly IAccountService _accountService;
+    private readonly INonceStore _nonceStore;
 
-    public sealed class DefaultRequestValidationService : IRequestValidationService
+    private readonly ILogger<DefaultRequestValidationService> _logger;
+
+    private readonly string[] _supportedAlgs = new[] { "RS256", "ES256" };
+
+    public DefaultRequestValidationService(IAccountService accountService, INonceStore nonceStore,
+        ILogger<DefaultRequestValidationService> logger)
     {
-        private readonly IAccountService _accountService;
-        private readonly INonceStore _nonceStore;
+        _accountService = accountService;
+        _nonceStore = nonceStore;
+        _logger = logger;
+    }
 
-        private readonly ILogger<DefaultRequestValidationService> _logger;
-
-        private readonly string[] _supportedAlgs = new[] { "RS256", "ES256" };
-
-        public DefaultRequestValidationService(IAccountService accountService, INonceStore nonceStore,
-            ILogger<DefaultRequestValidationService> logger)
+    public async Task ValidateRequestAsync(AcmeRawPostRequest request, AcmeHeader header,
+        string requestUrl, CancellationToken cancellationToken)
+    {
+        if (request is null)
         {
-            _accountService = accountService;
-            _nonceStore = nonceStore;
-            _logger = logger;
+            throw new ArgumentNullException(nameof(request));
         }
 
-        public async Task ValidateRequestAsync(AcmeRawPostRequest request, AcmeHeader header,
-            string requestUrl, CancellationToken cancellationToken)
+        if (header is null)
         {
-            if (request is null)
-            {
-                throw new ArgumentNullException(nameof(request));
-            }
-
-            if (header is null)
-            {
-                throw new ArgumentNullException(nameof(header));
-            }
-
-            if (string.IsNullOrWhiteSpace(requestUrl))
-            {
-                throw new ArgumentNullException(nameof(requestUrl));
-            }
-
-            ValidateRequestHeader(header, requestUrl);
-            await ValidateNonceAsync(header.Nonce, cancellationToken);
-            await ValidateSignatureAsync(request, header, cancellationToken);
+            throw new ArgumentNullException(nameof(header));
         }
 
-        private void ValidateRequestHeader(AcmeHeader header, string requestUrl)
+        if (string.IsNullOrWhiteSpace(requestUrl))
         {
-            if (header is null)
-            {
-                throw new ArgumentNullException(nameof(header));
-            }
-
-            _logger.LogDebug("Attempting to validate AcmeHeader ...");
-
-            if (!Uri.IsWellFormedUriString(header.Url, UriKind.RelativeOrAbsolute))
-            {
-                throw new MalformedRequestException("Header Url is not well-formed.");
-            }
-
-            if (header.Url != requestUrl)
-            {
-                throw new NotAuthorizedException();
-            }
-
-            if (!_supportedAlgs.Contains(header.Alg))
-            {
-                throw new BadSignatureAlgorithmException();
-            }
-
-            if (header.Jwk != null && header.Kid != null)
-            {
-                throw new MalformedRequestException("Do not provide both Jwk and Kid.");
-            }
-
-            if (header.Jwk == null && header.Kid == null)
-            {
-                throw new MalformedRequestException("Provide either Jwk or Kid.");
-            }
-
-            _logger.LogDebug("successfully validated AcmeHeader.");
+            throw new ArgumentNullException(nameof(requestUrl));
         }
 
-        private async Task ValidateNonceAsync(string? nonce, CancellationToken cancellationToken)
+        ValidateRequestHeader(header, requestUrl);
+        await ValidateNonceAsync(header.Nonce, cancellationToken);
+        await ValidateSignatureAsync(request, header, cancellationToken);
+    }
+
+    private void ValidateRequestHeader(AcmeHeader header, string requestUrl)
+    {
+        if (header is null)
         {
-            _logger.LogDebug("Attempting to validate replay nonce ...");
-            if (string.IsNullOrWhiteSpace(nonce))
-            {
-                _logger.LogDebug($"Nonce was empty.");
-                throw new BadNonceException();
-            }
-
-            if (!await _nonceStore.TryRemoveNonceAsync(new Nonce(nonce), cancellationToken))
-            {
-                _logger.LogDebug($"Nonce was invalid.");
-                throw new BadNonceException();
-            }
-
-            _logger.LogDebug("successfully validated replay nonce.");
+            throw new ArgumentNullException(nameof(header));
         }
 
-        private async Task ValidateSignatureAsync(AcmeRawPostRequest request, AcmeHeader header, CancellationToken cancellationToken)
+        _logger.LogDebug("Attempting to validate AcmeHeader ...");
+
+        if (!Uri.IsWellFormedUriString(header.Url, UriKind.RelativeOrAbsolute))
         {
-            if (request is null)
+            throw new MalformedRequestException("Header Url is not well-formed.");
+        }
+
+        if (header.Url != requestUrl)
+        {
+            throw new NotAuthorizedException();
+        }
+
+        if (!_supportedAlgs.Contains(header.Alg))
+        {
+            throw new BadSignatureAlgorithmException();
+        }
+
+        if (header.Jwk != null && header.Kid != null)
+        {
+            throw new MalformedRequestException("Do not provide both Jwk and Kid.");
+        }
+
+        if (header.Jwk == null && header.Kid == null)
+        {
+            throw new MalformedRequestException("Provide either Jwk or Kid.");
+        }
+
+        _logger.LogDebug("successfully validated AcmeHeader.");
+    }
+
+    private async Task ValidateNonceAsync(string? nonce, CancellationToken cancellationToken)
+    {
+        _logger.LogDebug("Attempting to validate replay nonce ...");
+        if (string.IsNullOrWhiteSpace(nonce))
+        {
+            _logger.LogDebug($"Nonce was empty.");
+            throw new BadNonceException();
+        }
+
+        if (!await _nonceStore.TryRemoveNonceAsync(new Nonce(nonce), cancellationToken))
+        {
+            _logger.LogDebug($"Nonce was invalid.");
+            throw new BadNonceException();
+        }
+
+        _logger.LogDebug("successfully validated replay nonce.");
+    }
+
+    private async Task ValidateSignatureAsync(AcmeRawPostRequest request, AcmeHeader header, CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+
+        if (header is null)
+        {
+            throw new ArgumentNullException(nameof(header));
+        }
+
+        _logger.LogDebug("Attempting to validate signature ...");
+
+        var jwk = header.Jwk;
+        if(jwk == null)
+        {
+            try
             {
-                throw new ArgumentNullException(nameof(request));
-            }
-
-            if (header is null)
+                var accountId = header.GetAccountId();
+                var account = await _accountService.LoadAccount(accountId, cancellationToken);
+                jwk = account?.Jwk;
+            } 
+            catch (InvalidOperationException)
             {
-                throw new ArgumentNullException(nameof(header));
+                throw new MalformedRequestException("KID could not be found.");
             }
+        }
 
-            _logger.LogDebug("Attempting to validate signature ...");
+        if(jwk == null)
+        {
+            throw new MalformedRequestException("Could not load JWK.");
+        }
 
-            var jwk = header.Jwk;
-            if(jwk == null)
-            {
-                try
-                {
-                    var accountId = header.GetAccountId();
-                    var account = await _accountService.LoadAccount(accountId, cancellationToken);
-                    jwk = account?.Jwk;
-                } 
-                catch (InvalidOperationException)
-                {
-                    throw new MalformedRequestException("KID could not be found.");
-                }
-            }
-
-            if(jwk == null)
-            {
-                throw new MalformedRequestException("Could not load JWK.");
-            }
-
-            var securityKey = jwk.SecurityKey;
+        var securityKey = jwk.SecurityKey;
             
-            using var signatureProvider = new AsymmetricSignatureProvider(securityKey, header.Alg);
-            var plainText = System.Text.Encoding.UTF8.GetBytes($"{request.Header}.{request.Payload ?? ""}");
-            var signature = Base64UrlEncoder.DecodeBytes(request.Signature);
+        using var signatureProvider = new AsymmetricSignatureProvider(securityKey, header.Alg);
+        var plainText = System.Text.Encoding.UTF8.GetBytes($"{request.Header}.{request.Payload ?? ""}");
+        var signature = Base64UrlEncoder.DecodeBytes(request.Signature);
 
-            if (!signatureProvider.Verify(plainText, signature))
-            {
-                throw new MalformedRequestException("The signature could not be verified");
-            }
-
-            _logger.LogDebug("successfully validated signature.");
+        if (!signatureProvider.Verify(plainText, signature))
+        {
+            throw new MalformedRequestException("The signature could not be verified");
         }
+
+        _logger.LogDebug("successfully validated signature.");
     }
 }

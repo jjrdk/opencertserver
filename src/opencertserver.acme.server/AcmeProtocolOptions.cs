@@ -1,7 +1,6 @@
-﻿namespace OpenCertServer.Acme.Server
+﻿namespace OpenCertServer.Acme.Server;
+
+public sealed class AcmeProtocolOptions
 {
-    public sealed class AcmeProtocolOptions
-    {
-        public bool AllowCNSuffix { get; set; }
-    }
+    public bool AllowCNSuffix { get; set; }
 }

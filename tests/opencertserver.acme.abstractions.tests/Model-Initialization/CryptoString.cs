@@ -1,16 +1,15 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Tests.Model_Initialization
+﻿namespace OpenCertServer.Acme.Abstractions.Tests.Model_Initialization;
+
+using Xunit;
+
+public sealed class CryptoString
 {
-    using Xunit;
-
-    public sealed class CryptoString
+    [Fact]
+    public void CryptoString_Seems_Filled()
     {
-        [Fact]
-        public void CryptoString_Seems_Filled()
-        {
-            var sut = Model.CryptoString.NewValue();
+        var sut = Model.CryptoString.NewValue();
 
-            Assert.False(string.IsNullOrWhiteSpace(sut));
-            Assert.Equal(64, sut.Length);
-        }
+        Assert.False(string.IsNullOrWhiteSpace(sut));
+        Assert.Equal(64, sut.Length);
     }
 }

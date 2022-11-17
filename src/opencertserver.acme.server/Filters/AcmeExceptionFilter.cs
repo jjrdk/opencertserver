@@ -1,39 +1,38 @@
-namespace OpenCertServer.Acme.Server.Filters
+namespace OpenCertServer.Acme.Server.Filters;
+
+using Abstractions.Model.Exceptions;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Logging;
+
+public sealed class AcmeExceptionFilter : IExceptionFilter
 {
-    using Abstractions.Model.Exceptions;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.AspNetCore.Mvc.Filters;
-    using Microsoft.Extensions.Logging;
+    private readonly ILogger<AcmeExceptionFilter> _logger;
 
-    public sealed class AcmeExceptionFilter : IExceptionFilter
+    public AcmeExceptionFilter(ILogger<AcmeExceptionFilter> logger)
     {
-        private readonly ILogger<AcmeExceptionFilter> _logger;
+        _logger = logger;
+    }
 
-        public AcmeExceptionFilter(ILogger<AcmeExceptionFilter> logger)
+    public void OnException(ExceptionContext context)
+    {
+        if (context.Exception is AcmeException acmeException)
         {
-            _logger = logger;
-        }
-
-        public void OnException(ExceptionContext context)
-        {
-            if (context.Exception is AcmeException acmeException)
-            {
-                _logger.LogDebug("Detected {exceptionType}. Converting to BadRequest.", acmeException.GetType());
+            _logger.LogDebug("Detected {exceptionType}. Converting to BadRequest.", acmeException.GetType());
 #if DEBUG
-                _logger.LogError(context.Exception, "AcmeException detected.");
+            _logger.LogError(context.Exception, "AcmeException detected.");
 #endif
 
-                ObjectResult result = acmeException switch
-                {
-                    ConflictRequestException => new ConflictObjectResult(acmeException.GetHttpError()),
-                    NotAllowedException => new UnauthorizedObjectResult(acmeException.GetHttpError()),
-                    NotFoundException => new NotFoundObjectResult(acmeException.GetHttpError()),
-                    _ => new BadRequestObjectResult(acmeException.GetHttpError())
-                };
+            ObjectResult result = acmeException switch
+            {
+                ConflictRequestException => new ConflictObjectResult(acmeException.GetHttpError()),
+                NotAllowedException => new UnauthorizedObjectResult(acmeException.GetHttpError()),
+                NotFoundException => new NotFoundObjectResult(acmeException.GetHttpError()),
+                _ => new BadRequestObjectResult(acmeException.GetHttpError())
+            };
 
-                result.ContentTypes.Add("application/problem+json");
-                context.Result = result;
-            }
+            result.ContentTypes.Add("application/problem+json");
+            context.Result = result;
         }
     }
 }

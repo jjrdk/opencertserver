@@ -1,11 +1,10 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model.Exceptions
-{
-    using System;
+﻿namespace OpenCertServer.Acme.Abstractions.Model.Exceptions;
 
-    public sealed class ConcurrencyException : InvalidOperationException
-    {
-        public ConcurrencyException()
-            : base($"Object has been changed since loading")
-        { }
-    }
+using System;
+
+public sealed class ConcurrencyException : InvalidOperationException
+{
+    public ConcurrencyException()
+        : base($"Object has been changed since loading")
+    { }
 }

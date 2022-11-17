@@ -1,9 +1,8 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Services
-{
-    using Model;
+﻿namespace OpenCertServer.Acme.Abstractions.Services;
 
-    public interface IChallengeValidatorFactory
-    {
-        IValidateChallenges GetValidator(Challenge challenge);
-    }
+using Model;
+
+public interface IChallengeValidatorFactory
+{
+    IValidateChallenges GetValidator(Challenge challenge);
 }

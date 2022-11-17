@@ -1,34 +1,33 @@
-﻿namespace OpenCertServer.Acme.AspNetClient
+﻿namespace OpenCertServer.Acme.AspNetClient;
+
+using Certes;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptions>
 {
-    using Certes;
-    using Microsoft.AspNetCore.Server.Kestrel.Core;
-    using Microsoft.Extensions.Logging;
-    using Microsoft.Extensions.Options;
+    private readonly AcmeRenewalService _renewalService;
+    private readonly ILogger<KestrelOptionsSetup> _logger;
 
-    internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptions>
+    public KestrelOptionsSetup(AcmeRenewalService renewalService, ILogger<KestrelOptionsSetup> logger)
     {
-        private readonly AcmeRenewalService _renewalService;
-        private readonly ILogger<KestrelOptionsSetup> _logger;
+        _renewalService = renewalService;
+        _logger = logger;
+    }
 
-        public KestrelOptionsSetup(AcmeRenewalService renewalService, ILogger<KestrelOptionsSetup> logger)
+    public void Configure(KestrelServerOptions options)
+    {
+        if (_renewalService.Certificate != null)
         {
-            _renewalService = renewalService;
-            _logger = logger;
+            options.ConfigureHttpsDefaults(o =>
+            {
+                o.ServerCertificateSelector = (_, _) => _renewalService.Certificate;
+            });
         }
-
-        public void Configure(KestrelServerOptions options)
+        else //if(AcmeRenewalService.Certificate != null)
         {
-            if (_renewalService.Certificate != null)
-            {
-                options.ConfigureHttpsDefaults(o =>
-                {
-                    o.ServerCertificateSelector = (_, _) => _renewalService.Certificate;
-                });
-            }
-            else //if(AcmeRenewalService.Certificate != null)
-            {
-                _logger.LogError("This certificate cannot be used with Kestrel");
-            }
+            _logger.LogError("This certificate cannot be used with Kestrel");
         }
     }
 }

@@ -1,73 +1,72 @@
-﻿namespace OpenCertServer.Acme.AspNetClient.Tests
+﻿namespace OpenCertServer.Acme.AspNetClient.Tests;
+
+using System;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
+using FluentAssertions;
+using global::Certes;
+using Persistence;
+using Xunit;
+
+public sealed class FileCertificatePersistence : IDisposable
 {
-    using System;
-    using System.IO;
-    using System.Text;
-    using System.Threading.Tasks;
-    using FluentAssertions;
-    using global::Certes;
-    using Persistence;
-    using Xunit;
+    private readonly string _testFolder;
+    private ICertificatePersistenceStrategy Strategy { get; }
 
-    public sealed class FileCertificatePersistence : IDisposable
+    public FileCertificatePersistence()
     {
-        private readonly string _testFolder;
-        private ICertificatePersistenceStrategy Strategy { get; }
+        _testFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Strategy = new FileCertificatePersistenceStrategy(_testFolder);
+    }
 
-        public FileCertificatePersistence()
+    public void Dispose()
+    {
+        try
         {
-            _testFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Strategy = new FileCertificatePersistenceStrategy(_testFolder);
+            Directory.Delete(_testFolder, true);
         }
-
-        public void Dispose()
+        catch
         {
-            try
-            {
-                Directory.Delete(_testFolder, true);
-            }
-            catch
-            {
-            }
         }
+    }
 
-        [Fact]
-        public async Task MissingAccountCertificateReturnsNull()
-        {
-            var retrievedCert = await Strategy.RetrieveAccountCertificate();
-            Assert.Null(retrievedCert);
-        }
+    [Fact]
+    public async Task MissingAccountCertificateReturnsNull()
+    {
+        var retrievedCert = await Strategy.RetrieveAccountCertificate();
+        Assert.Null(retrievedCert);
+    }
 
-        [Fact]
-        public async Task MissingSiteCertificateReturnsNull()
-        {
-            var retrievedCert = await Strategy.RetrieveSiteCertificate();
-            Assert.Null(retrievedCert);
-        }
+    [Fact]
+    public async Task MissingSiteCertificateReturnsNull()
+    {
+        var retrievedCert = await Strategy.RetrieveSiteCertificate();
+        Assert.Null(retrievedCert);
+    }
 
-        [Fact]
-        public async Task AccountCertificateRoundTrip()
-        {
-            var testCert = Encoding.UTF8.GetBytes(KeyFactory.NewKey(KeyAlgorithm.ES256).ToPem());
-            KeyFactory.NewKey(KeyAlgorithm.ES256);
+    [Fact]
+    public async Task AccountCertificateRoundTrip()
+    {
+        var testCert = Encoding.UTF8.GetBytes(KeyFactory.NewKey(KeyAlgorithm.ES256).ToPem());
+        KeyFactory.NewKey(KeyAlgorithm.ES256);
 
-            await Strategy.Persist(CertificateType.Account, testCert);
+        await Strategy.Persist(CertificateType.Account, testCert);
 
-            var retrievedCert = await Strategy.RetrieveAccountCertificate();
+        var retrievedCert = await Strategy.RetrieveAccountCertificate();
 
-            retrievedCert.Should().Equal(testCert);
-        }
+        retrievedCert.Should().Equal(testCert);
+    }
 
-        [Fact]
-        public async Task SiteCertificateRoundTrip()
-        {
-            var testCert = SelfSignedCertificate.Make(new DateTime(2020, 5, 24), new DateTime(2020, 5, 26));
+    [Fact]
+    public async Task SiteCertificateRoundTrip()
+    {
+        var testCert = SelfSignedCertificate.Make(new DateTime(2020, 5, 24), new DateTime(2020, 5, 26));
 
-            await Strategy.Persist(CertificateType.Site, testCert.RawData);
+        await Strategy.Persist(CertificateType.Site, testCert.RawData);
 
-            var retrievedCert = await Strategy.RetrieveSiteCertificate();
+        var retrievedCert = await Strategy.RetrieveSiteCertificate();
 
-            testCert.RawData.Should().Equal(retrievedCert?.RawData);
-        }
+        testCert.RawData.Should().Equal(retrievedCert?.RawData);
     }
 }

@@ -1,30 +1,29 @@
-﻿namespace OpenCertServer.Ca
+﻿namespace OpenCertServer.Ca;
+
+using System.Security.Cryptography.X509Certificates;
+
+public abstract class SignCertificateResponse
 {
-    using System.Security.Cryptography.X509Certificates;
-
-    public abstract class SignCertificateResponse
+    public sealed class Success : SignCertificateResponse
     {
-        public sealed class Success : SignCertificateResponse
+        internal Success(X509Certificate2 certificate, X509Certificate2Collection issuers)
         {
-            internal Success(X509Certificate2 certificate, X509Certificate2Collection issuers)
-            {
-                Certificate = certificate;
-                Issuers = issuers;
-            }
-
-            public X509Certificate2 Certificate { get; }
-
-            public X509Certificate2Collection Issuers { get; }
+            Certificate = certificate;
+            Issuers = issuers;
         }
 
-        public sealed class Error : SignCertificateResponse
-        {
-            internal Error(params string[] errors)
-            {
-                Errors = errors;
-            }
+        public X509Certificate2 Certificate { get; }
 
-            public string[] Errors { get; }
+        public X509Certificate2Collection Issuers { get; }
+    }
+
+    public sealed class Error : SignCertificateResponse
+    {
+        internal Error(params string[] errors)
+        {
+            Errors = errors;
         }
+
+        public string[] Errors { get; }
     }
 }

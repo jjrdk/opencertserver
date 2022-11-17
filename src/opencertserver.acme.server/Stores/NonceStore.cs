@@ -1,47 +1,46 @@
-﻿namespace OpenCertServer.Acme.Server.Stores
+﻿namespace OpenCertServer.Acme.Server.Stores;
+
+using System.Globalization;
+using Abstractions.Model;
+using Abstractions.Storage;
+using Configuration;
+using Microsoft.Extensions.Options;
+
+public sealed class NonceStore : INonceStore
 {
-    using System.Globalization;
-    using Abstractions.Model;
-    using Abstractions.Storage;
-    using Configuration;
-    using Microsoft.Extensions.Options;
+    private readonly IOptions<FileStoreOptions> _options;
 
-    public sealed class NonceStore : INonceStore
+    public NonceStore(IOptions<FileStoreOptions> options)
     {
-        private readonly IOptions<FileStoreOptions> _options;
+        _options = options;
+        Directory.CreateDirectory(_options.Value.NoncePath);
+    }
 
-        public NonceStore(IOptions<FileStoreOptions> options)
+    public async Task SaveNonceAsync(Nonce nonce, CancellationToken cancellationToken)
+    {
+        if (nonce is null)
         {
-            _options = options;
-            Directory.CreateDirectory(_options.Value.NoncePath);
+            throw new ArgumentNullException(nameof(nonce));
         }
 
-        public async Task SaveNonceAsync(Nonce nonce, CancellationToken cancellationToken)
-        {
-            if (nonce is null)
-            {
-                throw new ArgumentNullException(nameof(nonce));
-            }
+        var noncePath = Path.Combine(_options.Value.NoncePath, nonce.Token);
+        await File.WriteAllTextAsync(noncePath, DateTime.Now.ToString("o", CultureInfo.InvariantCulture), cancellationToken);
+    }
 
-            var noncePath = Path.Combine(_options.Value.NoncePath, nonce.Token);
-            await File.WriteAllTextAsync(noncePath, DateTime.Now.ToString("o", CultureInfo.InvariantCulture), cancellationToken);
+    public Task<bool> TryRemoveNonceAsync(Nonce nonce, CancellationToken cancellationToken)
+    {
+        if (nonce is null)
+        {
+            throw new ArgumentNullException(nameof(nonce));
         }
 
-        public Task<bool> TryRemoveNonceAsync(Nonce nonce, CancellationToken cancellationToken)
+        var noncePath = Path.Combine(_options.Value.NoncePath, nonce.Token);
+        if (!File.Exists(noncePath))
         {
-            if (nonce is null)
-            {
-                throw new ArgumentNullException(nameof(nonce));
-            }
-
-            var noncePath = Path.Combine(_options.Value.NoncePath, nonce.Token);
-            if (!File.Exists(noncePath))
-            {
-                return Task.FromResult(false);
-            }
-
-            File.Delete(noncePath);
-            return Task.FromResult(true);
+            return Task.FromResult(false);
         }
+
+        File.Delete(noncePath);
+        return Task.FromResult(true);
     }
 }
