@@ -46,9 +46,10 @@ public sealed class Program
             .AddAcmeInMemoryStore()
             .AddSingleton<ICsrValidator, DefaultCsrValidator>()
             .AddSingleton<ICertificateIssuer, DefaultIssuer>()
-            .ConfigureOptions<ConfigureJwtBearerOptions>();
+            .ConfigureOptions<ConfigureJwtBearerOptions>()
+            .AddHealthChecks();
         var app = builder.Build();
-        app.UseForwardedHeaders(forwardedHeadersOptions).UseAcmeServer().UseEstServer();
+        app.UseForwardedHeaders(forwardedHeadersOptions).UseHealthChecks("/health").UseAcmeServer().UseEstServer();
         await app.RunAsync();
     }
 
