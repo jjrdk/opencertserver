@@ -17,7 +17,7 @@ internal sealed class CaCertHandler
 
     public async Task Handle(HttpContext ctx)
     {
-        var export = _certificateStore.ExportCertificatePems();//.Export(X509ContentType.Pkcs7);
+        var export = _certificateStore.ExportCertificatePems();
 
         ctx.Response.StatusCode = (int)HttpStatusCode.OK;
         ctx.Response.ContentType = Constants.PemMimeType;

@@ -9,7 +9,6 @@ using BackgroundServices;
 using Configuration;
 using DnsClient;
 using Filters;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

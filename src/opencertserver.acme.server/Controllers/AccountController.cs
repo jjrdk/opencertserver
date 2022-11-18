@@ -5,7 +5,6 @@ using Abstractions.Model;
 using Abstractions.Model.Exceptions;
 using Abstractions.Services;
 using Filters;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Account = Abstractions.HttpModel.Account;
 

@@ -127,9 +127,9 @@ public abstract class WebServerTests : IDisposable
     {
         var client = Server.CreateClient();
         var response = await client.GetAsync("https://localhost/.well-known/est/cacert").ConfigureAwait(false);
-        var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        var bytes = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var certificateCollection = new X509Certificate2Collection();
-        certificateCollection.Import(bytes);
+        certificateCollection.ImportFromPem(bytes);
 
         Assert.Equal(2, certificateCollection.Count);
     }
