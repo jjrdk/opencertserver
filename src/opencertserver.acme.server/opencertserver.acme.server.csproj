@@ -17,12 +17,12 @@
 	<Import Project="../../shared.proj" />
 
 	<ItemGroup>
-		<PackageReference Include="Certes" Version="3.0.3" />
+		<PackageReference Include="Certes" Version="3.0.4" />
 		<PackageReference Include="DnsClient" Version="1.7.0" />
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Options" Version="7.0.0" />
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
 	</ItemGroup>
 
 	<ItemGroup>

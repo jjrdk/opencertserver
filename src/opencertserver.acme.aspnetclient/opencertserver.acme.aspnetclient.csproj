@@ -8,15 +8,16 @@
 	</PropertyGroup>
 	<Import Project="../../shared.proj" />
 	<ItemGroup>
-		<PackageReference Include="certes" Version="3.0.3" />
-		<PackageReference Include="Microsoft.AspNetCore.Connections.Abstractions" Version="7.0.0" />
-		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
+		<!--<FrameworkReference Include="Microsoft.AspNetCore.App"/>-->
+		<PackageReference Include="certes" Version="3.0.4" />
+		<PackageReference Include="Microsoft.AspNetCore.Connections.Abstractions" Version="7.0.2" />
 		<PackageReference Include="Microsoft.AspNetCore.Server.Kestrel.Core" Version="2.2.0" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Options" Version="7.0.0" />
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />

@@ -4,8 +4,6 @@ using System;
 using System.Collections.Generic;
 using Certes;
 using Certificates;
-using FluentAssertions;
-using FluentAssertions.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -18,9 +16,9 @@ public sealed class CertificateValidatorTests
             new LetsEncryptOptions(),
             new NullLogger<CertificateValidator>());
 
-        certificateValidator.IsCertificateValid(null).Should().BeFalse();
-    } 
-        
+        Assert.False(certificateValidator.IsCertificateValid(null));
+    }
+
     [Theory]
     [MemberData(nameof(ValidateCertificateDate))]
     public void ValidateCertificateTests(CertificateDates cd, ValidatorSettings vs, bool expected)
@@ -35,9 +33,9 @@ public sealed class CertificateValidatorTests
 
         var cert = SelfSignedCertificate.Make(cd.From, cd.To);
 
-        certificateValidator.IsCertificateValid(cert).Should().Be(expected);
+        Assert.Equal(expected, certificateValidator.IsCertificateValid(cert));
     }
-        
+
     public struct CertificateDates
     {
         public CertificateDates(DateTime from, DateTime to)
@@ -62,62 +60,62 @@ public sealed class CertificateValidatorTests
             TimeUntilExpiryBeforeRenewal = timeUntilExpiryBeforeRenewal;
             TimeAfterIssueDateBeforeRenewal = timeAfterIssueDateBeforeRenewal;
         }
-            
+
         public TimeSpan? TimeUntilExpiryBeforeRenewal;
         public TimeSpan? TimeAfterIssueDateBeforeRenewal;
 
         public override string ToString()
         {
             static string Show(TimeSpan? ts) => ts == null ? "Never" : ts.Value.ToString("g");
-                
+
             return $"ValidatorSettings: ({Show(TimeUntilExpiryBeforeRenewal)}, {Show(TimeAfterIssueDateBeforeRenewal)})";
         }
     }
-        
+
     public static IEnumerable<object[]> ValidateCertificateDate()
     {
         // fresh certificate
         yield return Make(
-            DateTime.Now.Subtract(1.Days()).Date, 
-            DateTime.Now.AddDays(90).Date, 
-            null, 
-            TimeSpan.FromDays(30).As<TimeSpan?>(), 
-            true 
+            DateTime.Now.AddDays(-1).Date,
+            DateTime.Now.AddDays(90).Date,
+            null,
+            TimeSpan.FromDays(30),
+            true
         );
-            
+
         // fresh certificate soon to expire
         yield return Make(
-            DateTime.Now.Subtract(10.Days()).Date, 
-            DateTime.Now.AddDays(10).Date, 
-            TimeSpan.FromDays(30).As<TimeSpan?>(), 
-            null, 
-            false 
+            DateTime.Now.AddDays(-10).Date,
+            DateTime.Now.AddDays(10).Date,
+            TimeSpan.FromDays(30),
+            null,
+            false
         );
-            
+
         // close to expiry certificate mode 2
         yield return Make(
-            DateTime.Now.Subtract(10.Days()).Date, 
-            DateTime.Now.AddDays(10).Date, 
-            null, 
-            TimeSpan.FromDays(30), 
-            true); 
-            
+            DateTime.Now.AddDays(-10).Date,
+            DateTime.Now.AddDays(10).Date,
+            null,
+            TimeSpan.FromDays(30),
+            true);
+
         // future certificate
         yield return Make(
-            DateTime.Now.AddDays(10).Date, 
-            DateTime.Now.AddDays(20).Date, 
-            null, 
-            TimeSpan.FromDays(30), 
-            false); 
-            
+            DateTime.Now.AddDays(10).Date,
+            DateTime.Now.AddDays(20).Date,
+            null,
+            TimeSpan.FromDays(30),
+            false);
+
         // past certificate
         yield return Make(
-            DateTime.Now.Subtract(20.Days()).Date, 
-            DateTime.Now.Subtract(10.Days()).Date, 
-            null, 
-            TimeSpan.FromDays(30), 
-            false); 
-            
+            DateTime.Now.AddDays(-20).Date,
+            DateTime.Now.AddDays(-10).Date,
+            null,
+            TimeSpan.FromDays(30),
+            false);
+
         static object[] Make(
             DateTime certStart,
             DateTime certEnd,
@@ -127,7 +125,7 @@ public sealed class CertificateValidatorTests
         {
             return new object[]
             {
-                new CertificateDates(certStart,  certEnd),  
+                new CertificateDates(certStart,  certEnd),
                 new ValidatorSettings(timeUntilExpiryBeforeRenewal,  timeAfterIssueDateBeforeRenewal),
                 isValid
             };

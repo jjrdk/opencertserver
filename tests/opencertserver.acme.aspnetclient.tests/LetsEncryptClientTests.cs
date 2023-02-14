@@ -1,13 +1,10 @@
 namespace OpenCertServer.Acme.AspNetClient.Tests;
 
 using System;
-using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Certes;
 using Certificates;
-using FluentAssertions;
-using FluentAssertions.Extensions;
 using global::Certes;
 using global::Certes.Acme;
 using global::Certes.Acme.Resource;
@@ -27,14 +24,6 @@ public sealed class LetsEncryptClientTests
     public LetsEncryptClientTests()
     {
         var persistenceService = Substitute.For<IPersistenceService>();
-
-        var options = new LetsEncryptOptions
-        {
-            Domains = new[] { "test.com" },
-            Email = "test@test.com",
-            KeyAlgorithm = KeyAlgorithm.ES512,
-            UseStaging = true,
-        };
 
         var certificateValidator = Substitute.For<IValidateCertificates>();
 
@@ -66,8 +55,8 @@ public sealed class LetsEncryptClientTests
         DateTime.Now.AddDays(90));
 
     private static X509Certificate2 InvalidCert { get; } = SelfSignedCertificate.Make(
-        DateTime.Now.Subtract(180.Days()),
-        DateTime.Now.Subtract(90.Days()));
+        DateTime.Now.AddDays(-180),
+        DateTime.Now.AddDays(-90));
 
     [Fact]
     public async Task Should_TolerateNullInput()
@@ -77,7 +66,7 @@ public sealed class LetsEncryptClientTests
 
         var output = await _sut.RenewCertificateIfNeeded("test");
 
-        output.Status.Should().Be(CertificateRenewalStatus.LoadedFromStore);
+        Assert.Equal(CertificateRenewalStatus.LoadedFromStore, output.Status);
         Assert.Equal(ValidCert, output.Certificate);
     }
 
@@ -87,8 +76,8 @@ public sealed class LetsEncryptClientTests
         var input = ValidCert;
         var output = await _sut.RenewCertificateIfNeeded("test", input);
 
-        output.Status.Should().Be(CertificateRenewalStatus.Unchanged);
-        ReferenceEquals(input, output.Certificate).Should().BeTrue();
+        Assert.Equal(CertificateRenewalStatus.Unchanged, output.Status);
+        Assert.True(ReferenceEquals(input, output.Certificate));
     }
 
     [Fact]
@@ -101,7 +90,7 @@ public sealed class LetsEncryptClientTests
 
         var output = await _sut.RenewCertificateIfNeeded("test", input);
 
-        output.Status.Should().Be(CertificateRenewalStatus.LoadedFromStore);
+        Assert.Equal(CertificateRenewalStatus.LoadedFromStore, output.Status);
         Assert.Equal(stored, output.Certificate);
     }
 
@@ -132,8 +121,8 @@ public sealed class LetsEncryptClientTests
 
         // assert
 
-        output.Status.Should().Be(CertificateRenewalStatus.Renewed);
-        output.Certificate?.RawData.Should().BeEquivalentTo(newCertBytes);
+        Assert.Equal(CertificateRenewalStatus.Renewed, output.Status);
+        Assert.Equivalent(newCertBytes, output.Certificate?.RawData);
 
         _certificateValidator.Received(1).IsCertificateValid(null);
         await _persistenceService.Received(1).GetPersistedSiteCertificate();
@@ -191,7 +180,7 @@ public sealed class LetsEncryptClientTests
         // assert
 
         var cert = new X509Certificate2(result.RawData);
-        pemCert.Should().Be(CertToPem(cert));
+        Assert.Equal(CertToPem(cert), pemCert);
         await challenge1.Received().Validate();
         await challenge2.Received().Validate();
         await challenge2.Received().Resource();
@@ -204,6 +193,5 @@ public sealed class LetsEncryptClientTests
             "\n-----END CERTIFICATE-----");
     }
 
-    private static T[] SeqEq<T>(T[] xs) => Arg.Is<T[]>(ys => xs.SequenceEqual(ys));
     private static T RefEq<T>(T it) => Arg.Is<T>(x => ReferenceEquals(x, it));
 }

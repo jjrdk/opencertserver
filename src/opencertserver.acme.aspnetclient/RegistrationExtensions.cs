@@ -7,15 +7,15 @@ using System.Runtime.CompilerServices;
 namespace OpenCertServer.AspNet.EncryptWeMust;
 
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Builder;
 using OpenCertServer.Acme.AspNetClient;
 using OpenCertServer.Acme.AspNetClient.Certes;
 using OpenCertServer.Acme.AspNetClient.Certificates;
 using OpenCertServer.Acme.AspNetClient.Persistence;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 public static class RegistrationExtensions
 {

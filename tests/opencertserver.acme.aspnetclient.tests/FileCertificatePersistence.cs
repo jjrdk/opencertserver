@@ -4,7 +4,6 @@ using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using FluentAssertions;
 using global::Certes;
 using Persistence;
 using Xunit;
@@ -55,7 +54,7 @@ public sealed class FileCertificatePersistence : IDisposable
 
         var retrievedCert = await Strategy.RetrieveAccountCertificate();
 
-        retrievedCert.Should().Equal(testCert);
+        Assert.Equal(testCert, retrievedCert);
     }
 
     [Fact]
@@ -67,6 +66,6 @@ public sealed class FileCertificatePersistence : IDisposable
 
         var retrievedCert = await Strategy.RetrieveSiteCertificate();
 
-        testCert.RawData.Should().Equal(retrievedCert?.RawData);
+        Assert.Equal(testCert.RawData, retrievedCert?.RawData);
     }
 }

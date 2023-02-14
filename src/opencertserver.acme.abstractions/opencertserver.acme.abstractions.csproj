@@ -9,7 +9,7 @@
 	<Import Project="../../shared.proj" />
 
 	<ItemGroup>
-	  <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="6.25.0" />
+	  <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="6.26.1" />
 	</ItemGroup>
 
 </Project>
