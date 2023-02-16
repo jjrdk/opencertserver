@@ -80,17 +80,15 @@ internal sealed class SimpleReEnrollHandler
             return;
         }
 
-        var value = new X509Certificate2Collection(success.Certificate).Export(X509ContentType.Pkcs7);
+        var value = success.Issuers;
+        value.Add(success.Certificate);
         cert.Dispose();
 
         ctx.Response.StatusCode = (int)HttpStatusCode.OK;
-        ctx.Response.ContentType = Constants.Pkcs7MimeType;
+        ctx.Response.ContentType = Constants.PemMimeType;
         await using var writer = new StreamWriter(ctx.Response.Body);
 
-        var base64String = Convert.ToBase64String(value!, Base64FormattingOptions.InsertLineBreaks);
-        await writer.WriteLineAsync(Constants.BeginPkcs7).ConfigureAwait(false);
-        await writer.WriteLineAsync(base64String).ConfigureAwait(false);
-        await writer.WriteAsync(Constants.EndPkcs7).ConfigureAwait(false);
+        await writer.WriteLineAsync(value.ExportCertificatePems()).ConfigureAwait(false);
         await writer.FlushAsync().ConfigureAwait(false);
     }
 }

@@ -10,13 +10,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Ca.Utils;
 
-public sealed class EstClient
+public sealed class EstClient : IDisposable
 {
     private const string TimeStamping = "1.3.6.1.5.5.7.3.8";
     private readonly Uri _estUri;
     private readonly HttpMessageHandler _messageHandler;
 
-    public EstClient(Uri estUri, HttpMessageHandler messageHandler)
+    public EstClient(Uri estUri, HttpMessageHandler? messageHandler = null)
     {
         if (estUri.Scheme != Uri.UriSchemeHttps)
         {
@@ -24,10 +24,10 @@ public sealed class EstClient
         }
 
         _estUri = estUri;
-        _messageHandler = messageHandler;
+        _messageHandler = messageHandler ?? new SocketsHttpHandler();
     }
 
-    public async Task<X509Certificate2> Enroll(
+    public async Task<X509Certificate2Collection> Enroll(
         X500DistinguishedName distinguishedName,
         RSA key,
         X509KeyUsageFlags usageFlags,
@@ -38,11 +38,12 @@ public sealed class EstClient
         var request = CreateCertificateRequest(distinguishedName, key, usageFlags);
         var bytes = await RequestCertBytes(request, authenticationHeader, certificate, cancellationToken).ConfigureAwait(false);
         var collection = new X509Certificate2Collection();
-        collection.Import(bytes.FromPkcs7());
-        return collection[0].CopyWithPrivateKey(key);
+        collection.ImportFromPem(bytes);
+        collection[^1] = collection[^1].CopyWithPrivateKey(key);
+        return collection;
     }
 
-    public async Task<X509Certificate2> Enroll(
+    public async Task<X509Certificate2Collection> Enroll(
         X500DistinguishedName distinguishedName,
         ECDsa key,
         X509KeyUsageFlags usageFlags,
@@ -52,13 +53,14 @@ public sealed class EstClient
     {
         var request = CreateCertificateRequest(distinguishedName, key, usageFlags);
 
-        var bytes = await RequestCertBytes(request, authenticationHeader, certificate, cancellationToken).ConfigureAwait(false);
+        var pem = await RequestCertBytes(request, authenticationHeader, certificate, cancellationToken).ConfigureAwait(false);
         var collection = new X509Certificate2Collection();
-        collection.Import(bytes.FromPkcs7());
-        return collection[0].CopyWithPrivateKey(key);
+        collection.ImportFromPem(pem);
+        collection[^1] = collection[^1].CopyWithPrivateKey(key);
+        return collection;
     }
 
-    public async Task<X509Certificate2> ReEnroll(
+    public async Task<X509Certificate2Collection> ReEnroll(
         X509Certificate2 certificate,
         X509KeyUsageFlags usageFlags,
         CancellationToken cancellationToken = default)
@@ -71,7 +73,8 @@ public sealed class EstClient
                 certificate.SubjectName,
                 certificate.GetECDsaPrivateKey()!,
                 usageFlags),
-            CertificateConstants.RsaOid => CreateCertificateRequest(certificate.SubjectName,
+            CertificateConstants.RsaOid => CreateCertificateRequest(
+                certificate.SubjectName,
                 certificate.GetRSAPrivateKey()!,
                 usageFlags),
             _ => throw new NotSupportedException($"{oidValue} is not supported")
@@ -101,13 +104,15 @@ public sealed class EstClient
             .ConfigureAwait(false);
         var bytes = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         var s = new X509Certificate2Collection();
-        s.Import(bytes.FromPkcs7());
-        return oidValue switch
+        s.ImportFromPem(bytes);
+        s[^1] = oidValue switch
         {
-            "1.2.840.10045.2.1" => s[0].CopyWithPrivateKey(certificate.GetECDsaPrivateKey()!),
-            "1.2.840.113549.1.1.1" => s[0].CopyWithPrivateKey(certificate.GetRSAPrivateKey()!),
+            "1.2.840.10045.2.1" => s[^1].CopyWithPrivateKey(certificate.GetECDsaPrivateKey()!),
+            "1.2.840.113549.1.1.1" => s[^1].CopyWithPrivateKey(certificate.GetRSAPrivateKey()!),
             _ => throw new NotSupportedException($"{oidValue} is not supported")
         };
+
+        return s;
     }
 
     private async Task<string> RequestCertBytes(
@@ -191,5 +196,11 @@ public sealed class EstClient
 
         req.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(req.PublicKey, false));
         return req;
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _messageHandler.Dispose();
     }
 }

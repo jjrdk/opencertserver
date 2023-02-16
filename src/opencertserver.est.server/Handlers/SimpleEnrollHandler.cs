@@ -1,9 +1,7 @@
 ﻿namespace OpenCertServer.Est.Server.Handlers;
 
-using System;
 using System.IO;
 using System.Net;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -26,15 +24,13 @@ internal sealed class SimpleEnrollHandler
         if (newCert is SignCertificateResponse.Success success)
         {
             ctx.Response.StatusCode = (int)HttpStatusCode.OK;
-            ctx.Response.ContentType = Constants.Pkcs7MimeType;
+            ctx.Response.ContentType = Constants.PemMimeType;
             await using var writer = new StreamWriter(ctx.Response.Body);
-            var certCollection = new X509Certificate2Collection(success.Certificate);
-            var certBytes = certCollection.Export(X509ContentType.Pkcs7);
+            var certCollection = success.Issuers;
+            certCollection.Add(success.Certificate);
+            var pem = certCollection.ExportCertificatePems();
             success.Certificate.Dispose();
-            var base64String = Convert.ToBase64String(certBytes!, Base64FormattingOptions.InsertLineBreaks);
-            await writer.WriteLineAsync(Constants.BeginPkcs7).ConfigureAwait(false);
-            await writer.WriteLineAsync(base64String).ConfigureAwait(false);
-            await writer.WriteAsync(Constants.EndPkcs7).ConfigureAwait(false);
+            await writer.WriteLineAsync(pem).ConfigureAwait(false);
             await writer.FlushAsync().ConfigureAwait(false);
         }
         else
