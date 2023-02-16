@@ -55,8 +55,8 @@ public sealed class RsaWebServerTests : WebServerTests
         var response = await client.SendAsync(request).ConfigureAwait(false);
         var pkcs10 = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var collection = new X509Certificate2Collection();
-        collection.Import(pkcs10.FromPkcs7());
-        var cert = collection[0].CopyWithPrivateKey(rsa);
+        collection.ImportFromPem(pkcs10);
+        var cert = collection[^1].CopyWithPrivateKey(rsa);
 
         Assert.NotNull(cert.PublicKey);
     }
@@ -79,10 +79,9 @@ public sealed class RsaWebServerTests : WebServerTests
             }).ConfigureAwait(false);
         using var reader = new StreamReader(certResponse.Response.Body);
         var responseString = await reader.ReadToEndAsync().ConfigureAwait(false);
-        var certBytes = responseString.FromPkcs7();
         var collection = new X509Certificate2Collection();
-        collection.Import(certBytes);
-        var cert = collection[0].CopyWithPrivateKey(rsa);
+        collection.ImportFromPem(responseString);
+        var cert = collection[^1].CopyWithPrivateKey(rsa);
 
         var response = await Server.SendAsync(
                 ctx =>
