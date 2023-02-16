@@ -1,8 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
+	<Import Project="../../shared.proj"/>
 	<PropertyGroup>
+		<Version>1.0.0</Version>
 		<OutputType>Exe</OutputType>
-		<TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+		<TargetFrameworks>net7.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
@@ -10,7 +12,15 @@
 		<ToolCommandName>est</ToolCommandName>
 		<PackageOutputPath>../../artifacts/tools</PackageOutputPath>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<RootNamespace>OpenCertServer.Est.Cli</RootNamespace>
 
 	</PropertyGroup>
-	<Import Project="../../shared.proj"/>
+
+	<ItemGroup>
+		<PackageReference Include="CommandLineParser" Version="2.9.1" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\opencertserver.est.client\opencertserver.est.client.csproj" />
+	</ItemGroup>
 </Project>

@@ -42,7 +42,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.certserver",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.certserver.tests", "tests\opencertserver.certserver.tests\opencertserver.certserver.tests.csproj", "{E06C6F61-57B2-4E37-97B2-53E28DF4F148}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "opencertserver.est.tool", "src\opencertserver.est.tool\opencertserver.est.tool.csproj", "{6D991393-6F0B-4630-AEA1-F3B96BABED1C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.est.tool", "src\opencertserver.est.tool\opencertserver.est.tool.csproj", "{6D991393-6F0B-4630-AEA1-F3B96BABED1C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
