@@ -1,10 +1,10 @@
 <Project>
     <PropertyGroup>
-        <Version>2.2.2</Version>
+        <Version>2.2.3</Version>
         <Authors>Jacob Reimers</Authors>
         <Company>Reimers.dk</Company>
         <Product>OpenCertServer</Product>
-        <Copyright>Reimers.dk © 2020 - 2022</Copyright>
+        <Copyright>Reimers.dk © 2020 - 2023</Copyright>
 	    <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryType>git</RepositoryType>
         <PackageProjectUrl>https://github.com/jjrdk/opencertserver</PackageProjectUrl>
