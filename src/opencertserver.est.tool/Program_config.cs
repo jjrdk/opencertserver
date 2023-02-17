@@ -11,6 +11,10 @@ internal static partial class Program
 
     private static async Task<ToolConfig> LoadConfig()
     {
+        if (!File.Exists(ConfigPath))
+        {
+            return new ToolConfig();
+        }
         var config = await File.ReadAllTextAsync(ConfigPath, Encoding.UTF8);
         return JsonConvert.DeserializeObject<ToolConfig>(config) ?? new ToolConfig();
     }
