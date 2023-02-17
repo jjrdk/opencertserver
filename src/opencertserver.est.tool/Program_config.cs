@@ -24,7 +24,10 @@ internal static partial class Program
         var config = await LoadConfig();
         config.Server = configureArgs.Server;
 
-        await File.WriteAllTextAsync(ConfigPath, JsonConvert.SerializeObject(config), Encoding.UTF8)
+        var json = JsonConvert.SerializeObject(config, Formatting.Indented);
+        await File.WriteAllTextAsync(ConfigPath, json, Encoding.UTF8)
             .ConfigureAwait(false);
+
+        await Console.Out.WriteLineAsync(json).ConfigureAwait(false);
     }
 }
