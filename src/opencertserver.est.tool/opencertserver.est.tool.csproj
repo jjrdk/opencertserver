@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<Import Project="../../shared.proj"/>
+	<Import Project="../../shared.proj" />
 	<PropertyGroup>
 		<Version>1.0.2</Version>
 		<OutputType>Exe</OutputType>
@@ -18,7 +18,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="CommandLineParser" Version="2.9.1" />
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\opencertserver.est.client\opencertserver.est.client.csproj" />
