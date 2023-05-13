@@ -8,10 +8,9 @@
 	</PropertyGroup>
 	<Import Project="../../shared.proj" />
 	<ItemGroup>
-		<!--<FrameworkReference Include="Microsoft.AspNetCore.App"/>-->
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 		<PackageReference Include="certes" Version="3.0.4" />
-		<PackageReference Include="Microsoft.AspNetCore.Connections.Abstractions" Version="7.0.4" />
-		<PackageReference Include="Microsoft.AspNetCore.Server.Kestrel.Core" Version="2.2.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Connections.Abstractions" Version="7.0.5" />
 		<PackageReference Include="Microsoft.Extensions.Http" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="7.0.0" />

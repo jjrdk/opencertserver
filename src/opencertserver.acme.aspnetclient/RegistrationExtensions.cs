@@ -1,21 +1,17 @@
-﻿
-using System.Runtime.CompilerServices;
-[assembly: InternalsVisibleTo("opencertserver.acme.aspnetclient.tests")]
-[assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
-
-// ReSharper disable once CheckNamespace
-namespace OpenCertServer.AspNet.EncryptWeMust;
-
-using System.Collections.Generic;
+﻿using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Builder;
-using OpenCertServer.Acme.AspNetClient;
-using OpenCertServer.Acme.AspNetClient.Certes;
-using OpenCertServer.Acme.AspNetClient.Certificates;
-using OpenCertServer.Acme.AspNetClient.Persistence;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
+using OpenCertServer.Acme.AspNetClient.Certes;
+using OpenCertServer.Acme.AspNetClient.Certificates;
+using OpenCertServer.Acme.AspNetClient.Persistence;
+
+[assembly: InternalsVisibleTo("opencertserver.acme.aspnetclient.tests")]
+[assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
+
+namespace OpenCertServer.Acme.AspNetClient;
 
 public static class RegistrationExtensions
 {
