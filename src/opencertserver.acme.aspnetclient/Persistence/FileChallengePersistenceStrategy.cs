@@ -52,6 +52,6 @@ public sealed class FileChallengePersistenceStrategy : IChallengePersistenceStra
 
     private string GetChallengesStorePath()
     {
-        return _relativeFilePath + "_Challenges";
+        return $"{_relativeFilePath}_Challenges";
     }
 }

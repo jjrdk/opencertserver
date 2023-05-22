@@ -39,6 +39,6 @@ public sealed class FileCertificatePersistenceStrategy : ICertificatePersistence
 
     private string GetCertificatePath(CertificateType persistenceType)
     {
-        return _relativeFilePath + "_" + persistenceType;
+        return $"{_relativeFilePath}_{persistenceType}";
     }
 }
