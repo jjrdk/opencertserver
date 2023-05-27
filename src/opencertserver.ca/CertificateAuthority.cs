@@ -1,18 +1,11 @@
 ﻿namespace OpenCertServer.Ca;
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
-using Org.BouncyCastle.Asn1;
-using Org.BouncyCastle.Asn1.Pkcs;
-using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Pkcs;
 using Utils;
-using Cms = Org.BouncyCastle.Asn1.Cms;
 
 public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
 {
@@ -20,14 +13,14 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
     private const string Footer = "-----END CERTIFICATE REQUEST-----";
 
     private const X509KeyUsageFlags UsageFlags = X509KeyUsageFlags.CrlSign
-                                                 | X509KeyUsageFlags.DataEncipherment
-                                                 | X509KeyUsageFlags.DecipherOnly
-                                                 | X509KeyUsageFlags.DigitalSignature
-                                                 | X509KeyUsageFlags.EncipherOnly
-                                                 | X509KeyUsageFlags.KeyAgreement
-                                                 | X509KeyUsageFlags.KeyCertSign
-                                                 | X509KeyUsageFlags.KeyEncipherment
-                                                 | X509KeyUsageFlags.NonRepudiation;
+      | X509KeyUsageFlags.DataEncipherment
+      | X509KeyUsageFlags.DecipherOnly
+      | X509KeyUsageFlags.DigitalSignature
+      | X509KeyUsageFlags.EncipherOnly
+      | X509KeyUsageFlags.KeyAgreement
+      | X509KeyUsageFlags.KeyCertSign
+      | X509KeyUsageFlags.KeyEncipherment
+      | X509KeyUsageFlags.NonRepudiation;
 
     private readonly ILogger<CertificateAuthority> _logger;
     private readonly X509Certificate2 _rsaCertificate;
@@ -119,8 +112,8 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
             ChainPolicy = new X509ChainPolicy
             {
                 VerificationFlags = X509VerificationFlags.IgnoreEndRevocationUnknown
-                                    | X509VerificationFlags.AllowUnknownCertificateAuthority
-                                    | X509VerificationFlags.IgnoreCertificateAuthorityRevocationUnknown,
+                  | X509VerificationFlags.AllowUnknownCertificateAuthority
+                  | X509VerificationFlags.IgnoreCertificateAuthorityRevocationUnknown,
                 RevocationFlag = X509RevocationFlag.ExcludeRoot
             }
         };
@@ -158,75 +151,23 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
             .Replace(Footer, "", StringComparison.OrdinalIgnoreCase)
             .Trim();
 
-        var bytes = Base64DecodeBytes(request);
+        var csr = Base64DecodeBytes(request);
 
-        return SignCertificateRequest(bytes);
+        return SignCertificateRequest(csr);
     }
 
-    public SignCertificateResponse SignCertificateRequest(byte[] bytes)
+    private SignCertificateResponse SignCertificateRequest(byte[] request)
     {
-        var pkcs10Req = new Pkcs10CertificationRequest(bytes);
-        var pub = pkcs10Req.GetPublicKey();
-        var info = pkcs10Req.GetCertificationRequestInfo();
-        var request = CreateCertificateRequest(pub, info);
+        var csr = CertificateRequest.LoadSigningRequest(request, HashAlgorithmName.SHA256,
+            signerSignaturePadding: RSASignaturePadding.Pss);
 
-        var o = (DerSequence)info.Attributes.Parser.ReadObject().ToAsn1Object();
-
-        foreach (var extension in ResolveRecursive(o))
-        {
-            request.CertificateExtensions.Add(extension);
-        }
-
-        return SignCertificateRequest(request);
+        return SignCertificateRequest(csr);
     }
 
     /// <inheritdoc />
     public X509Certificate2Collection GetRootCertificates()
     {
         return new X509Certificate2Collection { _rsaCertificate, _ecdsaCertificate };
-    }
-
-    private static CertificateRequest CreateCertificateRequest(
-        AsymmetricKeyParameter pub,
-        CertificationRequestInfo info)
-    {
-        switch (pub)
-        {
-            case RsaKeyParameters rsa:
-            {
-                var pk = RSA.Create(
-                    new RSAParameters
-                    {
-                        Modulus = rsa.Modulus.ToByteArray(),
-                        Exponent = rsa.Exponent.ToByteArray()
-                    });
-                return new CertificateRequest(
-                    info.Subject.ToString(),
-                    pk,
-                    HashAlgorithmName.SHA256,
-                    RSASignaturePadding.Pss);
-            }
-            case ECPublicKeyParameters ecp:
-            {
-                var ec = ECDsa.Create();
-                ec.ImportParameters(new ECParameters
-                {
-                    Curve = ECCurve.CreateFromOid(new Oid(ecp.PublicKeyParamSet.Id)),
-                    Q = new ECPoint
-                    {
-                        X = ecp.Q.XCoord.GetEncoded(),
-                        Y = ecp.Q.YCoord.GetEncoded()
-                    }
-                });
-
-                return new CertificateRequest(
-                    info.Subject.ToString(),
-                    ec,
-                    HashAlgorithmName.SHA256);
-            }
-            default:
-                throw new ArgumentException("Unknown argument", nameof(pub));
-        }
     }
 
     private static X509Certificate2 CreateSelfSignedRsaCert(
@@ -276,36 +217,10 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
         return parentCert;
     }
 
-    private static IEnumerable<X509Extension> ResolveRecursive(Asn1Sequence sequence)
-    {
-        var attr = new Cms.Attribute(sequence);
-        foreach (var s in attr.AttrValues.OfType<DerSequence>())
-        {
-            foreach (var s2 in s.OfType<DerSequence>())
-            {
-                var derOid = s2.OfType<DerObjectIdentifier>().First();
-                var octetString = s2.OfType<DerOctetString>().First();
-                var derBool = s2.OfType<DerBoolean>().FirstOrDefault();
-                var critical = derBool?.IsTrue == true;
-                var oid = Oid.FromOidValue(derOid.Id, OidGroup.All);
-                var data = new AsnEncodedData(octetString.GetOctets());
-                yield return derOid.Id switch
-                {
-                    "2.5.29.14" => new X509SubjectKeyIdentifierExtension(data, critical),
-                    "2.5.29.15" => new X509KeyUsageExtension(data, critical),
-                    "2.5.29.19" => new X509BasicConstraintsExtension(data, critical),
-                    "2.5.29.37" => new X509EnhancedKeyUsageExtension(data, critical),
-                    _ => new X509Extension(oid, octetString.GetOctets(), critical)
-                };
-            }
-        }
-    }
-
     public void Dispose()
     {
         _rsaCertificate.Dispose();
         _ecdsaCertificate.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -350,11 +265,12 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
         public bool Validate(CertificateRequest request, X509Certificate2? reenrollingFrom = null)
         {
             var result = reenrollingFrom == null
-                         || _serverCertificates
-                             .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);
+             || _serverCertificates
+                    .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);
             if (!result)
             {
-                _logger.LogError("Could not validate re-enrollment from {reenrollingFrom}", reenrollingFrom!.IssuerName.Name);
+                _logger.LogError("Could not validate re-enrollment from {reenrollingFrom}",
+                    reenrollingFrom!.IssuerName.Name);
             }
 
             return result;

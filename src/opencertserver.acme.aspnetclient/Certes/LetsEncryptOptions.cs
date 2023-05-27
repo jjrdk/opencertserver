@@ -52,7 +52,7 @@ public abstract class AcmeOptions
     /// <summary>
     /// Get or set a delay before the initial run of the renewal service (subsequent runs will be at 1hr intervals)
     /// On some platform/deployment systems (e.g Azure Slot Swap) we do not want the renewal service to start immediately, because we may not
-    /// yet have incoming requests (e.g. for challenges) directed to us. 
+    /// yet have incoming requests (e.g. for challenges) directed to us.
     /// </summary>
     public TimeSpan RenewalServiceStartupDelay { get; set; } = TimeSpan.Zero;
 }

@@ -8,7 +8,5 @@ public interface ICertificateAuthority
 
     SignCertificateResponse SignCertificateRequest(string request);
 
-    SignCertificateResponse SignCertificateRequest(byte[] bytes);
-
     X509Certificate2Collection GetRootCertificates();
 }

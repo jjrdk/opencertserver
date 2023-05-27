@@ -11,7 +11,7 @@ using Xunit;
 
 public sealed class CertificateAuthorityTests : IDisposable
 {
-    private readonly CertificateAuthority _authority;
+    private readonly ICertificateAuthority _authority;
 
     public CertificateAuthorityTests()
     {
@@ -46,8 +46,8 @@ public sealed class CertificateAuthorityTests : IDisposable
 
         var req = CreateCertificateRequest(rsa);
         var bytes = req.CreateSigningRequest();
-
-        var cert = _authority.SignCertificateRequest(bytes) as SignCertificateResponse.Success;
+        var csr = Convert.ToBase64String(bytes);
+        var cert = _authority.SignCertificateRequest(csr) as SignCertificateResponse.Success;
 
         static IEnumerable<string> GetParts(X500DistinguishedName name)
         {
@@ -150,7 +150,6 @@ public sealed class CertificateAuthorityTests : IDisposable
 
     public void Dispose()
     {
-        GC.SuppressFinalize(this);
-        _authority?.Dispose();
+        (_authority as IDisposable)?.Dispose();
     }
 }
