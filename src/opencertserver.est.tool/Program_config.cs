@@ -1,7 +1,7 @@
 ﻿namespace OpenCertServer.Est.Cli;
 
+using System.Text.Json;
 using System.Text;
-using Newtonsoft.Json;
 
 internal static partial class Program
 {
@@ -15,8 +15,9 @@ internal static partial class Program
         {
             return new ToolConfig();
         }
+
         var config = await File.ReadAllTextAsync(ConfigPath, Encoding.UTF8);
-        return JsonConvert.DeserializeObject<ToolConfig>(config) ?? new ToolConfig();
+        return JsonSerializer.Deserialize<ToolConfig>(config) ?? new ToolConfig();
     }
 
     private static async Task Configure(ConfigureArgs configureArgs)
@@ -24,7 +25,8 @@ internal static partial class Program
         var config = await LoadConfig();
         config.Server = configureArgs.Server;
 
-        var json = JsonConvert.SerializeObject(config, Formatting.Indented);
+        var json = JsonSerializer.Serialize(config,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true, IncludeFields = false });
         await File.WriteAllTextAsync(ConfigPath, json, Encoding.UTF8)
             .ConfigureAwait(false);
 

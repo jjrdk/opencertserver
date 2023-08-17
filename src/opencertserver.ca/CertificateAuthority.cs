@@ -22,7 +22,7 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
       | X509KeyUsageFlags.KeyEncipherment
       | X509KeyUsageFlags.NonRepudiation;
 
-    private readonly ILogger<CertificateAuthority> _logger;
+    private readonly ILogger<ICertificateAuthority> _logger;
     private readonly X509Certificate2 _rsaCertificate;
     private readonly X509Certificate2 _ecdsaCertificate;
     private readonly TimeSpan _certificateValidity;
@@ -54,7 +54,7 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
         X509Certificate2 ecdsaCertificate,
         TimeSpan certificateValidity,
         Func<X509Chain, bool> x509ChainValidation,
-        ILogger<CertificateAuthority> logger,
+        ILogger<ICertificateAuthority> logger,
         Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
         params IValidateCertificateRequests[] validators)
     {

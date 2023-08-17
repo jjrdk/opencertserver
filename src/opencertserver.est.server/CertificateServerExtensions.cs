@@ -22,17 +22,16 @@ public static class CertificateServerExtensions
         TimeSpan certificateValidity = default,
         Func<X509Chain, bool>? chainValidation = null)
     {
-        services.AddSingleton(
-                sp =>
-                {
-                    var certificateAuthority = new CertificateAuthority(
-                        distinguishedName,
-                        certificateValidity == default ? TimeSpan.FromDays(90) : certificateValidity,
-                        chainValidation ?? (_ => true),
-                        sp.GetRequiredService<ILogger<CertificateAuthority>>());
-                    return certificateAuthority;
-                })
-            .AddSingleton<ICertificateAuthority>(sp => sp.GetRequiredService<CertificateAuthority>());
+        services.AddSingleton<ICertificateAuthority>(
+            sp =>
+            {
+                var certificateAuthority = new CertificateAuthority(
+                    distinguishedName,
+                    certificateValidity == default ? TimeSpan.FromDays(90) : certificateValidity,
+                    chainValidation ?? (_ => true),
+                    sp.GetRequiredService<ILogger<CertificateAuthority>>());
+                return certificateAuthority;
+            });
 
         return services.InnerAddEstServer();
     }
@@ -59,7 +58,7 @@ public static class CertificateServerExtensions
                     ecdsaCertificate,
                     TimeSpan.FromDays(90),
                     chainValidation ?? (_ => true),
-                    sp.GetRequiredService<ILogger<CertificateAuthority>>()))
+                    sp.GetRequiredService<ILogger<ICertificateAuthority>>()))
             .InnerAddEstServer();
     }
 
@@ -68,7 +67,7 @@ public static class CertificateServerExtensions
         return services.AddTransient<CaCertHandler>()
             .AddTransient<SimpleEnrollHandler>()
             .AddTransient<SimpleReEnrollHandler>()
-            .AddTransient(
+            .AddTransient<X509Certificate2Collection>(
                 sp => sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates())
             .AddCertificateForwarding(
                 o => { o.HeaderConverter = x => new X509Certificate2(Convert.FromBase64String(x)); })

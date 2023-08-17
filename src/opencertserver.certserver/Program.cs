@@ -40,13 +40,18 @@ public sealed class Program
             services = services.AddEstServer(rsaCert, ecdsaCert);
         }
 
+        var a = Array.IndexOf(args, "--authority");
+        var authority = a >= 0 ? args[a + 1] : "https://identity.reimers.dk";
+
         var forwardedHeadersOptions = CreateForwardedHeaderOptions();
 
         _ = services.AddAcmeServer(builder.Configuration)
             .AddAcmeInMemoryStore()
+            .AddSingleton(new JwtParameters { Authority = authority })
             .AddSingleton<ICsrValidator, DefaultCsrValidator>()
             .AddSingleton<ICertificateIssuer, DefaultIssuer>()
             .ConfigureOptions<ConfigureJwtBearerOptions>()
+            .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
             .AddHealthChecks();
         var app = builder.Build();
         app.UseForwardedHeaders(forwardedHeadersOptions).UseHealthChecks("/health").UseAcmeServer().UseEstServer();

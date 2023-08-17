@@ -20,6 +20,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Dockerfile = Dockerfile
 		README.md = README.md
 		shared.proj = shared.proj
+		Docker.md = Docker.md
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opencertserver.est.client", "src\opencertserver.est.client\opencertserver.est.client.csproj", "{CDCE6CEF-019C-4F69-80A1-D878AA4AC42D}"
