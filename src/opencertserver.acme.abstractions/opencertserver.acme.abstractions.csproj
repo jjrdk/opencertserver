@@ -1,15 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+	<Import Project="../../shared.proj" />
 	<PropertyGroup>
 		<RootNamespace>OpenCertServer.Acme.Abstractions</RootNamespace>
-		<TargetFrameworks>net6.0;net7.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<AssemblyName>opencertserver.acme.abstractions</AssemblyName>
 	</PropertyGroup>
-	<Import Project="../../shared.proj" />
 
 	<ItemGroup>
-	  <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="6.32.1" />
+	  <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="7.0.3" />
 	</ItemGroup>
 
 </Project>

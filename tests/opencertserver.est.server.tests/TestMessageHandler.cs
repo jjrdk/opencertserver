@@ -1,5 +1,6 @@
 namespace OpenCertServer.Est.Tests;
 
+using Microsoft.AspNetCore.Http;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -21,19 +22,23 @@ public sealed class TestMessageHandler : HttpMessageHandler
     }
 
     /// <inheritdoc />
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
     {
         var response = await _server.SendAsync(
             async ctx =>
             {
                 foreach (var (key, value) in request.Headers)
                 {
-                    ctx.Request.Headers.Add(key, new StringValues(value.ToArray()));
+                    ctx.Request.GetTypedHeaders().Set(key, new StringValues(value.ToArray()));
                 }
+
                 if (request.RequestUri != null)
                 {
                     ctx.Request.Scheme = request.RequestUri.Scheme;
                 }
+
                 ctx.Request.Method = HttpMethod.Post.Method;
                 ctx.Request.Path = request.RequestUri?.PathAndQuery;
                 if (_certificate != null)
@@ -52,7 +57,7 @@ public sealed class TestMessageHandler : HttpMessageHandler
         return new HttpResponseMessage
         {
             Content = new StreamContent(response.Response.Body),
-            StatusCode = (HttpStatusCode) response.Response.StatusCode
+            StatusCode = (HttpStatusCode)response.Response.StatusCode
         };
     }
 }

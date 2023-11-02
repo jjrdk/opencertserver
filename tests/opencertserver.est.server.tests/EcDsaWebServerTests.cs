@@ -35,7 +35,7 @@ public sealed class EcDsaWebServerTests : WebServerTests
                 ctx.Request.ContentType = "application/pkcs10-mime";
                 ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(certRequest.ToPkcs10()));
                 ctx.Connection.ClientCertificate = new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"));
-            }).ConfigureAwait(false);
+            });
 
         _output.WriteLine(response.Response.StatusCode.ToString());
         Assert.Equal((int)HttpStatusCode.OK, response.Response.StatusCode);
@@ -47,7 +47,8 @@ public sealed class EcDsaWebServerTests : WebServerTests
         using var ecdsa = ECDsa.Create();
         var certRequest = CreateCertificateRequest(ecdsa);
         var content = new StringContent(certRequest.ToPkcs10(), Encoding.UTF8, "application/pkcs10-mime");
-        var client = new HttpClient(new TestMessageHandler(Server, new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"))));
+        var client = new HttpClient(new TestMessageHandler(Server,
+            new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"))));
         var request = new HttpRequestMessage
         {
             Method = HttpMethod.Post,
@@ -56,9 +57,9 @@ public sealed class EcDsaWebServerTests : WebServerTests
             Content = content
         };
 
-        var response = await client.SendAsync(request).ConfigureAwait(false);
+        var response = await client.SendAsync(request);
 
-        var pkcs7 = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var pkcs7 = await response.Content.ReadAsStringAsync();
         _output.WriteLine(pkcs7);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -84,12 +85,12 @@ public sealed class EcDsaWebServerTests : WebServerTests
                 ctx.Request.ContentType = "application/pkcs10-mime";
                 ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(certRequest.ToPkcs10()));
                 ctx.Connection.ClientCertificate = new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"));
-            }).ConfigureAwait(false);
+            });
 
         Assert.Equal((int)HttpStatusCode.OK, certResponse.Response.StatusCode);
 
         using var reader = new StreamReader(certResponse.Response.Body);
-        var responseString = await reader.ReadToEndAsync().ConfigureAwait(false);
+        var responseString = await reader.ReadToEndAsync();
         var collection = new X509Certificate2Collection();
         collection.ImportFromPem(responseString);
         var cert = collection[^1].CopyWithPrivateKey(ecdsa);
@@ -103,7 +104,7 @@ public sealed class EcDsaWebServerTests : WebServerTests
                 ctx.Request.Method = HttpMethod.Post.Method;
                 ctx.Request.Path = "/.well-known/est/simplereenroll";
                 ctx.Connection.ClientCertificate = cert;
-            }).ConfigureAwait(false);
+            });
 
         Assert.Equal((int)HttpStatusCode.OK, response.Response.StatusCode);
     }

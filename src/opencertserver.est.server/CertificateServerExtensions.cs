@@ -58,7 +58,7 @@ public static class CertificateServerExtensions
                     ecdsaCertificate,
                     TimeSpan.FromDays(90),
                     chainValidation ?? (_ => true),
-                    sp.GetRequiredService<ILogger<ICertificateAuthority>>()))
+                    sp.GetRequiredService<ILogger<CertificateAuthority>>()))
             .InnerAddEstServer();
     }
 

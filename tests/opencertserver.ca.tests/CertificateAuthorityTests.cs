@@ -54,7 +54,7 @@ public sealed class CertificateAuthorityTests : IDisposable
             return name.Name!.Split(',').Select(x => x.Trim()).OrderBy(x => x);
         }
 
-        Assert.Equal(GetParts(req.SubjectName), GetParts(cert.Certificate.SubjectName));
+        Assert.Equal(GetParts(req.SubjectName), GetParts(cert!.Certificate.SubjectName));
     }
 
     [Fact]
@@ -68,14 +68,14 @@ public sealed class CertificateAuthorityTests : IDisposable
 
         Assert.Equal(
             string.Join("", req.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)),
-            string.Join("", cert.Certificate.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)));
+            string.Join("", cert!.Certificate.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)));
     }
 
     [Fact]
     public void WhenCreatingWithBackupActionThenBacksUpCerts()
     {
-        X509Certificate2 rsa = null;
-        X509Certificate2 ecdsa = null;
+        X509Certificate2 rsa = null!;
+        X509Certificate2 ecdsa = null!;
         var ca = new CertificateAuthority(
             new X500DistinguishedName("CN=test"),
             TimeSpan.FromDays(1),

@@ -54,7 +54,7 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
         X509Certificate2 ecdsaCertificate,
         TimeSpan certificateValidity,
         Func<X509Chain, bool> x509ChainValidation,
-        ILogger<ICertificateAuthority> logger,
+        ILogger<CertificateAuthority> logger,
         Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
         params IValidateCertificateRequests[] validators)
     {

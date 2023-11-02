@@ -1,11 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+    <Import Project="../../shared.proj" />
     <PropertyGroup>
-        <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
         <RootNamespace>OpenCertServer.Est.Client</RootNamespace>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
-    <Import Project="../../shared.proj" />
 
     <ItemGroup>
         <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />

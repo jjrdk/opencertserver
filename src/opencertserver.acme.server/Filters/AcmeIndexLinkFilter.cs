@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.Server.Filters;
+﻿using Microsoft.AspNetCore.Http;
+
+namespace OpenCertServer.Acme.Server.Filters;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -22,6 +24,6 @@ public sealed class AcmeIndexLinkFilter : IActionFilter
         var linkHeaderUrl = urlHelper.RouteUrl("Directory", null, "https");
         var linkHeader = $"<{linkHeaderUrl}>;rel=\"index\"";
 
-        context.HttpContext.Response.Headers.Add("Link", linkHeader);
+        context.HttpContext.Response.GetTypedHeaders().Set("Link", linkHeader);
     }
 }

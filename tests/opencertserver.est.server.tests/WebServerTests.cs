@@ -126,8 +126,8 @@ public abstract class WebServerTests : IDisposable
     public async Task CanReceiveServerCertificates()
     {
         var client = Server.CreateClient();
-        var response = await client.GetAsync("https://localhost/.well-known/est/cacert").ConfigureAwait(false);
-        var bytes = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var response = await client.GetAsync("https://localhost/.well-known/est/cacert");
+        var bytes = await response.Content.ReadAsStringAsync();
         var certificateCollection = new X509Certificate2Collection();
         certificateCollection.ImportFromPem(bytes);
 

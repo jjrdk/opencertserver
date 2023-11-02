@@ -1,17 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+    <Import Project="../../shared.proj" />
     <PropertyGroup>
-        <TargetFramework>net7.0</TargetFramework>
         <RootNamespace>OpenCertServer.Est.Server</RootNamespace>
         <AssemblyName>opencertserver.est.server</AssemblyName>
         <Nullable>enable</Nullable>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
-    <Import Project="../../shared.proj" />
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="7.0.10" />
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="7.0.10" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="8.0.0-rc.2.23480.2" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0-rc.2.23480.2" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0-rc.2.23479.6" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,9 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+	<Import Project="../../shared.proj" />
 	<PropertyGroup>
 		<RootNamespace>OpenCertServer.Acme.Server</RootNamespace>
-		<TargetFramework>net7.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
 		<AssemblyName>opencertserver.acme.server</AssemblyName>
 	</PropertyGroup>
 
@@ -14,14 +13,13 @@
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 	  <WarningsNotAsErrors>IL2026</WarningsNotAsErrors>
 	</PropertyGroup>
-	<Import Project="../../shared.proj" />
 
 	<ItemGroup>
 		<PackageReference Include="Certes" Version="3.0.4" />
 		<PackageReference Include="DnsClient" Version="1.7.0" />
-		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="7.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Options" Version="7.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0-rc.2.23479.6" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0-rc.2.23479.6" />
+		<PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0-rc.2.23479.6" />
 	</ItemGroup>
 
 	<ItemGroup>

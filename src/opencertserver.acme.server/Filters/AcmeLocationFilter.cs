@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.Server.Filters;
+﻿using Microsoft.AspNetCore.Http;
+
+namespace OpenCertServer.Acme.Server.Filters;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -24,7 +26,7 @@ public sealed class AcmeLocationFilter : IActionFilter
         _urlHelperFactory = urlHelperFactory;
     }
 
-    public void OnActionExecuted(ActionExecutedContext context) 
+    public void OnActionExecuted(ActionExecutedContext context)
     {
         var locationAttribute = context.ActionDescriptor.FilterDescriptors
             .Select(x => x.Filter)
@@ -41,9 +43,10 @@ public sealed class AcmeLocationFilter : IActionFilter
         var locationHeaderUrl = urlHelper.RouteUrl(locationAttribute.RouteName, context.RouteData.Values, "https");
         var locationHeader = $"{locationHeaderUrl}";
 
-        context.HttpContext.Response.Headers.Add("Location", locationHeader);
+        context.HttpContext.Response.GetTypedHeaders().Set("Location", locationHeader);
     }
 
     public void OnActionExecuting(ActionExecutingContext context)
-    { }
+    {
+    }
 }

@@ -88,11 +88,10 @@ public sealed class EstClientTests : IDisposable
             new Uri("https://localhost/"),
             new TestMessageHandler(_server, new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"))));
         var cert = await client.Enroll(
-                new X500DistinguishedName("CN=Test, OU=Test Department"),
-                rsa,
-                X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-                certificate: new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx")))
-            .ConfigureAwait(false);
+            new X500DistinguishedName("CN=Test, OU=Test Department"),
+            rsa,
+            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
+            certificate: new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx")));
 
         Assert.NotNull(cert);
     }
@@ -105,11 +104,10 @@ public sealed class EstClientTests : IDisposable
             new Uri("https://localhost/"),
             new TestMessageHandler(_server, new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"))));
         var cert = await client.Enroll(
-                new X500DistinguishedName("CN=Test, OU=Test Department"),
-                ecdsa!,
-                X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-                certificate: new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx")))
-            .ConfigureAwait(false);
+            new X500DistinguishedName("CN=Test, OU=Test Department"),
+            ecdsa!,
+            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
+            certificate: new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx")));
 
         Assert.NotNull(cert);
     }

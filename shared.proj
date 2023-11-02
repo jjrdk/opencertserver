@@ -1,6 +1,7 @@
 <Project>
     <PropertyGroup>
         <Version>2.2.3</Version>
+        <TargetFramework>net8.0</TargetFramework>
         <Authors>Jacob Reimers</Authors>
         <Company>Reimers.dk</Company>
         <Product>OpenCertServer</Product>
@@ -14,6 +15,7 @@
         <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
         <langVersion>latest</langVersion>
         <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <WarningsAsErrors />
         <WarningsNotAsErrors>618;1701</WarningsNotAsErrors>

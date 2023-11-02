@@ -32,7 +32,7 @@ public sealed class RsaWebServerTests : WebServerTests
             "Basic",
             Convert.ToBase64String(Encoding.UTF8.GetBytes("test:test")));
 
-        var response = await client.SendAsync(request).ConfigureAwait(false);
+        var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -52,8 +52,8 @@ public sealed class RsaWebServerTests : WebServerTests
             Content = content
         };
 
-        var response = await client.SendAsync(request).ConfigureAwait(false);
-        var pkcs10 = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var response = await client.SendAsync(request);
+        var pkcs10 = await response.Content.ReadAsStringAsync();
         var collection = new X509Certificate2Collection();
         collection.ImportFromPem(pkcs10);
         var cert = collection[^1].CopyWithPrivateKey(rsa);
@@ -76,24 +76,23 @@ public sealed class RsaWebServerTests : WebServerTests
                 ctx.Request.ContentType = "application/pkcs10-mime";
                 ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(certRequest.ToPkcs10()));
                 ctx.Connection.ClientCertificate = new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"));
-            }).ConfigureAwait(false);
+            });
         using var reader = new StreamReader(certResponse.Response.Body);
-        var responseString = await reader.ReadToEndAsync().ConfigureAwait(false);
+        var responseString = await reader.ReadToEndAsync();
         var collection = new X509Certificate2Collection();
         collection.ImportFromPem(responseString);
         var cert = collection[^1].CopyWithPrivateKey(rsa);
 
         var response = await Server.SendAsync(
-                ctx =>
-                {
-                    ctx.Request.Scheme = Uri.UriSchemeHttps;
-                    ctx.Request.Method = HttpMethod.Post.Method;
-                    ctx.Request.Path = "/.well-known/est/simplereenroll";
-                    ctx.Request.ContentType = "application/pkcs10-mime";
-                    ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(certRequest.ToPkcs10()));
-                    ctx.Connection.ClientCertificate = cert;
-                })
-            .ConfigureAwait(false);
+            ctx =>
+            {
+                ctx.Request.Scheme = Uri.UriSchemeHttps;
+                ctx.Request.Method = HttpMethod.Post.Method;
+                ctx.Request.Path = "/.well-known/est/simplereenroll";
+                ctx.Request.ContentType = "application/pkcs10-mime";
+                ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(certRequest.ToPkcs10()));
+                ctx.Connection.ClientCertificate = cert;
+            });
 
         Assert.Equal((int)HttpStatusCode.OK, response.Response.StatusCode);
     }

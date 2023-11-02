@@ -43,7 +43,7 @@ public sealed class AddNextNonceFilter : IAsyncActionFilter, IAsyncExceptionFilt
         }
 
         var newNonce = await _nonceService.CreateNonceAsync(httpContext.RequestAborted);
-        httpContext.Response.Headers.Add("Replay-Nonce", newNonce.Token);
+        httpContext.Response.GetTypedHeaders().Set("Replay-Nonce", newNonce.Token);
 
         _logger.LogInformation("Added Replay-Nonce: {nonceToken}", newNonce.Token);
     }

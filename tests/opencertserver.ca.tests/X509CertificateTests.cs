@@ -38,7 +38,7 @@ public sealed class X509CertificateTests : IDisposable
                 CertificateExtensions = { new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false) }
             }) as SignCertificateResponse.Success;
         using var ms = new MemoryStream();
-        var key = cert!.Certificate.GetRSAPublicKey();
+        var key = cert!.Certificate.GetRSAPublicKey()!;
 
         Assert.Equal(rsa.ExportRSAPublicKey(), key.ExportRSAPublicKey());
     }
@@ -59,7 +59,7 @@ public sealed class X509CertificateTests : IDisposable
                 }
             }) as SignCertificateResponse.Success;
         await using var ms = new MemoryStream();
-        await cert.Certificate.WritePfx(ms).ConfigureAwait(false);
+        await cert!.Certificate.WritePfx(ms);
 
         var newCert = new X509Certificate2(ms.ToArray());
 
@@ -85,8 +85,8 @@ public sealed class X509CertificateTests : IDisposable
             }) as SignCertificateResponse.Success;
 
         await using var ms = new MemoryStream();
-        var san = cert.Certificate.Extensions.OfType<X509Extension>()
-            .FirstOrDefault(e => e.Oid.Value == "2.5.29.17");
+        var san = cert!.Certificate.Extensions.OfType<X509Extension>()
+            .FirstOrDefault(e => e.Oid!.Value == "2.5.29.17");
 
         Assert.NotNull(san);
     }
