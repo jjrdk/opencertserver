@@ -14,7 +14,6 @@ public sealed class BuildTask : FrostingTask<BuildContext>
         var buildSettings = new DotNetMSBuildSettings().SetConfiguration(context.BuildConfiguration)
             .SetVersion(context.BuildVersion)
             .SetInformationalVersion(context.InformationalVersion);
-        //.SetFileVersion(versionInfo.SemVer + versionInfo.Sha);
         context.DotNetMSBuild(context.SolutionName, buildSettings);
     }
 }

@@ -22,12 +22,12 @@ public sealed class VersionTask : FrostingTask<BuildContext>
 
         context.InformationalVersion =
             $"{versionInfo.MajorMinorPatch}.{versionInfo.CommitsSinceVersionSource ?? 0}";
-        context.Log.Information("Build configuration: {configuration}", context.BuildConfiguration);
-        context.Log.Information("Branch: {branch}", versionInfo.BranchName);
-        context.Log.Information("Version: {fullSemanticVersion}", versionInfo.FullSemVer);
-        context.Log.Information("Version: {version}", versionInfo.MajorMinorPatch);
-        context.Log.Information("Build version: {buildVersion}", context.BuildVersion);
-        context.Log.Information("CommitsSinceVersionSource: {commitsSinceVersionSource}",
+        context.Log.Information("Build configuration: {0}", context.BuildConfiguration);
+        context.Log.Information("Branch: {0}", versionInfo.BranchName);
+        context.Log.Information("Version: {0}", versionInfo.FullSemVer);
+        context.Log.Information("Version: {0}", versionInfo.MajorMinorPatch);
+        context.Log.Information("Build version: {0}", context.BuildVersion);
+        context.Log.Information("CommitsSinceVersionSource: {0}",
             versionInfo.CommitsSinceVersionSource);
     }
 }

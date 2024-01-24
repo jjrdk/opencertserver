@@ -13,7 +13,7 @@ public sealed class PackTask : FrostingTask<BuildContext>
     /// <inheritdoc />
     public override void Run(BuildContext context)
     {
-        context.Log.Information("Package version: " + context.BuildVersion);
+        context.Log.Information("Package version: {0}", context.BuildVersion);
 
         var packSettings = new DotNetPackSettings
         {
@@ -30,8 +30,10 @@ public sealed class PackTask : FrostingTask<BuildContext>
         context.DotNetPack("./src/opencertserver.est.server/opencertserver.est.server.csproj", packSettings);
         context.DotNetPack("./src/opencertserver.ca/opencertserver.ca.csproj", packSettings);
         context.DotNetPack("./src/opencertserver.ca.utils/opencertserver.ca.utils.csproj", packSettings);
-        context.DotNetPack("./src/opencertserver.acme.abstractions/opencertserver.acme.abstractions.csproj", packSettings);
+        context.DotNetPack("./src/opencertserver.acme.abstractions/opencertserver.acme.abstractions.csproj",
+            packSettings);
         context.DotNetPack("./src/opencertserver.acme.server/opencertserver.acme.server.csproj", packSettings);
-        context.DotNetPack("./src/opencertserver.acme.aspnetclient/opencertserver.acme.aspnetclient.csproj", packSettings);
+        context.DotNetPack("./src/opencertserver.acme.aspnetclient/opencertserver.acme.aspnetclient.csproj",
+            packSettings);
     }
 }

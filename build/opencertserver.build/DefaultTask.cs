@@ -6,4 +6,5 @@ using Cake.Frosting;
 [IsDependentOn(typeof(LinuxDockerBuildTask))]
 public sealed class DefaultTask : FrostingTask
 {
+    // Deliberately empty
 }

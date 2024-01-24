@@ -22,7 +22,7 @@ public sealed class TestsTask : FrostingTask<BuildContext>
 
         foreach (var project in projects)
         {
-            context.Log.Information("Testing: {path}", project.FullPath);
+            context.Log.Information("Testing: {0}", project.FullPath);
             var filename = Path.GetFileNameWithoutExtension(project.FullPath).Replace('.', '_');
             var reportName = Path.GetFullPath($"./artifacts/testreports/{context.BuildVersion}_{filename}.xml");
 
