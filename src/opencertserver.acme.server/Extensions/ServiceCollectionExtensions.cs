@@ -21,6 +21,7 @@ using Workers;
 public static class ServiceCollectionExtensions
 {
     [RequiresUnreferencedCode($"Uses {nameof(AcmeServerOptions)}")]
+    [RequiresDynamicCode($"Requires {nameof(AcmeServerOptions)}")]
     public static IServiceCollection AddAcmeServer(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -77,8 +78,9 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
-        
+
     [RequiresUnreferencedCode($"Uses {nameof(FileStoreOptions)}")]
+    [RequiresDynamicCode($"Uses {nameof(FileStoreOptions)}")]
     public static IServiceCollection AddAcmeFileStore(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -101,7 +103,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<INonceStore, InMemoryNonceStore>();
         services.AddSingleton<IStoreAccounts, InMemoryAccountStore>();
         services.AddSingleton<IStoreOrders, InMemoryOrderStore>();
-            
+
         return services;
     }
 }

@@ -123,12 +123,12 @@ public sealed class CertificateValidatorTests
             TimeSpan? timeAfterIssueDateBeforeRenewal,
             bool isValid)
         {
-            return new object[]
-            {
+            return
+            [
                 new CertificateDates(certStart,  certEnd),
                 new ValidatorSettings(timeUntilExpiryBeforeRenewal,  timeAfterIssueDateBeforeRenewal),
                 isValid
-            };
+            ];
         }
     }
 }

@@ -5,7 +5,7 @@
         <Authors>Jacob Reimers</Authors>
         <Company>Reimers.dk</Company>
         <Product>OpenCertServer</Product>
-        <Copyright>Reimers.dk © 2020 - 2023</Copyright>
+        <Copyright>Reimers.dk © 2020 - 2024</Copyright>
 	    <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryType>git</RepositoryType>
         <PackageProjectUrl>https://github.com/jjrdk/opencertserver</PackageProjectUrl>
@@ -19,5 +19,7 @@
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <WarningsAsErrors />
         <WarningsNotAsErrors>618;1701</WarningsNotAsErrors>
+        <IsTrimmable>true</IsTrimmable>
+        <IsAotCompatible>true</IsAotCompatible>
     </PropertyGroup>
 </Project>

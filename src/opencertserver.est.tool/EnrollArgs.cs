@@ -6,7 +6,7 @@ using CommandLine;
 [Verb(
     "enroll",
     true,
-    new[] { "e" },
+    ["e"],
     HelpText = "Requests a certificate based on the passed certificate request",
     Hidden = false)]
 public class EnrollArgs

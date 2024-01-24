@@ -1,5 +1,6 @@
 namespace OpenCertServer.Est.Tests;
 
+using Microsoft.AspNetCore.Builder;
 using System;
 using System.Security.Authentication;
 using System.Security.Cryptography;
@@ -53,12 +54,14 @@ public abstract class WebServerTests : IDisposable
         webBuilder.ConfigureServices(
                 sc =>
                 {
-                    sc.AddAuthorization()
+                    sc.AddRouting()
+                        .AddAuthorization()
                         .AddEstServer(rsaPrivate, ecdsaPrivate)
                         .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
-                        .AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme);
+                        .AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
+                        .AddCertificate();
                 })
-            .Configure(app => app.UseEstServer());
+            .Configure(app => app.UseAuthentication().UseAuthorization().UseEstServer());
         webBuilder.ConfigureKestrel(
             k =>
             {
@@ -98,7 +101,7 @@ public abstract class WebServerTests : IDisposable
                 false));
 
         req.CertificateExtensions.Add(
-            new X509EnhancedKeyUsageExtension(new OidCollection { new("1.3.6.1.5.5.7.3.8") }, true));
+            new X509EnhancedKeyUsageExtension([new("1.3.6.1.5.5.7.3.8")], true));
 
         req.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(req.PublicKey, false));
         return req;
@@ -116,7 +119,7 @@ public abstract class WebServerTests : IDisposable
                 false));
 
         req.CertificateExtensions.Add(
-            new X509EnhancedKeyUsageExtension(new OidCollection { new("1.3.6.1.5.5.7.3.8") }, true));
+            new X509EnhancedKeyUsageExtension([new("1.3.6.1.5.5.7.3.8")], true));
 
         req.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(req.PublicKey, false));
         return req;

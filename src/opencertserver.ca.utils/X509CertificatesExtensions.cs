@@ -31,8 +31,8 @@ public static class X509CertificatesExtensions
             .FirstOrDefault();
 
         return string.IsNullOrWhiteSpace(subjectAlternativeName)
-            ? new HashSet<string>()
-            : subjectAlternativeName.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+            ? []
+            : subjectAlternativeName.Split(["\r\n", "\r", "\n"], StringSplitOptions.RemoveEmptyEntries)
                 .Select(n => DnsNameRegex.Match(n))
                 .Where(r => r.Success && !string.IsNullOrWhiteSpace(r.Groups[1].Value))
                 .Select(r => r.Groups[1].Value)

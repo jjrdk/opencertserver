@@ -67,7 +67,7 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
                 new IValidateCertificateRequests[]
                 {
                     new OwnCertificateValidation(
-                        new X509Certificate2Collection { _rsaCertificate, _ecdsaCertificate },
+                        [_rsaCertificate, _ecdsaCertificate],
                         _logger),
                     new DistinguishedNameValidation()
                 })
@@ -86,7 +86,7 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
             return new SignCertificateResponse.Error(error);
         }
 
-        _logger.LogInformation("Creating certificate for {subjectName}", request.SubjectName.Name);
+        _logger.LogInformation("Creating certificate for {SubjectName}", request.SubjectName.Name);
         var cert = request.PublicKey.Oid.Value switch
         {
             CertificateConstants.RsaOid => request.Create(
@@ -107,15 +107,13 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
             return new SignCertificateResponse.Error("Unsupported key algorithm");
         }
 
-        using var chain = new X509Chain
+        using var chain = new X509Chain();
+        chain.ChainPolicy = new X509ChainPolicy
         {
-            ChainPolicy = new X509ChainPolicy
-            {
-                VerificationFlags = X509VerificationFlags.IgnoreEndRevocationUnknown
-                  | X509VerificationFlags.AllowUnknownCertificateAuthority
-                  | X509VerificationFlags.IgnoreCertificateAuthorityRevocationUnknown,
-                RevocationFlag = X509RevocationFlag.ExcludeRoot
-            }
+            VerificationFlags = X509VerificationFlags.IgnoreEndRevocationUnknown
+              | X509VerificationFlags.AllowUnknownCertificateAuthority
+              | X509VerificationFlags.IgnoreCertificateAuthorityRevocationUnknown,
+            RevocationFlag = X509RevocationFlag.ExcludeRoot
         };
 
         chain.ChainPolicy.ExtraStore.Add(_rsaCertificate);
@@ -127,21 +125,20 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
         {
             return new SignCertificateResponse.Success(
                 cert,
-                new X509Certificate2Collection
-                {
+                [
                     request.PublicKey.Oid.Value switch
                     {
                         "1.2.840.113549.1.1.1" => _rsaCertificate,
                         "1.2.840.10045.2.1" => _ecdsaCertificate,
                         _ => throw new InvalidOperationException($"Invalid Oid: {request.PublicKey.Oid.Value}")
                     }
-                });
+                ]);
         }
 
         var errors = chain.ChainStatus.Select(
                 chainStatus => $"Certificate chain error: {chainStatus.Status} {chainStatus.StatusInformation}")
             .ToArray();
-        _logger.LogError("{errors}", string.Join(";", errors));
+        _logger.LogError("{Errors}", string.Join(";", errors));
         return new SignCertificateResponse.Error(errors);
     }
 
@@ -167,7 +164,7 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
     /// <inheritdoc />
     public X509Certificate2Collection GetRootCertificates()
     {
-        return new X509Certificate2Collection { _rsaCertificate, _ecdsaCertificate };
+        return [_rsaCertificate, _ecdsaCertificate];
     }
 
     private static X509Certificate2 CreateSelfSignedRsaCert(
@@ -269,7 +266,7 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
                     .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);
             if (!result)
             {
-                _logger.LogError("Could not validate re-enrollment from {reenrollingFrom}",
+                _logger.LogError("Could not validate re-enrollment from {ReenrollingFrom}",
                     reenrollingFrom!.IssuerName.Name);
             }
 

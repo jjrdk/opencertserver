@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +23,9 @@ public static class RegistrationExtensions
             : services.AddSingleton<IPersistenceService, PersistenceService>();
     }
 
-    public static IServiceCollection AddAcmeRenewalLifecycleHook<TCertificateRenewalLifecycleHook>(
+    public static IServiceCollection AddAcmeRenewalLifecycleHook<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+            TCertificateRenewalLifecycleHook>(
         this IServiceCollection services)
         where TCertificateRenewalLifecycleHook : class, ICertificateRenewalLifecycleHook
     {

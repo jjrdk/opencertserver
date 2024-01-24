@@ -1,6 +1,13 @@
+using System.Diagnostics.CodeAnalysis;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using Certes;
 using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -15,13 +22,11 @@ using OpenCertServer.Acme.Server.Configuration;
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Middleware;
 using OpenCertServer.Acme.Server.Services;
-using OpenCertServer.CertServer;
-using OpenCertServer.CertServer.Tests;
 using OpenCertServer.Est.Server;
 using TechTalk.SpecFlow;
 using Xunit;
 
-namespace StepDefinitions;
+namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 [Binding]
 public partial class CertificateServerFeatures
@@ -37,24 +42,59 @@ public partial class CertificateServerFeatures
             WebHost.CreateDefaultBuilder()
                 .UseUrls("http://localhost")
                 .ConfigureAppConfiguration(c => c.AddEnvironmentVariables())
-                .ConfigureServices(
-                    (ctx, services) => services.AddEstServer(new X500DistinguishedName("CN=reimers.io"))
-                        .AddAcmeServer(
-                            ctx.Configuration,
-                            _ => _server!.CreateClient(),
-                            new AcmeServerOptions
+                .ConfigureServices(ConfigureServices)
+                .Configure(ConfigureApp));
+        return;
+
+        [UnconditionalSuppressMessage("Trimming",
+            "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
+            Justification = "<Pending>")]
+        void ConfigureApp(IApplicationBuilder app) => app.UseAcmeServer().UseEstServer().UseRouting().UseEndpoints(e=>e.MapControllers());
+
+        [UnconditionalSuppressMessage("Trimming",
+            "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
+            Justification = "<Pending>")]
+        [UnconditionalSuppressMessage("AOT",
+            "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.",
+            Justification = "<Pending>")]
+        void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services) =>
+            services.AddEstServer(new X500DistinguishedName("CN=reimers.io"))
+                .AddAcmeServer(ctx.Configuration, _ => _server.CreateClient(),
+                    new AcmeServerOptions
+                        { HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false } })
+                .AddSingleton<ICsrValidator, DefaultCsrValidator>()
+                .AddSingleton<ICertificateIssuer, DefaultIssuer>()
+                .Replace(new ServiceDescriptor(typeof(IValidateHttp01Challenges), typeof(PassAllChallenges),
+                    ServiceLifetime.Transient))
+                .AddAcmeInMemoryStore()
+                .AddCertificateForwarding(
+                    o => { o.HeaderConverter = x => new X509Certificate2(Convert.FromBase64String(x)); })
+                .AddRouting()
+                .AddAuthorization()
+                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
+                {
+                    o.SaveToken = true;
+                    o.Events = new JwtBearerEvents
+                    {
+                        OnAuthenticationFailed = c =>
+                        {
+                            c.Principal =
+                                new ClaimsPrincipal(
+                                    new ClaimsIdentity(new[] { new Claim("role", "user") },
+                                        "Bearer"));
+                            c.Properties = new OAuthChallengeProperties
                             {
-                                HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false }
-                            })
-                        .AddSingleton<ICsrValidator, DefaultCsrValidator>()
-                        .AddSingleton<ICertificateIssuer, DefaultIssuer>()
-                        .Replace(
-                            new ServiceDescriptor(
-                                typeof(IValidateHttp01Challenges),
-                                typeof(PassAllChallenges),
-                                ServiceLifetime.Transient))
-                        .AddAcmeInMemoryStore())
-                .Configure(app => app.UseAcmeServer().UseEstServer()));
+                                AllowRefresh = false, RedirectUri = "http://localhost",
+                                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(1), IssuedUtc = DateTimeOffset.UtcNow,
+                                IsPersistent = false, Scope = ["openid"]
+                            };
+                            c.Success();
+                            return Task.CompletedTask;
+                        }
+                    };
+                })
+                .AddCertificate();
     }
 
     [Given(@"an ACME client for (.+)")]

@@ -13,8 +13,8 @@ public sealed class Challenge : ISerializable
     private static readonly Dictionary<ChallengeStatus, ChallengeStatus[]> ValidStatusTransitions = 
         new()
         {
-            { ChallengeStatus.Pending, new [] { ChallengeStatus.Processing } },
-            { ChallengeStatus.Processing, new [] { ChallengeStatus.Processing, ChallengeStatus.Invalid, ChallengeStatus.Valid } }
+            { ChallengeStatus.Pending, [ChallengeStatus.Processing] },
+            { ChallengeStatus.Processing, [ChallengeStatus.Processing, ChallengeStatus.Invalid, ChallengeStatus.Valid] }
         };
 
     private Authorization? _authorization;

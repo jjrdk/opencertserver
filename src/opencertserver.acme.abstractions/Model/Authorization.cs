@@ -14,11 +14,11 @@ public sealed class Authorization : ISerializable
     {
         {
             AuthorizationStatus.Pending,
-            new[] { AuthorizationStatus.Invalid, AuthorizationStatus.Expired, AuthorizationStatus.Valid }
+            [AuthorizationStatus.Invalid, AuthorizationStatus.Expired, AuthorizationStatus.Valid]
         },
         {
             AuthorizationStatus.Valid,
-            new[] { AuthorizationStatus.Revoked, AuthorizationStatus.Deactivated, AuthorizationStatus.Expired }
+            [AuthorizationStatus.Revoked, AuthorizationStatus.Deactivated, AuthorizationStatus.Expired]
         }
     };
 
@@ -27,7 +27,7 @@ public sealed class Authorization : ISerializable
     public Authorization(Order order, Identifier identifier, DateTimeOffset expires)
     {
         AuthorizationId = GuidString.NewValue();
-        Challenges = new List<Challenge>();
+        Challenges = [];
 
         Order = order ?? throw new ArgumentNullException(nameof(order));
         Order.Authorizations.Add(this);

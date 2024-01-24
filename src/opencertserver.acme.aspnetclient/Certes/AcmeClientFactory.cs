@@ -14,7 +14,7 @@ public sealed class AcmeClientFactory : IAcmeClientFactory
     private readonly ILogger _logger;
     private readonly IPersistenceService _persistenceService;
     private AcmeContext? _acme;
-        
+
     public AcmeClientFactory(
         IPersistenceService persistenceService,
         AcmeOptions options,
@@ -49,13 +49,13 @@ public sealed class AcmeClientFactory : IAcmeClientFactory
             new AcmeHttpClient(_options.AcmeServerUri, _httpClient));
         if (existingAccountKey != null)
         {
-            _logger.LogDebug("Using existing ACME account.");
-                
+            _logger.LogDebug("Using existing ACME account");
+
             await acme.Account();
             return _acme = acme;
         }
 
-        _logger.LogDebug("Creating ACME account with email {EmailAddress}.", _options.Email);
+        _logger.LogDebug("Creating ACME account with email {EmailAddress}", _options.Email);
 
         await acme.NewAccount(_options.Email, true);
         await _persistenceService.PersistAccountCertificate(acme.AccountKey);

@@ -101,7 +101,7 @@ public sealed class LetsEncryptClientTests
 
         _persistenceService.GetPersistedSiteCertificate()!.Returns(Task.FromResult(InvalidCert));
 
-        var dtos = new[] { new ChallengeDto("ping", "pong", new[] { "test.com" }) };
+        var dtos = new[] { new ChallengeDto("ping", "pong", ["test.com"]) };
         var placedOrder = new PlacedOrder(dtos, Substitute.For<IOrderContext>(), Array.Empty<IChallengeContext>());
 
         _letsEncryptClient.PlaceOrder().Returns(Task.FromResult(placedOrder));
@@ -162,7 +162,7 @@ public sealed class LetsEncryptClientTests
         challenge2.Validate().Returns(pendingChallenge);
         challenge2.Resource().Returns(validChallenge);
 
-        var placedOrder = new PlacedOrder(null, orderContext, new[] { challenge1, challenge2 });
+        var placedOrder = new PlacedOrder(null, orderContext, [challenge1, challenge2]);
 
         var options = new LetsEncryptOptions { CertificateSigningRequest = new CsrInfo() };
 

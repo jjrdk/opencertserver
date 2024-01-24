@@ -15,7 +15,7 @@ public sealed class DefaultRequestProvider : IAcmeRequestProvider
 
     private Type? _payloadType;
     private object? _payload;
-        
+
     [RequiresUnreferencedCode($"Uses {nameof(AcmeRawPostRequest)}")]
     public void Initialize(AcmeRawPostRequest rawPostRequest)
     {
@@ -76,6 +76,7 @@ public sealed class DefaultRequestProvider : IAcmeRequestProvider
     private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     [RequiresUnreferencedCode($"Uses {nameof(AcmeHeader)}")]
+    [UnconditionalSuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "Type is part of output signature")]
     private static AcmeHeader? ReadHeader(AcmeRawPostRequest rawRequest)
     {
         if (rawRequest is null)
@@ -88,8 +89,9 @@ public sealed class DefaultRequestProvider : IAcmeRequestProvider
 
         return header;
     }
-        
+
     [RequiresUnreferencedCode("Uses unknown type")]
+    [UnconditionalSuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "Type is part of output signature")]
     private static TPayload? ReadPayload<TPayload>(AcmeRawPostRequest rawRequest)
     {
         if (rawRequest is null)

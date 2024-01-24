@@ -13,7 +13,7 @@ public sealed class Authorization
         var authorization = new Model.Authorization(order, order.Identifiers.First(), DateTimeOffset.UtcNow);
         var challenge = new Model.Challenge(authorization, "http-01");
 
-        return (authorization, new List<HttpModel.Challenge> { new HttpModel.Challenge(challenge, "https://challenge.example.com/") });
+        return (authorization, [new HttpModel.Challenge(challenge, "https://challenge.example.com/")]);
     }
 
     [Fact]

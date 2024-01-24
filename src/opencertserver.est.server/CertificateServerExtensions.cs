@@ -68,15 +68,7 @@ public static class CertificateServerExtensions
             .AddTransient<SimpleEnrollHandler>()
             .AddTransient<SimpleReEnrollHandler>()
             .AddTransient<X509Certificate2Collection>(
-                sp => sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates())
-            .AddCertificateForwarding(
-                o => { o.HeaderConverter = x => new X509Certificate2(Convert.FromBase64String(x)); })
-            .AddRouting()
-            .AddAuthorization()
-            .AddAuthentication()
-            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme)
-            .AddCertificate()
-            .Services;
+                sp => sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates());
     }
 
     public static IApplicationBuilder UseEstServer(

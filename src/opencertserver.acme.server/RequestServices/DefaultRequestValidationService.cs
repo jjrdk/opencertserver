@@ -20,7 +20,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
 
     private readonly ILogger<DefaultRequestValidationService> _logger;
 
-    private readonly string[] _supportedAlgs = new[] { "RS256", "ES256" };
+    private readonly string[] _supportedAlgs = ["RS256", "ES256"];
 
     public DefaultRequestValidationService(IAccountService accountService, INonceStore nonceStore,
         ILogger<DefaultRequestValidationService> logger)

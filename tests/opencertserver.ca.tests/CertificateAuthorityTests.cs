@@ -142,7 +142,7 @@ public sealed class CertificateAuthorityTests : IDisposable
 
         // Time stamping
         req.CertificateExtensions.Add(
-            new X509EnhancedKeyUsageExtension(new OidCollection { new("1.3.6.1.5.5.7.3.8") }, true));
+            new X509EnhancedKeyUsageExtension([new("1.3.6.1.5.5.7.3.8")], true));
 
         req.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(req.PublicKey, false));
         return req;

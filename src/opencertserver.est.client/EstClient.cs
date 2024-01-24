@@ -168,7 +168,7 @@ public sealed class EstClient : IDisposable
             {
                 new X509BasicConstraintsExtension(false, false, 0, false),
                 new X509KeyUsageExtension(usageFlags, false),
-                new X509EnhancedKeyUsageExtension(new OidCollection { new(TimeStamping) }, true)
+                new X509EnhancedKeyUsageExtension([new(TimeStamping)], true)
             }
         };
 
@@ -190,7 +190,7 @@ public sealed class EstClient : IDisposable
             {
                 new X509BasicConstraintsExtension(false, false, 0, false),
                 new X509KeyUsageExtension(usageFlags, false),
-                new X509EnhancedKeyUsageExtension(new OidCollection { new(TimeStamping) }, true)
+                new X509EnhancedKeyUsageExtension([new(TimeStamping)], true)
             }
         };
 

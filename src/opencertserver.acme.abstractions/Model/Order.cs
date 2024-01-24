@@ -12,9 +12,9 @@ public sealed class Order : IVersioned, ISerializable
     private static readonly Dictionary<OrderStatus, OrderStatus[]> ValidStatusTransitions =
         new()
         {
-            { OrderStatus.Pending, new [] { OrderStatus.Ready, OrderStatus.Invalid } },
-            { OrderStatus.Ready, new [] { OrderStatus.Processing, OrderStatus.Invalid } },
-            { OrderStatus.Processing, new [] { OrderStatus.Valid, OrderStatus.Invalid } },
+            { OrderStatus.Pending, [OrderStatus.Ready, OrderStatus.Invalid] },
+            { OrderStatus.Ready, [OrderStatus.Processing, OrderStatus.Invalid] },
+            { OrderStatus.Processing, [OrderStatus.Valid, OrderStatus.Invalid] },
         };
 
     public Order(Account account, IEnumerable<Identifier> identifiers)
@@ -24,8 +24,8 @@ public sealed class Order : IVersioned, ISerializable
 
         AccountId = account.AccountId;
 
-        Identifiers = new List<Identifier>(identifiers);
-        Authorizations = new List<Authorization>();
+        Identifiers = [..identifiers];
+        Authorizations = [];
     }
 
     public string OrderId { get; }

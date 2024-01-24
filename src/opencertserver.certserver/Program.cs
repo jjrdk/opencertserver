@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace OpenCertServer.CertServer;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -16,6 +17,7 @@ using OpenCertServer.Est.Server;
 
 public sealed class Program
 {
+    [UnconditionalSuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "<Pending>")]
     public static async Task Main(string[] args)
     {
         if (args.Length == 0)

@@ -9,7 +9,7 @@ using Extensions;
 [Serializable]
 public sealed class Identifier : ISerializable
 {
-    private static readonly string[] SupportedTypes = { "dns" };
+    private static readonly string[] SupportedTypes = ["dns"];
 
     private string _type = null!;
     private string _value = null!;

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Builder;
+
 namespace OpenCertServer.Est.Tests;
 
 using System;
@@ -52,11 +54,14 @@ public sealed class EstClientTests : IDisposable
         webBuilder.ConfigureServices(
                 sc =>
                 {
-                    sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme);
+                    sc.AddRouting();
+                    sc.AddAuthorization();
+                    sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
+                        .AddCertificate();
                     sc.AddEstServer(rsaPrivate, ecdsaPrivate);
                     sc.ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
                 })
-            .Configure(app => app.UseEstServer())
+            .Configure(app => app.UseAuthentication().UseAuthorization().UseEstServer())
             .ConfigureKestrel(
                 k =>
                 {
@@ -115,7 +120,6 @@ public sealed class EstClientTests : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
-        GC.SuppressFinalize(this);
-        _server?.Dispose();
+        _server.Dispose();
     }
 }

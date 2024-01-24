@@ -6,7 +6,7 @@ using CommandLine;
 [Verb(
     "reenroll",
     false,
-    new[] { "re" },
+    ["re"],
     HelpText = "Requests a certificate renewal based on the passed certificate.",
     Hidden = false)]
 public class ReEnrollArgs

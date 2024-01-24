@@ -1,5 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Server.Middleware;
 
+using System.Text.Json;
 using System.Diagnostics.CodeAnalysis;
 using Abstractions.HttpModel.Requests;
 using Abstractions.RequestServices;
@@ -15,21 +16,17 @@ public sealed class AcmeMiddleware
     }
 
     [RequiresUnreferencedCode($"Uses {nameof(AcmeRawPostRequest)}")]
+    [UnconditionalSuppressMessage("AOT",
+        "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.",
+        Justification = "Type is part of output signature")]
     public async Task InvokeAsync(HttpContext context, IAcmeRequestProvider requestProvider)
     {
-        if (context is null)
-        {
-            throw new ArgumentNullException(nameof(context));
-        }
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(requestProvider);
 
-        if (requestProvider is null)
+        if (HttpMethods.IsPost(context.Request.Method) && context.Request.HasJsonContentType())
         {
-            throw new ArgumentNullException(nameof(requestProvider));
-        }
-
-        if (HttpMethods.IsPost(context.Request.Method))
-        {
-            var result = await context.Request.ReadAcmeRequest();
+            var result = await JsonSerializer.DeserializeAsync<AcmeRawPostRequest>(context.Request.Body);
             if (result != null)
             {
                 requestProvider.Initialize(result);
