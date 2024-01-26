@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+
 namespace OpenCertServer.Est.Tests;
 
 using Microsoft.AspNetCore.Builder;
@@ -59,9 +61,16 @@ public abstract class WebServerTests : IDisposable
                         .AddEstServer(rsaPrivate, ecdsaPrivate)
                         .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
                         .AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
-                        .AddCertificate();
+                        .AddCertificate(CertificateAuthenticationDefaults.AuthenticationScheme);
                 })
-            .Configure(app => app.UseAuthentication().UseAuthorization().UseEstServer());
+            .Configure(app =>
+            {
+                var attribute = new AuthorizeAttribute
+                {
+                    AuthenticationSchemes = CertificateAuthenticationDefaults.AuthenticationScheme
+                };
+                app.UseAuthentication().UseAuthorization().UseEstServer(attribute, attribute);
+            });
         webBuilder.ConfigureKestrel(
             k =>
             {

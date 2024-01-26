@@ -14,7 +14,7 @@ public sealed class VersionTask : FrostingTask<BuildContext>
         var versionInfo = context.GitVersion(new GitVersionSettings { UpdateAssemblyInfo = false });
         context.BuildVersion = versionInfo.BranchName == "master" || versionInfo.BranchName.StartsWith("tags/")
             ? versionInfo.MajorMinorPatch
-            : $"{versionInfo.MajorMinorPatch}-{versionInfo.BranchName.Replace("features/", "")}.{versionInfo.CommitsSinceVersionSource}";
+            : $"{versionInfo.MajorMinorPatch}-{versionInfo.BranchName[(versionInfo.BranchName.IndexOf('/') + 1)..]}.{versionInfo.CommitsSinceVersionSource}";
         if (versionInfo.BranchName == "master")
         {
             context.BuildConfiguration = "Release";

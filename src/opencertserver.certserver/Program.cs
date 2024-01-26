@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
 namespace OpenCertServer.CertServer;
@@ -17,7 +16,9 @@ using OpenCertServer.Est.Server;
 
 public sealed class Program
 {
-    [UnconditionalSuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "<Pending>")]
+    [UnconditionalSuppressMessage("AOT",
+        "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.",
+        Justification = "<Pending>")]
     public static async Task Main(string[] args)
     {
         if (args.Length == 0)
@@ -47,7 +48,9 @@ public sealed class Program
 
         var forwardedHeadersOptions = CreateForwardedHeaderOptions();
 
-        _ = services.AddAcmeServer(builder.Configuration)
+        _ = services.AddAuthentication().AddJwtBearer().AddCertificate()
+            .Services
+            .AddAcmeServer(builder.Configuration)
             .AddAcmeInMemoryStore()
             .AddSingleton(new JwtParameters { Authority = authority })
             .AddSingleton<ICsrValidator, DefaultCsrValidator>()

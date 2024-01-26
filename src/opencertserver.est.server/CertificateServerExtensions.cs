@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication.Certificate;
+
 namespace OpenCertServer.Est.Server;
 
 using System;
@@ -104,7 +106,7 @@ public static class CertificateServerExtensions
                     }
                     else
                     {
-                        enrollBuilder.RequireAuthorization();
+                        enrollBuilder.RequireAuthorization(ConfigurePolicy);
                     }
 
                     var reEnrollBuilder = e.MapPost(
@@ -120,8 +122,14 @@ public static class CertificateServerExtensions
                     }
                     else
                     {
-                        reEnrollBuilder.RequireAuthorization();
+                        reEnrollBuilder.RequireAuthorization(ConfigurePolicy);
                     }
                 });
+    }
+
+    private static void ConfigurePolicy(AuthorizationPolicyBuilder b)
+    {
+        b.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, CertificateAuthenticationDefaults.AuthenticationScheme)
+            .RequireAuthenticatedUser();
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 
 namespace OpenCertServer.Est.Tests;
@@ -51,6 +52,10 @@ public sealed class EstClientTests : IDisposable
         var webBuilder = new WebHostBuilder().UseKestrel()
             .ConfigureAppConfiguration(b => { b.AddEnvironmentVariables(); });
 
+        var attribute = new AuthorizeAttribute
+        {
+            AuthenticationSchemes = CertificateAuthenticationDefaults.AuthenticationScheme
+        };
         webBuilder.ConfigureServices(
                 sc =>
                 {
@@ -61,16 +66,13 @@ public sealed class EstClientTests : IDisposable
                     sc.AddEstServer(rsaPrivate, ecdsaPrivate);
                     sc.ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
                 })
-            .Configure(app => app.UseAuthentication().UseAuthorization().UseEstServer())
+            .Configure(app => app.UseAuthentication().UseAuthorization().UseEstServer(attribute, attribute))
             .ConfigureKestrel(
                 k =>
                 {
                     k.AddServerHeader = false;
                     k.ConfigureEndpointDefaults(
-                        d =>
-                        {
-                            d.Protocols = HttpProtocols.Http1AndHttp2;
-                        });
+                        d => { d.Protocols = HttpProtocols.Http1AndHttp2; });
                     k.ConfigureHttpsDefaults(
                         d =>
                         {
