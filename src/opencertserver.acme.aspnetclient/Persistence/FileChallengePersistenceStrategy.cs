@@ -40,14 +40,14 @@ public sealed class FileChallengePersistenceStrategy : IChallengePersistenceStra
     {
         if (!File.Exists(GetChallengesStorePath()))
         {
-            return Enumerable.Empty<ChallengeDto>();
+            return [];
         }
 
         var bytes = await File.ReadAllBytesAsync(GetChallengesStorePath());
         var json = Encoding.UTF8.GetString(bytes);
         var challenges = JsonConvert.DeserializeObject<IEnumerable<ChallengeDto>>(json);
 
-        return challenges ?? Enumerable.Empty<ChallengeDto>();
+        return challenges ?? [];
     }
 
     private string GetChallengesStorePath()

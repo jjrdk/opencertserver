@@ -15,7 +15,7 @@ public sealed class PlacedOrder
         IOrderContext order,
         IChallengeContext[] challengeContexts)
     {
-        Challenges = challenges ?? Array.Empty<ChallengeDto>();
+        Challenges = challenges ?? [];
         Order = order;
         ChallengeContexts = challengeContexts;
     }

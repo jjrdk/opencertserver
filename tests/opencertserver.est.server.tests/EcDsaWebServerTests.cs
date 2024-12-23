@@ -34,7 +34,7 @@ public sealed class EcDsaWebServerTests : WebServerTests
                 ctx.Request.Path = "/.well-known/est/simpleenroll";
                 ctx.Request.ContentType = "application/pkcs10-mime";
                 ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(certRequest.ToPkcs10()));
-                ctx.Connection.ClientCertificate = new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"));
+                ctx.Connection.ClientCertificate = X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null);
             });
 
         _output.WriteLine(response.Response.StatusCode.ToString());
@@ -48,7 +48,7 @@ public sealed class EcDsaWebServerTests : WebServerTests
         var certRequest = CreateCertificateRequest(ecdsa);
         var content = new StringContent(certRequest.ToPkcs10(), Encoding.UTF8, "application/pkcs10-mime");
         var client = new HttpClient(new TestMessageHandler(Server,
-            new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"))));
+            X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)));
         var request = new HttpRequestMessage
         {
             Method = HttpMethod.Post,
@@ -84,7 +84,7 @@ public sealed class EcDsaWebServerTests : WebServerTests
                 ctx.Request.Path = "/.well-known/est/simpleenroll";
                 ctx.Request.ContentType = "application/pkcs10-mime";
                 ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(certRequest.ToPkcs10()));
-                ctx.Connection.ClientCertificate = new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"));
+                ctx.Connection.ClientCertificate = X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null);
             });
 
         Assert.Equal((int)HttpStatusCode.OK, certResponse.Response.StatusCode);

@@ -22,7 +22,7 @@ public sealed class ResolutionTests
                 {
                     Email = "some-email@github.com",
                     UseStaging = true,
-                    Domains = new[] {"test.com"},
+                    Domains = ["test.com"],
                     TimeUntilExpiryBeforeRenewal = TimeSpan.FromDays(30),
                     CertificateSigningRequest = new CsrInfo()
                     {

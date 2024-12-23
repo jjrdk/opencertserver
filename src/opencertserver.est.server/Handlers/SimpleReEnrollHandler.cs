@@ -31,7 +31,7 @@ internal sealed class SimpleReEnrollHandler
                 Span<byte> bytes = stackalloc byte[stringValues[0]!.Length];
                 if (Convert.TryFromBase64String(stringValues!, bytes, out var read))
                 {
-                    cert = new X509Certificate2(bytes[..read]);
+                    cert =  X509CertificateLoader.LoadCertificate(bytes[..read]);
                 }
 
                 return cert;

@@ -11,6 +11,6 @@ public static class SelfSignedCertificate
         var ecdsa = ECDsa.Create(); // generate asymmetric key pair
         var req = new CertificateRequest("cn=foobar", ecdsa, HashAlgorithmName.SHA256);
         var cert = req.CreateSelfSigned(from, to);
-        return new X509Certificate2(cert);
+        return cert;
     }
 }

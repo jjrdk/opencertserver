@@ -8,14 +8,13 @@ namespace OpenCertServer.CertServer;
 
 public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<CertificateAuthenticationOptions>
 {
-    private static readonly ImmutableDictionary<string, string> KnownPrefixes = ImmutableDictionary.CreateRange(new[]
-    {
+    private static readonly ImmutableDictionary<string, string> KnownPrefixes = ImmutableDictionary.CreateRange([
         KeyValuePair.Create("CN", ClaimTypes.Name), KeyValuePair.Create("E", ClaimTypes.Email),
         KeyValuePair.Create("OU", ClaimTypes.System), KeyValuePair.Create("O", "org"),
         KeyValuePair.Create("L", ClaimTypes.Locality), KeyValuePair.Create("SN", ClaimTypes.Surname),
         KeyValuePair.Create("GN", ClaimTypes.GivenName),
         KeyValuePair.Create("C", ClaimTypes.Country)
-    });
+    ]);
 
     private readonly X509Certificate2Collection _certificates;
 

@@ -28,13 +28,13 @@ public sealed class AcmeClient : IAcmeClient
 
     public async Task<PlacedOrder> PlaceOrder(params string[] domains)
     {
-        _logger.LogInformation("Ordering LetsEncrypt certificate for domains {domains}.", string.Join(", ", domains));
+        _logger.LogInformation("Ordering LetsEncrypt certificate for domains {domains}", string.Join(", ", domains));
         var order = await _acme.NewOrder(domains);
 
         var allAuthorizations = await order.Authorizations();
 
         var challengeContexts = await Task.WhenAll(
-            (allAuthorizations ?? Enumerable.Empty<IAuthorizationContext>()).Select(x => x.Http()));
+            (allAuthorizations ?? []).Select(x => x.Http()));
         var nonNullChallengeContexts = challengeContexts.Where(x => x != null).ToArray();
 
         var dtos = nonNullChallengeContexts.Select(
@@ -55,8 +55,8 @@ public sealed class AcmeClient : IAcmeClient
     public async Task<X509Certificate2> FinalizeOrder(PlacedOrder placedOrder, string password)
     {
         await ValidateChallenges(placedOrder.ChallengeContexts);
-            
-        _logger.LogInformation("Acquiring certificate through signing request.");
+
+        _logger.LogInformation("Acquiring certificate through signing request");
 
         var keyPair = KeyFactory.NewKey(_options.KeyAlgorithm);
 
@@ -68,14 +68,14 @@ public sealed class AcmeClient : IAcmeClient
 
         var pfxBytes = pfxBuilder.Build(CertificateFriendlyName, password);
 
-        _logger.LogInformation("Certificate acquired.");
+        _logger.LogInformation("Certificate acquired");
 
-        return new X509Certificate2(pfxBytes);
+        return X509CertificateLoader.LoadPkcs12(pfxBytes, null);
     }
 
     private async Task ValidateChallenges(IChallengeContext[] challengeContexts)
     {
-        _logger.LogInformation("Validating all pending order authorizations.");
+        _logger.LogInformation("Validating all pending order authorizations");
 
         var challengeValidationResponses = await InnerValidateChallenges(challengeContexts);
 

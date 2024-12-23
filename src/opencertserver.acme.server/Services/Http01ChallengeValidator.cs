@@ -41,7 +41,7 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
             }
 
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
-            return (new List<string> { content }, null);
+            return ([content], null);
         }
         catch (HttpRequestException ex)
         {

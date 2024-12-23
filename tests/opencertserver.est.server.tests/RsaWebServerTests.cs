@@ -43,7 +43,8 @@ public sealed class RsaWebServerTests : WebServerTests
         using var rsa = RSA.Create(4096);
         var certRequest = CreateCertificateRequest(rsa);
         var content = new StringContent(certRequest.ToPkcs10(), Encoding.UTF8, "application/pkcs10-mime");
-        var client = new HttpClient(new TestMessageHandler(Server, new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"))));
+        var client = new HttpClient(new TestMessageHandler(Server,
+            X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)));
         var request = new HttpRequestMessage
         {
             Method = HttpMethod.Post,
@@ -75,7 +76,7 @@ public sealed class RsaWebServerTests : WebServerTests
                 ctx.Request.Path = "/.well-known/est/simpleenroll";
                 ctx.Request.ContentType = "application/pkcs10-mime";
                 ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(certRequest.ToPkcs10()));
-                ctx.Connection.ClientCertificate = new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"));
+                ctx.Connection.ClientCertificate = X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null);
             });
         using var reader = new StreamReader(certResponse.Response.Body);
         var responseString = await reader.ReadToEndAsync();

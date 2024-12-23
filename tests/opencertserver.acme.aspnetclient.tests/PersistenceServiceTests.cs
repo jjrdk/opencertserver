@@ -14,8 +14,8 @@ public sealed class PersistenceServiceTests
     public PersistenceServiceTests()
     {
         PersistenceService = new PersistenceService(
-            new[] {new InMemoryCertificatePersistenceStrategy()},
-            new[] {new InMemoryChallengePersistenceStrategy()},
+            [new InMemoryCertificatePersistenceStrategy()],
+            [new InMemoryChallengePersistenceStrategy()],
             NullLogger<IPersistenceService>.Instance);
     }
 

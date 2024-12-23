@@ -44,7 +44,7 @@ public sealed class Order
 
         Identifiers = model.Identifiers.Select(x => new Identifier(x)).ToList();
 
-        Authorizations = new List<string>(authorizationUrls);
+        Authorizations = [..authorizationUrls];
 
         if (model.Status == Model.OrderStatus.Ready)
         {

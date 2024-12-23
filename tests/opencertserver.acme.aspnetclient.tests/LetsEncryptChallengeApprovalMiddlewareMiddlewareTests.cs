@@ -43,7 +43,7 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
                             {
                                 Email = "some-email@github.com",
                                 UseStaging = true,
-                                Domains = new[] { "test.com" },
+                                Domains = ["test.com"],
                                 TimeUntilExpiryBeforeRenewal = TimeSpan.FromDays(30),
                                 CertificateSigningRequest = new CsrInfo
                                 {
@@ -116,14 +116,14 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
 
         public Task<PlacedOrder> PlaceOrder(params string[] domains)
         {
-            var challengeDtos = new[] { new ChallengeDto(AcmeToken, AcmeResponse, Array.Empty<string>()) };
+            var challengeDtos = new[] { new ChallengeDto(AcmeToken, AcmeResponse, []) };
 
             OrderPlacedCts.CancelAfter(250);
 
             return Task.FromResult(new PlacedOrder(
                 challengeDtos,
                 Substitute.For<IOrderContext>(),
-                Array.Empty<IChallengeContext>()));
+                []));
         }
 
         public async Task<X509Certificate2> FinalizeOrder(PlacedOrder placedOrder, string password)
@@ -132,7 +132,7 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
 
             OrderFinalizedCts.CancelAfter(250);
 
-            return new X509Certificate2(FakeCert.RawData);
+            return  X509CertificateLoader.LoadCertificate(FakeCert.RawData);
         }
     }
 }

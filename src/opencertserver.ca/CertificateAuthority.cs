@@ -64,13 +64,12 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
         _certificateValidity = certificateValidity;
         _x509ChainValidation = x509ChainValidation;
         _validators = validators.Concat(
-                new IValidateCertificateRequests[]
-                {
-                    new OwnCertificateValidation(
+            [
+                new OwnCertificateValidation(
                         [_rsaCertificate, _ecdsaCertificate],
                         _logger),
                     new DistinguishedNameValidation()
-                })
+            ])
             .ToArray();
         certificateBackup?.Invoke(_rsaCertificate, _ecdsaCertificate);
     }

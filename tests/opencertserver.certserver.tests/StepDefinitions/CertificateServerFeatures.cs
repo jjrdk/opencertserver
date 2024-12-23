@@ -68,7 +68,7 @@ public partial class CertificateServerFeatures
                     ServiceLifetime.Transient))
                 .AddAcmeInMemoryStore()
                 .AddCertificateForwarding(
-                    o => { o.HeaderConverter = x => new X509Certificate2(Convert.FromBase64String(x)); })
+                    o => { o.HeaderConverter = x => X509CertificateLoader.LoadCertificate(Convert.FromBase64String(x)); })
                 .AddRouting()
                 .AddAuthorization()
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -81,7 +81,7 @@ public partial class CertificateServerFeatures
                         {
                             c.Principal =
                                 new ClaimsPrincipal(
-                                    new ClaimsIdentity(new[] { new Claim("role", "user") },
+                                    new ClaimsIdentity([new Claim("role", "user")],
                                         "Bearer"));
                             c.Properties = new OAuthChallengeProperties
                             {
@@ -109,7 +109,7 @@ public partial class CertificateServerFeatures
             new TestAcmeOptions
             {
                 Email = "test@test.com",
-                Domains = new[] { "localhost" },
+                Domains = ["localhost"],
                 KeyAlgorithm = keyAlgorithm,
                 CertificateSigningRequest = new CsrInfo { CommonName = "test", CountryName = "DK" }
             },

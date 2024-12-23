@@ -93,12 +93,12 @@ public sealed class EstClientTests : IDisposable
         using var rsa = RSA.Create();
         var client = new EstClient(
             new Uri("https://localhost/"),
-            new TestMessageHandler(_server, new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"))));
+            new TestMessageHandler(_server, X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)));
         var cert = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
             rsa,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-            certificate: new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx")));
+            certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null));
 
         Assert.NotNull(cert);
     }
@@ -109,12 +109,12 @@ public sealed class EstClientTests : IDisposable
         using var ecdsa = ECDsa.Create();
         var client = new EstClient(
             new Uri("https://localhost/"),
-            new TestMessageHandler(_server, new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx"))));
+            new TestMessageHandler(_server, X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)));
         var cert = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
-            ecdsa!,
+            ecdsa,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-            certificate: new X509Certificate2(X509Certificate.CreateFromCertFile("test.pfx")));
+            certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null));
 
         Assert.NotNull(cert);
     }

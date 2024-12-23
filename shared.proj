@@ -1,7 +1,7 @@
 <Project>
     <PropertyGroup>
-        <Version>2.3.1</Version>
-        <TargetFramework>net8.0</TargetFramework>
+        <Version>2.3.2</Version>
+        <TargetFramework>net9.0</TargetFramework>
         <Authors>Jacob Reimers</Authors>
         <Company>Reimers.dk</Company>
         <Product>OpenCertServer</Product>

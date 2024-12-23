@@ -31,14 +31,14 @@ public sealed class CertificateProvider : IProvideCertificates
         X509Certificate2? current = null,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Checking to see if in-memory LetsEncrypt certificate needs renewal.");
+        _logger.LogInformation("Checking to see if in-memory LetsEncrypt certificate needs renewal");
         if (_certificateValidator.IsCertificateValid(current))
         {
-            _logger.LogInformation("Current in-memory LetsEncrypt certificate is valid.");
+            _logger.LogInformation("Current in-memory LetsEncrypt certificate is valid");
             return new CertificateRenewalResult(current, CertificateRenewalStatus.Unchanged);
         }
 
-        _logger.LogInformation("Checking to see if existing LetsEncrypt certificate has been persisted and is valid.");
+        _logger.LogInformation("Checking to see if existing LetsEncrypt certificate has been persisted and is valid");
         var persistedSiteCertificate = await _persistenceService.GetPersistedSiteCertificate(cancellationToken);
         if (_certificateValidator.IsCertificateValid(persistedSiteCertificate))
         {
@@ -46,7 +46,7 @@ public sealed class CertificateProvider : IProvideCertificates
             return new CertificateRenewalResult(persistedSiteCertificate, CertificateRenewalStatus.LoadedFromStore);
         }
 
-        _logger.LogInformation("No valid certificate was found. Requesting new certificate from LetsEncrypt.");
+        _logger.LogInformation("No valid certificate was found. Requesting new certificate from LetsEncrypt");
         var newCertificate = await RequestNewLetsEncryptCertificate(password, cancellationToken);
         return new CertificateRenewalResult(newCertificate, CertificateRenewalStatus.Renewed);
     }
@@ -65,7 +65,7 @@ public sealed class CertificateProvider : IProvideCertificates
 
             await _persistenceService.PersistSiteCertificate(pfxCertificateBytes, cancellationToken);
 
-            return new X509Certificate2(pfxCertificateBytes.RawData);
+            return  X509CertificateLoader.LoadCertificate(pfxCertificateBytes.RawData);
         }
         catch (TaskCanceledException canceled)
         {

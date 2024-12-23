@@ -102,7 +102,7 @@ public sealed class LetsEncryptClientTests
         _persistenceService.GetPersistedSiteCertificate()!.Returns(Task.FromResult(InvalidCert));
 
         var dtos = new[] { new ChallengeDto("ping", "pong", ["test.com"]) };
-        var placedOrder = new PlacedOrder(dtos, Substitute.For<IOrderContext>(), Array.Empty<IChallengeContext>());
+        var placedOrder = new PlacedOrder(dtos, Substitute.For<IOrderContext>(), []);
 
         _letsEncryptClient.PlaceOrder().Returns(Task.FromResult(placedOrder));
         _persistenceService.PersistChallenges(dtos).Returns(Task.CompletedTask);
@@ -110,9 +110,10 @@ public sealed class LetsEncryptClientTests
 
         var newCertBytes = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90)).RawData;
 
-        _letsEncryptClient.FinalizeOrder(placedOrder, "test").Returns(Task.FromResult(new X509Certificate2(newCertBytes)));
+        _letsEncryptClient.FinalizeOrder(placedOrder, "test")
+            .Returns(Task.FromResult(X509CertificateLoader.LoadCertificate(newCertBytes)));
 
-        var newCertificate = new X509Certificate2(newCertBytes);
+        var newCertificate = X509CertificateLoader.LoadCertificate(newCertBytes);
         _persistenceService.PersistSiteCertificate(newCertificate).Returns(Task.CompletedTask);
 
         // act
@@ -145,12 +146,12 @@ public sealed class LetsEncryptClientTests
         var readyOrder = new Order
         {
             Status = OrderStatus.Ready,
-            Identifiers = new[] { new Identifier { Value = "example.com" } }
+            Identifiers = [new Identifier { Value = "example.com" }]
         };
         var validOrder = new Order { Status = OrderStatus.Valid };
         var orderContext = Substitute.For<IOrderContext>();
         orderContext.Resource().Returns(readyOrder);
-        orderContext.Finalize(default).ReturnsForAnyArgs(validOrder);
+        orderContext.Finalize(null).ReturnsForAnyArgs(validOrder);
         orderContext.Download().Returns(certChain);
 
         var validChallenge = new Challenge { Status = ChallengeStatus.Valid };
@@ -179,7 +180,7 @@ public sealed class LetsEncryptClientTests
 
         // assert
 
-        var cert = new X509Certificate2(result.RawData);
+        var cert = X509CertificateLoader.LoadCertificate(result.RawData);
         Assert.Equal(CertToPem(cert), pemCert);
         await challenge1.Received().Validate();
         await challenge2.Received().Validate();

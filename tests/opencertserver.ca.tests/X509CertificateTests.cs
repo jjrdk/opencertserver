@@ -61,7 +61,7 @@ public sealed class X509CertificateTests : IDisposable
         await using var ms = new MemoryStream();
         await cert!.Certificate.WritePfx(ms);
 
-        var newCert = new X509Certificate2(ms.ToArray());
+        var newCert = X509CertificateLoader.LoadPkcs12(ms.ToArray(), null);
 
         Assert.NotNull(newCert.PublicKey);
     }
@@ -85,7 +85,7 @@ public sealed class X509CertificateTests : IDisposable
             }) as SignCertificateResponse.Success;
 
         await using var ms = new MemoryStream();
-        var san = cert!.Certificate.Extensions.OfType<X509Extension>()
+        var san = cert!.Certificate.Extensions
             .FirstOrDefault(e => e.Oid!.Value == "2.5.29.17");
 
         Assert.NotNull(san);
@@ -95,7 +95,12 @@ public sealed class X509CertificateTests : IDisposable
     public void Dispose()
     {
         GC.SuppressFinalize(this);
-        _ca?.Dispose();
-        _rsa?.Dispose();
+        _ca.Dispose();
+        _rsa.Dispose();
+    }
+
+    ~X509CertificateTests()
+    {
+        Dispose();
     }
 }
