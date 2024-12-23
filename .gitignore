@@ -332,3 +332,4 @@ tools
 *.cnf
 .vscode
 .idea
+.DS_Store
