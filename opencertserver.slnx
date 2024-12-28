@@ -1,0 +1,27 @@
+﻿<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="build.ps1" />
+    <File Path="build.sh" />
+    <File Path="Dockerfile" />
+    <File Path="README.md" />
+    <File Path="shared.proj" />
+    <File Path="Docker.md" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests\opencertserver.acme.abstractions.tests\opencertserver.acme.abstractions.tests.csproj" />
+    <Project Path="tests\opencertserver.acme.aspnetclient.tests\opencertserver.acme.aspnetclient.tests.csproj" />
+    <Project Path="tests\opencertserver.ca.tests\opencertserver.ca.tests.csproj" />
+    <Project Path="tests\opencertserver.certserver.tests\opencertserver.certserver.tests.csproj" />
+    <Project Path="tests\opencertserver.est.server.tests\opencertserver.est.server.tests.csproj" />
+  </Folder>
+  <Project Path="build\opencertserver.build\opencertserver.build.csproj" />
+  <Project Path="src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
+  <Project Path="src\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj" />
+  <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
+  <Project Path="src\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
+  <Project Path="src\opencertserver.ca\opencertserver.ca.csproj" />
+  <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
+  <Project Path="src\opencertserver.est.client\opencertserver.est.client.csproj" />
+  <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
+  <Project Path="src\opencertserver.est.tool\opencertserver.est.tool.csproj" />
+</Solution>
