@@ -5,7 +5,7 @@
         <Authors>Jacob Reimers</Authors>
         <Company>Reimers.dk</Company>
         <Product>OpenCertServer</Product>
-        <Copyright>Reimers.dk © 2020 - 2024</Copyright>
+        <Copyright>Reimers.dk © 2020 - 2025</Copyright>
 	    <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <RepositoryType>git</RepositoryType>
         <PackageProjectUrl>https://github.com/jjrdk/opencertserver</PackageProjectUrl>
