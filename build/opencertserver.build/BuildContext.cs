@@ -10,7 +10,7 @@ public sealed class BuildContext : FrostingContext
     public string BuildVersion { get; set; } = "0.0.1";
     public string InformationalVersion { get; set; } = "0.0.1";
 
-    public string SolutionName = "opencertserver.sln";
+    public string SolutionName = "opencertserver.slnx";
 
     public BuildContext(ICakeContext context)
         : base(context)
