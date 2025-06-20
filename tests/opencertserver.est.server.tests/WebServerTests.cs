@@ -40,7 +40,11 @@ public abstract class WebServerTests : IDisposable
             RSASignaturePadding.Pss);
         rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
+#if NET8_0
+        var rsaPublic = new X509Certificate2(ecdsaCert.GetRawCertData().AsSpan());
+#else
         var rsaPublic = X509CertificateLoader.LoadCertificate(ecdsaCert.GetRawCertData());
+#endif
 
         Server = new TestServer(CreateHostBuilder(rsaCert, ecdsaCert, rsaPublic));
     }
@@ -53,16 +57,15 @@ public abstract class WebServerTests : IDisposable
         var webBuilder = new WebHostBuilder().UseKestrel()
             .ConfigureAppConfiguration(b => { b.AddEnvironmentVariables(); });
 
-        webBuilder.ConfigureServices(
-                sc =>
-                {
-                    sc.AddRouting()
-                        .AddAuthorization()
-                        .AddEstServer(rsaPrivate, ecdsaPrivate)
-                        .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
-                        .AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
-                        .AddCertificate(CertificateAuthenticationDefaults.AuthenticationScheme);
-                })
+        webBuilder.ConfigureServices(sc =>
+            {
+                sc.AddRouting()
+                    .AddAuthorization()
+                    .AddEstServer(rsaPrivate, ecdsaPrivate)
+                    .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
+                    .AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
+                    .AddCertificate(CertificateAuthenticationDefaults.AuthenticationScheme);
+            })
             .Configure(app =>
             {
                 var attribute = new AuthorizeAttribute
@@ -71,25 +74,23 @@ public abstract class WebServerTests : IDisposable
                 };
                 app.UseAuthentication().UseAuthorization().UseEstServer(attribute, attribute);
             });
-        webBuilder.ConfigureKestrel(
-            k =>
+        webBuilder.ConfigureKestrel(k =>
+        {
+            k.AddServerHeader = false;
+            k.ConfigureEndpointDefaults(d => { d.Protocols = HttpProtocols.Http1AndHttp2; });
+            k.ConfigureHttpsDefaults(d =>
             {
-                k.AddServerHeader = false;
-                k.ConfigureEndpointDefaults(d => { d.Protocols = HttpProtocols.Http1AndHttp2; });
-                k.ConfigureHttpsDefaults(
-                    d =>
-                    {
-                        if (webCert != null)
-                        {
-                            d.ServerCertificate = webCert;
-                        }
+                if (webCert != null)
+                {
+                    d.ServerCertificate = webCert;
+                }
 
-                        d.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
-                        d.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
-                        d.AllowAnyClientCertificate();
-                        d.CheckCertificateRevocation = false;
-                    });
+                d.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
+                d.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                d.AllowAnyClientCertificate();
+                d.CheckCertificateRevocation = false;
             });
+        });
 
         return webBuilder;
     }

@@ -49,7 +49,8 @@ public partial class CertificateServerFeatures
         [UnconditionalSuppressMessage("Trimming",
             "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
             Justification = "<Pending>")]
-        void ConfigureApp(IApplicationBuilder app) => app.UseAcmeServer().UseEstServer().UseRouting().UseEndpoints(e=>e.MapControllers());
+        void ConfigureApp(IApplicationBuilder app) =>
+            app.UseAcmeServer().UseEstServer().UseRouting().UseEndpoints(e => e.MapControllers());
 
         [UnconditionalSuppressMessage("Trimming",
             "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
@@ -67,8 +68,14 @@ public partial class CertificateServerFeatures
                 .Replace(new ServiceDescriptor(typeof(IValidateHttp01Challenges), typeof(PassAllChallenges),
                     ServiceLifetime.Transient))
                 .AddAcmeInMemoryStore()
-                .AddCertificateForwarding(
-                    o => { o.HeaderConverter = x => X509CertificateLoader.LoadCertificate(Convert.FromBase64String(x)); })
+                .AddCertificateForwarding(o =>
+                {
+#if NET8_0
+                    o.HeaderConverter = x => new X509Certificate2(Convert.FromBase64String(x));
+#else
+                    o.HeaderConverter = x => X509CertificateLoader.LoadCertificate(Convert.FromBase64String(x));
+#endif
+                })
                 .AddRouting()
                 .AddAuthorization()
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

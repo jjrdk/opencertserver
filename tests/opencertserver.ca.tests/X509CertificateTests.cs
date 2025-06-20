@@ -61,8 +61,11 @@ public sealed class X509CertificateTests : IDisposable
         await using var ms = new MemoryStream();
         await cert!.Certificate.WritePfx(ms);
 
+#if NET8_0
+        var newCert = new X509Certificate2(ms.GetBuffer().AsSpan(), null);
+#else
         var newCert = X509CertificateLoader.LoadPkcs12(ms.ToArray(), null);
-
+#endif
         Assert.NotNull(newCert.PublicKey);
     }
 

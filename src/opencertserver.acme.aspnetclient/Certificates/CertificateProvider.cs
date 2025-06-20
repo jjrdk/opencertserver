@@ -42,7 +42,9 @@ public sealed class CertificateProvider : IProvideCertificates
         var persistedSiteCertificate = await _persistenceService.GetPersistedSiteCertificate(cancellationToken);
         if (_certificateValidator.IsCertificateValid(persistedSiteCertificate))
         {
-            _logger.LogInformation("A persisted non-expired LetsEncrypt certificate was found and will be used: {Thumbprint}", persistedSiteCertificate?.Thumbprint);
+            _logger.LogInformation(
+                "A persisted non-expired LetsEncrypt certificate was found and will be used: {Thumbprint}",
+                persistedSiteCertificate?.Thumbprint);
             return new CertificateRenewalResult(persistedSiteCertificate, CertificateRenewalStatus.LoadedFromStore);
         }
 
@@ -51,7 +53,9 @@ public sealed class CertificateProvider : IProvideCertificates
         return new CertificateRenewalResult(newCertificate, CertificateRenewalStatus.Renewed);
     }
 
-    private async Task<X509Certificate2?> RequestNewLetsEncryptCertificate(string password, CancellationToken cancellationToken)
+    private async Task<X509Certificate2?> RequestNewLetsEncryptCertificate(
+        string password,
+        CancellationToken cancellationToken)
     {
         var client = await _clientFactory.GetClient();
 
@@ -65,7 +69,11 @@ public sealed class CertificateProvider : IProvideCertificates
 
             await _persistenceService.PersistSiteCertificate(pfxCertificateBytes, cancellationToken);
 
+#if NET8_0
+            return new X509Certificate2(pfxCertificateBytes.RawData.AsSpan());
+#else
             return  X509CertificateLoader.LoadCertificate(pfxCertificateBytes.RawData);
+#endif
         }
         catch (TaskCanceledException canceled)
         {

@@ -1,25 +1,26 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<Import Project="../../shared.proj" />
-	<PropertyGroup>
-		<RootNamespace>OpenCertServer.Acme.AspNetClient.Tests</RootNamespace>
-		<AssemblyName>opencertserver.acme.aspnetclient.tests</AssemblyName>
-	</PropertyGroup>
+    <Import Project="../../shared.proj"/>
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Acme.AspNetClient.Tests</RootNamespace>
+        <AssemblyName>opencertserver.acme.aspnetclient.tests</AssemblyName>
+    </PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.3" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.3" />
-		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
-		<PackageReference Include="xunit" Version="2.9.3" />
-		<PackageReference Include="xunit.runner.console" Version="2.9.3">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-		<PackageReference Include="NSubstitute" Version="5.3.0" />
-	</ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.*" Condition="'$(TargetFramework)' == 'net9.0'"/>
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.*" Condition="'$(TargetFramework)' == 'net8.0'"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.*"/>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*"/>
+        <PackageReference Include="xunit" Version="2.*"/>
+        <PackageReference Include="xunit.runner.console" Version="2.*">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="NSubstitute" Version="5.*"/>
+    </ItemGroup>
 
-	<ItemGroup>
-	  <ProjectReference Include="..\..\src\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj" />
-	</ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj"/>
+    </ItemGroup>
 
 </Project>

@@ -56,33 +56,29 @@ public sealed class EstClientTests : IDisposable
         {
             AuthenticationSchemes = CertificateAuthenticationDefaults.AuthenticationScheme
         };
-        webBuilder.ConfigureServices(
-                sc =>
-                {
-                    sc.AddRouting();
-                    sc.AddAuthorization();
-                    sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
-                        .AddCertificate();
-                    sc.AddEstServer(rsaPrivate, ecdsaPrivate);
-                    sc.ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
-                })
+        webBuilder.ConfigureServices(sc =>
+            {
+                sc.AddRouting();
+                sc.AddAuthorization();
+                sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
+                    .AddCertificate();
+                sc.AddEstServer(rsaPrivate, ecdsaPrivate);
+                sc.ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
+            })
             .Configure(app => app.UseAuthentication().UseAuthorization().UseEstServer(attribute, attribute))
-            .ConfigureKestrel(
-                k =>
+            .ConfigureKestrel(k =>
+            {
+                k.AddServerHeader = false;
+                k.ConfigureEndpointDefaults(d => { d.Protocols = HttpProtocols.Http1AndHttp2; });
+                k.ConfigureHttpsDefaults(d =>
                 {
-                    k.AddServerHeader = false;
-                    k.ConfigureEndpointDefaults(
-                        d => { d.Protocols = HttpProtocols.Http1AndHttp2; });
-                    k.ConfigureHttpsDefaults(
-                        d =>
-                        {
-                            d.ServerCertificate = webCert;
-                            d.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
-                            d.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
-                            d.AllowAnyClientCertificate();
-                            d.CheckCertificateRevocation = false;
-                        });
+                    d.ServerCertificate = webCert;
+                    d.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
+                    d.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                    d.AllowAnyClientCertificate();
+                    d.CheckCertificateRevocation = false;
                 });
+            });
 
         return webBuilder;
     }
@@ -93,12 +89,23 @@ public sealed class EstClientTests : IDisposable
         using var rsa = RSA.Create();
         var client = new EstClient(
             new Uri("https://localhost/"),
-            new TestMessageHandler(_server, X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)));
+            new TestMessageHandler(_server,
+#if NET8_0
+                new X509Certificate2("test.pfx", default(string?))
+#else
+            X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
+#endif
+            ));
         var cert = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
             rsa,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-            certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null));
+#if NET8_0
+            certificate: new X509Certificate2("test.pfx", default(string?))
+#else
+            certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
+#endif
+        );
 
         Assert.NotNull(cert);
     }
@@ -109,12 +116,23 @@ public sealed class EstClientTests : IDisposable
         using var ecdsa = ECDsa.Create();
         var client = new EstClient(
             new Uri("https://localhost/"),
-            new TestMessageHandler(_server, X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)));
+            new TestMessageHandler(_server,
+#if NET8_0
+                new X509Certificate2("test.pfx", default(string?))
+#else
+            X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
+#endif
+            ));
         var cert = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
             ecdsa,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-            certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null));
+#if NET8_0
+            certificate: new X509Certificate2("test.pfx", default(string?))
+#else
+            certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
+#endif
+        );
 
         Assert.NotNull(cert);
     }

@@ -26,16 +26,19 @@ public sealed class EcDsaWebServerTests : WebServerTests
     {
         using var ecdsa = ECDsa.Create();
         var certRequest = CreateCertificateRequest(ecdsa);
-        var response = await Server.SendAsync(
-            ctx =>
-            {
-                ctx.Request.Scheme = Uri.UriSchemeHttps;
-                ctx.Request.Method = HttpMethod.Post.Method;
-                ctx.Request.Path = "/.well-known/est/simpleenroll";
-                ctx.Request.ContentType = "application/pkcs10-mime";
-                ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(certRequest.ToPkcs10()));
-                ctx.Connection.ClientCertificate = X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null);
-            });
+        var response = await Server.SendAsync(ctx =>
+        {
+            ctx.Request.Scheme = Uri.UriSchemeHttps;
+            ctx.Request.Method = HttpMethod.Post.Method;
+            ctx.Request.Path = "/.well-known/est/simpleenroll";
+            ctx.Request.ContentType = "application/pkcs10-mime";
+            ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(certRequest.ToPkcs10()));
+#if NET8_0
+            ctx.Connection.ClientCertificate = new X509Certificate2("test.pfx", (string?)null);
+#else
+            ctx.Connection.ClientCertificate = X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null);
+#endif
+        });
 
         _output.WriteLine(response.Response.StatusCode.ToString());
         Assert.Equal((int)HttpStatusCode.OK, response.Response.StatusCode);
@@ -48,7 +51,12 @@ public sealed class EcDsaWebServerTests : WebServerTests
         var certRequest = CreateCertificateRequest(ecdsa);
         var content = new StringContent(certRequest.ToPkcs10(), Encoding.UTF8, "application/pkcs10-mime");
         var client = new HttpClient(new TestMessageHandler(Server,
-            X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)));
+#if NET8_0
+            new X509Certificate2("test.pfx", default(string?))
+#else
+            X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
+#endif
+        ));
         var request = new HttpRequestMessage
         {
             Method = HttpMethod.Post,
@@ -76,16 +84,19 @@ public sealed class EcDsaWebServerTests : WebServerTests
         using var ecdsa = ECDsa.Create();
         var certRequest = CreateCertificateRequest(ecdsa);
 
-        var certResponse = await Server.SendAsync(
-            ctx =>
-            {
-                ctx.Request.Scheme = Uri.UriSchemeHttps;
-                ctx.Request.Method = HttpMethod.Post.Method;
-                ctx.Request.Path = "/.well-known/est/simpleenroll";
-                ctx.Request.ContentType = "application/pkcs10-mime";
-                ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(certRequest.ToPkcs10()));
-                ctx.Connection.ClientCertificate = X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null);
-            });
+        var certResponse = await Server.SendAsync(ctx =>
+        {
+            ctx.Request.Scheme = Uri.UriSchemeHttps;
+            ctx.Request.Method = HttpMethod.Post.Method;
+            ctx.Request.Path = "/.well-known/est/simpleenroll";
+            ctx.Request.ContentType = "application/pkcs10-mime";
+            ctx.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(certRequest.ToPkcs10()));
+#if NET8_0
+            ctx.Connection.ClientCertificate = new X509Certificate2("test.pfx", (string?)null);
+#else
+            ctx.Connection.ClientCertificate = X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null);
+#endif
+        });
 
         Assert.Equal((int)HttpStatusCode.OK, certResponse.Response.StatusCode);
 
@@ -97,14 +108,13 @@ public sealed class EcDsaWebServerTests : WebServerTests
 
         Assert.True(cert.HasPrivateKey);
 
-        var response = await Server.SendAsync(
-            ctx =>
-            {
-                ctx.Request.Scheme = Uri.UriSchemeHttps;
-                ctx.Request.Method = HttpMethod.Post.Method;
-                ctx.Request.Path = "/.well-known/est/simplereenroll";
-                ctx.Connection.ClientCertificate = cert;
-            });
+        var response = await Server.SendAsync(ctx =>
+        {
+            ctx.Request.Scheme = Uri.UriSchemeHttps;
+            ctx.Request.Method = HttpMethod.Post.Method;
+            ctx.Request.Path = "/.well-known/est/simplereenroll";
+            ctx.Connection.ClientCertificate = cert;
+        });
 
         Assert.Equal((int)HttpStatusCode.OK, response.Response.StatusCode);
     }

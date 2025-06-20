@@ -13,6 +13,7 @@
     <Project Path="tests\opencertserver.ca.tests\opencertserver.ca.tests.csproj" />
     <Project Path="tests\opencertserver.certserver.tests\opencertserver.certserver.tests.csproj" />
     <Project Path="tests\opencertserver.est.server.tests\opencertserver.est.server.tests.csproj" />
+    <Project Path="tests\opencertserver.lambda.tests\opencertserver.lambda.tests.csproj" Type="Classic C#" />
   </Folder>
   <Project Path="build\opencertserver.build\opencertserver.build.csproj" />
   <Project Path="src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
@@ -24,4 +25,5 @@
   <Project Path="src\opencertserver.est.client\opencertserver.est.client.csproj" />
   <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
   <Project Path="src\opencertserver.est.tool\opencertserver.est.tool.csproj" />
+  <Project Path="src\opencertserver.lambda\opencertserver.lambda.csproj" Type="Classic C#" />
 </Solution>

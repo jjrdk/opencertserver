@@ -69,7 +69,7 @@ public sealed class Program
         {
             ForwardedHeaders = ForwardedHeaders.All,
             ForwardLimit = null,
-            AllowedHosts = Array.Empty<string>()
+            AllowedHosts = []
         };
         forwardedHeadersOptions.KnownNetworks.Clear();
         forwardedHeadersOptions.KnownProxies.Clear();

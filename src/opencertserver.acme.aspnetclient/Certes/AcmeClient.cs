@@ -37,11 +37,10 @@ public sealed class AcmeClient : IAcmeClient
             (allAuthorizations ?? []).Select(x => x.Http()));
         var nonNullChallengeContexts = challengeContexts.Where(x => x != null).ToArray();
 
-        var dtos = nonNullChallengeContexts.Select(
-                x => new ChallengeDto(
-                    x.Type == ChallengeTypes.Dns01 ? _acme.AccountKey.DnsTxt(x.Token) ?? "" : x.Token,
-                    x.KeyAuthz,
-                    domains))
+        var dtos = nonNullChallengeContexts.Select(x => new ChallengeDto(
+                x.Type == ChallengeTypes.Dns01 ? _acme.AccountKey.DnsTxt(x.Token) ?? "" : x.Token,
+                x.KeyAuthz,
+                domains))
             .ToArray();
 
         _logger.LogTrace(
@@ -60,7 +59,8 @@ public sealed class AcmeClient : IAcmeClient
 
         var keyPair = KeyFactory.NewKey(_options.KeyAlgorithm);
 
-        var certificateChain = await placedOrder.Order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10);
+        var certificateChain =
+            await placedOrder.Order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10);
 
         var pfxBuilder = certificateChain.ToPfx(keyPair);
 
@@ -70,7 +70,11 @@ public sealed class AcmeClient : IAcmeClient
 
         _logger.LogInformation("Certificate acquired");
 
+#if NET8_0
+        return new X509Certificate2(pfxBytes.AsSpan(), null);
+#else
         return X509CertificateLoader.LoadPkcs12(pfxBytes, null);
+#endif
     }
 
     private async Task ValidateChallenges(IChallengeContext[] challengeContexts)
@@ -80,9 +84,8 @@ public sealed class AcmeClient : IAcmeClient
         var challengeValidationResponses = await InnerValidateChallenges(challengeContexts);
 
         var challengeExceptions = challengeValidationResponses.Where(x => x.Status == ChallengeStatus.Invalid)
-            .Select(
-                x => new Exception(
-                    $"{x.Error?.Type ?? "error type null"}: {x.Error?.Detail ?? "null error details"} (challenge type {x.Type ?? "null"})"))
+            .Select(x => new Exception(
+                $"{x.Error?.Type ?? "error type null"}: {x.Error?.Detail ?? "null error details"} (challenge type {x.Type ?? "null"})"))
             .ToArray();
 
         if (challengeExceptions.Length > 0)

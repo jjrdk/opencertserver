@@ -31,7 +31,11 @@ internal sealed class SimpleReEnrollHandler
                 Span<byte> bytes = stackalloc byte[stringValues[0]!.Length];
                 if (Convert.TryFromBase64String(stringValues!, bytes, out var read))
                 {
-                    cert =  X509CertificateLoader.LoadCertificate(bytes[..read]);
+#if NET8_0
+                    cert = new X509Certificate2(bytes[..read]);
+#else
+                    cert = X509CertificateLoader.LoadCertificate(bytes[..read]);
+#endif
                 }
 
                 return cert;
@@ -68,6 +72,7 @@ internal sealed class SimpleReEnrollHandler
             ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             return;
         }
+
         foreach (var extension in cert.Extensions)
         {
             request.CertificateExtensions.Add(extension);

@@ -25,8 +25,8 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
     private static readonly string AcmeToken = Guid.NewGuid().ToString();
     private static readonly string AcmeResponse = $"{Guid.NewGuid()}-{Guid.NewGuid()}";
 
-    private readonly FakeLetsEncryptClient _fakeClient ;
-    private readonly IWebHostBuilder _webHostBuilder ;
+    private readonly FakeLetsEncryptClient _fakeClient;
+    private readonly IWebHostBuilder _webHostBuilder;
 
     public LetsEncryptChallengeApprovalMiddlewareMiddlewareTests()
     {
@@ -35,44 +35,41 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
         letsEncryptClientFactory.GetClient().Returns(Task.FromResult((IAcmeClient)_fakeClient));
 
         _webHostBuilder = WebHost.CreateDefaultBuilder()
-            .ConfigureServices(
-                services =>
-                {
-                    services.AddAcmeClient(
-                            new LetsEncryptOptions
+            .ConfigureServices(services =>
+            {
+                services.AddAcmeClient(
+                        new LetsEncryptOptions
+                        {
+                            Email = "some-email@github.com",
+                            UseStaging = true,
+                            Domains = ["test.com"],
+                            TimeUntilExpiryBeforeRenewal = TimeSpan.FromDays(30),
+                            CertificateSigningRequest = new CsrInfo
                             {
-                                Email = "some-email@github.com",
-                                UseStaging = true,
-                                Domains = ["test.com"],
-                                TimeUntilExpiryBeforeRenewal = TimeSpan.FromDays(30),
-                                CertificateSigningRequest = new CsrInfo
-                                {
-                                    CountryName = "CountryNameStuff",
-                                    Locality = "LocalityStuff",
-                                    Organization = "OrganizationStuff",
-                                    OrganizationUnit = "OrganizationUnitStuff",
-                                    State = "StateStuff"
-                                }
-                            })
-                        .AddAcmeInMemoryCertificatesPersistence()
-                        .AddAcmeMemoryChallengePersistence();
+                                CountryName = "CountryNameStuff",
+                                Locality = "LocalityStuff",
+                                Organization = "OrganizationStuff",
+                                OrganizationUnit = "OrganizationUnitStuff",
+                                State = "StateStuff"
+                            }
+                        })
+                    .AddAcmeInMemoryCertificatesPersistence()
+                    .AddAcmeMemoryChallengePersistence();
 
-                    // mock communication with LetsEncrypt
-                    services.Remove(services.Single(x => x.ServiceType == typeof(IAcmeClientFactory)));
-                    services.AddSingleton(letsEncryptClientFactory);
-                })
-            .Configure(
-                app =>
-                {
-                    app.UseDeveloperExceptionPage()
-                        .UseAcmeClient()
-                        .Run(
-                            async context =>
-                            {
-                                context.Response.StatusCode = 404;
-                                await context.Response.WriteAsync("Not found");
-                            });
-                })
+                // mock communication with LetsEncrypt
+                services.Remove(services.Single(x => x.ServiceType == typeof(IAcmeClientFactory)));
+                services.AddSingleton(letsEncryptClientFactory);
+            })
+            .Configure(app =>
+            {
+                app.UseDeveloperExceptionPage()
+                    .UseAcmeClient()
+                    .Run(async context =>
+                    {
+                        context.Response.StatusCode = 404;
+                        await context.Response.WriteAsync("Not found");
+                    });
+            })
             .UseKestrel()
             .ConfigureLogging(l => l.AddJsonConsole(x => x.IncludeScopes = true));
     }
@@ -103,7 +100,8 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
 
     private sealed class FakeLetsEncryptClient : IAcmeClient
     {
-        public static readonly X509Certificate2 FakeCert = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90));
+        public static readonly X509Certificate2 FakeCert =
+            SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90));
 
         public CancellationTokenSource OrderPlacedCts { get; }
         public CancellationTokenSource OrderFinalizedCts { get; }
@@ -132,7 +130,11 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
 
             OrderFinalizedCts.CancelAfter(250);
 
-            return  X509CertificateLoader.LoadCertificate(FakeCert.RawData);
+#if NET8_0
+            return new X509Certificate2(FakeCert.RawData.AsSpan());
+#else
+            return  X509CertificateLoader.LoadCertificate(FakeCert.RawData.AsSpan());
+#endif
         }
     }
 }
