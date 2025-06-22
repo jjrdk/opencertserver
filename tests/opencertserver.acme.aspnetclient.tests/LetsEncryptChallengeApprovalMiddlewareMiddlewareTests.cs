@@ -80,8 +80,8 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
         using var server = new TestServer(_webHostBuilder);
         var client = server.CreateClient();
 
-        var initialziationTimeout = await Task.WhenAny(Task.Delay(10000, _fakeClient.OrderPlacedCts.Token));
-        Assert.True(initialziationTimeout.IsCanceled, "Fake LE client initialization timed out");
+        var initializationTimeout = await Task.WhenAny(Task.Delay(10000, _fakeClient.OrderPlacedCts.Token));
+        Assert.True(initializationTimeout.IsCanceled, "Fake LE client initialization timed out");
 
         var response = await client.GetAsync($"/.well-known/acme-challenge/{AcmeToken}");
 
@@ -92,7 +92,7 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
         Assert.True(finalizationTimeout.IsCanceled, "Fake LE client finalization timed out");
 
         var acmeRenewalService = (AcmeRenewalService)server.Services.GetRequiredService<IAcmeRenewalService>();
-        var appCert = acmeRenewalService!.Certificate?.RawData;
+        var appCert = acmeRenewalService.Certificate?.RawData;
         var fakeCert = FakeLetsEncryptClient.FakeCert.RawData;
 
         Assert.True(appCert?.SequenceEqual(fakeCert), "Certificates do not match");

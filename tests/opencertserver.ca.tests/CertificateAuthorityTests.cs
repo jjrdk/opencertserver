@@ -16,7 +16,7 @@ public sealed class CertificateAuthorityTests : IDisposable
     public CertificateAuthorityTests()
     {
         using var ecdsa = ECDsa.Create();
-        var ecdsaReq = new CertificateRequest("CN=Test Server", ecdsa!, HashAlgorithmName.SHA256);
+        var ecdsaReq = new CertificateRequest("CN=Test Server", ecdsa, HashAlgorithmName.SHA256);
         ecdsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
         var ecdsaCert = ecdsaReq.CreateSelfSigned(
             DateTimeOffset.UtcNow.Date,
@@ -51,7 +51,7 @@ public sealed class CertificateAuthorityTests : IDisposable
 
         static IEnumerable<string> GetParts(X500DistinguishedName name)
         {
-            return name.Name!.Split(',').Select(x => x.Trim()).OrderBy(x => x);
+            return name.Name.Split(',').Select(x => x.Trim()).OrderBy(x => x);
         }
 
         Assert.Equal(GetParts(req.SubjectName), GetParts(cert!.Certificate.SubjectName));
