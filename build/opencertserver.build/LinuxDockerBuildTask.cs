@@ -17,6 +17,7 @@ public sealed class LinuxDockerBuildTask : FrostingTask<BuildContext>
             PublishTrimmed = true,
             Runtime = "linux-musl-x64",
             SelfContained = true,
+            Framework = "net9.0",
             Configuration = context.BuildConfiguration,
             OutputDirectory = "./artifacts/publish/linux-musl-x64/"
         };
