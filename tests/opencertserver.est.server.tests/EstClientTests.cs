@@ -90,21 +90,13 @@ public sealed class EstClientTests : IDisposable
         var client = new EstClient(
             new Uri("https://localhost/"),
             new TestMessageHandler(_server,
-#if NET8_0
-                new X509Certificate2("test.pfx", default(string?))
-#else
             X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
-#endif
             ));
         var cert = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
             rsa,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-#if NET8_0
-            certificate: new X509Certificate2("test.pfx", default(string?))
-#else
             certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
-#endif
         );
 
         Assert.NotNull(cert);
@@ -117,21 +109,13 @@ public sealed class EstClientTests : IDisposable
         var client = new EstClient(
             new Uri("https://localhost/"),
             new TestMessageHandler(_server,
-#if NET8_0
-                new X509Certificate2("test.pfx", default(string?))
-#else
             X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
-#endif
             ));
         var cert = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
             ecdsa,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-#if NET8_0
-            certificate: new X509Certificate2("test.pfx", default(string?))
-#else
             certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
-#endif
         );
 
         Assert.NotNull(cert);

@@ -69,11 +69,7 @@ public sealed class CertificateProvider : IProvideCertificates
 
             await _persistenceService.PersistSiteCertificate(pfxCertificateBytes, cancellationToken);
 
-#if NET8_0
-            return new X509Certificate2(pfxCertificateBytes.RawData.AsSpan());
-#else
             return  X509CertificateLoader.LoadCertificate(pfxCertificateBytes.RawData);
-#endif
         }
         catch (TaskCanceledException canceled)
         {

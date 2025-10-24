@@ -129,12 +129,7 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
             await Task.Delay(500);
 
             OrderFinalizedCts.CancelAfter(250);
-
-#if NET8_0
-            return new X509Certificate2(FakeCert.RawData.AsSpan());
-#else
             return  X509CertificateLoader.LoadCertificate(FakeCert.RawData.AsSpan());
-#endif
         }
     }
 }

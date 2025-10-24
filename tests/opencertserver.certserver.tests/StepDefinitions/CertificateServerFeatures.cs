@@ -70,11 +70,7 @@ public partial class CertificateServerFeatures
                 .AddAcmeInMemoryStore()
                 .AddCertificateForwarding(o =>
                 {
-#if NET8_0
-                    o.HeaderConverter = x => new X509Certificate2(Convert.FromBase64String(x));
-#else
                     o.HeaderConverter = x => X509CertificateLoader.LoadCertificate(Convert.FromBase64String(x));
-#endif
                 })
                 .AddRouting()
                 .AddAuthorization()

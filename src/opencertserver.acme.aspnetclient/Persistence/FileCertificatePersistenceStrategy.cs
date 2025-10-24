@@ -27,11 +27,7 @@ public sealed class FileCertificatePersistenceStrategy : ICertificatePersistence
     public async Task<X509Certificate2?> RetrieveSiteCertificate()
     {
         var bytes = await ReadFile(CertificateType.Site);
-#if NET8_0
-        return bytes == null ? null : new X509Certificate2(bytes);
-#else
         return bytes == null ? null :  X509CertificateLoader.LoadCertificate(bytes);
-#endif
     }
 
     private async Task<byte[]?> ReadFile(CertificateType persistenceType)

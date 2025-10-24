@@ -112,18 +112,10 @@ public sealed class LetsEncryptClientTests
 
         _letsEncryptClient.FinalizeOrder(placedOrder, "test")
             .Returns(Task.FromResult(
-#if NET8_0
-                new X509Certificate2(newCertBytes)
-#else
                 X509CertificateLoader.LoadCertificate(newCertBytes)
-#endif
             ));
 
-#if NET8_0
-        var newCertificate = new X509Certificate2(newCertBytes);
-#else
         var newCertificate = X509CertificateLoader.LoadCertificate(newCertBytes);
-#endif
         _persistenceService.PersistSiteCertificate(newCertificate).Returns(Task.CompletedTask);
 
         // act
@@ -189,11 +181,7 @@ public sealed class LetsEncryptClientTests
         var result = await client.FinalizeOrder(placedOrder, "");
 
         // assert
-#if NET8_0
-        var cert = new X509Certificate2(result.RawData.AsSpan());
-#else
         var cert = X509CertificateLoader.LoadCertificate(result.RawData.AsSpan());
-#endif
         Assert.Equal(CertToPem(cert), pemCert);
         await challenge1.Received().Validate();
         await challenge2.Received().Validate();

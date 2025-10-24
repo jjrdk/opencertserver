@@ -31,10 +31,6 @@ public sealed class CustomCertificatePersistenceStrategy : ICertificatePersisten
     public async Task<X509Certificate2?> RetrieveSiteCertificate()
     {
         var bytes = await _retrieve(CertificateType.Account);
-#if NET8_0
-        return bytes == null ? null : new X509Certificate2(bytes);
-#else
         return bytes == null ? null :  X509CertificateLoader.LoadCertificate(bytes);
-#endif
     }
 }

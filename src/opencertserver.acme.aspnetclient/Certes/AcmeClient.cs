@@ -70,11 +70,7 @@ public sealed class AcmeClient : IAcmeClient
 
         _logger.LogInformation("Certificate acquired");
 
-#if NET8_0
-        return new X509Certificate2(pfxBytes.AsSpan(), null);
-#else
         return X509CertificateLoader.LoadPkcs12(pfxBytes, null);
-#endif
     }
 
     private async Task ValidateChallenges(IChallengeContext[] challengeContexts)

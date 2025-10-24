@@ -40,11 +40,7 @@ public abstract class WebServerTests : IDisposable
             RSASignaturePadding.Pss);
         rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
-#if NET8_0
-        var rsaPublic = new X509Certificate2(ecdsaCert.GetRawCertData().AsSpan());
-#else
         var rsaPublic = X509CertificateLoader.LoadCertificate(ecdsaCert.GetRawCertData());
-#endif
 
         Server = new TestServer(CreateHostBuilder(rsaCert, ecdsaCert, rsaPublic));
     }
