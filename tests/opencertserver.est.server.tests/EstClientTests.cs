@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Hosting;
 
 namespace OpenCertServer.Est.Tests;
 
@@ -41,44 +42,48 @@ public sealed class EstClientTests : IDisposable
         rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
 
-        _server = new TestServer(CreateHostBuilder(rsaCert, ecdsaCert, rsaCert));
+        var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaCert).Build();
+        host.Start();
+        _server = host.GetTestServer();
     }
 
-    private static IWebHostBuilder CreateHostBuilder(
+    private static IHostBuilder CreateHostBuilder(
         X509Certificate2 rsaPrivate,
         X509Certificate2 ecdsaPrivate,
         X509Certificate2 webCert)
     {
-        var webBuilder = new WebHostBuilder().UseKestrel()
-            .ConfigureAppConfiguration(b => { b.AddEnvironmentVariables(); });
-
-        var attribute = new AuthorizeAttribute
+        var webBuilder = new HostBuilder().ConfigureWebHost(builder =>
         {
-            AuthenticationSchemes = CertificateAuthenticationDefaults.AuthenticationScheme
-        };
-        webBuilder.ConfigureServices(sc =>
+            builder.UseTestServer()
+                .ConfigureAppConfiguration(b => { b.AddEnvironmentVariables(); });
+            var attribute = new AuthorizeAttribute
             {
-                sc.AddRouting();
-                sc.AddAuthorization();
-                sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
-                    .AddCertificate();
-                sc.AddEstServer(rsaPrivate, ecdsaPrivate);
-                sc.ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
-            })
-            .Configure(app => app.UseAuthentication().UseAuthorization().UseEstServer(attribute, attribute))
-            .ConfigureKestrel(k =>
-            {
-                k.AddServerHeader = false;
-                k.ConfigureEndpointDefaults(d => { d.Protocols = HttpProtocols.Http1AndHttp2; });
-                k.ConfigureHttpsDefaults(d =>
+                AuthenticationSchemes = CertificateAuthenticationDefaults.AuthenticationScheme
+            };
+            builder.ConfigureServices(sc =>
                 {
-                    d.ServerCertificate = webCert;
-                    d.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
-                    d.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
-                    d.AllowAnyClientCertificate();
-                    d.CheckCertificateRevocation = false;
+                    sc.AddRouting();
+                    sc.AddAuthorization();
+                    sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
+                        .AddCertificate();
+                    sc.AddEstServer(rsaPrivate, ecdsaPrivate);
+                    sc.ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
+                })
+                .Configure(app => app.UseAuthentication().UseAuthorization().UseEstServer(attribute, attribute))
+                .ConfigureKestrel(k =>
+                {
+                    k.AddServerHeader = false;
+                    k.ConfigureEndpointDefaults(d => { d.Protocols = HttpProtocols.Http1AndHttp2; });
+                    k.ConfigureHttpsDefaults(d =>
+                    {
+                        d.ServerCertificate = webCert;
+                        d.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
+                        d.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                        d.AllowAnyClientCertificate();
+                        d.CheckCertificateRevocation = false;
+                    });
                 });
-            });
+        });
 
         return webBuilder;
     }
@@ -90,7 +95,7 @@ public sealed class EstClientTests : IDisposable
         var client = new EstClient(
             new Uri("https://localhost/"),
             new TestMessageHandler(_server,
-            X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
+                X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
             ));
         var cert = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
@@ -109,7 +114,7 @@ public sealed class EstClientTests : IDisposable
         var client = new EstClient(
             new Uri("https://localhost/"),
             new TestMessageHandler(_server,
-            X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
+                X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
             ));
         var cert = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),

@@ -71,7 +71,7 @@ public sealed class Program
             ForwardLimit = null,
             AllowedHosts = []
         };
-        forwardedHeadersOptions.KnownNetworks.Clear();
+        forwardedHeadersOptions.KnownIPNetworks.Clear();
         forwardedHeadersOptions.KnownProxies.Clear();
 
         return forwardedHeadersOptions;

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Hosting;
 
 namespace OpenCertServer.Est.Tests;
 
@@ -42,49 +43,55 @@ public abstract class WebServerTests : IDisposable
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
         var rsaPublic = X509CertificateLoader.LoadCertificate(ecdsaCert.GetRawCertData());
 
-        Server = new TestServer(CreateHostBuilder(rsaCert, ecdsaCert, rsaPublic));
+        var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaPublic).Build();
+        host.Start();
+        Server = host.GetTestServer();
     }
 
-    private static IWebHostBuilder CreateHostBuilder(
+    private static IHostBuilder CreateHostBuilder(
         X509Certificate2 rsaPrivate,
         X509Certificate2 ecdsaPrivate,
         X509Certificate2? webCert)
     {
-        var webBuilder = new WebHostBuilder().UseKestrel()
-            .ConfigureAppConfiguration(b => { b.AddEnvironmentVariables(); });
-
-        webBuilder.ConfigureServices(sc =>
-            {
-                sc.AddRouting()
-                    .AddAuthorization()
-                    .AddEstServer(rsaPrivate, ecdsaPrivate)
-                    .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
-                    .AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
-                    .AddCertificate(CertificateAuthenticationDefaults.AuthenticationScheme);
-            })
-            .Configure(app =>
-            {
-                var attribute = new AuthorizeAttribute
-                {
-                    AuthenticationSchemes = CertificateAuthenticationDefaults.AuthenticationScheme
-                };
-                app.UseAuthentication().UseAuthorization().UseEstServer(attribute, attribute);
-            });
-        webBuilder.ConfigureKestrel(k =>
+        var webBuilder = new HostBuilder().ConfigureWebHost(builder =>
         {
-            k.AddServerHeader = false;
-            k.ConfigureEndpointDefaults(d => { d.Protocols = HttpProtocols.Http1AndHttp2; });
-            k.ConfigureHttpsDefaults(d =>
-            {
-                if (webCert != null)
-                {
-                    d.ServerCertificate = webCert;
-                }
+            builder
+                .UseTestServer()
+                .ConfigureAppConfiguration(b => { b.AddEnvironmentVariables(); });
 
-                d.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
-                d.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
-                d.AllowAnyClientCertificate();
-                d.CheckCertificateRevocation = false;
+            builder.ConfigureServices(sc =>
+                {
+                    sc.AddRouting()
+                        .AddAuthorization()
+                        .AddEstServer(rsaPrivate, ecdsaPrivate)
+                        .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
+                        .AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
+                        .AddCertificate(CertificateAuthenticationDefaults.AuthenticationScheme);
+                })
+                .Configure(app =>
+                {
+                    var attribute = new AuthorizeAttribute
+                    {
+                        AuthenticationSchemes = CertificateAuthenticationDefaults.AuthenticationScheme
+                    };
+                    app.UseAuthentication().UseAuthorization().UseEstServer(attribute, attribute);
+                });
+            builder.ConfigureKestrel(k =>
+            {
+                k.AddServerHeader = false;
+                k.ConfigureEndpointDefaults(d => { d.Protocols = HttpProtocols.Http1AndHttp2; });
+                k.ConfigureHttpsDefaults(d =>
+                {
+                    if (webCert != null)
+                    {
+                        d.ServerCertificate = webCert;
+                    }
+
+                    d.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
+                    d.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                    d.AllowAnyClientCertificate();
+                    d.CheckCertificateRevocation = false;
+                });
             });
         });
 
@@ -147,6 +154,6 @@ public abstract class WebServerTests : IDisposable
     public void Dispose()
     {
         GC.SuppressFinalize(this);
-        Server?.Dispose();
+        Server.Dispose();
     }
 }

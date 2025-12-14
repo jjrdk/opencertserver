@@ -26,7 +26,7 @@ public sealed class AcmeRenewalService : IAcmeRenewalService
         IProvideCertificates certificateProvider,
         IEnumerable<ICertificateRenewalLifecycleHook> lifecycleHooks,
         IHostApplicationLifetime lifetime,
-        ILogger<IAcmeRenewalService> logger,
+        ILogger<AcmeRenewalService> logger,
         AcmeOptions options)
     {
         _certificateProvider = certificateProvider;

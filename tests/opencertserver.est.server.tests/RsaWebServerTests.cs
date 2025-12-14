@@ -30,7 +30,7 @@ public sealed class RsaWebServerTests : WebServerTests
         };
         request.Headers.Authorization = new AuthenticationHeaderValue(
             "Basic",
-            Convert.ToBase64String(Encoding.UTF8.GetBytes("test:test")));
+            Convert.ToBase64String("test:test"u8.ToArray()));
 
         var response = await client.SendAsync(request);
 

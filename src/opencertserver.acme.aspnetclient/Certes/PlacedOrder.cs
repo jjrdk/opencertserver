@@ -1,6 +1,5 @@
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
-using System;
 using global::Certes.Acme;
 using Persistence;
 

@@ -1,6 +1,5 @@
 ﻿namespace OpenCertServer.Est.Cli;
 
-using System.Security.Cryptography.X509Certificates;
 using CommandLine;
 
 [Verb(

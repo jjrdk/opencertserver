@@ -1,7 +1,7 @@
 namespace OpenCertServer.CertServer;
 
-using OpenCertServer.Acme.Abstractions.IssuanceServices;
-using OpenCertServer.Acme.Abstractions.Model;
+using Acme.Abstractions.IssuanceServices;
+using Acme.Abstractions.Model;
 
 internal sealed class DefaultCsrValidator : ICsrValidator
 {

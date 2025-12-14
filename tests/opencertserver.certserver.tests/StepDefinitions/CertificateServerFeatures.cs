@@ -1,10 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using Certes;
-using Microsoft.AspNetCore;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Builder;
@@ -13,6 +10,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenCertServer.Acme.Abstractions.IssuanceServices;
 using OpenCertServer.Acme.Abstractions.Services;
@@ -38,12 +36,17 @@ public partial class CertificateServerFeatures
     [Given(@"a certificate server")]
     public void GivenACertificateServer()
     {
-        _server = new TestServer(
-            WebHost.CreateDefaultBuilder()
+        var host = new HostBuilder().ConfigureWebHost(builder =>
+        {
+            builder
+                .UseTestServer()
                 .UseUrls("http://localhost")
                 .ConfigureAppConfiguration(c => c.AddEnvironmentVariables())
                 .ConfigureServices(ConfigureServices)
-                .Configure(ConfigureApp));
+                .Configure(ConfigureApp);
+        }).Build();
+        host.Start();
+        _server = host.GetTestServer();
         return;
 
         [UnconditionalSuppressMessage("Trimming",

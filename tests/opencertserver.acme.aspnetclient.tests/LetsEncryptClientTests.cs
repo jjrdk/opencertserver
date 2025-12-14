@@ -98,7 +98,6 @@ public sealed class LetsEncryptClientTests
     public async Task OnNoValidCertificateAvailable_ShouldRenewCertificate()
     {
         // arrange
-
         _persistenceService.GetPersistedSiteCertificate()!.Returns(Task.FromResult(InvalidCert));
 
         var dtos = new[] { new ChallengeDto("ping", "pong", ["test.com"]) };

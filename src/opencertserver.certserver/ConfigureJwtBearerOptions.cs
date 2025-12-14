@@ -1,8 +1,6 @@
-using System.Security.Claims;
-using Microsoft.IdentityModel.Tokens;
-
 namespace OpenCertServer.CertServer;
 
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 

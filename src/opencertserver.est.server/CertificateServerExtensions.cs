@@ -29,7 +29,7 @@ public static class CertificateServerExtensions
             {
                 var certificateAuthority = new CertificateAuthority(
                     distinguishedName,
-                    certificateValidity == default ? TimeSpan.FromDays(90) : certificateValidity,
+                    certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
                     chainValidation ?? (_ => true),
                     sp.GetRequiredService<ILogger<CertificateAuthority>>());
                 return certificateAuthority;

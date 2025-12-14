@@ -1,3 +1,10 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
 namespace OpenCertServer.Acme.AspNetClient.Tests;
 
 using System;
@@ -9,13 +16,7 @@ using System.Threading.Tasks;
 using Certes;
 using global::Certes;
 using global::Certes.Acme;
-using Microsoft.AspNetCore;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Persistence;
 using Xunit;
@@ -26,58 +27,62 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
     private static readonly string AcmeResponse = $"{Guid.NewGuid()}-{Guid.NewGuid()}";
 
     private readonly FakeLetsEncryptClient _fakeClient;
-    private readonly IWebHostBuilder _webHostBuilder;
+    private readonly IHostBuilder _webHostBuilder;
 
     public LetsEncryptChallengeApprovalMiddlewareMiddlewareTests()
     {
         _fakeClient = new FakeLetsEncryptClient();
         var letsEncryptClientFactory = Substitute.For<IAcmeClientFactory>();
-        letsEncryptClientFactory.GetClient().Returns(Task.FromResult((IAcmeClient)_fakeClient));
+        letsEncryptClientFactory.GetClient().Returns(Task.FromResult<IAcmeClient>(_fakeClient));
 
-        _webHostBuilder = WebHost.CreateDefaultBuilder()
-            .ConfigureServices(services =>
-            {
-                services.AddAcmeClient(
-                        new LetsEncryptOptions
-                        {
-                            Email = "some-email@github.com",
-                            UseStaging = true,
-                            Domains = ["test.com"],
-                            TimeUntilExpiryBeforeRenewal = TimeSpan.FromDays(30),
-                            CertificateSigningRequest = new CsrInfo
+        _webHostBuilder = new HostBuilder().ConfigureWebHost(b =>
+        {
+            b.UseTestServer()
+                .ConfigureServices(services =>
+                {
+                    services.AddAcmeClient(
+                            new LetsEncryptOptions
                             {
-                                CountryName = "CountryNameStuff",
-                                Locality = "LocalityStuff",
-                                Organization = "OrganizationStuff",
-                                OrganizationUnit = "OrganizationUnitStuff",
-                                State = "StateStuff"
-                            }
-                        })
-                    .AddAcmeInMemoryCertificatesPersistence()
-                    .AddAcmeMemoryChallengePersistence();
+                                Email = "some-email@github.com",
+                                UseStaging = true,
+                                Domains = ["test.com"],
+                                TimeUntilExpiryBeforeRenewal = TimeSpan.FromDays(30),
+                                CertificateSigningRequest = new CsrInfo
+                                {
+                                    CountryName = "CountryNameStuff",
+                                    Locality = "LocalityStuff",
+                                    Organization = "OrganizationStuff",
+                                    OrganizationUnit = "OrganizationUnitStuff",
+                                    State = "StateStuff"
+                                }
+                            })
+                        .AddAcmeInMemoryCertificatesPersistence()
+                        .AddAcmeMemoryChallengePersistence();
 
-                // mock communication with LetsEncrypt
-                services.Remove(services.Single(x => x.ServiceType == typeof(IAcmeClientFactory)));
-                services.AddSingleton(letsEncryptClientFactory);
-            })
-            .Configure(app =>
-            {
-                app.UseDeveloperExceptionPage()
-                    .UseAcmeClient()
-                    .Run(async context =>
-                    {
-                        context.Response.StatusCode = 404;
-                        await context.Response.WriteAsync("Not found");
-                    });
-            })
-            .UseKestrel()
-            .ConfigureLogging(l => l.AddJsonConsole(x => x.IncludeScopes = true));
+                    // mock communication with LetsEncrypt
+                    services.Remove(services.Single(x => x.ServiceType == typeof(IAcmeClientFactory)));
+                    services.AddSingleton(letsEncryptClientFactory);
+                })
+                .Configure(app =>
+                {
+                    app.UseDeveloperExceptionPage()
+                        .UseAcmeClient()
+                        .Run(async context =>
+                        {
+                            context.Response.StatusCode = 404;
+                            await context.Response.WriteAsync("Not found");
+                        });
+                })
+                .ConfigureLogging(l => l.AddJsonConsole(x => x.IncludeScopes = true));
+        });
     }
 
     [Fact]
     public async Task FullFlow()
     {
-        using var server = new TestServer(_webHostBuilder);
+        using var host = _webHostBuilder.Build();
+        host.Start();
+        using var server = host.GetTestServer();
         var client = server.CreateClient();
 
         var initializationTimeout = await Task.WhenAny(Task.Delay(10000, _fakeClient.OrderPlacedCts.Token));
@@ -129,7 +134,7 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
             await Task.Delay(500);
 
             OrderFinalizedCts.CancelAfter(250);
-            return  X509CertificateLoader.LoadCertificate(FakeCert.RawData.AsSpan());
+            return X509CertificateLoader.LoadCertificate(FakeCert.RawData.AsSpan());
         }
     }
 }
