@@ -8,6 +8,6 @@ public static class AcmeMiddlewareExtensions
     [RequiresUnreferencedCode("Uses AceMiddleware")]
     public static IApplicationBuilder UseAcmeServer(this IApplicationBuilder builder)
     {
-        return builder.UseMiddleware<AcmeMiddleware>();//.UseRouting().UseEndpoints(e=>e.MapControllers());
+        return builder.UseMiddleware<AcmeMiddleware>();
     }
 }

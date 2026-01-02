@@ -1,4 +1,6 @@
 using System.Runtime.CompilerServices;
+using opencertserver.ca.server;
+
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
 namespace OpenCertServer.CertServer;
@@ -54,12 +56,16 @@ public sealed class Program
             .AddAcmeInMemoryStore()
             .AddSingleton(new JwtParameters { Authority = authority })
             .AddSingleton<ICsrValidator, DefaultCsrValidator>()
-            .AddSingleton<ICertificateIssuer, DefaultIssuer>()
+            .AddSingleton<IIssueCertificates, DefaultIssuer>()
             .ConfigureOptions<ConfigureJwtBearerOptions>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
             .AddHealthChecks();
         var app = builder.Build();
-        app.UseForwardedHeaders(forwardedHeadersOptions).UseHealthChecks("/health").UseAcmeServer().UseEstServer();
+        app.UseForwardedHeaders(forwardedHeadersOptions)
+            .UseHealthChecks("/health")
+            .UseAcmeServer()
+            .UseEstServer()
+            .UseCertificateAuthorityServer();
         await app.RunAsync();
     }
 

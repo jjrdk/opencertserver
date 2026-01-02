@@ -11,7 +11,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using static Certificates.CertificateRenewalStatus;
 
-public sealed class AcmeRenewalService : IAcmeRenewalService
+public sealed partial class AcmeRenewalService : IAcmeRenewalService
 {
     private readonly IProvideCertificates _certificateProvider;
     private readonly IEnumerable<ICertificateRenewalLifecycleHook> _lifecycleHooks;
@@ -52,21 +52,21 @@ public sealed class AcmeRenewalService : IAcmeRenewalService
                 "Neither TimeAfterIssueDateBeforeRenewal nor TimeUntilExpiryBeforeRenewal have been set, which means that the LetsEncrypt certificate will never renew.");
         }
 
-        _logger.LogTrace("AcmeRenewalService StartAsync");
+        LogAcmerenewalserviceStartasync();
 
         foreach (var lifecycleHook in _lifecycleHooks)
         {
             await lifecycleHook.OnStart();
         }
 
-        _timer = new Timer(async state => await RunOnceWithErrorHandling(), null, Timeout.InfiniteTimeSpan, TimeSpan.FromHours(1));
+        _timer = new Timer(_ => RunOnceWithErrorHandling().GetAwaiter().GetResult(), null, Timeout.InfiniteTimeSpan, TimeSpan.FromHours(1));
 
         _lifetime.ApplicationStarted.Register(OnApplicationStarted);
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogWarning("The LetsEncrypt middleware's background renewal thread is shutting down.");
+        LogTheLetsencryptMiddlewareSBackgroundRenewalThreadIsShuttingDown();
         _timer?.Change(Timeout.Infinite, 0);
 
         foreach (var lifecycleHook in _lifecycleHooks)
@@ -92,24 +92,18 @@ public sealed class AcmeRenewalService : IAcmeRenewalService
             if (result.Status != Unchanged)
             {
                 // Pre-load intermediate certs before exposing certificate to the Kestrel
-                using var chain = new X509Chain
-                {
-                    ChainPolicy =
-                    {
-                        RevocationMode = X509RevocationMode.NoCheck
-                    }
-                };
+                using var chain = new X509Chain();
+                chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
 
                 if (result.Certificate != null)
                 {
                     if (chain.Build(result.Certificate))
                     {
-                        _logger.LogInformation("Successfully built certificate chain");
+                        LogSuccessfullyBuiltCertificateChain();
                     }
                     else
                     {
-                        _logger.LogWarning(
-                            "Was not able to build certificate chain. This can cause an outage of your app.");
+                        LogWasNotAbleToBuildCertificateChainThisCanCauseAnOutageOfYourApp();
                     }
                 }
             }
@@ -143,13 +137,13 @@ public sealed class AcmeRenewalService : IAcmeRenewalService
     {
         try
         {
-            _logger.LogTrace("AcmeRenewalService - timer callback starting");
+            LogAcmerenewalserviceTimerCallbackStarting();
             await RunOnce();
             _timer?.Change(TimeSpan.FromHours(1), TimeSpan.FromHours(1));
         }
         catch (Exception e) when (_options.RenewalFailMode != RenewalFailMode.Unhandled)
         {
-            _logger.LogWarning(e, "Exception occurred renewing certificates: '{Message}'", e.Message);
+            LogExceptionOccurredRenewingCertificatesMessage(e, e.Message);
             if (_options.RenewalFailMode == RenewalFailMode.LogAndRetry)
             {
                 _timer?.Change(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
@@ -159,7 +153,7 @@ public sealed class AcmeRenewalService : IAcmeRenewalService
 
     private void OnApplicationStarted()
     {
-        _logger.LogInformation("AcmeRenewalService - Application started");
+        LogAcmerenewalserviceApplicationStarted();
         _timer?.Change(_options.RenewalServiceStartupDelay, TimeSpan.FromHours(1));
     }
 
@@ -168,4 +162,25 @@ public sealed class AcmeRenewalService : IAcmeRenewalService
         _timer?.Dispose();
         GC.SuppressFinalize(this);
     }
+
+    [LoggerMessage(LogLevel.Trace, "AcmeRenewalService StartAsync")]
+    partial void LogAcmerenewalserviceStartasync();
+
+    [LoggerMessage(LogLevel.Warning, "The LetsEncrypt middleware's background renewal thread is shutting down")]
+    partial void LogTheLetsencryptMiddlewareSBackgroundRenewalThreadIsShuttingDown();
+
+    [LoggerMessage(LogLevel.Information, "Successfully built certificate chain")]
+    partial void LogSuccessfullyBuiltCertificateChain();
+
+    [LoggerMessage(LogLevel.Warning, "Was not able to build certificate chain. This can cause an outage of your app.")]
+    partial void LogWasNotAbleToBuildCertificateChainThisCanCauseAnOutageOfYourApp();
+
+    [LoggerMessage(LogLevel.Trace, "AcmeRenewalService - timer callback starting")]
+    partial void LogAcmerenewalserviceTimerCallbackStarting();
+
+    [LoggerMessage(LogLevel.Warning, "Exception occurred renewing certificates: '{Message}'")]
+    partial void LogExceptionOccurredRenewingCertificatesMessage(Exception e, string message);
+
+    [LoggerMessage(LogLevel.Information, "AcmeRenewalService - Application started")]
+    partial void LogAcmerenewalserviceApplicationStarted();
 }

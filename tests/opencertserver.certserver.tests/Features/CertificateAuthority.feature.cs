@@ -19,7 +19,7 @@ namespace OpenCertServer.CertServer.Tests.Features
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("TechTalk.SpecFlow", "3.9.0.0")]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    public partial class EstEnrollmentFeature : object, Xunit.IClassFixture<EstEnrollmentFeature.FixtureData>, System.IDisposable
+    public partial class CertificateLifecycleManagementFeature : object, Xunit.IClassFixture<CertificateLifecycleManagementFeature.FixtureData>, System.IDisposable
     {
         
         private static TechTalk.SpecFlow.ITestRunner testRunner;
@@ -28,10 +28,10 @@ namespace OpenCertServer.CertServer.Tests.Features
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
-#line 1 "EstEnrollment.feature"
+#line 1 "CertificateAuthority.feature"
 #line hidden
         
-        public EstEnrollmentFeature(EstEnrollmentFeature.FixtureData fixtureData, OpenCertServer_CertServer_Tests_XUnitAssemblyFixture assemblyFixture, Xunit.Abstractions.ITestOutputHelper testOutputHelper)
+        public CertificateLifecycleManagementFeature(CertificateLifecycleManagementFeature.FixtureData fixtureData, OpenCertServer_CertServer_Tests_XUnitAssemblyFixture assemblyFixture, Xunit.Abstractions.ITestOutputHelper testOutputHelper)
         {
             this._testOutputHelper = testOutputHelper;
             this.TestInitialize();
@@ -40,7 +40,7 @@ namespace OpenCertServer.CertServer.Tests.Features
         public static void FeatureSetup()
         {
             testRunner = TechTalk.SpecFlow.TestRunnerManager.GetTestRunner();
-            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Est enrollment", "Enrollment over secure transport using JWT", ProgrammingLanguage.CSharp, featureTags);
+            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Certificate lifecycle management", null, ProgrammingLanguage.CSharp, featureTags);
             testRunner.OnFeatureStart(featureInfo);
         }
         
@@ -77,12 +77,12 @@ namespace OpenCertServer.CertServer.Tests.Features
         
         public virtual void FeatureBackground()
         {
-#line 4
+#line 3
     #line hidden
-#line 5
+#line 4
         testRunner.Given("a certificate server", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 6
+#line 5
         testRunner.And("an EST client", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "And ");
 #line hidden
         }
@@ -92,15 +92,15 @@ namespace OpenCertServer.CertServer.Tests.Features
             this.TestTearDown();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Enroll with JWT")]
-        [Xunit.TraitAttribute("FeatureTitle", "Est enrollment")]
-        [Xunit.TraitAttribute("Description", "Enroll with JWT")]
-        public void EnrollWithJWT()
+        [Xunit.SkippableFactAttribute(DisplayName="Empty CRL")]
+        [Xunit.TraitAttribute("FeatureTitle", "Certificate lifecycle management")]
+        [Xunit.TraitAttribute("Description", "Empty CRL")]
+        public void EmptyCRL()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Enroll with JWT", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 8
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Empty CRL", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 7
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -110,28 +110,28 @@ namespace OpenCertServer.CertServer.Tests.Features
             else
             {
                 this.ScenarioStart();
-#line 4
+#line 3
     this.FeatureBackground();
 #line hidden
-#line 9
-        testRunner.When("I enroll with a valid JWT", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line 8
+        testRunner.When("I check the initial CRL", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 10
-        testRunner.Then("I should get a certificate", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line 9
+        testRunner.Then("the CRL should be empty", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Re-Enroll with JWT")]
-        [Xunit.TraitAttribute("FeatureTitle", "Est enrollment")]
-        [Xunit.TraitAttribute("Description", "Re-Enroll with JWT")]
-        public void Re_EnrollWithJWT()
+        [Xunit.SkippableFactAttribute(DisplayName="Certificate revocation")]
+        [Xunit.TraitAttribute("FeatureTitle", "Certificate lifecycle management")]
+        [Xunit.TraitAttribute("Description", "Certificate revocation")]
+        public void CertificateRevocation()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Re-Enroll with JWT", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 12
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Certificate revocation", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 11
     this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -141,20 +141,20 @@ namespace OpenCertServer.CertServer.Tests.Features
             else
             {
                 this.ScenarioStart();
-#line 4
+#line 3
     this.FeatureBackground();
 #line hidden
-#line 13
+#line 12
         testRunner.When("I enroll with a valid JWT", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 14
+#line 13
         testRunner.And("I get a certificate", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "And ");
 #line hidden
-#line 15
-        testRunner.And("I use the certificate to re-enroll without a valid JWT", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "And ");
+#line 14
+        testRunner.And("I revoke the certificate", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "And ");
 #line hidden
-#line 16
-        testRunner.Then("I should get a new certificate", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line 15
+        testRunner.Then("the certificate should be in the CRL", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -167,12 +167,12 @@ namespace OpenCertServer.CertServer.Tests.Features
             
             public FixtureData()
             {
-                EstEnrollmentFeature.FeatureSetup();
+                CertificateLifecycleManagementFeature.FeatureSetup();
             }
             
             void System.IDisposable.Dispose()
             {
-                EstEnrollmentFeature.FeatureTearDown();
+                CertificateLifecycleManagementFeature.FeatureTearDown();
             }
         }
     }

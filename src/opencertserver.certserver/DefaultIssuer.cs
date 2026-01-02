@@ -6,7 +6,7 @@ using OpenCertServer.Acme.Abstractions.Model;
 using OpenCertServer.Ca;
 using OpenCertServer.Ca.Utils;
 
-internal sealed class DefaultIssuer : ICertificateIssuer
+internal sealed class DefaultIssuer : IIssueCertificates
 {
     private readonly ICertificateAuthority _ca;
 
@@ -22,6 +22,7 @@ internal sealed class DefaultIssuer : ICertificateIssuer
         CancellationToken cancellationToken)
     {
         await Task.Yield();
+        cancellationToken.ThrowIfCancellationRequested();
 
         var cert = _ca.SignCertificateRequest(csr);
         return cert switch

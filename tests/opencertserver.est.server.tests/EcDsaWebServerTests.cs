@@ -65,7 +65,7 @@ public sealed class EcDsaWebServerTests : WebServerTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var s = new X509Certificate2Collection();
         s.ImportFromPem(pkcs7);
-        var cert = s[^1].CopyWithPrivateKey(ecdsa);
+        var cert = s[0].CopyWithPrivateKey(ecdsa);
 
         Assert.NotNull(cert.PublicKey);
     }
@@ -92,7 +92,7 @@ public sealed class EcDsaWebServerTests : WebServerTests
         var responseString = await reader.ReadToEndAsync();
         var collection = new X509Certificate2Collection();
         collection.ImportFromPem(responseString);
-        var cert = collection[^1].CopyWithPrivateKey(ecdsa);
+        var cert = collection[0].CopyWithPrivateKey(ecdsa);
 
         Assert.True(cert.HasPrivateKey);
 

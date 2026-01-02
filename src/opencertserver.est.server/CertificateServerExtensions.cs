@@ -18,83 +18,99 @@ using OpenCertServer.Ca;
 /// </summary>
 public static class CertificateServerExtensions
 {
-    public static IServiceCollection AddEstServer(
-        this IServiceCollection services,
-        X500DistinguishedName distinguishedName,
-        TimeSpan certificateValidity = default,
-        Func<X509Chain, bool>? chainValidation = null)
+    extension(IServiceCollection services)
     {
-        services.AddSingleton<ICertificateAuthority>(
-            sp =>
+        public IServiceCollection AddInMemoryEstServer(
+            X500DistinguishedName distinguishedName,
+            TimeSpan certificateValidity = default,
+            Func<X509Chain, bool>? chainValidation = null)
+        {
+            services.AddSingleton<Func<X509Certificate2, IStoreCertificates>>(_ =>
+                c => new InMemoryCertificateStore(c));
+
+            return services.AddEstServer(
+                distinguishedName,
+                certificateValidity,
+                chainValidation);
+        }
+
+        public IServiceCollection AddEstServer(
+            X500DistinguishedName distinguishedName,
+            TimeSpan certificateValidity = default,
+            Func<X509Chain, bool>? chainValidation = null)
+        {
+            services.AddSingleton<ICertificateAuthority>(sp =>
             {
-                var certificateAuthority = new CertificateAuthority(
+                var certificateAuthority = CertificateAuthority.Create(
                     distinguishedName,
+                    sp.GetRequiredService<Func<X509Certificate2, IStoreCertificates>>(),
                     certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
-                    chainValidation ?? (_ => true),
-                    sp.GetRequiredService<ILogger<CertificateAuthority>>());
+                    sp.GetRequiredService<ILogger<CertificateAuthority>>(),
+                    chainValidation);
                 return certificateAuthority;
             });
 
-        return services.InnerAddEstServer();
-    }
-
-    public static IServiceCollection AddEstServer(
-        this IServiceCollection services,
-        X509Certificate2 rsaCertificate,
-        X509Certificate2 ecdsaCertificate,
-        Func<X509Chain, bool>? chainValidation = null)
-    {
-        if (rsaCertificate.PublicKey.Oid.Value != CertificateConstants.RsaOid)
-        {
-            throw new ArgumentException("Must be an RSA key certificate");
+            return services.InnerAddEstServer();
         }
 
-        if (ecdsaCertificate.PublicKey.Oid.Value != CertificateConstants.EcdsaOid)
+        public IServiceCollection AddEstServer(
+            X509Certificate2 rsaCertificate,
+            X509Certificate2 ecdsaCertificate,
+            Func<X509Chain, bool>? chainValidation = null)
         {
-            throw new ArgumentException("Must be an ECDSA key certificate");
-        }
+            if (rsaCertificate.PublicKey.Oid.Value != CertificateConstants.RsaOid)
+            {
+                throw new ArgumentException("Must be an RSA key certificate");
+            }
 
-        return services.AddSingleton<ICertificateAuthority>(
-                sp => new CertificateAuthority(
+            if (ecdsaCertificate.PublicKey.Oid.Value != CertificateConstants.EcdsaOid)
+            {
+                throw new ArgumentException("Must be an ECDSA key certificate");
+            }
+
+            return services.AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
                     rsaCertificate,
                     ecdsaCertificate,
+                    sp.GetRequiredService<IStoreCertificates>(),
                     TimeSpan.FromDays(90),
                     chainValidation ?? (_ => true),
                     sp.GetRequiredService<ILogger<CertificateAuthority>>()))
-            .InnerAddEstServer();
+                .InnerAddEstServer();
+        }
+
+        private IServiceCollection InnerAddEstServer()
+        {
+            return services.AddTransient<CaCertHandler>()
+                .AddTransient<SimpleEnrollHandler>()
+                .AddTransient<SimpleReEnrollHandler>()
+                .AddTransient<X509Certificate2Collection>(sp =>
+                    sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates());
+        }
     }
 
-    private static IServiceCollection InnerAddEstServer(this IServiceCollection services)
+    extension(IApplicationBuilder app)
     {
-        return services.AddTransient<CaCertHandler>()
-            .AddTransient<SimpleEnrollHandler>()
-            .AddTransient<SimpleReEnrollHandler>()
-            .AddTransient<X509Certificate2Collection>(
-                sp => sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates());
-    }
-
-    public static IApplicationBuilder UseEstServer(
-        this IApplicationBuilder app,
-        IAuthorizeData? enrollPolicy = null,
-        IAuthorizeData? reEnrollPolicy = null)
-    {
-        const string? wellKnownEst = "/.well-known/est";
-        return app.UseCertificateForwarding()
-            .UseAuthentication()
-            .UseRouting()
-            .UseAuthorization()
-            .UseEndpoints(
-                e =>
+        public IApplicationBuilder UseEstServer(
+            IAuthorizeData? enrollPolicy = null,
+            IAuthorizeData? reEnrollPolicy = null)
+        {
+            const string? wellKnownEst = "/.well-known/est";
+            return app.UseCertificateForwarding()
+                .UseAuthentication()
+                .UseRouting()
+                .UseAuthorization()
+                .UseEndpoints(e =>
                 {
-                    e.MapGet(
-                        $"{wellKnownEst}/cacert",
+                    var groupBuilder = e.MapGroup(wellKnownEst);
+                    groupBuilder.MapGet(
+                        "/cacert",
                         async ctx =>
                         {
                             var handler = ctx.RequestServices.GetRequiredService<CaCertHandler>();
                             await handler.Handle(ctx).ConfigureAwait(false);
                         });
-                    var enrollBuilder = e.MapPost(
-                        $"{wellKnownEst}/simpleenroll",
+                    var enrollBuilder = groupBuilder.MapPost(
+                        "/simpleenroll",
                         async ctx =>
                         {
                             var handler = ctx.RequestServices.GetRequiredService<SimpleEnrollHandler>();
@@ -109,8 +125,8 @@ public static class CertificateServerExtensions
                         enrollBuilder.RequireAuthorization(ConfigurePolicy);
                     }
 
-                    var reEnrollBuilder = e.MapPost(
-                        $"{wellKnownEst}/simplereenroll",
+                    var reEnrollBuilder = groupBuilder.MapPost(
+                        "/simplereenroll",
                         async ctx =>
                         {
                             var handler = ctx.RequestServices.GetRequiredService<SimpleReEnrollHandler>();
@@ -125,11 +141,14 @@ public static class CertificateServerExtensions
                         reEnrollBuilder.RequireAuthorization(ConfigurePolicy);
                     }
                 });
+        }
     }
 
     private static void ConfigurePolicy(AuthorizationPolicyBuilder b)
     {
-        b.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, CertificateAuthenticationDefaults.AuthenticationScheme)
+        b.AddAuthenticationSchemes(
+                JwtBearerDefaults.AuthenticationScheme,
+                CertificateAuthenticationDefaults.AuthenticationScheme)
             .RequireAuthenticatedUser();
     }
 }

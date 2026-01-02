@@ -24,7 +24,7 @@ public sealed class OrderStore : StoreBase, IStoreOrders
 
     public async Task<Order?> LoadOrder(string orderId, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(orderId) || !IdentifierRegex.IsMatch(orderId))
+        if (string.IsNullOrWhiteSpace(orderId) || !IdentifierRegex().IsMatch(orderId))
         {
             throw new MalformedRequestException("OrderId does not match expected format.");
         }
@@ -51,10 +51,11 @@ public sealed class OrderStore : StoreBase, IStoreOrders
         await CreateOwnerFileAsync(setOrder, cancellationToken);
         await WriteWorkFilesAsync(setOrder, cancellationToken);
 
-        await using var fileStream = File.Open(orderFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
+        await using var fileStream =
+            File.Open(orderFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
         var existingOrder = await LoadFromStream<Order>(fileStream, cancellationToken);
 
-        //HandleVersioning(existingOrder, setOrder);
+        HandleVersioning(existingOrder, setOrder);
         await ReplaceFileStreamContent(fileStream, setOrder, cancellationToken);
     }
 
@@ -64,9 +65,10 @@ public sealed class OrderStore : StoreBase, IStoreOrders
         Directory.CreateDirectory(ownerDirectory);
 
         var ownerFilePath = Path.Combine(ownerDirectory, order.OrderId);
-        if (!File.Exists(ownerFilePath)) {
-            await File.WriteAllTextAsync(ownerFilePath, 
-                order.Expires?.ToString("o", CultureInfo.InvariantCulture), 
+        if (!File.Exists(ownerFilePath))
+        {
+            await File.WriteAllTextAsync(ownerFilePath,
+                order.Expires?.ToString("o", CultureInfo.InvariantCulture),
                 cancellationToken);
         }
     }
@@ -79,12 +81,13 @@ public sealed class OrderStore : StoreBase, IStoreOrders
         var validationFilePath = Path.Combine(validationDirectory, order.OrderId);
         if (order.Authorizations.Any(a => a.Challenges.Any(c => c.Status == ChallengeStatus.Processing)))
         {
-            if (!File.Exists(validationFilePath)) {
-                await File.WriteAllTextAsync(validationFilePath, 
+            if (!File.Exists(validationFilePath))
+            {
+                await File.WriteAllTextAsync(validationFilePath,
                     order.Authorizations.Min(a => a.Expires).ToString("o", CultureInfo.InvariantCulture),
                     cancellationToken);
             }
-        } 
+        }
         else if (File.Exists(validationFilePath))
         {
             File.Delete(validationFilePath);
@@ -94,10 +97,11 @@ public sealed class OrderStore : StoreBase, IStoreOrders
         Directory.CreateDirectory(processDirectory);
 
         var processingFilePath = Path.Combine(processDirectory, order.OrderId);
-        if(order.Status == OrderStatus.Processing)
+        if (order.Status == OrderStatus.Processing)
         {
-            if (!File.Exists(processingFilePath)) {
-                await File.WriteAllTextAsync(processingFilePath, 
+            if (!File.Exists(processingFilePath))
+            {
+                await File.WriteAllTextAsync(processingFilePath,
                     order.Expires?.ToString("o", CultureInfo.InvariantCulture),
                     cancellationToken);
             }
@@ -119,20 +123,24 @@ public sealed class OrderStore : StoreBase, IStoreOrders
         }
 
         var files = Directory.EnumerateFiles(workPath);
-        foreach(var filePath in files)
+        foreach (var filePath in files)
         {
             try
             {
                 var orderId = Path.GetFileName(filePath);
                 var order = await LoadOrder(orderId, cancellationToken);
 
-                if(order != null)
+                if (order != null)
                 {
                     result.Add(order);
                 }
             }
-            catch (Exception ex) {
-                _logger.LogError(ex, "Could not load validatable orders.");
+            catch (Exception ex)
+            {
+                if (_logger.IsEnabled(LogLevel.Error))
+                {
+                    _logger.LogError(ex, "Could not load validatable orders from file {FilePath}", filePath);
+                }
             }
         }
 

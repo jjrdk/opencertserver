@@ -34,6 +34,7 @@ public sealed class CertificateAuthorityTests : IDisposable
         _authority = new CertificateAuthority(
             rsaCert,
             ecdsaCert,
+            new InMemoryCertificateStore(ecdsaCert),
             TimeSpan.FromDays(90),
             _ => true,
             new NullLogger<CertificateAuthority>());
@@ -76,11 +77,12 @@ public sealed class CertificateAuthorityTests : IDisposable
     {
         X509Certificate2 rsa = null!;
         X509Certificate2 ecdsa = null!;
-        var ca = new CertificateAuthority(
+        var ca = CertificateAuthority.Create(
             new X500DistinguishedName("CN=test"),
+            x=> new InMemoryCertificateStore(x),
             TimeSpan.FromDays(1),
-            c => true,
             NullLogger<CertificateAuthority>.Instance,
+            null,
             (c1, c2) =>
             {
                 rsa = c1;

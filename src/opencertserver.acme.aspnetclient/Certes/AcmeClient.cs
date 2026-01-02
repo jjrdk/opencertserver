@@ -11,7 +11,7 @@ using global::Certes.Acme.Resource;
 using Microsoft.Extensions.Logging;
 using Persistence;
 
-public sealed class AcmeClient : IAcmeClient
+public sealed partial class AcmeClient : IAcmeClient
 {
     private const string CertificateFriendlyName = "OpenCertServerAcmeCertificate";
 
@@ -28,7 +28,7 @@ public sealed class AcmeClient : IAcmeClient
 
     public async Task<PlacedOrder> PlaceOrder(params string[] domains)
     {
-        _logger.LogInformation("Ordering LetsEncrypt certificate for domains {domains}", string.Join(", ", domains));
+        LogOrderingLetsEncryptCertificateForDomainsDomains(string.Join(", ", domains));
         var order = await _acme.NewOrder(domains);
 
         var allAuthorizations = await order.Authorizations();
@@ -43,10 +43,7 @@ public sealed class AcmeClient : IAcmeClient
                 domains))
             .ToArray();
 
-        _logger.LogTrace(
-            "Acme placed order for domains {Domains} with challenges {Challenges}",
-            domains,
-            dtos);
+        LogAcmePlacedOrderForDomainsDomainsWithChallengesChallenges(domains, dtos);
 
         return new PlacedOrder(dtos, order, nonNullChallengeContexts);
     }
@@ -55,7 +52,7 @@ public sealed class AcmeClient : IAcmeClient
     {
         await ValidateChallenges(placedOrder.ChallengeContexts);
 
-        _logger.LogInformation("Acquiring certificate through signing request");
+        LogAcquiringCertificateThroughSigningRequest();
 
         var keyPair = KeyFactory.NewKey(_options.KeyAlgorithm);
 
@@ -68,14 +65,14 @@ public sealed class AcmeClient : IAcmeClient
 
         var pfxBytes = pfxBuilder.Build(CertificateFriendlyName, password);
 
-        _logger.LogInformation("Certificate acquired");
+        LogCertificateAcquired();
 
         return X509CertificateLoader.LoadPkcs12(pfxBytes, null);
     }
 
     private async Task ValidateChallenges(IChallengeContext[] challengeContexts)
     {
-        _logger.LogInformation("Validating all pending order authorizations");
+        LogValidatingAllPendingOrderAuthorizations();
 
         var challengeValidationResponses = await InnerValidateChallenges(challengeContexts);
 
@@ -112,4 +109,19 @@ public sealed class AcmeClient : IAcmeClient
 
         return challenges;
     }
+
+    [LoggerMessage(LogLevel.Information, "Ordering LetsEncrypt certificate for domains {Domains}")]
+    partial void LogOrderingLetsEncryptCertificateForDomainsDomains(string domains);
+
+    [LoggerMessage(LogLevel.Trace, "Acme placed order for domains {Domains} with challenges {Challenges}")]
+    partial void LogAcmePlacedOrderForDomainsDomainsWithChallengesChallenges(string[] domains, ChallengeDto[] challenges);
+
+    [LoggerMessage(LogLevel.Information, "Acquiring certificate through signing request")]
+    partial void LogAcquiringCertificateThroughSigningRequest();
+
+    [LoggerMessage(LogLevel.Information, "Certificate acquired")]
+    partial void LogCertificateAcquired();
+
+    [LoggerMessage(LogLevel.Information, "Validating all pending order authorizations")]
+    partial void LogValidatingAllPendingOrderAuthorizations();
 }

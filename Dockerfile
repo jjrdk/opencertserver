@@ -1,5 +1,5 @@
 # Build runtime image
-FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/runtime-deps:9.0-alpine
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine
 ENV ACCEPT_EULA=Y
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 ENV DOTNET_NOLOGO=true

@@ -7,7 +7,10 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using Utils;
 
-public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
+/// <summary>
+/// Defines the certificate authority class.
+/// </summary>
+public sealed partial class CertificateAuthority : ICertificateAuthority, IDisposable
 {
     private const string Header = "-----BEGIN CERTIFICATE REQUEST-----";
     private const string Footer = "-----END CERTIFICATE REQUEST-----";
@@ -25,53 +28,112 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
     private readonly ILogger<ICertificateAuthority> _logger;
     private readonly X509Certificate2 _rsaCertificate;
     private readonly X509Certificate2 _ecdsaCertificate;
+    private readonly IStoreCertificates _certificateStore;
     private readonly TimeSpan _certificateValidity;
     private readonly Func<X509Chain, bool> _x509ChainValidation;
     private readonly IValidateCertificateRequests[] _validators;
     private readonly bool _standAlone;
 
-    public CertificateAuthority(
-        X500DistinguishedName distinguishedName,
+    private CertificateAuthority(
+        X509Certificate2 rsaCertificate,
+        X509Certificate2 ecdsaCertificate,
+        IStoreCertificates certificateStore,
         TimeSpan certificateValidity,
         Func<X509Chain, bool> x509ChainValidation,
         ILogger<CertificateAuthority> logger,
         Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
+        bool standAlone = true,
         params IValidateCertificateRequests[] validators)
         : this(
-            CreateSelfSignedRsaCert(distinguishedName, UsageFlags, certificateValidity),
-            CreateSelfSignedEcDsaCert(distinguishedName, UsageFlags, certificateValidity),
+            rsaCertificate,
+            ecdsaCertificate,
+            certificateStore,
             certificateValidity,
             x509ChainValidation,
             logger,
             certificateBackup,
             validators)
     {
-        _standAlone = true;
+        _standAlone = standAlone;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CertificateAuthority"/> class.
+    /// </summary>
+    /// <param name="rsaCertificate"></param>
+    /// <param name="ecdsaCertificate"></param>
+    /// <param name="certificateStore"></param>
+    /// <param name="certificateValidity"></param>
+    /// <param name="x509ChainValidation"></param>
+    /// <param name="logger"></param>
+    /// <param name="certificateBackup"></param>
+    /// <param name="validators"></param>
+    /// <exception cref="ArgumentException"></exception>
     public CertificateAuthority(
         X509Certificate2 rsaCertificate,
         X509Certificate2 ecdsaCertificate,
+        IStoreCertificates certificateStore,
         TimeSpan certificateValidity,
         Func<X509Chain, bool> x509ChainValidation,
         ILogger<CertificateAuthority> logger,
         Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
         params IValidateCertificateRequests[] validators)
     {
+        if (!rsaCertificate.HasPrivateKey)
+        {
+            throw new ArgumentException("RSA certificate must have private key", nameof(rsaCertificate));
+        }
+
+        if (!ecdsaCertificate.HasPrivateKey)
+        {
+            throw new ArgumentException("ECDSA certificate must have private key", nameof(ecdsaCertificate));
+        }
+
         _logger = logger;
         _rsaCertificate = rsaCertificate;
         _ecdsaCertificate = ecdsaCertificate;
+        _certificateStore = certificateStore;
         _certificateValidity = certificateValidity;
         _x509ChainValidation = x509ChainValidation;
         _validators = validators.Concat(
             [
                 new OwnCertificateValidation(
-                        [_rsaCertificate, _ecdsaCertificate],
-                        _logger),
-                    new DistinguishedNameValidation()
+                    [_rsaCertificate, _ecdsaCertificate],
+                    _logger),
+                new DistinguishedNameValidation()
             ])
             .ToArray();
         certificateBackup?.Invoke(_rsaCertificate, _ecdsaCertificate);
+    }
+
+    public static CertificateAuthority Create(
+        X500DistinguishedName distinguishedName,
+        Func<X509Certificate2, IStoreCertificates> certificateStore,
+        TimeSpan certificateValidity,
+        ILogger<CertificateAuthority> logger,
+        Func<X509Chain, bool>? chainValidation = null,
+        Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
+        params IValidateCertificateRequests[] validators)
+    {
+        var rsaCert = CreateSelfSignedRsaCert(
+            distinguishedName,
+            UsageFlags,
+            certificateValidity);
+        var ecdsaCert = CreateSelfSignedEcDsaCert(
+            distinguishedName,
+            UsageFlags,
+            certificateValidity);
+        var ca = new CertificateAuthority(
+            rsaCert,
+            ecdsaCert,
+            certificateStore(ecdsaCert),
+            certificateValidity,
+            chainValidation ?? (_ => true),
+            logger,
+            certificateBackup,
+            standAlone: true,
+            validators);
+        return ca;
     }
 
     public SignCertificateResponse SignCertificateRequest(
@@ -80,24 +142,27 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
     {
         if (!_validators.Aggregate(true, (b, v) => b && v.Validate(request)))
         {
-            const string? error = "Could not validate request";
-            _logger.LogError(error);
-            return new SignCertificateResponse.Error(error);
+            LogCouldNotValidateRequest();
+            return new SignCertificateResponse.Error("Could not validate request");
         }
 
-        _logger.LogInformation("Creating certificate for {SubjectName}", request.SubjectName.Name);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            LogCreatingCertificateForSubjectname(request.SubjectName.Name);
+        }
+
         var cert = request.PublicKey.Oid.Value switch
         {
             CertificateConstants.RsaOid => request.Create(
                 _rsaCertificate,
                 DateTimeOffset.UtcNow.Date,
                 DateTimeOffset.UtcNow.Date.Add(_certificateValidity),
-                BitConverter.GetBytes(DateTime.UtcNow.Ticks)),
+                BitConverter.GetBytes(DateTimeOffset.UtcNow.Ticks)),
             CertificateConstants.EcdsaOid => request.Create(
                 _ecdsaCertificate,
                 DateTimeOffset.UtcNow.Date,
                 DateTimeOffset.UtcNow.Date.Add(_certificateValidity),
-                BitConverter.GetBytes(DateTime.UtcNow.Ticks)),
+                BitConverter.GetBytes(DateTimeOffset.UtcNow.Ticks)),
             _ => null
         };
 
@@ -122,6 +187,7 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
 
         if (chainBuilt || _x509ChainValidation(chain))
         {
+            _certificateStore.AddCertificate(cert);
             return new SignCertificateResponse.Success(
                 cert,
                 [
@@ -134,10 +200,11 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
                 ]);
         }
 
-        var errors = chain.ChainStatus.Select(
-                chainStatus => $"Certificate chain error: {chainStatus.Status} {chainStatus.StatusInformation}")
+        var errors = chain.ChainStatus.Select(chainStatus =>
+                $"Certificate chain error: {chainStatus.Status} {chainStatus.StatusInformation}")
             .ToArray();
-        _logger.LogError("{Errors}", string.Join(";", errors));
+        LogErrors(string.Join(";", errors));
+
         return new SignCertificateResponse.Error(errors);
     }
 
@@ -154,8 +221,11 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
 
     private SignCertificateResponse SignCertificateRequest(byte[] request)
     {
-        var csr = CertificateRequest.LoadSigningRequest(request, HashAlgorithmName.SHA256,
-            signerSignaturePadding: RSASignaturePadding.Pss);
+        var csr = CertificateRequest.LoadSigningRequest(
+            request,
+            HashAlgorithmName.SHA256,
+            CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
+            RSASignaturePadding.Pss);
 
         return SignCertificateRequest(csr);
     }
@@ -163,7 +233,21 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
     /// <inheritdoc />
     public X509Certificate2Collection GetRootCertificates()
     {
-        return [_rsaCertificate, _ecdsaCertificate];
+        return
+        [
+            X509Certificate2.CreateFromPem(_rsaCertificate.ToPem()),
+            X509Certificate2.CreateFromPem(_ecdsaCertificate.ToPem())
+        ];
+    }
+
+    public bool RevokeCertificate(string serialNumber, X509RevocationReason reason)
+    {
+        return _certificateStore.RemoveCertificate(serialNumber, reason);
+    }
+
+    public byte[] GetRevocationList()
+    {
+        return _certificateStore.GetRevocationList();
     }
 
     private static X509Certificate2 CreateSelfSignedRsaCert(
@@ -247,7 +331,8 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
                 throw new InvalidOperationException("Illegal base64url string!");
         }
     }
-    private sealed class OwnCertificateValidation : IValidateCertificateRequests
+
+    private sealed partial class OwnCertificateValidation : IValidateCertificateRequests
     {
         private readonly X509Certificate2Collection _serverCertificates;
         private readonly ILogger _logger;
@@ -265,12 +350,14 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
                     .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);
             if (!result)
             {
-                _logger.LogError("Could not validate re-enrollment from {ReenrollingFrom}",
-                    reenrollingFrom!.IssuerName.Name);
+                LogCouldNotValidateReEnrollmentFromReEnrollingfrom(reenrollingFrom!.IssuerName.Name);
             }
 
             return result;
         }
+
+        [LoggerMessage(LogLevel.Error, "Could not validate re-enrollment from {ReenrollingFrom}")]
+        partial void LogCouldNotValidateReEnrollmentFromReEnrollingfrom(string reenrollingFrom);
     }
 
     private sealed class DistinguishedNameValidation : IValidateCertificateRequests
@@ -282,4 +369,13 @@ public sealed class CertificateAuthority : ICertificateAuthority, IDisposable
                 .Any(x => x.StartsWith("CN="));
         }
     }
+
+    [LoggerMessage(LogLevel.Error, "Could not validate request")]
+    partial void LogCouldNotValidateRequest();
+
+    [LoggerMessage(LogLevel.Information, "Creating certificate for {SubjectName}")]
+    partial void LogCreatingCertificateForSubjectname(string subjectName);
+
+    [LoggerMessage(LogLevel.Error, "{Errors}")]
+    partial void LogErrors(string errors);
 }

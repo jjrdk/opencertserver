@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Model;
 
-public interface ICertificateIssuer
+public interface IIssueCertificates
 {
     Task<(byte[]? certificate, AcmeError? error)> IssueCertificate(
         string csr,

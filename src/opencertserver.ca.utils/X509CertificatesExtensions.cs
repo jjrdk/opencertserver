@@ -10,49 +10,49 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-public static class X509CertificatesExtensions
+public static partial class X509CertificatesExtensions
 {
-    private const string SubjectAlternateNameOID = "2.5.29.17";
+    private const string SubjectAlternateNameOid = "2.5.29.17";
 
-    private static readonly Regex DnsNameRegex = new(
-        @"^DNS Name=(.+)",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
-    public static HashSet<string> GetSubjectAlternativeNames(this X509Certificate2 cert)
+    extension(X509Certificate2 cert)
     {
-        if (cert == null)
+        public HashSet<string> GetSubjectAlternativeNames()
         {
-            throw new ArgumentNullException(nameof(cert));
+            ArgumentNullException.ThrowIfNull(cert);
+            var subjectAlternativeName = cert.Extensions
+                .Where(n => n.Oid?.Value == SubjectAlternateNameOid)
+                .Select(n => new AsnEncodedData(n.Oid, n.RawData))
+                .Select(n => n.Format(true))
+                .FirstOrDefault();
+
+            return string.IsNullOrWhiteSpace(subjectAlternativeName)
+                ? []
+                : subjectAlternativeName.Split(["\r\n", "\r", "\n"], StringSplitOptions.RemoveEmptyEntries)
+                    .Select(n => DnsNameRegex().Match(n))
+                    .Where(r => r.Success && !string.IsNullOrWhiteSpace(r.Groups[1].Value))
+                    .Select(r => r.Groups[1].Value)
+                    .ToHashSet();
         }
-        var subjectAlternativeName = cert.Extensions.OfType<X509Extension>()
-            .Where(n => n.Oid?.Value == SubjectAlternateNameOID)
-            .Select(n => new AsnEncodedData(n.Oid, n.RawData))
-            .Select(n => n.Format(true))
-            .FirstOrDefault();
 
-        return string.IsNullOrWhiteSpace(subjectAlternativeName)
-            ? []
-            : subjectAlternativeName.Split(["\r\n", "\r", "\n"], StringSplitOptions.RemoveEmptyEntries)
-                .Select(n => DnsNameRegex.Match(n))
-                .Where(r => r.Success && !string.IsNullOrWhiteSpace(r.Groups[1].Value))
-                .Select(r => r.Groups[1].Value)
-                .ToHashSet();
-    }
-    public static string ToPem(this X509Certificate2 cert)
-    {
-        return string.Concat("-----BEGIN CERTIFICATE-----\n",
-            Convert.ToBase64String(cert.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks),
-            "\n-----END CERTIFICATE-----");
-    }
+        public string ToPem()
+        {
+            return string.Concat("-----BEGIN CERTIFICATE-----\n",
+                Convert.ToBase64String(cert.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks),
+                "\n-----END CERTIFICATE-----");
+        }
 
-    public static string ToPemChain(this X509Certificate2 cert, X509Certificate2Collection issuers)
-    {
-        return cert.ToPem() + string.Join('\n', issuers.OfType<X509Certificate2>().Select(x => x.ToPem()));
+        public string ToPemChain(X509Certificate2Collection issuers)
+        {
+            return $"{cert.ToPem()}\n{string.Join('\n', issuers.Select(x => x.ToPem()))}";
+        }
+
+        public async Task WritePfx(Stream outputStream, CancellationToken cancellation = default)
+        {
+            var buffer = cert.Export(X509ContentType.Pfx);
+            await outputStream.WriteAsync(buffer.AsMemory(), cancellation).ConfigureAwait(false);
+        }
     }
 
-    public static async Task WritePfx(this X509Certificate2 certificate, Stream outputStream, CancellationToken cancellation = default)
-    {
-        var buffer = certificate.Export(X509ContentType.Pfx);
-        await outputStream.WriteAsync(buffer.AsMemory(), cancellation).ConfigureAwait(false);
-    }
+    [GeneratedRegex(@"^DNS Name=(.+)", RegexOptions.Compiled | RegexOptions.CultureInvariant)]
+    private static partial Regex DnsNameRegex();
 }

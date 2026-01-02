@@ -1,7 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <Import Project="../../shared.proj"/>
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
         <OutputType>Exe</OutputType>
         <RunWorkingDirectory>$(MSBuildProjectDirectory)</RunWorkingDirectory>
         <RootNamespace>OpenCertServer.Build</RootNamespace>

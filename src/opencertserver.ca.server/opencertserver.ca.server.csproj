@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <Import Project="../../shared.proj" />
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Ca.Server</RootNamespace>
+        <AssemblyName>opencertserver.ca.server</AssemblyName>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="10.0.1" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.ca\opencertserver.ca.csproj" />
+    </ItemGroup>
+
+</Project>

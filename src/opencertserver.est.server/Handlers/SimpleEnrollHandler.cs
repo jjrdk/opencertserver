@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Est.Server.Handlers;
+﻿using OpenCertServer.Ca.Utils;
+
+namespace OpenCertServer.Est.Server.Handlers;
 
 using System.IO;
 using System.Net;
@@ -26,9 +28,7 @@ internal sealed class SimpleEnrollHandler
             ctx.Response.StatusCode = (int)HttpStatusCode.OK;
             ctx.Response.ContentType = Constants.PemMimeType;
             await using var writer = new StreamWriter(ctx.Response.Body);
-            var certCollection = success.Issuers;
-            certCollection.Add(success.Certificate);
-            var pem = certCollection.ExportCertificatePems();
+            var pem = success.Certificate.ToPemChain(success.Issuers);
             success.Certificate.Dispose();
             await writer.WriteLineAsync(pem).ConfigureAwait(false);
             await writer.FlushAsync().ConfigureAwait(false);

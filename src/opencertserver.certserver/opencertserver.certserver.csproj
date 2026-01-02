@@ -2,9 +2,7 @@
 
 	<Import Project="../../shared.proj" />
 	<PropertyGroup>
-		<Nullable>enable</Nullable>
 		<RootNamespace>OpenCertServer.CertServer</RootNamespace>
-		<ImplicitUsings>enable</ImplicitUsings>
 		<UserSecretsId>cb0364b8-e43a-47c6-aa32-5f49429f0388</UserSecretsId>
 		<OutputType>Exe</OutputType>
 		<SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
@@ -21,6 +19,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\opencertserver.acme.server\opencertserver.acme.server.csproj" />
+		<ProjectReference Include="..\opencertserver.ca.server\opencertserver.ca.server.csproj" />
 		<ProjectReference Include="..\opencertserver.est.server\opencertserver.est.server.csproj" />
 	</ItemGroup>
 

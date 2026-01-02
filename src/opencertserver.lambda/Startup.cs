@@ -29,7 +29,7 @@ public class Startup
             .AddAcmeServer(Configuration)
             .AddAcmeInMemoryStore()
             .AddSingleton<ICsrValidator, DefaultCsrValidator>()
-            .AddSingleton<ICertificateIssuer, DefaultIssuer>()
+            .AddSingleton<IIssueCertificates, DefaultIssuer>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
             .AddHealthChecks();
     }

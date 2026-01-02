@@ -1,4 +1,7 @@
-﻿namespace OpenCertServer.Acme.Server.Stores;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
+
+namespace OpenCertServer.Acme.Server.Stores;
 
 using System.Text;
 using System.Text.RegularExpressions;
@@ -6,17 +9,14 @@ using Abstractions.Model;
 using Abstractions.Model.Exceptions;
 using Configuration;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 
-public class StoreBase
+public partial class StoreBase
 {
     protected IOptions<FileStoreOptions> Options { get; }
-    protected Regex IdentifierRegex { get; }
 
     public StoreBase(IOptions<FileStoreOptions> options)
     {
         Options = options;
-        IdentifierRegex = new Regex("[\\w\\d_-]+", RegexOptions.Compiled);
     }
 
     protected static async Task<T?> LoadFromPath<T>(string filePath, CancellationToken cancellationToken)
@@ -43,19 +43,25 @@ public class StoreBase
 
         var utf8Bytes = new byte[fileStream.Length];
         _ = await fileStream.ReadAsync(utf8Bytes, cancellationToken);
-        var result = JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(utf8Bytes), JsonDefaults.Settings);
+        var result =
+            JsonSerializer.Deserialize<T>(utf8Bytes.AsSpan(),
+                (JsonTypeInfo<T>)AcmeSerializerContext.Default.GetTypeInfo(typeof(T))!);
 
         return result;
     }
 
-    protected static async Task ReplaceFileStreamContent<T>(FileStream fileStream, T content, CancellationToken cancellationToken)
+    protected static async Task ReplaceFileStreamContent<T>(
+        FileStream fileStream,
+        T content,
+        CancellationToken cancellationToken)
     {
         if (fileStream.Length > 0)
         {
             fileStream.SetLength(0);
         }
 
-        var utf8Bytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(content, JsonDefaults.Settings));
+        var utf8Bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(content,
+            (JsonTypeInfo<T>)AcmeSerializerContext.Default.GetTypeInfo(typeof(T))!));
         await fileStream.WriteAsync(utf8Bytes, cancellationToken);
     }
 
@@ -68,4 +74,7 @@ public class StoreBase
 
         newContent.Version = DateTime.UtcNow.Ticks;
     }
+
+    [GeneratedRegex(@"[\w\d_-]+", RegexOptions.Compiled)]
+    protected static partial Regex IdentifierRegex();
 }

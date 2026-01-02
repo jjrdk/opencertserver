@@ -9,9 +9,12 @@ namespace OpenCertServer.CertServer;
 public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<CertificateAuthenticationOptions>
 {
     private static readonly ImmutableDictionary<string, string> KnownPrefixes = ImmutableDictionary.CreateRange([
-        KeyValuePair.Create("CN", ClaimTypes.Name), KeyValuePair.Create("E", ClaimTypes.Email),
-        KeyValuePair.Create("OU", ClaimTypes.System), KeyValuePair.Create("O", "org"),
-        KeyValuePair.Create("L", ClaimTypes.Locality), KeyValuePair.Create("SN", ClaimTypes.Surname),
+        KeyValuePair.Create("CN", ClaimTypes.Name),
+        KeyValuePair.Create("E", ClaimTypes.Email),
+        KeyValuePair.Create("OU", ClaimTypes.System),
+        KeyValuePair.Create("O", "org"),
+        KeyValuePair.Create("L", ClaimTypes.Locality),
+        KeyValuePair.Create("SN", ClaimTypes.Surname),
         KeyValuePair.Create("GN", ClaimTypes.GivenName),
         KeyValuePair.Create("C", ClaimTypes.Country)
     ]);
@@ -37,7 +40,9 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
                     .Select(x => (x[..x.IndexOf('=')], x[(x.IndexOf('=') + 1)..]))
                     .Where(x => KnownPrefixes.ContainsKey(x.Item1))
                     .Select(x => new Claim(x.Item1, x.Item2));
-                context.Principal = new ClaimsPrincipal(new ClaimsIdentity(claims));
+                context.Principal =
+                    new ClaimsPrincipal(new ClaimsIdentity(claims,
+                        CertificateAuthenticationDefaults.AuthenticationScheme));
                 context.Success();
                 return Task.CompletedTask;
             }

@@ -18,13 +18,13 @@ public sealed class DefaultOrderService : IOrderService
     private readonly IStoreOrders _orderStore;
     private readonly IAuthorizationFactory _authorizationFactory;
     private readonly ICsrValidator _csrValidator;
-    private readonly ICertificateIssuer _issuer;
+    private readonly IIssueCertificates _issuer;
 
     public DefaultOrderService(
         IStoreOrders orderStore,
         IAuthorizationFactory authorizationFactory,
         ICsrValidator csrValidator,
-        ICertificateIssuer issuer)
+        IIssueCertificates issuer)
     {
         _orderStore = orderStore;
         _authorizationFactory = authorizationFactory;

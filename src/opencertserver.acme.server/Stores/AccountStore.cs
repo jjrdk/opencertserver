@@ -19,7 +19,7 @@ public sealed class AccountStore : StoreBase, IStoreAccounts
 
     public async Task<Account?> LoadAccount(string accountId, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(accountId) || !IdentifierRegex.IsMatch(accountId))
+        if (string.IsNullOrWhiteSpace(accountId) || !IdentifierRegex().IsMatch(accountId))
         {
             throw new MalformedRequestException("AccountId does not match expected format.");
         }

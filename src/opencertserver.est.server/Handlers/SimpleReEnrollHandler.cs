@@ -81,15 +81,14 @@ internal sealed class SimpleReEnrollHandler
             return;
         }
 
-        var value = success.Issuers;
-        value.Add(success.Certificate);
-        cert.Dispose();
+        var pem = success.Certificate.ToPemChain(success.Issuers);
 
         ctx.Response.StatusCode = (int)HttpStatusCode.OK;
         ctx.Response.ContentType = Constants.PemMimeType;
         await using var writer = new StreamWriter(ctx.Response.Body);
 
-        await writer.WriteLineAsync(value.ExportCertificatePems()).ConfigureAwait(false);
+        await writer.WriteLineAsync(pem).ConfigureAwait(false);
         await writer.FlushAsync().ConfigureAwait(false);
+        _certificateAuthority.RevokeCertificate(cert.GetSerialNumberString(), X509RevocationReason.Superseded);
     }
 }

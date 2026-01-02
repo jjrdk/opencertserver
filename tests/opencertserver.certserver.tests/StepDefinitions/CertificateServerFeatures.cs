@@ -1,7 +1,9 @@
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using Certes;
+using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Builder;
@@ -20,6 +22,7 @@ using OpenCertServer.Acme.Server.Configuration;
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Middleware;
 using OpenCertServer.Acme.Server.Services;
+using opencertserver.ca.server;
 using OpenCertServer.Est.Server;
 using TechTalk.SpecFlow;
 using Xunit;
@@ -30,8 +33,7 @@ namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 public partial class CertificateServerFeatures
 {
     private TestServer _server = null!;
-    private IAcmeClient _client = null!;
-    private PlacedOrder _placedOrder = null!;
+    private IAcmeClient _acmeClient = null!;
 
     [Given(@"a certificate server")]
     public void GivenACertificateServer()
@@ -53,7 +55,11 @@ public partial class CertificateServerFeatures
             "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
             Justification = "<Pending>")]
         void ConfigureApp(IApplicationBuilder app) =>
-            app.UseAcmeServer().UseEstServer().UseRouting().UseEndpoints(e => e.MapControllers());
+            app.UseAcmeServer().UseEstServer().UseEndpoints(e =>
+            {
+                e.MapControllers();
+                e.MapCertificateAuthorityServer();
+            });
 
         [UnconditionalSuppressMessage("Trimming",
             "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
@@ -62,12 +68,14 @@ public partial class CertificateServerFeatures
             "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.",
             Justification = "<Pending>")]
         void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services) =>
-            services.AddEstServer(new X500DistinguishedName("CN=reimers.io"))
+#pragma warning disable IL2066
+            services.AddInMemoryEstServer(new X500DistinguishedName("CN=reimers.io"))
                 .AddAcmeServer(ctx.Configuration, _ => _server.CreateClient(),
                     new AcmeServerOptions
                         { HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false } })
                 .AddSingleton<ICsrValidator, DefaultCsrValidator>()
-                .AddSingleton<ICertificateIssuer, DefaultIssuer>()
+#pragma warning restore IL2066
+                .AddSingleton<IIssueCertificates, DefaultIssuer>()
                 .Replace(new ServiceDescriptor(typeof(IValidateHttp01Challenges), typeof(PassAllChallenges),
                     ServiceLifetime.Transient))
                 .AddAcmeInMemoryStore()
@@ -100,18 +108,49 @@ public partial class CertificateServerFeatures
                         }
                     };
                 })
-                .AddCertificate();
+                .AddCertificate(options =>
+                {
+                    var knownPrefixes = ImmutableDictionary.CreateRange([
+                        KeyValuePair.Create("CN", ClaimTypes.Name),
+                        KeyValuePair.Create("E", ClaimTypes.Email),
+                        KeyValuePair.Create("OU", ClaimTypes.System),
+                        KeyValuePair.Create("O", "org"),
+                        KeyValuePair.Create("L", ClaimTypes.Locality),
+                        KeyValuePair.Create("SN", ClaimTypes.Surname),
+                        KeyValuePair.Create("GN", ClaimTypes.GivenName),
+                        KeyValuePair.Create("C", ClaimTypes.Country)
+                    ]);
+
+                    options.AllowedCertificateTypes = CertificateTypes.All;
+                    options.ChainTrustValidationMode = X509ChainTrustMode.CustomRootTrust;
+                    options.Events = new CertificateAuthenticationEvents
+                    {
+                        OnCertificateValidated = context =>
+                        {
+                            var claims = context.ClientCertificate.SubjectName.Name
+                                .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                                .Select(x => (x[..x.IndexOf('=')], x[(x.IndexOf('=') + 1)..]))
+                                .Where(x => knownPrefixes.ContainsKey(x.Item1))
+                                .Select(x => new Claim(knownPrefixes[x.Item1], x.Item2));
+                            context.Principal = new ClaimsPrincipal(
+                                new ClaimsIdentity(
+                                    claims,
+                                    CertificateAuthenticationDefaults.AuthenticationScheme));
+                            context.Success();
+                            return Task.CompletedTask;
+                        }
+                    };
+                });
     }
 
     [Given(@"an ACME client for (.+)")]
-    public async Task GivenAnAcmeClientForKeyAlgorithm(string algo)
+    public async Task GivenAnAcmeClientFor(KeyAlgorithm keyAlgorithm)
     {
-        var keyAlgorithm = Enum.Parse<KeyAlgorithm>(algo, true);
         var factory = new AcmeClientFactory(
             new PersistenceService(
                 new List<ICertificatePersistenceStrategy> { new InMemoryCertificatePersistenceStrategy() },
                 new List<IChallengePersistenceStrategy> { new InMemoryChallengePersistenceStrategy() },
-                NullLogger<IPersistenceService>.Instance),
+                NullLogger<PersistenceService>.Instance),
             new TestAcmeOptions
             {
                 Email = "test@test.com",
@@ -122,21 +161,24 @@ public partial class CertificateServerFeatures
             _server.CreateClient(),
             NullLoggerFactory.Instance);
 
-        _client = await factory.GetClient();
+        _acmeClient = await factory.GetClient();
     }
 
     [When(@"the client requests a certificate")]
     public async Task WhenTheClientRequestsACertificate()
     {
-        _placedOrder = await _client.PlaceOrder("localhost");
+        var placedOrder = await _acmeClient.PlaceOrder("localhost");
 
-        Assert.NotNull(_placedOrder);
+        Assert.NotNull(placedOrder);
+
+        _scenarioContext["placedOrder"] = placedOrder;
     }
 
     [Then(@"the client receives a certificate")]
     public async Task ThenTheClientReceivesACertificate()
     {
-        var cert = await _client.FinalizeOrder(_placedOrder);
+        var cert = await _acmeClient.FinalizeOrder(_scenarioContext["placedOrder"]! as PlacedOrder
+         ?? throw new InvalidOperationException());
 
         Assert.NotNull(cert);
     }

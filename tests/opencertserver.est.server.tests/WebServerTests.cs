@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Hosting;
+using OpenCertServer.Ca;
 
 namespace OpenCertServer.Est.Tests;
 
@@ -63,6 +64,7 @@ public abstract class WebServerTests : IDisposable
                 {
                     sc.AddRouting()
                         .AddAuthorization()
+                        .AddSingleton<IStoreCertificates>(new InMemoryCertificateStore(ecdsaPrivate))
                         .AddEstServer(rsaPrivate, ecdsaPrivate)
                         .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
                         .AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)

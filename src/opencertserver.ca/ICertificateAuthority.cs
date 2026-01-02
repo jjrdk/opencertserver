@@ -9,4 +9,8 @@ public interface ICertificateAuthority
     SignCertificateResponse SignCertificateRequest(string request);
 
     X509Certificate2Collection GetRootCertificates();
+
+    bool RevokeCertificate(string serialNumber, X509RevocationReason reason);
+
+    byte[] GetRevocationList();
 }

@@ -6,7 +6,7 @@ using Certes;
 using Microsoft.Extensions.Logging;
 using Persistence;
 
-public sealed class CertificateProvider : IProvideCertificates
+public sealed partial class CertificateProvider : IProvideCertificates
 {
     private readonly IPersistenceService _persistenceService;
     private readonly IAcmeClientFactory _clientFactory;
@@ -31,24 +31,22 @@ public sealed class CertificateProvider : IProvideCertificates
         X509Certificate2? current = null,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Checking to see if in-memory LetsEncrypt certificate needs renewal");
+        LogCheckingToSeeIfInMemoryLetsencryptCertificateNeedsRenewal();
         if (_certificateValidator.IsCertificateValid(current))
         {
-            _logger.LogInformation("Current in-memory LetsEncrypt certificate is valid");
+            LogCurrentInMemoryLetsencryptCertificateIsValid();
             return new CertificateRenewalResult(current, CertificateRenewalStatus.Unchanged);
         }
 
-        _logger.LogInformation("Checking to see if existing LetsEncrypt certificate has been persisted and is valid");
+        LogCheckingToSeeIfExistingLetsencryptCertificateHasBeenPersistedAndIsValid();
         var persistedSiteCertificate = await _persistenceService.GetPersistedSiteCertificate(cancellationToken);
         if (_certificateValidator.IsCertificateValid(persistedSiteCertificate))
         {
-            _logger.LogInformation(
-                "A persisted non-expired LetsEncrypt certificate was found and will be used: {Thumbprint}",
-                persistedSiteCertificate?.Thumbprint);
+            LogAPersistedNonExpiredLetsEncryptCertificateWasFoundAndWillBeUsedThumbprint(persistedSiteCertificate?.Thumbprint);
             return new CertificateRenewalResult(persistedSiteCertificate, CertificateRenewalStatus.LoadedFromStore);
         }
 
-        _logger.LogInformation("No valid certificate was found. Requesting new certificate from LetsEncrypt");
+        LogNoValidCertificateWasFoundRequestingNewCertificateFromLetsEncrypt();
         var newCertificate = await RequestNewLetsEncryptCertificate(password, cancellationToken);
         return new CertificateRenewalResult(newCertificate, CertificateRenewalStatus.Renewed);
     }
@@ -73,7 +71,7 @@ public sealed class CertificateProvider : IProvideCertificates
         }
         catch (TaskCanceledException canceled)
         {
-            _logger.LogError(canceled, "Cancelled persisting site certificate");
+            LogCancelledPersistingSiteCertificate(canceled);
             return null;
         }
         finally
@@ -81,4 +79,22 @@ public sealed class CertificateProvider : IProvideCertificates
             await _persistenceService.DeleteChallenges(placedOrder.Challenges);
         }
     }
+
+    [LoggerMessage(LogLevel.Information, "Checking to see if in-memory LetsEncrypt certificate needs renewal")]
+    partial void LogCheckingToSeeIfInMemoryLetsencryptCertificateNeedsRenewal();
+
+    [LoggerMessage(LogLevel.Information, "Current in-memory LetsEncrypt certificate is valid")]
+    partial void LogCurrentInMemoryLetsencryptCertificateIsValid();
+
+    [LoggerMessage(LogLevel.Information, "Checking to see if existing LetsEncrypt certificate has been persisted and is valid")]
+    partial void LogCheckingToSeeIfExistingLetsencryptCertificateHasBeenPersistedAndIsValid();
+
+    [LoggerMessage(LogLevel.Information, "A persisted non-expired LetsEncrypt certificate was found and will be used: {Thumbprint}")]
+    partial void LogAPersistedNonExpiredLetsEncryptCertificateWasFoundAndWillBeUsedThumbprint(string? thumbprint);
+
+    [LoggerMessage(LogLevel.Information, "No valid certificate was found. Requesting new certificate from LetsEncrypt")]
+    partial void LogNoValidCertificateWasFoundRequestingNewCertificateFromLetsEncrypt();
+
+    [LoggerMessage(LogLevel.Error, "Cancelled persisting site certificate")]
+    partial void LogCancelledPersistingSiteCertificate(Exception exception);
 }

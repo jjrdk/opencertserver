@@ -17,10 +17,10 @@ public sealed class X509CertificateTests : IDisposable
 
     public X509CertificateTests()
     {
-        _ca = new CertificateAuthority(
+        _ca = CertificateAuthority.Create(
             new X500DistinguishedName("CN=Test"),
+            x => new InMemoryCertificateStore(x),
             TimeSpan.FromHours(1),
-            _ => true,
             new NullLogger<CertificateAuthority>());
     }
 

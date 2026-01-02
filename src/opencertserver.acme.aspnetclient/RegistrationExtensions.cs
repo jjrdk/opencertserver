@@ -38,14 +38,12 @@ public static class RegistrationExtensions
             Func<CertificateType, byte[], Task> persistAsync,
             Func<CertificateType, Task<byte[]?>> retrieveAsync)
         {
-            return AddAcmeCertificatePersistence(
-                services,
-                new CustomCertificatePersistenceStrategy(persistAsync, retrieveAsync));
+            return services.AddAcmeCertificatePersistence(new CustomCertificatePersistenceStrategy(persistAsync, retrieveAsync));
         }
 
         public IServiceCollection AddAcmeCertificatePersistence(ICertificatePersistenceStrategy certificatePersistenceStrategy)
         {
-            return AddAcmeCertificatePersistence(services, _ => certificatePersistenceStrategy);
+            return services.AddAcmeCertificatePersistence(_ => certificatePersistenceStrategy);
         }
 
         public IServiceCollection AddAcmeCertificatePersistence(Func<IServiceProvider, ICertificatePersistenceStrategy> certificatePersistenceStrategyFactory)
@@ -55,9 +53,7 @@ public static class RegistrationExtensions
 
         public IServiceCollection AddAcmeFileCertificatePersistence(string relativeFilePath = "OpenCertServerAcmeCertificate")
         {
-            return AddAcmeCertificatePersistence(
-                services,
-                new FileCertificatePersistenceStrategy(relativeFilePath));
+            return services.AddAcmeCertificatePersistence(new FileCertificatePersistenceStrategy(relativeFilePath));
         }
 
         public IServiceCollection AddAcmeChallengePersistence(
@@ -65,14 +61,12 @@ public static class RegistrationExtensions
             Func<Task<IEnumerable<ChallengeDto>>> retrieveAsync,
             Func<IEnumerable<ChallengeDto>, Task> deleteAsync)
         {
-            return AddAcmeChallengePersistence(
-                services,
-                new CustomChallengePersistenceStrategy(persistAsync, retrieveAsync, deleteAsync));
+            return services.AddAcmeChallengePersistence(new CustomChallengePersistenceStrategy(persistAsync, retrieveAsync, deleteAsync));
         }
 
         public IServiceCollection AddAcmeChallengePersistence(IChallengePersistenceStrategy certificatePersistenceStrategy)
         {
-            return AddAcmeChallengePersistence(services, _ => certificatePersistenceStrategy);
+            return services.AddAcmeChallengePersistence(_ => certificatePersistenceStrategy);
         }
 
         public IServiceCollection AddAcmeChallengePersistence(Func<IServiceProvider, IChallengePersistenceStrategy> certificatePersistenceStrategyFactory)
@@ -82,17 +76,17 @@ public static class RegistrationExtensions
 
         public IServiceCollection AddAcmeFileChallengePersistence(string relativeFilePath = "OpenCertServerAcmeChallenge")
         {
-            return AddAcmeChallengePersistence(services, new FileChallengePersistenceStrategy(relativeFilePath));
+            return services.AddAcmeChallengePersistence(new FileChallengePersistenceStrategy(relativeFilePath));
         }
 
         public IServiceCollection AddAcmeMemoryChallengePersistence()
         {
-            return AddAcmeChallengePersistence(services, new InMemoryChallengePersistenceStrategy());
+            return services.AddAcmeChallengePersistence(new InMemoryChallengePersistenceStrategy());
         }
 
         public IServiceCollection AddAcmeInMemoryCertificatesPersistence()
         {
-            return AddAcmeCertificatePersistence(services, new InMemoryCertificatePersistenceStrategy());
+            return services.AddAcmeCertificatePersistence(new InMemoryCertificatePersistenceStrategy());
         }
 
         public IServiceCollection AddAcmeClient<TOptions>(TOptions options)
@@ -115,8 +109,11 @@ public static class RegistrationExtensions
         }
     }
 
-    public static IApplicationBuilder UseAcmeClient(this IApplicationBuilder app)
+    extension(IApplicationBuilder app)
     {
-        return app.UseMiddleware<AcmeChallengeApprovalMiddleware>();
+        public IApplicationBuilder UseAcmeClient()
+        {
+            return app.UseMiddleware<AcmeChallengeApprovalMiddleware>();
+        }
     }
 }

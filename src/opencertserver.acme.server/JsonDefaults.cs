@@ -1,21 +1,11 @@
-﻿namespace OpenCertServer.Acme.Server;
+﻿using System.Text.Json.Serialization;
+using OpenCertServer.Acme.Abstractions.Model;
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+namespace OpenCertServer.Acme.Server;
 
-internal static class JsonDefaults
+[JsonSourceGenerationOptions(UseStringEnumConverter = true, WriteIndented = false,
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+[JsonSerializable(typeof(Account))]
+public partial class AcmeSerializerContext : JsonSerializerContext
 {
-    static JsonDefaults()
-    {
-        var settings = new JsonSerializerSettings
-        {
-            PreserveReferencesHandling = PreserveReferencesHandling.All,
-            NullValueHandling = NullValueHandling.Include,
-        };
-
-        settings.Converters.Add(new StringEnumConverter());
-        Settings = settings;
-    }
-
-    public static readonly JsonSerializerSettings Settings;
 }

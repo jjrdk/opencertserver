@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Hosting;
+using OpenCertServer.Ca;
 
 namespace OpenCertServer.Est.Tests;
 
@@ -66,6 +67,7 @@ public sealed class EstClientTests : IDisposable
                     sc.AddAuthorization();
                     sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
                         .AddCertificate();
+                    sc.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore(ecdsaPrivate));
                     sc.AddEstServer(rsaPrivate, ecdsaPrivate);
                     sc.ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
                 })

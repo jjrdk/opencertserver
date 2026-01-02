@@ -6,7 +6,7 @@ using OpenCertServer.Ca.Utils;
 
 namespace OpenCertServer.Lambda;
 
-internal sealed class DefaultIssuer : ICertificateIssuer
+internal sealed class DefaultIssuer : IIssueCertificates
 {
     private readonly ICertificateAuthority _ca;
 
