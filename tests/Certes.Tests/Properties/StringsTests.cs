@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Runtime.CompilerServices;
+using CertesSlim.Properties;
 using Xunit;
 
 namespace Certes.Properties;

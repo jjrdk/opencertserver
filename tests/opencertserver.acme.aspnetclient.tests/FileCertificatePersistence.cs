@@ -1,4 +1,5 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using CertesSlim;
+using Microsoft.IdentityModel.Tokens;
 
 namespace OpenCertServer.Acme.AspNetClient.Tests;
 
@@ -6,7 +7,6 @@ using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using global::Certes;
 using Persistence;
 using Xunit;
 

@@ -6,9 +6,11 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Certes.Acme.Resource;
-using Certes.Extensions;
-using Certes.Json;
+using CertesSlim;
+using CertesSlim.Acme;
+using CertesSlim.Acme.Resource;
+using CertesSlim.Extensions;
+using CertesSlim.Json;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using Xunit;
@@ -34,7 +36,7 @@ public class AcmeHttpClientTests
             var isCertes = false;
             foreach (var header in request.Headers.UserAgent)
             {
-                if (header.Product!.Name == "Certes" &&
+                if (header.Product!.Name == "CertesSlim" &&
                     header.Product.Version == _productVersion)
                 {
                     isCertes = true;

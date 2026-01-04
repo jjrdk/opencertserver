@@ -1,4 +1,5 @@
-﻿using Xunit;
+﻿using CertesSlim.Acme;
+using Xunit;
 
 namespace Certes.Acme;
 

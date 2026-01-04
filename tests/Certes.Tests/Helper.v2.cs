@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Net.Http;
-using Certes.Acme;
-using Certes.Acme.Resource;
+using CertesSlim;
+using CertesSlim.Acme;
+using CertesSlim.Acme.Resource;
 using Microsoft.IdentityModel.Tokens;
-using Directory = Certes.Acme.Resource.Directory;
+using Directory = CertesSlim.Acme.Resource.Directory;
 
 namespace Certes;
 

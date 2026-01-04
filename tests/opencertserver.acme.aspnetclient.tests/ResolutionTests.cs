@@ -1,11 +1,10 @@
-using Certes.Extensions;
-using Microsoft.Extensions.Hosting;
-
 namespace OpenCertServer.Acme.AspNetClient.Tests;
+
+using CertesSlim.Extensions;
+using Microsoft.Extensions.Hosting;
 
 using System;
 using Certes;
-using global::Certes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

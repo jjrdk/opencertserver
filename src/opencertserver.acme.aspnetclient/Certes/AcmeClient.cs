@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Certes.Extensions;
+using CertesSlim.Extensions;
 
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
@@ -8,9 +8,9 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Exceptions;
-using global::Certes;
-using global::Certes.Acme;
-using global::Certes.Acme.Resource;
+using global::CertesSlim;
+using global::CertesSlim.Acme;
+using global::CertesSlim.Acme.Resource;
 using Microsoft.Extensions.Logging;
 using Persistence;
 

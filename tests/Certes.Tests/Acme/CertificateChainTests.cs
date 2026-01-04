@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using CertesSlim;
+using CertesSlim.Acme;
 using Microsoft.IdentityModel.Tokens;
 using Xunit;
 

@@ -17,8 +17,8 @@
     <Project Path="tests\opencertserver.lambda.tests\opencertserver.lambda.tests.csproj" Type="C#" />
   </Folder>
   <Project Path="build\opencertserver.build\opencertserver.build.csproj" />
-  <Project Path="src/Certes/Certes.csproj" />
   <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
+  <Project Path="src\CertesSlim\CertesSlim.csproj" />
   <Project Path="src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
   <Project Path="src\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj" />
   <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />

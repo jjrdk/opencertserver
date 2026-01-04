@@ -1,4 +1,5 @@
-using Certes.Extensions;
+using CertesSlim.Acme;
+using CertesSlim.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -15,8 +16,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Certes;
-using global::Certes;
-using global::Certes.Acme;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Persistence;

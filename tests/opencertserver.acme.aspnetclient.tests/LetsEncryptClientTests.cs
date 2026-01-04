@@ -1,4 +1,4 @@
-using Certes.Extensions;
+using CertesSlim.Extensions;
 
 namespace OpenCertServer.Acme.AspNetClient.Tests;
 
@@ -7,9 +7,9 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Certes;
 using Certificates;
-using global::Certes;
-using global::Certes.Acme;
-using global::Certes.Acme.Resource;
+using CertesSlim;
+using CertesSlim.Acme;
+using CertesSlim.Acme.Resource;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Persistence;

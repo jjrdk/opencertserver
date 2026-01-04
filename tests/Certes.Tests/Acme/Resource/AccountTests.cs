@@ -1,7 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.Text.Json;
-using Certes.Json;
+using CertesSlim.Acme.Resource;
+using CertesSlim.Json;
 using Xunit;
 
 namespace Certes.Acme.Resource;

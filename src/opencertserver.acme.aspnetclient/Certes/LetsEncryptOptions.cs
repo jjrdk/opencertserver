@@ -1,12 +1,12 @@
-using Certes.Extensions;
+using CertesSlim.Extensions;
 using Microsoft.IdentityModel.Tokens;
 
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using System;
 using System.Collections.Generic;
-using global::Certes;
-using global::Certes.Acme;
+using global::CertesSlim;
+using global::CertesSlim.Acme;
 
 public abstract class AcmeOptions
 {

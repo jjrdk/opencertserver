@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
-using Certes.Acme;
-using Certes.Acme.Resource;
-using Certes.Extensions;
+using CertesSlim.Acme;
+using CertesSlim.Acme.Resource;
+using CertesSlim.Extensions;
 using NSubstitute;
 using Xunit;
 

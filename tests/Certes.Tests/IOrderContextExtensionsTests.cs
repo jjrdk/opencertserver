@@ -1,9 +1,10 @@
 ﻿using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Certes.Acme;
-using Certes.Acme.Resource;
-using Certes.Extensions;
+using CertesSlim;
+using CertesSlim.Acme;
+using CertesSlim.Acme.Resource;
+using CertesSlim.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using Xunit;

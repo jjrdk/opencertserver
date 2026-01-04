@@ -1,5 +1,6 @@
 ﻿using System.Text;
-using Certes.Json;
+using CertesSlim;
+using CertesSlim.Json;
 using Xunit;
 
 namespace Certes.Jws;

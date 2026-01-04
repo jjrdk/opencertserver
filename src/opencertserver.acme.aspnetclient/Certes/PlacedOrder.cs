@@ -1,6 +1,6 @@
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
-using global::Certes.Acme;
+using global::CertesSlim.Acme;
 using Persistence;
 
 public sealed class PlacedOrder

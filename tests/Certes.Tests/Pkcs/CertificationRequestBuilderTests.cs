@@ -1,4 +1,6 @@
 ﻿using System;
+using CertesSlim;
+using CertesSlim.Pkcs;
 using Microsoft.IdentityModel.Tokens;
 using Xunit;
 

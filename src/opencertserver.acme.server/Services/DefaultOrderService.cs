@@ -1,4 +1,4 @@
-﻿using Certes.Acme;
+﻿using CertesSlim.Acme;
 
 namespace OpenCertServer.Acme.Server.Services;
 

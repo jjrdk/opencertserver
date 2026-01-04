@@ -24,7 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\Certes\Certes.csproj"/>
+        <ProjectReference Include="..\..\src\CertesSlim\CertesSlim.csproj" />
     </ItemGroup>
 
 </Project>

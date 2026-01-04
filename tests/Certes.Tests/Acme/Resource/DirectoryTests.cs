@@ -1,4 +1,5 @@
 ﻿using System;
+using CertesSlim.Acme.Resource;
 using Xunit;
 
 namespace Certes.Acme.Resource;

@@ -11,7 +11,7 @@
 <!--		<PackageReference Include="certes" Version="3.0.4" />-->
 	</ItemGroup>
 	<ItemGroup>
-	  <ProjectReference Include="..\Certes\Certes.csproj" />
+	  <ProjectReference Include="..\CertesSlim\CertesSlim.csproj" />
 	  <ProjectReference Include="..\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
 	  <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
 	</ItemGroup>

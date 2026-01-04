@@ -1,5 +1,5 @@
 ﻿using System.Linq;
-using Certes.Extensions;
+using CertesSlim.Extensions;
 using Xunit;
 
 namespace Certes;

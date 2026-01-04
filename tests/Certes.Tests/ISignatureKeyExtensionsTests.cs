@@ -1,6 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
-using Certes.Json;
+using CertesSlim;
+using CertesSlim.Json;
 using Microsoft.IdentityModel.Tokens;
 using Xunit;
 

@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Certes.Acme.Resource;
-using Certes.Json;
+using CertesSlim;
+using CertesSlim.Acme;
+using CertesSlim.Acme.Resource;
+using CertesSlim.Json;
 using NSubstitute;
 using Xunit;
 

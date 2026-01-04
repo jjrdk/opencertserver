@@ -4,7 +4,7 @@ namespace OpenCertServer.Acme.AspNetClient.Tests;
 
 using System;
 using System.Threading.Tasks;
-using global::Certes;
+using CertesSlim;
 using Microsoft.Extensions.Logging.Abstractions;
 using Persistence;
 using Xunit;
