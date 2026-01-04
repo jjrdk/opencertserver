@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.AspNetClient.Tests;
+﻿using Microsoft.IdentityModel.Tokens;
+
+namespace OpenCertServer.Acme.AspNetClient.Tests;
 
 using System;
 using System.IO;
@@ -47,8 +49,7 @@ public sealed class FileCertificatePersistence : IDisposable
     [Fact]
     public async Task AccountCertificateRoundTrip()
     {
-        var testCert = Encoding.UTF8.GetBytes(KeyFactory.NewKey(KeyAlgorithm.ES256).ToPem());
-        KeyFactory.NewKey(KeyAlgorithm.ES256);
+        var testCert = Encoding.UTF8.GetBytes(KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256).ToPem());
 
         await Strategy.Persist(CertificateType.Account, testCert);
 

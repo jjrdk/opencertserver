@@ -1,3 +1,5 @@
+using Certes.Extensions;
+
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using System.Threading.Tasks;

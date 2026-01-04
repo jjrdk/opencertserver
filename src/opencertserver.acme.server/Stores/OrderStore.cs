@@ -39,10 +39,7 @@ public sealed class OrderStore : StoreBase, IStoreOrders
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (setOrder is null)
-        {
-            throw new ArgumentNullException(nameof(setOrder));
-        }
+        ArgumentNullException.ThrowIfNull(setOrder);
 
         var orderFilePath = GetOrderPath(setOrder.OrderId);
 

@@ -96,7 +96,7 @@ public sealed class EstClient : IDisposable
             Content = content
         };
 
-        request.Headers.Add("X-Client-Cert", Convert.ToBase64String(certificate.GetRawCertData()));
+        request.Headers.Add("X-Client-Cert", Convert.ToBase64String(certificate.Export(X509ContentType.Cert)));
         if (_messageHandler is HttpClientHandler clientHandler)
         {
             clientHandler.ClientCertificates.Clear();
@@ -141,13 +141,11 @@ public sealed class EstClient : IDisposable
             requestMessage.Headers.Authorization = authenticationHeader;
         }
 
-        if (_messageHandler is HttpClientHandler clientHandler)
+        if (_messageHandler is HttpClientHandler clientHandler && certificate != null)
         {
+            clientHandler.ClientCertificateOptions = ClientCertificateOption.Manual;
             clientHandler.ClientCertificates.Clear();
-            if (certificate != null)
-            {
-                clientHandler.ClientCertificates.Add(certificate);
-            }
+            clientHandler.ClientCertificates.Add(certificate);
         }
 
         var client = new HttpClient(_messageHandler);

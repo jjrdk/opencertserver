@@ -1,7 +1,6 @@
 namespace OpenCertServer.Acme.Server.RequestServices;
 
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.HttpModel.Requests;
@@ -33,15 +32,9 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
     public async Task ValidateRequestAsync(AcmeRawPostRequest request, AcmeHeader header,
         string requestUrl, CancellationToken cancellationToken)
     {
-        if (request is null)
-        {
-            throw new ArgumentNullException(nameof(request));
-        }
+        ArgumentNullException.ThrowIfNull(request);
 
-        if (header is null)
-        {
-            throw new ArgumentNullException(nameof(header));
-        }
+        ArgumentNullException.ThrowIfNull(header);
 
         if (string.IsNullOrWhiteSpace(requestUrl))
         {
@@ -55,10 +48,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
 
     private void ValidateRequestHeader(AcmeHeader header, string requestUrl)
     {
-        if (header is null)
-        {
-            throw new ArgumentNullException(nameof(header));
-        }
+        ArgumentNullException.ThrowIfNull(header);
 
         _logger.LogDebug("Attempting to validate AcmeHeader ...");
 
@@ -87,7 +77,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
             throw new MalformedRequestException("Provide either Jwk or Kid.");
         }
 
-        _logger.LogDebug("successfully validated AcmeHeader.");
+        _logger.LogDebug("successfully validated AcmeHeader");
     }
 
     private async Task ValidateNonceAsync(string? nonce, CancellationToken cancellationToken)
@@ -105,20 +95,14 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
             throw new BadNonceException();
         }
 
-        _logger.LogDebug("successfully validated replay nonce.");
+        _logger.LogDebug("successfully validated replay nonce");
     }
 
     private async Task ValidateSignatureAsync(AcmeRawPostRequest request, AcmeHeader header, CancellationToken cancellationToken)
     {
-        if (request is null)
-        {
-            throw new ArgumentNullException(nameof(request));
-        }
+        ArgumentNullException.ThrowIfNull(request);
 
-        if (header is null)
-        {
-            throw new ArgumentNullException(nameof(header));
-        }
+        ArgumentNullException.ThrowIfNull(header);
 
         _logger.LogDebug("Attempting to validate signature ...");
 
@@ -130,7 +114,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
                 var accountId = header.GetAccountId();
                 var account = await _accountService.LoadAccount(accountId, cancellationToken);
                 jwk = account?.Jwk;
-            } 
+            }
             catch (InvalidOperationException)
             {
                 throw new MalformedRequestException("KID could not be found.");
@@ -143,7 +127,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
         }
 
         var securityKey = jwk.SecurityKey;
-            
+
         using var signatureProvider = new AsymmetricSignatureProvider(securityKey, header.Alg);
         var plainText = System.Text.Encoding.UTF8.GetBytes($"{request.Header}.{request.Payload ?? ""}");
         var signature = Base64UrlEncoder.DecodeBytes(request.Signature);
@@ -153,6 +137,6 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
             throw new MalformedRequestException("The signature could not be verified");
         }
 
-        _logger.LogDebug("successfully validated signature.");
+        _logger.LogDebug("successfully validated signature");
     }
 }

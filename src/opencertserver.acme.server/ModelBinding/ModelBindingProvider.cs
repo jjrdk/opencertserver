@@ -10,10 +10,7 @@ public sealed class AcmeModelBindingProvider : IModelBinderProvider
     [UnconditionalSuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "<Pending>")]
     public IModelBinder? GetBinder(ModelBinderProviderContext context)
     {
-        if (context is null)
-        {
-            throw new ArgumentNullException(nameof(context));
-        }
+        ArgumentNullException.ThrowIfNull(context);
 
         var modelType = context.Metadata.ModelType;
         if (modelType == typeof(AcmeHeader))

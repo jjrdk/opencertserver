@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.Server.Services;
+﻿using Certes.Acme;
+
+namespace OpenCertServer.Acme.Server.Services;
 
 using System;
 using System.Collections.Generic;
@@ -10,8 +12,6 @@ using Abstractions.Model;
 using Abstractions.Model.Exceptions;
 using Abstractions.Services;
 using Abstractions.Storage;
-using Certes;
-using Certes.Acme;
 
 public sealed class DefaultOrderService : IOrderService
 {
@@ -54,7 +54,7 @@ public sealed class DefaultOrderService : IOrderService
     {
         ValidateAccount(account);
         var order = await HandleLoadOrder(account, orderId, OrderStatus.Valid, cancellationToken);
-        var chain = new CertificateChain(Encoding.UTF8.GetString(order.Certificate!)).ToPem();
+        var chain = new CertificateChain(Encoding.UTF8.GetString(order.Certificate!)).Certificate.ExportCertificatePem();
         return Encoding.UTF8.GetBytes(chain);
     }
 
@@ -77,7 +77,7 @@ public sealed class DefaultOrderService : IOrderService
 
         var order = await _orderStore.LoadOrder(
             orderId,
-            cancellationToken); 
+            cancellationToken);
         if (order == null)
         {
             throw new NotFoundException();
@@ -95,7 +95,7 @@ public sealed class DefaultOrderService : IOrderService
         {
             return challenge;
         }
-            
+
         challenge.SetStatus(ChallengeStatus.Processing);
         authZ.SelectChallenge(challenge);
         order.SetStatusFromAuthorizations();

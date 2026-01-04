@@ -20,15 +20,9 @@ public abstract class TokenChallengeValidator : IValidateChallenges
         Account account,
         CancellationToken cancellationToken)
     {
-        if (challenge is null)
-        {
-            throw new ArgumentNullException(nameof(challenge));
-        }
+        ArgumentNullException.ThrowIfNull(challenge);
 
-        if (account is null)
-        {
-            throw new ArgumentNullException(nameof(account));
-        }
+        ArgumentNullException.ThrowIfNull(account);
 
         if (account.Status != AccountStatus.Valid)
         {

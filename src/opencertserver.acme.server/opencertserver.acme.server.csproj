@@ -15,7 +15,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Certes" Version="3.0.4" />
+<!--		<PackageReference Include="Certes" Version="3.0.4" />-->
 		<PackageReference Include="DnsClient" Version="1.8.0" />
 	</ItemGroup>
 
@@ -24,6 +24,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\Certes\Certes.csproj" />
 		<ProjectReference Include="..\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
 		<ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
 	</ItemGroup>

@@ -8,6 +8,7 @@
     <File Path="Docker.md" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Certes.Tests/Certes.Tests.csproj" />
     <Project Path="tests\opencertserver.acme.abstractions.tests\opencertserver.acme.abstractions.tests.csproj" />
     <Project Path="tests\opencertserver.acme.aspnetclient.tests\opencertserver.acme.aspnetclient.tests.csproj" />
     <Project Path="tests\opencertserver.ca.tests\opencertserver.ca.tests.csproj" />
@@ -16,6 +17,7 @@
     <Project Path="tests\opencertserver.lambda.tests\opencertserver.lambda.tests.csproj" Type="C#" />
   </Folder>
   <Project Path="build\opencertserver.build\opencertserver.build.csproj" />
+  <Project Path="src/Certes/Certes.csproj" />
   <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
   <Project Path="src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
   <Project Path="src\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj" />

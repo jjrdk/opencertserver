@@ -14,10 +14,7 @@ public sealed class AcmeHeaderBinder : IModelBinder
 
     public Task BindModelAsync(ModelBindingContext bindingContext)
     {
-        if (bindingContext is null)
-        {
-            throw new ArgumentNullException(nameof(bindingContext));
-        }
+        ArgumentNullException.ThrowIfNull(bindingContext);
 
         var acmeHeader = _requestProvider.GetHeader();
         bindingContext.Result = ModelBindingResult.Success(acmeHeader);

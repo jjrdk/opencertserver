@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.AspNetClient.Tests;
+﻿using Microsoft.IdentityModel.Tokens;
+
+namespace OpenCertServer.Acme.AspNetClient.Tests;
 
 using System;
 using System.Threading.Tasks;
@@ -34,7 +36,7 @@ public sealed class PersistenceServiceTests
     [Fact]
     public async Task AccountCertificateRoundTrip()
     {
-        var key = KeyFactory.NewKey(KeyAlgorithm.ES256);
+        var key = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
 
         await PersistenceService.PersistAccountCertificate(key);
 

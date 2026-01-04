@@ -17,10 +17,7 @@ public sealed class DefaultChallengeValidatorFactory : IChallengeValidatorFactor
 
     public IValidateChallenges GetValidator(Challenge challenge)
     {
-        if (challenge is null)
-        {
-            throw new ArgumentNullException(nameof(challenge));
-        }
+        ArgumentNullException.ThrowIfNull(challenge);
 
         IValidateChallenges validator = challenge.Type switch
         {

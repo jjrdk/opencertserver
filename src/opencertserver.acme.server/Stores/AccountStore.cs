@@ -34,10 +34,7 @@ public sealed class AccountStore : StoreBase, IStoreAccounts
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (setAccount is null)
-        {
-            throw new ArgumentNullException(nameof(setAccount));
-        }
+        ArgumentNullException.ThrowIfNull(setAccount);
 
         var accountPath = GetPath(setAccount.AccountId);
         Directory.CreateDirectory(Path.GetDirectoryName(accountPath)!);

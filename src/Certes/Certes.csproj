@@ -1,0 +1,58 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../../shared.proj" />
+
+  <PropertyGroup>
+    <Authors>Certes Contributors</Authors>
+    <Company />
+    <Product>Certes ACME Client</Product>
+    <Title>$(Product)</Title>
+    <Description>A client implementation for the Automated Certificate Management Environment (ACME) protocol.</Description>
+    <PackageTags>Certes;letsencrypt;ACME;HTTPS;SSL;Certificate</PackageTags>
+    <PackageProjectUrl>https://github.com/fszlin/certes</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/fszlin/certes</RepositoryUrl>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\Certes.xml</DocumentationFile>
+    <PackageIcon>logo.png</PackageIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\Certificates\dst-root-ca-x3.pem" />
+    <None Remove="Resources\Certificates\fake-le-root-x1.pem" />
+    <None Remove="Resources\Certificates\isrg-root-x1.pem" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Certificates\dst-root-ca-x3.pem" />
+    <EmbeddedResource Include="Resources\Certificates\fake-le-root-x1.pem" />
+    <EmbeddedResource Include="Resources\Certificates\isrg-root-x1.pem" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\Strings.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Strings.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Strings.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DebugType>Full</DebugType>
+  </PropertyGroup>
+
+</Project>

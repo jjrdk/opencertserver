@@ -18,10 +18,7 @@ public sealed class AcmePayloadBinder<TPayload> : IModelBinder
         
     public Task BindModelAsync(ModelBindingContext bindingContext)
     {
-        if (bindingContext is null)
-        {
-            throw new ArgumentNullException(nameof(bindingContext));
-        }
+        ArgumentNullException.ThrowIfNull(bindingContext);
 
         var acmePayload = new AcmePayload<TPayload>(_requestProvider.GetPayload<TPayload>() ?? throw new BadHttpRequestException("Invalid content"));
         bindingContext.Result = ModelBindingResult.Success(acmePayload);

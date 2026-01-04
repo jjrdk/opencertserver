@@ -1,3 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
+using Certes.Extensions;
+
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using System;
@@ -33,19 +36,18 @@ public sealed partial class AcmeClient : IAcmeClient
 
         var allAuthorizations = await order.Authorizations();
 
-        var challengeContexts = await Task.WhenAll(
-            (allAuthorizations ?? []).Select(x => x.Http()));
-        var nonNullChallengeContexts = challengeContexts.Where(x => x != null).ToArray();
+        var challengeContexts = (await Task.WhenAll(
+            allAuthorizations.Select(x => x.Http()))).Where(x => x != null).Select(x => x!).ToArray();
 
-        var dtos = nonNullChallengeContexts.Select(x => new ChallengeDto(
-                x.Type == ChallengeTypes.Dns01 ? _acme.AccountKey.DnsTxt(x.Token) ?? "" : x.Token,
+        var dtos = challengeContexts.Select(x => new ChallengeDto(
+                x!.Type == ChallengeTypes.Dns01 ? _acme.AccountKey.DnsTxt(x.Token) ?? "" : x.Token,
                 x.KeyAuthz,
                 domains))
             .ToArray();
 
         LogAcmePlacedOrderForDomainsDomainsWithChallengesChallenges(domains, dtos);
 
-        return new PlacedOrder(dtos, order, nonNullChallengeContexts);
+        return new PlacedOrder(dtos, order, challengeContexts!);
     }
 
     public async Task<X509Certificate2> FinalizeOrder(PlacedOrder placedOrder, string password)
@@ -58,12 +60,19 @@ public sealed partial class AcmeClient : IAcmeClient
 
         var certificateChain =
             await placedOrder.Order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10);
+        var collection = new X509Certificate2Collection();
+        collection.Add(certificateChain.Certificate);
+        foreach (var cert in certificateChain.Issuers)
+        {
+            collection.Add(cert);
+        }
 
-        var pfxBuilder = certificateChain.ToPfx(keyPair);
-
-        pfxBuilder.FullChain = true;
-
-        var pfxBytes = pfxBuilder.Build(CertificateFriendlyName, password);
+        var pfxBytes =
+            collection.ExportPkcs12(Pkcs12ExportPbeParameters.Default, password); //certificateChain.ToPfx(keyPair);
+//
+//        pfxBuilder.FullChain = true;
+//
+//        var pfxBytes = pfxBuilder.Build(CertificateFriendlyName, password);
 
         LogCertificateAcquired();
 
@@ -114,7 +123,9 @@ public sealed partial class AcmeClient : IAcmeClient
     partial void LogOrderingLetsEncryptCertificateForDomainsDomains(string domains);
 
     [LoggerMessage(LogLevel.Trace, "Acme placed order for domains {Domains} with challenges {Challenges}")]
-    partial void LogAcmePlacedOrderForDomainsDomainsWithChallengesChallenges(string[] domains, ChallengeDto[] challenges);
+    partial void LogAcmePlacedOrderForDomainsDomainsWithChallengesChallenges(
+        string[] domains,
+        ChallengeDto[] challenges);
 
     [LoggerMessage(LogLevel.Information, "Acquiring certificate through signing request")]
     partial void LogAcquiringCertificateThroughSigningRequest();

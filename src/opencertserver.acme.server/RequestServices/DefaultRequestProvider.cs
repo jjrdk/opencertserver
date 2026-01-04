@@ -79,10 +79,7 @@ public sealed class DefaultRequestProvider : IAcmeRequestProvider
     [UnconditionalSuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "Type is part of output signature")]
     private static AcmeHeader? ReadHeader(AcmeRawPostRequest rawRequest)
     {
-        if (rawRequest is null)
-        {
-            throw new ArgumentNullException(nameof(rawRequest));
-        }
+        ArgumentNullException.ThrowIfNull(rawRequest);
 
         var headerJson = Base64UrlEncoder.Decode(rawRequest.Header);
         var header = JsonSerializer.Deserialize<AcmeHeader>(headerJson, _jsonOptions);
@@ -94,10 +91,7 @@ public sealed class DefaultRequestProvider : IAcmeRequestProvider
     [UnconditionalSuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "Type is part of output signature")]
     private static TPayload? ReadPayload<TPayload>(AcmeRawPostRequest rawRequest)
     {
-        if (rawRequest is null)
-        {
-            throw new ArgumentNullException(nameof(rawRequest));
-        }
+        ArgumentNullException.ThrowIfNull(rawRequest);
 
         var payloadJson = Base64UrlEncoder.Decode(rawRequest.Payload);
         var payload = JsonSerializer.Deserialize<TPayload>(payloadJson, _jsonOptions);

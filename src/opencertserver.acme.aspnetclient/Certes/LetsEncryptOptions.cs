@@ -1,3 +1,6 @@
+using Certes.Extensions;
+using Microsoft.IdentityModel.Tokens;
+
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using System;
@@ -47,7 +50,7 @@ public abstract class AcmeOptions
     /// <summary>
     /// Gets or sets the <see cref="KeyAlgorithm"/> used to request a new LetsEncrypt certificate.
     /// </summary>
-    public KeyAlgorithm KeyAlgorithm { get; set; } = KeyAlgorithm.ES256;
+    public string KeyAlgorithm { get; set; } = SecurityAlgorithms.EcdsaSha256;
 
     /// <summary>
     /// Get or set a delay before the initial run of the renewal service (subsequent runs will be at 1hr intervals)

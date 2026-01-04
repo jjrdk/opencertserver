@@ -33,17 +33,17 @@ public static partial class X509CertificatesExtensions
                     .Select(r => r.Groups[1].Value)
                     .ToHashSet();
         }
-
-        public string ToPem()
-        {
-            return string.Concat("-----BEGIN CERTIFICATE-----\n",
-                Convert.ToBase64String(cert.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks),
-                "\n-----END CERTIFICATE-----");
-        }
+//
+//        public string ToPem()
+//        {
+//            return string.Concat("-----BEGIN CERTIFICATE-----\n",
+//                Convert.ToBase64String(cert.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks),
+//                "\n-----END CERTIFICATE-----");
+//        }
 
         public string ToPemChain(X509Certificate2Collection issuers)
         {
-            return $"{cert.ToPem()}\n{string.Join('\n', issuers.Select(x => x.ToPem()))}";
+            return $"{cert.ExportCertificatePem()}\n{string.Join('\n', issuers.Select(x => x.ExportCertificatePem()))}";
         }
 
         public async Task WritePfx(Stream outputStream, CancellationToken cancellation = default)

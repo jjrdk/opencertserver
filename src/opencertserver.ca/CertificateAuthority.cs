@@ -235,8 +235,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     {
         return
         [
-            X509Certificate2.CreateFromPem(_rsaCertificate.ToPem()),
-            X509Certificate2.CreateFromPem(_ecdsaCertificate.ToPem())
+            X509Certificate2.CreateFromPem(_rsaCertificate.ExportCertificatePem()),
+            X509Certificate2.CreateFromPem(_ecdsaCertificate.ExportCertificatePem())
         ];
     }
 
@@ -285,9 +285,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         CertificateRequest parentReq)
     {
         parentReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
-
         parentReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(parentReq.PublicKey, false));
-
         parentReq.CertificateExtensions.Add(new X509KeyUsageExtension(usageFlags, true));
 
         var parentCert = parentReq.CreateSelfSigned(

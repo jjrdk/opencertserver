@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
-using Certes;
+using Certes.Extensions;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
@@ -79,10 +79,6 @@ public partial class CertificateServerFeatures
                 .Replace(new ServiceDescriptor(typeof(IValidateHttp01Challenges), typeof(PassAllChallenges),
                     ServiceLifetime.Transient))
                 .AddAcmeInMemoryStore()
-                .AddCertificateForwarding(o =>
-                {
-                    o.HeaderConverter = x => X509CertificateLoader.LoadCertificate(Convert.FromBase64String(x));
-                })
                 .AddRouting()
                 .AddAuthorization()
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -144,7 +140,7 @@ public partial class CertificateServerFeatures
     }
 
     [Given(@"an ACME client for (.+)")]
-    public async Task GivenAnAcmeClientFor(KeyAlgorithm keyAlgorithm)
+    public async Task GivenAnAcmeClientFor(string keyAlgorithm)
     {
         var factory = new AcmeClientFactory(
             new PersistenceService(

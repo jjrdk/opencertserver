@@ -22,27 +22,7 @@ internal sealed class SimpleReEnrollHandler
 
     public async Task Handle(HttpContext ctx)
     {
-        var cert = ctx.Request.HttpContext.Connection.ClientCertificate;
-
-        if (cert == null)
-        {
-            X509Certificate2? ReadCertHeader(StringValues stringValues)
-            {
-                Span<byte> bytes = stackalloc byte[stringValues[0]!.Length];
-                if (Convert.TryFromBase64String(stringValues!, bytes, out var read))
-                {
-                    cert = X509CertificateLoader.LoadCertificate(bytes[..read]);
-                }
-
-                return cert;
-            }
-
-            var certHeader = ctx.Request.Headers["X-Client-Cert"];
-            if (certHeader.Count > 0 && !string.IsNullOrWhiteSpace(certHeader[0]))
-            {
-                cert = ReadCertHeader(certHeader);
-            }
-        }
+        var cert = await ctx.Request.HttpContext.Connection.GetClientCertificateAsync();
 
         if (cert == null)
         {

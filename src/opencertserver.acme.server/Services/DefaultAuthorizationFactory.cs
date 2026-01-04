@@ -8,10 +8,7 @@ public sealed class DefaultAuthorizationFactory : IAuthorizationFactory
 {
     public void CreateAuthorizations(Order order)
     {
-        if (order is null)
-        {
-            throw new ArgumentNullException(nameof(order));
-        }
+        ArgumentNullException.ThrowIfNull(order);
 
         foreach (var authorization in order.Identifiers.Select(
                      identifier => new Authorization(order, identifier, DateTimeOffset.UtcNow.AddDays(2))))

@@ -50,7 +50,11 @@ public sealed class Program
 
         var forwardedHeadersOptions = CreateForwardedHeaderOptions();
 
-        _ = services.AddAuthentication().AddJwtBearer().AddCertificate()
+        _ = services.AddAuthentication().AddJwtBearer().AddCertificate().AddCertificateCache(options =>
+            {
+                options.CacheSize = 1024;
+                options.CacheEntryExpiration = TimeSpan.FromMinutes(5);
+            })
             .Services
             .AddAcmeServer(builder.Configuration)
             .AddAcmeInMemoryStore()

@@ -1,3 +1,4 @@
+using Certes.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace OpenCertServer.Acme.AspNetClient.Tests;
