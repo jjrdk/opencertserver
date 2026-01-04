@@ -25,7 +25,7 @@ internal class Key : IKey
             RsaSecurityKey rsaKey => rsaKey.Rsa.ExportRSAPrivateKeyPem(),
             ECDsaSecurityKey ecdsaKey => ecdsaKey.ECDsa.ExportECPrivateKeyPem(),
             X509SecurityKey certKey => certKey.Certificate.ExportCertificatePem(),
-            _ => throw new NotSupportedException(),
+            _ => throw new NotSupportedException()
         };
     }
 

@@ -5,7 +5,6 @@ namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using System;
 using System.Collections.Generic;
-using global::CertesSlim;
 using global::CertesSlim.Acme;
 
 public abstract class AcmeOptions
@@ -65,7 +64,7 @@ public sealed class LetsEncryptOptions : AcmeOptions
     /// <summary>
     /// Gets the uri which will be used to talk to LetsEncrypt servers.
     /// </summary>
-    public sealed override Uri AcmeServerUri
+    public override Uri AcmeServerUri
     {
         get { return UseStaging ? WellKnownServers.LetsEncryptStagingV2 : WellKnownServers.LetsEncryptV2; }
     }

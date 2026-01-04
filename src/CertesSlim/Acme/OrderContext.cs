@@ -58,7 +58,9 @@ internal class OrderContext : EntityContext<Order>, IOrderContext
 
         var defaultChain = new CertificateChain(resp.Resource);
         if (defaultChain.MatchesPreferredChain(preferredChain) || !resp.Links?.Contains("alternate") == true)
+        {
             return defaultChain;
+        }
 
         var alternateLinks = resp.Links?["alternate"].ToList() ?? [];
         foreach (var alternate in alternateLinks)
@@ -67,7 +69,9 @@ internal class OrderContext : EntityContext<Order>, IOrderContext
             var chain = new CertificateChain(resp.Resource);
 
             if (chain.MatchesPreferredChain(preferredChain))
+            {
                 return chain;
+            }
         }
 
         return defaultChain;

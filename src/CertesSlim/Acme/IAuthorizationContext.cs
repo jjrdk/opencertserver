@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using CertesSlim.Acme.Resource;
+﻿using CertesSlim.Acme.Resource;
 
 namespace CertesSlim.Acme;
 

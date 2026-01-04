@@ -2,7 +2,6 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
-using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
 namespace CertesSlim.Json;
@@ -24,15 +23,6 @@ internal class JwsSigner
     }
 
     /// <summary>
-    /// Signs the specified payload.
-    /// </summary>
-    /// <param name="payload">The payload.</param>
-    /// <param name="nonce">The nonce.</param>
-    /// <returns>The signed payload.</returns>
-    public JwsPayload Sign(object payload, string nonce)
-        => Sign(payload, null, null, nonce);
-
-    /// <summary>
     /// Encodes this instance.
     /// </summary>
     /// <param name="payload">The payload.</param>
@@ -52,14 +42,14 @@ internal class JwsSigner
                 Alg = ToJwsAlgorithm(_keyPair.Algorithm),
                 Jwk = _keyPair.JsonWebKey,
                 Nonce = nonce,
-                Url = url,
+                Url = url
             }
             : new ProtectedHeader
             {
                 Alg = ToJwsAlgorithm(_keyPair.Algorithm),
                 Kid = keyId,
                 Nonce = nonce,
-                Url = url,
+                Url = url
             };
 
         var entityJson = "";
@@ -82,11 +72,8 @@ internal class JwsSigner
         {
             ECDsaSecurityKey e => e.ECDsa.SignData(signatureBytes, _keyPair.HashAlgorithm),
             RsaSecurityKey r => r.Rsa.SignData(signatureBytes, _keyPair.HashAlgorithm, RSASignaturePadding.Pss),
-            _ => throw new NotSupportedException("Unsupported key type."),
+            _ => throw new NotSupportedException("Unsupported key type.")
         };
-//        var signedSignatureBytes =
-//            .GetSigner().SignData(signatureBytes);
-        //new JsonWebTokenHandler().CreateToken(signature, new SigningCredentials(_keyPair.JsonWebKey,_keyPair.Algorithm));// _keyPair.GetSigner().SignData(signatureBytes);
         var signedSignatureEncoded = JwsConvert.ToBase64String(signedSignatureBytes);
 
         var body = new JwsPayload
@@ -106,22 +93,15 @@ internal class JwsSigner
     /// <returns></returns>
     private static string ToJwsAlgorithm(string algorithm)
     {
-        switch (algorithm)
+        return algorithm switch
         {
-            case SecurityAlgorithms.EcdsaSha256:
-                return "ES256";
-            case SecurityAlgorithms.EcdsaSha384:
-                return "ES384";
-            case SecurityAlgorithms.EcdsaSha512:
-                return "ES512";
-            case SecurityAlgorithms.RsaSha256:
-                return "RS256";
-            case SecurityAlgorithms.RsaSha384:
-                return "RS384";
-            case SecurityAlgorithms.RsaSha512:
-                return "RS512";
-            default:
-                throw new ArgumentException(nameof(algorithm));
-        }
+            SecurityAlgorithms.EcdsaSha256 => "ES256",
+            SecurityAlgorithms.EcdsaSha384 => "ES384",
+            SecurityAlgorithms.EcdsaSha512 => "ES512",
+            SecurityAlgorithms.RsaSha256 => "RS256",
+            SecurityAlgorithms.RsaSha384 => "RS384",
+            SecurityAlgorithms.RsaSha512 => "RS512",
+            _ => throw new ArgumentException(nameof(algorithm))
+        };
     }
 }

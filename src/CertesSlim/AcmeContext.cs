@@ -9,8 +9,8 @@ using IdentifierType = CertesSlim.Acme.Resource.IdentifierType;
 
 namespace CertesSlim;
 
-using Identifier = Acme.Resource.Identifier;
-using Resource_Directory = Acme.Resource.Directory;
+using Identifier = Identifier;
+using Resource_Directory = Directory;
 
 /// <summary>
 /// Represents the context for ACME operations.
@@ -105,7 +105,7 @@ public class AcmeContext : IAcmeContext
         var keyChange = new KeyChange
         {
             Account = location,
-            OldKey = AccountKey.JsonWebKey,
+            OldKey = AccountKey.JsonWebKey
         };
 
         var jws = new JwsSigner(newKey);
@@ -212,7 +212,7 @@ public class AcmeContext : IAcmeContext
                 .Select(id => new Identifier { Type = IdentifierType.Dns, Value = id })
                 .ToArray(),
             NotBefore = notBefore,
-            NotAfter = notAfter,
+            NotAfter = notAfter
         };
 
         var order = await HttpClient.Post<Order, Order>(this, endpoint, body, true);

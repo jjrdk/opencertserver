@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
 
 namespace CertesSlim.Acme.Resource;
@@ -56,14 +54,14 @@ public class DirectoryMeta
     public DirectoryMeta(
         Uri termsOfService,
         Uri website,
-        IList<string> caaIdentities,
+        IList<string>? caaIdentities,
         bool? externalAccountRequired)
     {
         TermsOfService = termsOfService;
         Website = website;
-        CaaIdentities = caaIdentities == null ?
-            (IList<string>)new string[0] :
-            new ReadOnlyCollection<string>(caaIdentities);
+        CaaIdentities = caaIdentities == null
+            ? Array.Empty<string>()
+            : new ReadOnlyCollection<string>(caaIdentities);
         ExternalAccountRequired = externalAccountRequired;
     }
 }

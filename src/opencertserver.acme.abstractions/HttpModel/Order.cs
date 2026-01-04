@@ -23,7 +23,7 @@ public sealed class Order
 
         if (authorizationUrls is null)
         {
-            throw new System.ArgumentNullException(nameof(authorizationUrls));
+            throw new ArgumentNullException(nameof(authorizationUrls));
         }
 
         if (string.IsNullOrEmpty(finalizeUrl))
@@ -46,14 +46,14 @@ public sealed class Order
 
         Authorizations = [..authorizationUrls];
 
-        if (model.Status == Model.OrderStatus.Ready)
+        switch (model.Status)
         {
-            Finalize = finalizeUrl;
-        }
-
-        if (model.Status == Model.OrderStatus.Valid)
-        {
-            Certificate = certificateUrl;
+            case Model.OrderStatus.Ready:
+                Finalize = finalizeUrl;
+                break;
+            case Model.OrderStatus.Valid:
+                Certificate = certificateUrl;
+                break;
         }
 
         if (model.Error != null)

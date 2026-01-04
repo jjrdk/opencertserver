@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace CertesSlim.Acme;
+﻿namespace CertesSlim.Acme;
 
 /// <summary>
 /// The well known ACME servers.

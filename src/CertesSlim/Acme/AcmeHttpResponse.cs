@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-
-namespace CertesSlim.Acme;
+﻿namespace CertesSlim.Acme;
 
 /// <summary>
 ///

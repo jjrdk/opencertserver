@@ -12,12 +12,12 @@ public sealed class Challenge
     {
         if (model is null)
         {
-            throw new System.ArgumentNullException(nameof(model));
+            throw new ArgumentNullException(nameof(model));
         }
 
         if (string.IsNullOrEmpty(challengeUrl))
         {
-            throw new System.ArgumentNullException(nameof(challengeUrl));
+            throw new ArgumentNullException(nameof(challengeUrl));
         }
 
         Type = model.Type;

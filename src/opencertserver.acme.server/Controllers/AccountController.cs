@@ -3,7 +3,6 @@
 namespace OpenCertServer.Acme.Server.Controllers;
 
 using Abstractions.HttpModel.Requests;
-using Abstractions.Model;
 using Abstractions.Model.Exceptions;
 using Abstractions.Services;
 using Filters;

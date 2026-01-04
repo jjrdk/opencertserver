@@ -40,7 +40,7 @@ public abstract class TimedHostedService : IHostedService, IDisposable
     {
         if(! await _interlock.WaitAsync(TimerInterval / 2, _cancellationTokenSource.Token))
         {
-            _logger.LogInformation("Waited half an execution time, but did not get execution lock.");
+            _logger.LogInformation("Waited half an execution time, but did not get execution lock");
             return;
         }
 
@@ -62,7 +62,7 @@ public abstract class TimedHostedService : IHostedService, IDisposable
 
     public Task StopAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Timed Hosted Service is stopping.");
+        _logger.LogInformation("Timed Hosted Service is stopping");
 
         _timer?.Change(Timeout.Infinite, Timeout.Infinite);
         _cancellationTokenSource.Cancel();

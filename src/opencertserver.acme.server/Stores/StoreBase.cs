@@ -14,7 +14,7 @@ public partial class StoreBase
 {
     protected IOptions<FileStoreOptions> Options { get; }
 
-    public StoreBase(IOptions<FileStoreOptions> options)
+    protected StoreBase(IOptions<FileStoreOptions> options)
     {
         Options = options;
     }

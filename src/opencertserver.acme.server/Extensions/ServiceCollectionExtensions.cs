@@ -20,90 +20,90 @@ using Workers;
 
 public static class ServiceCollectionExtensions
 {
-    [RequiresUnreferencedCode($"Uses {nameof(AcmeServerOptions)}")]
-    [RequiresDynamicCode($"Requires {nameof(AcmeServerOptions)}")]
-    public static IServiceCollection AddAcmeServer(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        Func<IServiceProvider, HttpClient>? httpClient = null,
-        AcmeServerOptions? acmeServerOptions = null,
-        string sectionName = "AcmeServer")
+    extension(IServiceCollection services)
     {
-        services.AddControllers().AddApplicationPart(typeof(ServiceCollectionExtensions).Assembly);
-
-        services.AddScoped<IAcmeRequestProvider, DefaultRequestProvider>();//.AddAuthorization();
-
-        services.AddScoped<IRequestValidationService, DefaultRequestValidationService>();
-        services.AddScoped<INonceService, DefaultNonceService>();
-        services.AddScoped<IAccountService, DefaultAccountService>();
-        services.AddScoped<IOrderService, DefaultOrderService>();
-
-        services.AddScoped<IAuthorizationFactory, DefaultAuthorizationFactory>();
-
-        services.AddScoped<IValidationWorker, ValidationWorker>();
-
-        if (httpClient == null)
+        [RequiresUnreferencedCode($"Uses {nameof(AcmeServerOptions)}")]
+        [RequiresDynamicCode($"Requires {nameof(AcmeServerOptions)}")]
+        public IServiceCollection AddAcmeServer(
+            IConfiguration configuration,
+            Func<IServiceProvider, HttpClient>? httpClient = null,
+            AcmeServerOptions? acmeServerOptions = null,
+            string sectionName = "AcmeServer")
         {
-            services.AddHttpClient<IValidateHttp01Challenges, ValidateHttp01Challenges>();
-        }
-        else
-        {
-            services.AddTransient(httpClient);
-            services.AddTransient<IValidateHttp01Challenges, ValidateHttp01Challenges>();
-        }
+            services.AddControllers().AddApplicationPart(typeof(ServiceCollectionExtensions).Assembly);
 
-        services.AddScoped<ILookupClient, LookupClient>();
-        services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();
-        services.AddScoped<IChallengeValidatorFactory, DefaultChallengeValidatorFactory>();
+            services.AddScoped<IAcmeRequestProvider, DefaultRequestProvider>();//.AddAuthorization();
 
-        services.AddScoped<AddNextNonceFilter>();
+            services.AddScoped<IRequestValidationService, DefaultRequestValidationService>();
+            services.AddScoped<INonceService, DefaultNonceService>();
+            services.AddScoped<IAccountService, DefaultAccountService>();
+            services.AddScoped<IOrderService, DefaultOrderService>();
 
-        services.AddHostedService<HostedValidationService>();
+            services.AddScoped<IAuthorizationFactory, DefaultAuthorizationFactory>();
 
-        services.Configure<MvcOptions>(
-            opt =>
+            services.AddScoped<IValidationWorker, ValidationWorker>();
+
+            if (httpClient == null)
             {
-                opt.Filters.Add(typeof(AcmeExceptionFilter));
-                opt.Filters.Add(typeof(ValidateAcmeRequestFilter));
-                opt.Filters.Add(typeof(AcmeIndexLinkFilter));
+                services.AddHttpClient<IValidateHttp01Challenges, ValidateHttp01Challenges>();
+            }
+            else
+            {
+                services.AddTransient(httpClient);
+                services.AddTransient<IValidateHttp01Challenges, ValidateHttp01Challenges>();
+            }
 
-                opt.ModelBinderProviders.Insert(0, new AcmeModelBindingProvider());
-            });
+            services.AddScoped<ILookupClient, LookupClient>();
+            services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();
+            services.AddScoped<IChallengeValidatorFactory, DefaultChallengeValidatorFactory>();
 
-        var acmeServerConfig = configuration.GetSection(sectionName);
-        acmeServerOptions ??= new AcmeServerOptions();
-        acmeServerConfig.Bind(acmeServerOptions);
+            services.AddScoped<AddNextNonceFilter>();
 
-        services.Configure<AcmeServerOptions>(acmeServerConfig);
+            services.AddHostedService<HostedValidationService>();
 
-        return services;
-    }
+            services.Configure<MvcOptions>(
+                opt =>
+                {
+                    opt.Filters.Add(typeof(AcmeExceptionFilter));
+                    opt.Filters.Add(typeof(ValidateAcmeRequestFilter));
+                    opt.Filters.Add(typeof(AcmeIndexLinkFilter));
 
-    [RequiresUnreferencedCode($"Uses {nameof(FileStoreOptions)}")]
-    [RequiresDynamicCode($"Uses {nameof(FileStoreOptions)}")]
-    public static IServiceCollection AddAcmeFileStore(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string sectionName = "AcmeFileStore")
-    {
-        services.AddScoped<INonceStore, NonceStore>();
-        services.AddScoped<IStoreAccounts, AccountStore>();
-        services.AddScoped<IStoreOrders, OrderStore>();
+                    opt.ModelBinderProviders.Insert(0, new AcmeModelBindingProvider());
+                });
 
-        services.AddOptions<FileStoreOptions>()
-            .Bind(configuration.GetSection(sectionName))
-            .ValidateDataAnnotations();
+            var acmeServerConfig = configuration.GetSection(sectionName);
+            acmeServerOptions ??= new AcmeServerOptions();
+            acmeServerConfig.Bind(acmeServerOptions);
 
-        return services;
-    }
+            services.Configure<AcmeServerOptions>(acmeServerConfig);
 
-    public static IServiceCollection AddAcmeInMemoryStore(
-        this IServiceCollection services)
-    {
-        services.AddSingleton<INonceStore, InMemoryNonceStore>();
-        services.AddSingleton<IStoreAccounts, InMemoryAccountStore>();
-        services.AddSingleton<IStoreOrders, InMemoryOrderStore>();
+            return services;
+        }
 
-        return services;
+        [RequiresUnreferencedCode($"Uses {nameof(FileStoreOptions)}")]
+        [RequiresDynamicCode($"Uses {nameof(FileStoreOptions)}")]
+        public IServiceCollection AddAcmeFileStore(
+            IConfiguration configuration,
+            string sectionName = "AcmeFileStore")
+        {
+            services.AddScoped<INonceStore, NonceStore>();
+            services.AddScoped<IStoreAccounts, AccountStore>();
+            services.AddScoped<IStoreOrders, OrderStore>();
+
+            services.AddOptions<FileStoreOptions>()
+                .Bind(configuration.GetSection(sectionName))
+                .ValidateDataAnnotations();
+
+            return services;
+        }
+
+        public IServiceCollection AddAcmeInMemoryStore()
+        {
+            services.AddSingleton<INonceStore, InMemoryNonceStore>();
+            services.AddSingleton<IStoreAccounts, InMemoryAccountStore>();
+            services.AddSingleton<IStoreOrders, InMemoryOrderStore>();
+
+            return services;
+        }
     }
 }

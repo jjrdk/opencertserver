@@ -8,19 +8,21 @@ namespace CertesSlim.Extensions;
 /// </summary>
 public static class IAccountContextExtensions
 {
-    /// <summary>
-    /// Deactivates the current account.
-    /// </summary>
-    /// <returns>The account deactivated.</returns>
-    public static Task<Account> Deactivate(
-        this Task<IAccountContext> account)
-        => account.ContinueWith(a => a.Result.Deactivate()).Unwrap();
-
-    /// <summary>
-    /// Gets the location of the account.
-    /// </summary>
     /// <param name="account">The account.</param>
-    /// <returns>The location URI.</returns>
-    public static Task<Uri> Location(this Task<IAccountContext> account)
-        => account.ContinueWith(r => r.Result.Location);
+    extension(Task<IAccountContext> account)
+    {
+        /// <summary>
+        /// Deactivates the current account.
+        /// </summary>
+        /// <returns>The account deactivated.</returns>
+        public Task<Account> Deactivate()
+            => account.ContinueWith(a => a.Result.Deactivate()).Unwrap();
+
+        /// <summary>
+        /// Gets the location of the account.
+        /// </summary>
+        /// <returns>The location URI.</returns>
+        public Task<Uri> Location()
+            => account.ContinueWith(r => r.Result.Location);
+    }
 }

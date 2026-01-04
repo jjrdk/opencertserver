@@ -13,12 +13,12 @@ public sealed class Authorization
     {
         if (model is null)
         {
-            throw new System.ArgumentNullException(nameof(model));
+            throw new ArgumentNullException(nameof(model));
         }
 
         if (challenges is null)
         {
-            throw new System.ArgumentNullException(nameof(challenges));
+            throw new ArgumentNullException(nameof(challenges));
         }
 
         Status = EnumMappings.GetEnumString(model.Status);

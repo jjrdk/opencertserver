@@ -18,6 +18,7 @@ namespace CertesSlim.Json;
 [JsonSerializable(typeof(CertificateRevocation))]
 [JsonSerializable(typeof(Directory))]
 [JsonSerializable(typeof(EmptyObject))]
+[JsonSerializable(typeof(ErrorDetails))]
 [JsonSerializable(typeof(Header))]
 [JsonSerializable(typeof(JsonWebKey))]
 [JsonSerializable(typeof(JwsPayload))]

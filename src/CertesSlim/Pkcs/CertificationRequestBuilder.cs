@@ -10,10 +10,10 @@ namespace CertesSlim.Pkcs;
 /// <seealso cref="ICertificationRequestBuilder" />
 public class CertificationRequestBuilder : ICertificationRequestBuilder
 {
-    private static readonly string[] _validX509Names = new[]
-    {
+    private static readonly string[] _validX509Names =
+    [
         "CN", "C", "L", "ST", "O", "OU", "E"
-    };
+    ];
 
     private Dictionary<string, string> _values = new();
 //    private IKey? _keyPair;
@@ -93,11 +93,6 @@ public class CertificationRequestBuilder : ICertificationRequestBuilder
     private CertificateRequest GeneratePkcs10()
     {
         var x509 = new X500DistinguishedName(string.Join(", ", _values.Select(kv => $"{kv.Key}={kv.Value}")));
-//
-//        if (SubjectAlternativeNames.Count == 0)
-//        {
-//            SubjectAlternativeNames.Add(_commonName);
-//        }
 
         var nameBuilder = new SubjectAlternativeNameBuilder();
         foreach (var altName in SubjectAlternativeNames.Distinct())
@@ -110,7 +105,7 @@ public class CertificationRequestBuilder : ICertificationRequestBuilder
         {
             RsaSecurityKey rsaKey => new CertificateRequest(x509, rsaKey.Rsa!, Key.HashAlgorithm, RSASignaturePadding.Pss),
             ECDsaSecurityKey ecdsaKey => new CertificateRequest(x509, ecdsaKey.ECDsa!, Key.HashAlgorithm),
-            _ => throw new NotSupportedException($"The key algorithm '{Key.Algorithm}' is not supported."),
+            _ => throw new NotSupportedException($"The key algorithm '{Key.Algorithm}' is not supported.")
         };
         cr.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
         cr.CertificateExtensions.Add(new X509KeyUsageExtension(

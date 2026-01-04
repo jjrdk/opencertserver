@@ -156,6 +156,11 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         LogAcmerenewalserviceApplicationStarted();
         _timer?.Change(_options.RenewalServiceStartupDelay, TimeSpan.FromHours(1));
     }
+    
+    ~AcmeRenewalService()
+    {
+        Dispose();
+    }
 
     public void Dispose()
     {

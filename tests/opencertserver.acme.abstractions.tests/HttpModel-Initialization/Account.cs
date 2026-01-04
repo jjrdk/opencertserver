@@ -4,7 +4,6 @@ namespace OpenCertServer.Acme.Abstractions.Tests.HttpModel_Initialization;
 
 using System;
 using System.Collections.Generic;
-using Model;
 using Xunit;
 
 public sealed class Account

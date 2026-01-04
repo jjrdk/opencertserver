@@ -3,7 +3,6 @@
 namespace OpenCertServer.Acme.Abstractions.HttpModel.Requests;
 
 using System;
-using System.Text.Json.Serialization;
 
 public sealed class AcmeHeader
 {

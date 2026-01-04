@@ -5,7 +5,7 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
-using global::CertesSlim;
+using CertesSlim;
 using Microsoft.Extensions.Logging;
 
 public sealed partial class PersistenceService : IPersistenceService

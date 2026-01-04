@@ -3,7 +3,7 @@ using CertesSlim.Extensions;
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using System.Threading.Tasks;
-using global::CertesSlim;
+using CertesSlim;
 using global::CertesSlim.Acme;
 using Microsoft.Extensions.Logging;
 using Persistence;

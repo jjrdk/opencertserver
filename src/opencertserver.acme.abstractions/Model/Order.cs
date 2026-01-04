@@ -14,7 +14,7 @@ public sealed class Order : IVersioned, ISerializable
         {
             { OrderStatus.Pending, [OrderStatus.Ready, OrderStatus.Invalid] },
             { OrderStatus.Ready, [OrderStatus.Processing, OrderStatus.Invalid] },
-            { OrderStatus.Processing, [OrderStatus.Valid, OrderStatus.Invalid] },
+            { OrderStatus.Processing, [OrderStatus.Valid, OrderStatus.Invalid] }
         };
 
     public Order(Account account, IEnumerable<Identifier> identifiers)

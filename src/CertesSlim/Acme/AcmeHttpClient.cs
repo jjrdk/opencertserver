@@ -4,13 +4,12 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using CertesSlim.Json;
-using CertesSlim.Properties;
 using Directory = CertesSlim.Acme.Resource.Directory;
 using Strings = CertesSlim.Properties.Strings;
 
 namespace CertesSlim.Acme;
 
-using Directory = Resource.Directory;
+using Directory = Directory;
 
 /// <summary>
 /// HTTP client handling ACME operations.
@@ -26,11 +25,11 @@ public class AcmeHttpClient : IAcmeHttpClient
     /// the ACME software in addition to the name and version of the
     /// underlying HTTP client software.
     /// </remarks>
-    private static readonly IList<ProductInfoHeaderValue> UserAgentHeaders = new[]
-    {
+    private static readonly IList<ProductInfoHeaderValue> UserAgentHeaders =
+    [
         new ProductInfoHeaderValue("CertesSlim", Assembly.GetExecutingAssembly().GetName().Version!.ToString()),
-        new ProductInfoHeaderValue(".NET", Environment.Version.ToString()),
-    };
+        new ProductInfoHeaderValue(".NET", Environment.Version.ToString())
+    ];
 
     private readonly static Lazy<HttpClient> SharedHttp = new Lazy<HttpClient>(CreateHttpClient);
     private readonly Lazy<HttpClient> _http;
@@ -82,7 +81,7 @@ public class AcmeHttpClient : IAcmeHttpClient
         var msg = new HttpRequestMessage
         {
             Method = HttpMethod.Get,
-            RequestUri = uri,
+            RequestUri = uri
         };
 
         AddUserAgentHeader(msg);
@@ -110,7 +109,7 @@ public class AcmeHttpClient : IAcmeHttpClient
         {
             Method = HttpMethod.Post,
             RequestUri = uri,
-            Content = content,
+            Content = content
         };
 
         AddUserAgentHeader(msg);
@@ -144,9 +143,14 @@ public class AcmeHttpClient : IAcmeHttpClient
             var date = response.Headers.RetryAfter.Date;
             var delta = response.Headers.RetryAfter.Delta;
             if (date.HasValue)
+            {
                 return Math.Abs((date.Value - DateTime.UtcNow).TotalSeconds);
-            else if (delta.HasValue)
+            }
+
+            if (delta.HasValue)
+            {
                 return delta.Value.TotalSeconds;
+            }
         }
 
         return 0;
@@ -241,7 +245,7 @@ public class AcmeHttpClient : IAcmeHttpClient
         var msg = new HttpRequestMessage
         {
             RequestUri = _newNonceUri,
-            Method = HttpMethod.Head,
+            Method = HttpMethod.Head
         };
 
         AddUserAgentHeader(msg);
@@ -259,8 +263,7 @@ public class AcmeHttpClient : IAcmeHttpClient
     {
         if (mediaType != null && mediaType.StartsWith("application/"))
         {
-            return mediaType
-                .Substring("application/".Length)
+            return mediaType["application/".Length..]
                 .Split('+')
                 .Any(t => t == "json");
         }

@@ -11,10 +11,10 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using OpenCertServer.Acme.Abstractions.IssuanceServices;
+using Acme.Abstractions.IssuanceServices;
 using OpenCertServer.Acme.Server.Extensions;
-using OpenCertServer.Acme.Server.Middleware;
-using OpenCertServer.Est.Server;
+using Acme.Server.Middleware;
+using Est.Server;
 
 public sealed class Program
 {

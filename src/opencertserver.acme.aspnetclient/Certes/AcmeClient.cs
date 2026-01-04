@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using CertesSlim.Extensions;
 
 namespace OpenCertServer.Acme.AspNetClient.Certes;
@@ -8,7 +7,7 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Exceptions;
-using global::CertesSlim;
+using CertesSlim;
 using global::CertesSlim.Acme;
 using global::CertesSlim.Acme.Resource;
 using Microsoft.Extensions.Logging;
@@ -16,8 +15,6 @@ using Persistence;
 
 public sealed partial class AcmeClient : IAcmeClient
 {
-    private const string CertificateFriendlyName = "OpenCertServerAcmeCertificate";
-
     private readonly ILogger _logger;
     private readonly IAcmeContext _acme;
     private readonly AcmeOptions _options;

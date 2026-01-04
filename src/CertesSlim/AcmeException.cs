@@ -1,7 +1,4 @@
-﻿using System;
-using System.Runtime.Serialization;
-
-namespace CertesSlim;
+﻿namespace CertesSlim;
 
 /// <summary>
 /// The exception that is thrown when an error occurs while processing ACME operations.

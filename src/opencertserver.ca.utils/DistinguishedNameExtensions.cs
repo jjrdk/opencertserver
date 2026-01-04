@@ -7,19 +7,22 @@ using System.Security.Cryptography.X509Certificates;
 
 public static class DistinguishedNameExtensions
 {
-    public static string? GetPart(this X500DistinguishedName distinguishedName, string part)
+    extension(X500DistinguishedName distinguishedName)
     {
-        var parts = GetParts(distinguishedName);
-        var found = parts.TryGetValue(part, out var result);
+        public string? GetPart(string part)
+        {
+            var parts = GetParts(distinguishedName);
+            var found = parts.TryGetValue(part, out var result);
 
-        return found ? result : null;
-    }
+            return found ? result : null;
+        }
 
-    public static Dictionary<string, string> GetParts(this X500DistinguishedName distinguishedName)
-    {
-        return distinguishedName.Format(true)
-            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-            .Select(x => x.Split('='))
-            .ToDictionary(x => x[0], x => x[1]);
+        public Dictionary<string, string> GetParts()
+        {
+            return distinguishedName.Format(true)
+                .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Split('='))
+                .ToDictionary(x => x[0], x => x[1]);
+        }
     }
 }

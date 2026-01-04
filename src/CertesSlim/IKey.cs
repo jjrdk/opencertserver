@@ -49,58 +49,58 @@ public interface IKey
 /// </summary>
 public static class ISignatureKeyExtensions
 {
-    /// <summary>
-    /// Generates the thumbprint for the given account <paramref name="key"/>.
-    /// </summary>
     /// <param name="key">The account key.</param>
-    /// <returns>The thumbprint.</returns>
-    internal static byte[] GenerateThumbprint(this IKey key)
+    extension(IKey key)
     {
-        var jwk = key.JsonWebKey;
-        var json = JsonSerializer.Serialize(jwk, CertesSerializerContext.Default.JsonWebKey);
-        var bytes = Encoding.UTF8.GetBytes(json);
-        var hashed = SHA256.HashData(bytes);
+        /// <summary>
+        /// Generates the thumbprint for the given account key.
+        /// </summary>
+        /// <returns>The thumbprint.</returns>
+        internal byte[] GenerateThumbprint()
+        {
+            var jwk = key.JsonWebKey;
+            var json = JsonSerializer.Serialize(jwk, CertesSerializerContext.Default.JsonWebKey);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            var hashed = SHA256.HashData(bytes);
 
-        return hashed;
+            return hashed;
+        }
+
+        /// <summary>
+        /// Generates the base64 encoded thumbprint for the given account key.
+        /// </summary>
+        /// <returns>The thumbprint.</returns>
+        public string Thumbprint()
+        {
+            var jwkThumbprint = key.GenerateThumbprint();
+            return JwsConvert.ToBase64String(jwkThumbprint);
+        }
+
+        /// <summary>
+        /// Generates key authorization string.
+        /// </summary>
+        /// <param name="token">The challenge token.</param>
+        /// <returns>The key authorization string.</returns>
+        public string KeyAuthorization(string token)
+        {
+            var jwkThumbprintEncoded = key.Thumbprint();
+            return $"{token}.{jwkThumbprintEncoded}";
+        }
+
+        /// <summary>
+        /// Generates the value for DNS TXT record.
+        /// </summary>
+        /// <param name="token">The challenge token.</param>
+        /// <returns>The DNS text value for dns-01 validation.</returns>
+        public string DnsTxt(string token)
+        {
+            var keyAuthz = key.KeyAuthorization(token);
+            var hashed = SHA256.HashData(Encoding.UTF8.GetBytes(keyAuthz));
+            return JwsConvert.ToBase64String(hashed);
+        }
     }
 
-    /// <summary>
-    /// Generates the base64 encoded thumbprint for the given account <paramref name="key"/>.
-    /// </summary>
-    /// <param name="key">The account key.</param>
-    /// <returns>The thumbprint.</returns>
-    public static string Thumbprint(this IKey key)
-    {
-        var jwkThumbprint = key.GenerateThumbprint();
-        return JwsConvert.ToBase64String(jwkThumbprint);
-    }
-
-    /// <summary>
-    /// Generates key authorization string.
-    /// </summary>
-    /// <param name="key">The key.</param>
-    /// <param name="token">The challenge token.</param>
-    /// <returns>The key authorization string.</returns>
-    public static string KeyAuthorization(this IKey key, string token)
-    {
-        var jwkThumbprintEncoded = key.Thumbprint();
-        return $"{token}.{jwkThumbprintEncoded}";
-    }
-
-    /// <summary>
-    /// Generates the value for DNS TXT record.
-    /// </summary>
-    /// <param name="key">The key.</param>
-    /// <param name="token">The challenge token.</param>
-    /// <returns>The DNS text value for dns-01 validation.</returns>
-    public static string DnsTxt(this IKey key, string token)
-    {
-        var keyAuthz = key.KeyAuthorization(token);
-        var hashed = SHA256.HashData(Encoding.UTF8.GetBytes(keyAuthz));
-        return JwsConvert.ToBase64String(hashed);
-    }
-
-//        /// <summary>
+    //        /// <summary>
 //        /// Generates the certificate for <see cref="ChallengeTypes.TlsAlpn01" /> validation.
 //        /// </summary>
 //        /// <param name="key">The key.</param>

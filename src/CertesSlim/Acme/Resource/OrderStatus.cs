@@ -42,5 +42,5 @@ public enum OrderStatus
     /// The certificate will not be issued.  Consider this order process abandoned.
     /// </summary>
     [EnumMember(Value = "invalid")]
-    Invalid,
+    Invalid
 }

@@ -1,7 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Server.Middleware;
 
 using System.Text.Json;
-using System.Diagnostics.CodeAnalysis;
 using Abstractions.HttpModel.Requests;
 using Abstractions.RequestServices;
 using Microsoft.AspNetCore.Http;

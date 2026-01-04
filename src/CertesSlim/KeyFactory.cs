@@ -56,14 +56,14 @@ public static class KeyFactory
         {
             ECDsa e => new ECDsaSecurityKey(e),
             RSA r => new RsaSecurityKey(r),
-            _ => throw new NotSupportedException("Only RSA and ECDsa keys are supported."),
+            _ => throw new NotSupportedException("Only RSA and ECDsa keys are supported.")
         };
         var hashAlg = key.KeySize switch
         {
             256 => HashAlgorithmName.SHA256,
             384 => HashAlgorithmName.SHA384,
             521 => HashAlgorithmName.SHA512,
-            _ => throw new NotSupportedException($"The algorithm '{key.SignatureAlgorithm}' is not supported."),
+            _ => throw new NotSupportedException($"The algorithm '{key.SignatureAlgorithm}' is not supported.")
         };
         var securityAlgo = key switch
         {
@@ -71,7 +71,7 @@ public static class KeyFactory
             ECDsa when key.KeySize == 384 => SecurityAlgorithms.EcdsaSha384,
             ECDsa when key.KeySize == 521 => SecurityAlgorithms.EcdsaSha512,
             RSA => SecurityAlgorithms.RsaSha256, // Default to RSA SHA256
-            _ => throw new NotSupportedException($"The algorithm '{key.SignatureAlgorithm}' is not supported."),
+            _ => throw new NotSupportedException($"The algorithm '{key.SignatureAlgorithm}' is not supported.")
         };
         return new Key(securityAlgo, jwk, hashAlg);
     }

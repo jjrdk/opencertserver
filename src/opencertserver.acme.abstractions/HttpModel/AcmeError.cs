@@ -13,7 +13,7 @@ public sealed class AcmeError
     {
         if (model is null)
         {
-            throw new System.ArgumentNullException(nameof(model));
+            throw new ArgumentNullException(nameof(model));
         }
 
         Type = model.Type;

@@ -1,6 +1,4 @@
-﻿using System.Threading.Tasks;
-
-namespace CertesSlim.Acme;
+﻿namespace CertesSlim.Acme;
 
 /// <summary>
 /// Supports ACME challenge operations.

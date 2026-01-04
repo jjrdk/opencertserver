@@ -8,7 +8,7 @@
     <File Path="Docker.md" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Certes.Tests/Certes.Tests.csproj" />
+    <Project Path="tests\CertesSlim.tests\CertesSlim.tests.csproj" />
     <Project Path="tests\opencertserver.acme.abstractions.tests\opencertserver.acme.abstractions.tests.csproj" />
     <Project Path="tests\opencertserver.acme.aspnetclient.tests\opencertserver.acme.aspnetclient.tests.csproj" />
     <Project Path="tests\opencertserver.ca.tests\opencertserver.ca.tests.csproj" />

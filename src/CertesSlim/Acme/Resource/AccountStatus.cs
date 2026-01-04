@@ -23,5 +23,5 @@ public enum AccountStatus
     /// The revoked status, initiated by server.
     /// </summary>
     [EnumMember(Value = "revoked")]
-    Revoked,
+    Revoked
 }

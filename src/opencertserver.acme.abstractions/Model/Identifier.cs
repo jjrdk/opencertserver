@@ -1,7 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Abstractions.Model;
 
 using System;
-using System.Linq;
 using System.Runtime.Serialization;
 using Exceptions;
 using Extensions;

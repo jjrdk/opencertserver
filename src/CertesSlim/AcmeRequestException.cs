@@ -1,7 +1,4 @@
-﻿using System.Runtime.Serialization;
-using System.Text.Json;
-using CertesSlim.Json;
-using CertesSlim.Acme;
+﻿using CertesSlim.Acme;
 
 namespace CertesSlim;
 

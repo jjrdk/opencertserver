@@ -1,6 +1,5 @@
 ﻿namespace OpenCertServer.Est.Server.Handlers;
 
-using System;
 using System.IO;
 using System.Net;
 using System.Security.Cryptography;
@@ -8,8 +7,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Ca.Utils;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Primitives;
-using OpenCertServer.Ca;
+using Ca;
 
 internal sealed class SimpleReEnrollHandler
 {

@@ -41,5 +41,5 @@ public enum AuthorizationStatus
     /// The expired status.
     /// </summary>
     [EnumMember(Value = "expired")]
-    Expired,
+    Expired
 }

@@ -3,8 +3,8 @@
 public record BackgroundServiceOptions
 {
     public bool EnableValidationService { get; set; } = true;
-        
-    public bool EnableIssuanceService { get; set; } = false;
+
+    public bool EnableIssuanceService { get; set; }
 
     public int ValidationCheckInterval { get; set; } = 1;
 

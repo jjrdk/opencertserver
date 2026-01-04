@@ -12,7 +12,7 @@ public sealed class Account
     {
         if (model is null)
         {
-            throw new System.ArgumentNullException(nameof(model));
+            throw new ArgumentNullException(nameof(model));
         }
 
         Status = EnumMappings.GetEnumString(model.Status);

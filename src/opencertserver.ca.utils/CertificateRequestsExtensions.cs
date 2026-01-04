@@ -25,23 +25,26 @@ public static class CertificateRequestsExtensions
         return builder.ToString();
     }
 
-    public static byte[] FromPkcs12(this string pkcs12)
+    extension(string pkcs12)
     {
-        var value = pkcs12.Replace(Pkcs12Header, "")
-            .Replace(Pkcs12Footer, "")
-            .Replace("\r", "")
-            .Replace("\n", "")
-            .Trim();
-        return Convert.FromBase64String(value);
-    }
+        public byte[] FromPkcs12()
+        {
+            var value = pkcs12.Replace(Pkcs12Header, "")
+                .Replace(Pkcs12Footer, "")
+                .Replace("\r", "")
+                .Replace("\n", "")
+                .Trim();
+            return Convert.FromBase64String(value);
+        }
 
-    public static byte[] FromPkcs7(this string pkcs7)
-    {
-        var value = pkcs7.Replace(Pkcs7Header, "")
-            .Replace(Pkcs7Footer, "")
-            .Replace("\r", "")
-            .Replace("\n", "")
-            .Trim();
-        return Convert.FromBase64String(value);
+        public byte[] FromPkcs7()
+        {
+            var value = pkcs12.Replace(Pkcs7Header, "")
+                .Replace(Pkcs7Footer, "")
+                .Replace("\r", "")
+                .Replace("\n", "")
+                .Trim();
+            return Convert.FromBase64String(value);
+        }
     }
 }

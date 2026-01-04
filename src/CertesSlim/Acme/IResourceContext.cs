@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-
-namespace CertesSlim.Acme;
+﻿namespace CertesSlim.Acme;
 
 /// <summary>
 /// Supports loading ACME resource with URI.

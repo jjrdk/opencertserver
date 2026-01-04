@@ -15,7 +15,7 @@ public class CertificateChain
     public CertificateChain(string certificateChain)
     {
         var certificates = certificateChain
-            .Split(new[] { "-----END CERTIFICATE-----" }, StringSplitOptions.RemoveEmptyEntries)
+            .Split(["-----END CERTIFICATE-----"], StringSplitOptions.RemoveEmptyEntries)
             .Where(c => !string.IsNullOrWhiteSpace(c))
             .Select(c => c + "-----END CERTIFICATE-----")
             .ToArray();

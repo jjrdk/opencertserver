@@ -29,5 +29,5 @@ public enum ChallengeStatus
     /// The invalid status.
     /// </summary>
     [JsonPropertyName("invalid")]
-    Invalid,
+    Invalid
 }

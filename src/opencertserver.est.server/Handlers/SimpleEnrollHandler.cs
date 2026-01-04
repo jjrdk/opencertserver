@@ -7,7 +7,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using OpenCertServer.Ca;
+using Ca;
 
 internal sealed class SimpleEnrollHandler
 {

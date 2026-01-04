@@ -9,7 +9,7 @@ public sealed class Identifier
     {
         if (model is null)
         {
-            throw new System.ArgumentNullException(nameof(model));
+            throw new ArgumentNullException(nameof(model));
         }
 
         Type = model.Type;

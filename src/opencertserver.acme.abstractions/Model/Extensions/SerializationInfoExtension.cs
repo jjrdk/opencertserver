@@ -6,65 +6,60 @@ using System.Runtime.Serialization;
 
 public static class SerializationInfoExtension
 {
-    public static string GetRequiredString(this SerializationInfo info, string name)
+    extension(SerializationInfo info)
     {
-        if (info is null)
+        public string GetRequiredString(string name)
         {
-            throw new ArgumentNullException(nameof(info));
+            if (info is null)
+            {
+                throw new ArgumentNullException(nameof(info));
+            }
+
+            var value = info.GetString(name);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new InvalidOperationException($"Could not deserialize required value '{name}'");
+            }
+
+            return value;
         }
 
-        var value = info.GetString(name);
-        if (string.IsNullOrWhiteSpace(value))
+        [return: NotNull]
+        public T GetRequiredValue<T>(string name)
         {
-            throw new InvalidOperationException($"Could not deserialize required value '{name}'");
+            if (info is null)
+            {
+                throw new ArgumentNullException(nameof(info));
+            }
+
+            var value = info.GetValue(name, typeof(T));
+            if(value is null)
+            {
+                throw new InvalidOperationException($"Could not deserialize required value '{name}'");
+            }
+
+            return (T)value;
         }
 
-        return value;
-    }
-
-    [return: NotNull]
-    public static T GetRequiredValue<T>(this SerializationInfo info, string name)
-    {
-        if (info is null)
+        public T? GetValue<T>(string name)
         {
-            throw new ArgumentNullException(nameof(info));
-        }
+            ArgumentNullException.ThrowIfNull(info);
 
-        var value = info.GetValue(name, typeof(T));
-        if(value is null)
-        {
-            throw new InvalidOperationException($"Could not deserialize required value '{name}'");
-        }
-
-        return (T)value;
-    }
-
-    [return: MaybeNull]
-    public static T GetValue<T>(this SerializationInfo info, string name)
-    {
-        if (info is null)
-        {
-            throw new ArgumentNullException(nameof(info));
-        }
-
-        return (T?)info.GetValue(name, typeof(T));
-    }
-
-    [return: MaybeNull]
-    public static T TryGetValue<T>(this SerializationInfo info, string name)
-    {
-        if (info is null)
-        {
-            throw new ArgumentNullException(nameof(info));
-        }
-
-        try
-        {
             return (T?)info.GetValue(name, typeof(T));
         }
-        catch (SerializationException)
+
+        public T? TryGetValue<T>(string name)
         {
-            return default;
+            ArgumentNullException.ThrowIfNull(info);
+
+            try
+            {
+                return (T?)info.GetValue(name, typeof(T));
+            }
+            catch (SerializationException)
+            {
+                return default;
+            }
         }
     }
 }

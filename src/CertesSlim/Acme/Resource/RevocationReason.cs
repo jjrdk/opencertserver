@@ -57,5 +57,5 @@ public enum RevocationReason
     /// <summary>
     /// Indicates AA is compromised.
     /// </summary>
-    AaCompromise = 10,
+    AaCompromise = 10
 }

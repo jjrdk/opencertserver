@@ -55,7 +55,7 @@ public sealed class X509CertificateTests : IDisposable
             {
                 CertificateExtensions =
                 {
-                    new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false),
+                    new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false)
                 }
             }) as SignCertificateResponse.Success;
         await using var ms = new MemoryStream();

@@ -5,7 +5,7 @@ using Directory = CertesSlim.Acme.Resource.Directory;
 
 namespace CertesSlim;
 
-using Directory = Acme.Resource.Directory;
+using Directory = Directory;
 
 /// <summary>
 /// Represents the context for ACME operations.
