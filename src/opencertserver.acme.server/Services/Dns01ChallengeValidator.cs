@@ -27,7 +27,7 @@ public sealed class ValidateDns01Challenges : TokenChallengeValidator, IValidate
     {
         using var sha256 = SHA256.Create();
 
-        var thumbprintBytes = account.Jwk.SecurityKey.ComputeJwkThumbprint();
+        var thumbprintBytes = account.Jwk.ComputeJwkThumbprint();
         var thumbprint = Base64UrlEncoder.Encode(thumbprintBytes);
 
         var keyAuthBytes = Encoding.UTF8.GetBytes($"{challenge.Token}.{thumbprint}");

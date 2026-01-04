@@ -1,8 +1,7 @@
-﻿using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using Microsoft.IdentityModel.Tokens;
+﻿namespace CertesSlim;
 
-namespace CertesSlim;
+using System.Security.Cryptography;
+using Microsoft.IdentityModel.Tokens;
 
 /// <summary>
 /// Provides helper methods for handling keys.
@@ -56,56 +55,24 @@ public static class KeyFactory
         SecurityKey jwk = key switch
         {
             ECDsa e => new ECDsaSecurityKey(e),
-            RSA r => new RsaSecurityKey(r)!,
+            RSA r => new RsaSecurityKey(r),
             _ => throw new NotSupportedException("Only RSA and ECDsa keys are supported."),
         };
         var hashAlg = key.KeySize switch
         {
             256 => HashAlgorithmName.SHA256,
             384 => HashAlgorithmName.SHA384,
-            512 => HashAlgorithmName.SHA512,
+            521 => HashAlgorithmName.SHA512,
             _ => throw new NotSupportedException($"The algorithm '{key.SignatureAlgorithm}' is not supported."),
         };
         var securityAlgo = key switch
         {
             ECDsa when key.KeySize == 256 => SecurityAlgorithms.EcdsaSha256,
             ECDsa when key.KeySize == 384 => SecurityAlgorithms.EcdsaSha384,
-            ECDsa when key.KeySize == 512 => SecurityAlgorithms.EcdsaSha512,
+            ECDsa when key.KeySize == 521 => SecurityAlgorithms.EcdsaSha512,
             RSA => SecurityAlgorithms.RsaSha256, // Default to RSA SHA256
             _ => throw new NotSupportedException($"The algorithm '{key.SignatureAlgorithm}' is not supported."),
         };
         return new Key(securityAlgo, jwk, hashAlg);
     }
-}
-
-internal class Key : IKey
-{
-    public Key(string algorithm, SecurityKey securityKey, HashAlgorithmName hashAlgorithm)
-    {
-        HashAlgorithm = hashAlgorithm;
-        SecurityKey = securityKey;
-        Algorithm = algorithm;
-        JsonWebKey = JsonWebKeyConverter.ConvertFromSecurityKey(securityKey);
-    }
-
-    public string ToPem()
-    {
-        if (SecurityKey is X509SecurityKey x509Key)
-        {
-            return x509Key.Certificate.ExportCertificatePem();
-        }
-
-        return SecurityKey switch
-        {
-            RsaSecurityKey rsaKey => rsaKey.Rsa.ExportPkcs8PrivateKeyPem(),
-            ECDsaSecurityKey ecdsaKey => ecdsaKey.ECDsa.ExportPkcs8PrivateKeyPem(),
-            X509SecurityKey certKey => certKey.Certificate.ExportCertificatePem(),
-            _ => throw new NotImplementedException(),
-        };
-    }
-
-    public string Algorithm { get; }
-    public HashAlgorithmName HashAlgorithm { get; }
-    public SecurityKey SecurityKey { get; }
-    public JsonWebKey JsonWebKey { get; }
 }

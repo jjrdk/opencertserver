@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Tests.HttpModel_Initialization;
+﻿using Microsoft.IdentityModel.Tokens;
+
+namespace OpenCertServer.Acme.Abstractions.Tests.HttpModel_Initialization;
 
 using System;
 using System.Collections.Generic;
@@ -10,7 +12,7 @@ public sealed class Account
     [Fact]
     public void Ctor_Initializes_All_Properties()
     {
-        var account = new Model.Account(new Jwk(StaticTestData.JwkJson), new List<string> { "some@example.com", "other@example.com" }, DateTimeOffset.UtcNow);
+        var account = new Model.Account(new JsonWebKey(StaticTestData.JwkJson), new List<string> { "some@example.com", "other@example.com" }, DateTimeOffset.UtcNow);
         var ordersUrl = "https://orders.example.org/";
 
         var sut = new HttpModel.Account(account, ordersUrl);
@@ -24,7 +26,7 @@ public sealed class Account
     [Fact]
     public void Empty_TOSAccepted_Will_Yield_False()
     {
-        var account = new Model.Account(new Model.Jwk(StaticTestData.JwkJson), new List<string> { "some@example.com", "other@example.com" }, null);
+        var account = new Model.Account(new JsonWebKey(StaticTestData.JwkJson), new List<string> { "some@example.com", "other@example.com" }, null);
         var ordersUrl = "https://orders.example.org/";
 
         var sut = new HttpModel.Account(account, ordersUrl);

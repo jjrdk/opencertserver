@@ -14,12 +14,16 @@ namespace CertesSlim.Json;
 [JsonSerializable(typeof(Account))]
 [JsonSerializable(typeof(Account.Payload))]
 [JsonSerializable(typeof(AcmeError))]
+[JsonSerializable(typeof(Authorization))]
 [JsonSerializable(typeof(CertificateRevocation))]
 [JsonSerializable(typeof(Directory))]
+[JsonSerializable(typeof(EmptyObject))]
 [JsonSerializable(typeof(Header))]
 [JsonSerializable(typeof(JsonWebKey))]
 [JsonSerializable(typeof(JwsPayload))]
 [JsonSerializable(typeof(KeyChange))]
+[JsonSerializable(typeof(Order))]
+[JsonSerializable(typeof(Order.OrderPayload))]
 [JsonSerializable(typeof(ProtectedHeader))]
 internal partial class CertesSerializerContext : JsonSerializerContext
 {

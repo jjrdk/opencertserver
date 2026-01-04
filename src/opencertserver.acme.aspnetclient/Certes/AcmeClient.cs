@@ -40,14 +40,14 @@ public sealed partial class AcmeClient : IAcmeClient
             allAuthorizations.Select(x => x.Http()))).Where(x => x != null).Select(x => x!).ToArray();
 
         var dtos = challengeContexts.Select(x => new ChallengeDto(
-                x!.Type == ChallengeTypes.Dns01 ? _acme.AccountKey.DnsTxt(x.Token) ?? "" : x.Token,
+                x.Type == ChallengeTypes.Dns01 ? _acme.AccountKey.DnsTxt(x.Token) ?? "" : x.Token,
                 x.KeyAuthz,
                 domains))
             .ToArray();
 
         LogAcmePlacedOrderForDomainsDomainsWithChallengesChallenges(domains, dtos);
 
-        return new PlacedOrder(dtos, order, challengeContexts!);
+        return new PlacedOrder(dtos, order, challengeContexts);
     }
 
     public async Task<X509Certificate2> FinalizeOrder(PlacedOrder placedOrder, string password)

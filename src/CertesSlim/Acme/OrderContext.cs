@@ -41,8 +41,8 @@ internal class OrderContext : EntityContext<Order>, IOrderContext
     public async Task<Order> Finalize(byte[]? csr)
     {
         var order = await Resource();
-        var payload = new Order.Payload { Csr = JwsConvert.ToBase64String(csr) };
-        var resp = await Context.HttpClient.Post<Order, Order.Payload>(Context, order.Finalize!, payload, true);
+        var payload = new Order.OrderPayload { Csr = JwsConvert.ToBase64String(csr) };
+        var resp = await Context.HttpClient.Post<Order, Order.OrderPayload>(Context, order.Finalize!, payload, true);
         return resp.Resource;
     }
 

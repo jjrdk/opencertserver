@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.Server.RequestServices;
+﻿using System.Text.Json.Serialization.Metadata;
+
+namespace OpenCertServer.Acme.Server.RequestServices;
 
 using System;
 using System.Diagnostics.CodeAnalysis;
@@ -16,7 +18,6 @@ public sealed class DefaultRequestProvider : IAcmeRequestProvider
     private Type? _payloadType;
     private object? _payload;
 
-    [RequiresUnreferencedCode($"Uses {nameof(AcmeRawPostRequest)}")]
     public void Initialize(AcmeRawPostRequest rawPostRequest)
     {
         _request = rawPostRequest ?? throw new ArgumentNullException(nameof(rawPostRequest));
@@ -32,7 +33,7 @@ public sealed class DefaultRequestProvider : IAcmeRequestProvider
 
         if (string.IsNullOrEmpty(_header.Kid))
         {
-            _header.Jwk!.SecurityKey.Kid = _header.Jwk?.KeyHash;
+            _header.Jwk!.Kid = _header.Jwk?.KeyId;
         }
         return _header;
     }
@@ -73,16 +74,12 @@ public sealed class DefaultRequestProvider : IAcmeRequestProvider
         return _request;
     }
 
-    private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
-
-    [RequiresUnreferencedCode($"Uses {nameof(AcmeHeader)}")]
-    [UnconditionalSuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "Type is part of output signature")]
     private static AcmeHeader? ReadHeader(AcmeRawPostRequest rawRequest)
     {
         ArgumentNullException.ThrowIfNull(rawRequest);
 
         var headerJson = Base64UrlEncoder.Decode(rawRequest.Header);
-        var header = JsonSerializer.Deserialize<AcmeHeader>(headerJson, _jsonOptions);
+        var header = JsonSerializer.Deserialize<AcmeHeader>(headerJson, AcmeSerializerContext.Default.AcmeHeader);
 
         return header;
     }
@@ -94,7 +91,13 @@ public sealed class DefaultRequestProvider : IAcmeRequestProvider
         ArgumentNullException.ThrowIfNull(rawRequest);
 
         var payloadJson = Base64UrlEncoder.Decode(rawRequest.Payload);
-        var payload = JsonSerializer.Deserialize<TPayload>(payloadJson, _jsonOptions);
+        var typeInfo = (JsonTypeInfo<TPayload>)AcmeSerializerContext.Default.GetTypeInfo(typeof(TPayload))!;
+        if(typeInfo == null)
+        {
+            throw new InvalidOperationException($"Cannot get type info for {typeof(TPayload)}");
+        }
+        var payload = JsonSerializer.Deserialize(payloadJson,
+            typeInfo);
 
         return payload;
     }

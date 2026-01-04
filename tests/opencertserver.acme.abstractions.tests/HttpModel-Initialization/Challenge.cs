@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Tests.HttpModel_Initialization;
+﻿using Microsoft.IdentityModel.Tokens;
+
+namespace OpenCertServer.Acme.Abstractions.Tests.HttpModel_Initialization;
 
 using System;
 using System.Collections.Generic;
@@ -8,7 +10,7 @@ public sealed class Challenge
 {
     private (Model.Challenge challenge, string challengeUrl) CreateTestModel()
     {
-        var account = new Model.Account(new Model.Jwk(StaticTestData.JwkJson), new List<string> { "some@example.com" }, null);
+        var account = new Model.Account(new JsonWebKey(StaticTestData.JwkJson), new List<string> { "some@example.com" }, null);
         var order = new Model.Order(account, new List<Model.Identifier> { new Model.Identifier("dns", "www.example.com") });
         var authorization = new Model.Authorization(order, order.Identifiers.First(), DateTimeOffset.UtcNow);
         var challenge = new Model.Challenge(authorization, "http-01");
@@ -36,7 +38,7 @@ public sealed class Challenge
     {
         var (challenge, challengeUrl) = CreateTestModel();
         challenge.Validated = DateTimeOffset.UtcNow;
-            
+
         var sut = new HttpModel.Challenge(challenge, challengeUrl);
 
         Assert.Equal(challenge.Validated.Value.ToString("o"), sut.Validated);

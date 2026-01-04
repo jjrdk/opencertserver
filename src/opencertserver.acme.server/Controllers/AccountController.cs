@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.Server.Controllers;
+﻿using Microsoft.IdentityModel.Tokens;
+
+namespace OpenCertServer.Acme.Server.Controllers;
 
 using Abstractions.HttpModel.Requests;
 using Abstractions.Model;
@@ -53,7 +55,7 @@ public sealed class AccountController : ControllerBase
         return new CreatedResult(accountUrl, accountResponse);
     }
 
-    private async Task<ActionResult<Account>> FindAccount(Jwk jwk, AcmePayload<CreateOrGetAccount> payload)
+    private async Task<ActionResult<Account>> FindAccount(JsonWebKey jwk, AcmePayload<CreateOrGetAccount> payload)
     {
         var account = await _accountService.FindAccount(jwk);
         return

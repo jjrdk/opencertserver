@@ -126,9 +126,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
             throw new MalformedRequestException("Could not load JWK.");
         }
 
-        var securityKey = jwk.SecurityKey;
-
-        using var signatureProvider = new AsymmetricSignatureProvider(securityKey, header.Alg);
+        using var signatureProvider = new AsymmetricSignatureProvider(jwk, header.Alg);
         var plainText = System.Text.Encoding.UTF8.GetBytes($"{request.Header}.{request.Payload ?? ""}");
         var signature = Base64UrlEncoder.DecodeBytes(request.Signature);
 

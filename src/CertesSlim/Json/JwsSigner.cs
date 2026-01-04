@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -45,15 +46,15 @@ internal class JwsSigner
         Uri? url = null,
         string? nonce = null)
     {
-        var protectedHeader = keyId == null ?
-            new ProtectedHeader
+        var protectedHeader = keyId == null
+            ? new ProtectedHeader
             {
                 Alg = ToJwsAlgorithm(_keyPair.Algorithm),
                 Jwk = _keyPair.JsonWebKey,
                 Nonce = nonce,
                 Url = url,
-            } :
-            new ProtectedHeader
+            }
+            : new ProtectedHeader
             {
                 Alg = ToJwsAlgorithm(_keyPair.Algorithm),
                 Kid = keyId,
@@ -61,18 +62,32 @@ internal class JwsSigner
                 Url = url,
             };
 
-        var entityJson = payload == null ?
-            "" :
-            JsonSerializer.Serialize(payload, (JsonTypeInfo<T>)CertesSerializerContext.Default.GetTypeInfo(typeof(T))!);
-        var protectedHeaderJson = JsonSerializer.Serialize(protectedHeader, CertesSerializerContext.Default.ProtectedHeader);
+        var entityJson = "";
+        if (payload != null)
+        {
+            var typeInfo = (JsonTypeInfo<T>)CertesSerializerContext.Default.GetTypeInfo(typeof(T))!;
+            entityJson = JsonSerializer.Serialize(payload,
+                typeInfo);
+        }
+
+        var protectedHeaderJson =
+            JsonSerializer.Serialize(protectedHeader, CertesSerializerContext.Default.ProtectedHeader);
 
         var payloadEncoded = JwsConvert.ToBase64String(Encoding.UTF8.GetBytes(entityJson));
         var protectedHeaderEncoded = JwsConvert.ToBase64String(Encoding.UTF8.GetBytes(protectedHeaderJson));
 
         var signature = $"{protectedHeaderEncoded}.{payloadEncoded}";
-//            var signatureBytes = Encoding.UTF8.GetBytes(signature);
-        var signedSignatureBytes = new JsonWebTokenHandler().CreateToken(signature, new SigningCredentials(_keyPair.JsonWebKey,_keyPair.Algorithm));// _keyPair.GetSigner().SignData(signatureBytes);
-        var signedSignatureEncoded = JwsConvert.ToBase64String(Encoding.UTF8.GetBytes(signedSignatureBytes));
+        var signatureBytes = Encoding.UTF8.GetBytes(signature);
+        var signedSignatureBytes = _keyPair.SecurityKey switch
+        {
+            ECDsaSecurityKey e => e.ECDsa.SignData(signatureBytes, _keyPair.HashAlgorithm),
+            RsaSecurityKey r => r.Rsa.SignData(signatureBytes, _keyPair.HashAlgorithm, RSASignaturePadding.Pss),
+            _ => throw new NotSupportedException("Unsupported key type."),
+        };
+//        var signedSignatureBytes =
+//            .GetSigner().SignData(signatureBytes);
+        //new JsonWebTokenHandler().CreateToken(signature, new SigningCredentials(_keyPair.JsonWebKey,_keyPair.Algorithm));// _keyPair.GetSigner().SignData(signatureBytes);
+        var signedSignatureEncoded = JwsConvert.ToBase64String(signedSignatureBytes);
 
         var body = new JwsPayload
         {
@@ -89,7 +104,7 @@ internal class JwsSigner
     /// </summary>
     /// <param name="algorithm">The algorithm.</param>
     /// <returns></returns>
-    private static string ToJwsAlgorithm( string algorithm)
+    private static string ToJwsAlgorithm(string algorithm)
     {
         switch (algorithm)
         {

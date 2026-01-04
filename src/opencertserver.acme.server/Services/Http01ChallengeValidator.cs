@@ -20,7 +20,7 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
 
     protected override string GetExpectedContent(Challenge challenge, Account account)
     {
-        var thumbprintBytes = account.Jwk.SecurityKey.ComputeJwkThumbprint();
+        var thumbprintBytes = account.Jwk.ComputeJwkThumbprint();
         var thumbprint = Base64UrlEncoder.Encode(thumbprintBytes);
 
         var expectedContent = $"{challenge.Token}.{thumbprint}";

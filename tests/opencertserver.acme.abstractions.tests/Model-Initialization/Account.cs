@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Tests.Model_Initialization;
+﻿using Microsoft.IdentityModel.Tokens;
+
+namespace OpenCertServer.Acme.Abstractions.Tests.Model_Initialization;
 
 using System;
 using System.Collections.Generic;
@@ -10,7 +12,7 @@ public sealed class Account
     [Fact]
     public void Ctor_Populates_All_Properties()
     {
-        var jwk = new Model.Jwk(StaticTestData.JwkJson);
+        var jwk = new JsonWebKey(StaticTestData.JwkJson);
         var contacts = new List<string> { "some@example.com" };
         var tosAccepted = DateTimeOffset.UtcNow;
 
@@ -18,7 +20,7 @@ public sealed class Account
 
         Assert.Equal(jwk, sut.Jwk);
         Assert.Equal(contacts, sut.Contacts);
-        Assert.Equal(tosAccepted, sut.TOSAccepted);
+        Assert.Equal(tosAccepted, sut.TosAccepted);
 
         Assert.True(sut.AccountId.Length > 0);
         Assert.Equal(AccountStatus.Valid, sut.Status);
@@ -27,7 +29,7 @@ public sealed class Account
 
 public sealed class Authorization
 {
-        
+
 }
 
 public sealed class Challenge

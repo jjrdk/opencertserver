@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Services;
+﻿using Microsoft.IdentityModel.Tokens;
+
+namespace OpenCertServer.Acme.Abstractions.Services;
 
 using System.Collections.Generic;
 using System.Threading;
@@ -8,12 +10,12 @@ using Model;
 public interface IAccountService
 {
     Task<Account> CreateAccount(
-        Jwk jwk,
+        JsonWebKey jwk,
         IEnumerable<string>? contact = null,
         bool termsOfServiceAgreed = false,
         CancellationToken cancellationToken = default);
 
-    Task<Account?> FindAccount(Jwk jwk, CancellationToken cancellationToken = default);
+    Task<Account?> FindAccount(JsonWebKey jwk, CancellationToken cancellationToken = default);
 
     Task<Account?> LoadAccount(string accountId, CancellationToken cancellationToken = default);
 

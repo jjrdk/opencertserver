@@ -1,9 +1,9 @@
-﻿namespace OpenCertServer.Acme.Abstractions.HttpModel.Requests;
+﻿using Microsoft.IdentityModel.Tokens;
+
+namespace OpenCertServer.Acme.Abstractions.HttpModel.Requests;
 
 using System;
 using System.Text.Json.Serialization;
-using Converters;
-using Model;
 
 public sealed class AcmeHeader
 {
@@ -13,18 +13,17 @@ public sealed class AcmeHeader
     public string? Alg { get; set; }
     public string? Kid { get; set; }
 
-    [JsonConverter(typeof(JwkConverter))]
-    public Jwk? Jwk { get; set; }
+    public JsonWebKey? Jwk { get; set; }
 
     public string GetAccountId()
     {
-        var kid = Kid ?? Jwk?.SecurityKey.Kid ?? Jwk?.KeyHash;
+        var kid = Kid ?? Jwk?.Kid;
         if (kid == null)
         {
             throw new InvalidOperationException();
         }
 
         var lastIndex = kid.LastIndexOf('/');
-        return lastIndex == -1 ? kid : kid[(lastIndex + 1)..];//.Split('/').Last();
+        return lastIndex == -1 ? kid : kid[(lastIndex + 1)..];
     }
 }

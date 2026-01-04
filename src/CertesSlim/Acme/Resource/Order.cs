@@ -99,7 +99,7 @@ public class Order
     /// Represents the payload to finalize an order.
     /// </summary>
     /// <seealso cref="Order" />
-    internal class Payload : Order
+    internal class OrderPayload : Order
     {
         /// <summary>
         /// Gets or sets the CSR.
@@ -108,6 +108,6 @@ public class Order
         /// The CSR.
         /// </value>
         [JsonPropertyName("csr")]
-        internal required string Csr { get; set; }
+        public required string Csr { get; set; }
     }
 }

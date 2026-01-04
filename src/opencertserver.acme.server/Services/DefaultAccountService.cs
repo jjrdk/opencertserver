@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.Server.Services;
+﻿using Microsoft.IdentityModel.Tokens;
+
+namespace OpenCertServer.Acme.Server.Services;
 
 using System;
 using System.Collections.Generic;
@@ -22,7 +24,7 @@ public sealed class DefaultAccountService : IAccountService
     }
 
     public async Task<Account> CreateAccount(
-        Jwk jwk,
+        JsonWebKey jwk,
         IEnumerable<string>? contacts = null,
         bool termsOfServiceAgreed = false,
         CancellationToken cancellationToken = default)
@@ -33,7 +35,7 @@ public sealed class DefaultAccountService : IAccountService
         return newAccount;
     }
 
-    public async Task<Account?> FindAccount(Jwk jwk, CancellationToken cancellationToken)
+    public async Task<Account?> FindAccount(JsonWebKey jwk, CancellationToken cancellationToken)
     {
         var account = await CreateAccount(jwk, cancellationToken: cancellationToken);
         return account;

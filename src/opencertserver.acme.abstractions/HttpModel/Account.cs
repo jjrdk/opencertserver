@@ -18,7 +18,7 @@ public sealed class Account
         Status = EnumMappings.GetEnumString(model.Status);
 
         Contact = model.Contacts;
-        TermsOfServiceAgreed = model.TOSAccepted.HasValue;
+        TermsOfServiceAgreed = model.TosAccepted.HasValue;
 
         ExternalAccountBinding = null;
         Orders = ordersUrl;

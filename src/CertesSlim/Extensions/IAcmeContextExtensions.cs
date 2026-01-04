@@ -42,7 +42,7 @@ public static class IAcmeContextExtensions
     /// The account created.
     /// </returns>
     public static Task<IAccountContext> NewAccount(this IAcmeContext context, string email, bool termsOfServiceAgreed = false, string? eabKeyId = null, string? eabKey = null, string? eabKeyAlg = null)
-        => context.NewAccount(new[] { $"mailto:{email}" }, termsOfServiceAgreed, eabKeyId, eabKey, eabKeyAlg);
+        => context.NewAccount([$"mailto:{email}"], termsOfServiceAgreed, eabKeyId, eabKey, eabKeyAlg);
 
     /// <summary>
     /// Gets the terms of service link from the ACME server.
