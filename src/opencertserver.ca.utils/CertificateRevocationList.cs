@@ -1,7 +1,5 @@
-using System.Collections.ObjectModel;
 using System.Formats.Asn1;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
@@ -23,6 +21,7 @@ public class CertificateRevocationList
     /// <param name="thisUpdate">The <see cref="DateTimeOffset"/> when the CRL was issued.</param>
     /// <param name="nextUpdate">The <see cref="DateTimeOffset"/> when the next CRL will be issued.</param>
     /// <param name="revokedCertificates">The <see cref="List{T}"/> of revoked <see cref="RevokedCertificates"/>.</param>
+    /// <param name="extensions">The CRL extionsions.</param>
     public CertificateRevocationList(
         CrlVersion version,
         BigInteger crlNumber,
@@ -31,7 +30,8 @@ public class CertificateRevocationList
         X500DistinguishedName issuer,
         DateTimeOffset thisUpdate,
         DateTimeOffset? nextUpdate,
-        params IEnumerable<RevokedCertificate> revokedCertificates)
+        IEnumerable<RevokedCertificate> revokedCertificates,
+        IEnumerable<CrlExtension>? extensions)
     {
         Version = version;
         CrlNumber = crlNumber;
@@ -40,13 +40,14 @@ public class CertificateRevocationList
         Issuer = issuer;
         ThisUpdate = thisUpdate;
         NextUpdate = nextUpdate;
+        Extensions = extensions == null ? [] : extensions.ToList().AsReadOnly();
         RevokedCertificates = revokedCertificates.ToList().AsReadOnly();
     }
 
     /// <summary>
     /// Gets the list of revoked certificates.
     /// </summary>
-    public ReadOnlyCollection<RevokedCertificate> RevokedCertificates { get; set; }
+    public IReadOnlyCollection<RevokedCertificate> RevokedCertificates { get; set; }
 
     /// <summary>
     /// Gets the CRL version.
@@ -82,6 +83,8 @@ public class CertificateRevocationList
     /// Gets the <see cref="DateTimeOffset"/> for the next update.
     /// </summary>
     public DateTimeOffset? NextUpdate { get; }
+
+    public IReadOnlyCollection<CrlExtension> Extensions { get; }
 
     /// <summary>
     /// Defines the CRL version.
@@ -141,53 +144,57 @@ public class CertificateRevocationList
 
         // revokedCertificates
         var list = ReadRevokedCertificates(ref tbsCertList, version);
+        var crlExtensionList = new List<CrlExtension>();
+        if (version > 0 && tbsCertList.HasData)
+        {
+            var crlExtensionsExplicit =
+                tbsCertList.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
+            var crlExtensions = crlExtensionsExplicit.ReadSequence();
+            crlExtensionsExplicit.ThrowIfNotEmpty();
 
-        // TODO: Handle extensions
-
-            if (version > 0 && tbsCertList.HasData)
+            while (crlExtensions.HasData)
             {
-                var crlExtensionsExplicit =
-                    tbsCertList.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
-                var crlExtensions = crlExtensionsExplicit.ReadSequence();
-                crlExtensionsExplicit.ThrowIfNotEmpty();
-
-                while (crlExtensions.HasData)
+                var extension = crlExtensions.ReadSequence();
+                Oid? extnOid = null; //Oids.GetSharedOrNullOid(ref extension);
+                bool isCritical = false;
+                if (extnOid is null)
                 {
-                    var extension = crlExtensions.ReadSequence();
-                    Oid? extnOid = null; //Oids.GetSharedOrNullOid(ref extension);
-
-                    if (extnOid is null)
-                    {
-                        extension.ReadObjectIdentifier();
-                    }
-
-                    if (extension.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean))
-                    {
-                        extension.ReadBoolean();
-                    }
-
-                    if (!extension.TryReadPrimitiveOctetString(out var extnValue))
-                    {
-                        throw new CryptographicException("Invalid DER encoding for CRL extension value.");
-                    }
-
-                    // Since we're only matching against OIDs that come from GetSharedOrNullOid
-                    // we can use ReferenceEquals and skip the Value string equality check in
-                    // the Oid.ValueEquals extension method (as it will always be preempted by
-                    // the ReferenceEquals or will evaulate to false).
-                    if (ReferenceEquals(extnOid, new Oid()))
-                    {
-                        var crlNumberReader = new AsnReader(
-                            extnValue,
-                            AsnEncodingRules.DER);
-
-                        crlNumber = crlNumberReader.ReadInteger();
-                        crlNumberReader.ThrowIfNotEmpty();
-                    }
+                    extension.ReadObjectIdentifier();
                 }
-            }
 
-            tbsCertList.ThrowIfNotEmpty();
+                if (extension.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean))
+                {
+                    isCritical = extension.ReadBoolean();
+                }
+
+                if (!extension.TryReadPrimitiveOctetString(out var extnValue))
+                {
+                    throw new CryptographicException("Invalid DER encoding for CRL extension value.");
+                }
+
+                // Since we're only matching against OIDs that come from GetSharedOrNullOid
+                // we can use ReferenceEquals and skip the Value string equality check in
+                // the Oid.ValueEquals extension method (as it will always be preempted by
+                // the ReferenceEquals or will evaluate to false).
+                if (ReferenceEquals(extnOid, new Oid()))
+                {
+                    var crlNumberReader = new AsnReader(
+                        extnValue,
+                        AsnEncodingRules.DER);
+
+                    crlNumber = crlNumberReader.ReadInteger();
+                    crlNumberReader.ThrowIfNotEmpty();
+                }
+
+                var crlExtension = new RawCrlExtension(
+                    extnOid ?? new Oid(),
+                    isCritical,
+                    extnValue.ToArray());
+                crlExtensionList.Add(crlExtension);
+            }
+        }
+
+        tbsCertList.ThrowIfNotEmpty();
 
         return new CertificateRevocationList(
             (CrlVersion)version,
@@ -197,7 +204,8 @@ public class CertificateRevocationList
             distinguishedName,
             thisUpdate,
             nextUpdate,
-            list);
+            list,
+            crlExtensionList);
     }
 
     /// <summary>
@@ -346,7 +354,8 @@ public class CertificateRevocationList
                     throw new CryptographicException("Invalid DER encoding for revoked certificate extensions.");
                 }
 
-                extensions = ReadCertificateExtensions(valueReader).ToArray(); //valueReader.ReadEncodedValue().ToArray();
+                extensions =
+                    ReadCertificateExtensions(valueReader).ToArray(); //valueReader.ReadEncodedValue().ToArray();
             }
 
             var revokedCertificate =
@@ -370,8 +379,7 @@ public class CertificateRevocationList
 
     private static CertificateExtension ReadCertificateExtension(AsnReader extension)
     {
-        var extnOid = extension.ReadObjectIdentifier();
-
+        var extnOid = new Oid(extension.ReadObjectIdentifier());
         X509RevocationReason? reason = null;
         X500DistinguishedName? certificateIssuer = null;
         DateTimeOffset? invalidityDate = null;
@@ -384,7 +392,7 @@ public class CertificateRevocationList
 
         var extnValue = extension.ReadOctetString();
 
-        switch (extnOid)
+        switch (extnOid.Value)
         {
             case "2.5.29.29": // certificate issuer
             {
@@ -421,24 +429,24 @@ public class CertificateRevocationList
     }
 
     private static DateTimeOffset ReadX509Time(ref AsnReader reader)
-        {
-            return reader.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime)
-                ? reader.ReadUtcTime()
-                : reader.ReadGeneralizedTime();
-        }
-
-        private static DateTimeOffset? ReadX509TimeOpt(ref AsnReader reader)
-        {
-            if (reader.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime))
-            {
-                return reader.ReadUtcTime();
-            }
-
-            if (reader.PeekTag().HasSameClassAndValue(Asn1Tag.GeneralizedTime))
-            {
-                return reader.ReadGeneralizedTime();
-            }
-
-            return null;
-        }
+    {
+        return reader.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime)
+            ? reader.ReadUtcTime()
+            : reader.ReadGeneralizedTime();
     }
+
+    private static DateTimeOffset? ReadX509TimeOpt(ref AsnReader reader)
+    {
+        if (reader.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime))
+        {
+            return reader.ReadUtcTime();
+        }
+
+        if (reader.PeekTag().HasSameClassAndValue(Asn1Tag.GeneralizedTime))
+        {
+            return reader.ReadGeneralizedTime();
+        }
+
+        return null;
+    }
+}
