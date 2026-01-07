@@ -17,6 +17,7 @@ public class CrlTests
 
         Assert.Equal("C=US, CN=Test CA", loadedCrl.Issuer.Name);
         Assert.Single(loadedCrl.RevokedCertificates);
+        Assert.Equal(X509RevocationReason.KeyCompromise, loadedCrl.RevokedCertificates[0].Extensions.First().Reason);
     }
 
     [Fact]
