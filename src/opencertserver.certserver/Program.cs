@@ -1,4 +1,7 @@
 using System.Runtime.CompilerServices;
+using System.Security.Authentication;
+using System.Security.Cryptography;
+using OpenCertServer.Ca;
 using opencertserver.ca.server;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
@@ -31,11 +34,14 @@ public sealed class Program
         var builder = WebApplication.CreateBuilder(args);
         builder.Configuration.AddEnvironmentVariables().AddCommandLine(args);
         var services = builder.Services;
+        var portIndex = Array.IndexOf(args, "--port");
+        var port = portIndex >= 0 ? int.Parse(args[portIndex + 1]) : 5001;
         var dn = Array.IndexOf(args, "--dn");
         if (dn >= 0)
         {
             var name = args[dn + 1];
-            services = services.AddEstServer(new X500DistinguishedName(name.StartsWith("CN=") ? name : $"CN={name}"));
+            services = services.AddInMemoryEstServer(
+                new X500DistinguishedName(name.StartsWith("CN=") ? name : $"CN={name}"));
         }
         else
         {
@@ -50,7 +56,10 @@ public sealed class Program
 
         var forwardedHeadersOptions = CreateForwardedHeaderOptions();
 
-        _ = services.AddAuthentication().AddJwtBearer().AddCertificate().AddCertificateCache(options =>
+        _ = services.AddAuthentication()
+            .AddJwtBearer()
+            .AddCertificate()
+            .AddCertificateCache(options =>
             {
                 options.CacheSize = 1024;
                 options.CacheEntryExpiration = TimeSpan.FromMinutes(5);
@@ -64,6 +73,32 @@ public sealed class Program
             .ConfigureOptions<ConfigureJwtBearerOptions>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
             .AddHealthChecks();
+        builder.WebHost.UseKestrel(options =>
+        {
+            options.AddServerHeader = false;
+            options.ConfigureHttpsDefaults(https =>
+            {
+                using var ecdsa = ECDsa.Create();
+                var ca = options.ApplicationServices.GetRequiredService<ICertificateAuthority>();
+                var certificateRequest = new CertificateRequest($"CN=localhost", ecdsa, HashAlgorithmName.SHA256);
+                certificateRequest.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
+                certificateRequest.CertificateExtensions.Add(
+                    new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
+                var subjectAlternativeNameBuilder = new SubjectAlternativeNameBuilder();
+                subjectAlternativeNameBuilder.AddDnsName("localhost");
+                certificateRequest.CertificateExtensions.Add(subjectAlternativeNameBuilder.Build());
+                var response = ca.SignCertificateRequest(
+                    certificateRequest);
+                if (response is not SignCertificateResponse.Success success)
+                {
+                    throw new InvalidOperationException("Could not create server certificate");
+                }
+
+                https.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                var cert = success.Certificate.CopyWithPrivateKey(ecdsa);
+                https.ServerCertificate = cert;
+            });
+        }).UseUrls($"https://*:{port}");
         var app = builder.Build();
         app.UseForwardedHeaders(forwardedHeadersOptions)
             .UseHealthChecks("/health")
