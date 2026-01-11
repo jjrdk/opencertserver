@@ -1,14 +1,8 @@
-﻿namespace OpenCertServer.Ca.Utils;
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
+
+namespace OpenCertServer.Ca.Utils.X509Extensions;
 
 public static partial class X509CertificatesExtensions
 {
@@ -22,24 +16,16 @@ public static partial class X509CertificatesExtensions
             var subjectAlternativeName = cert.Extensions
                 .Where(n => n.Oid?.Value == SubjectAlternateNameOid)
                 .Select(n => new AsnEncodedData(n.Oid, n.RawData))
-                .Select(n => n.Format(true))
-                .FirstOrDefault();
+                .Select(n => n.Format(true));
 
-            return string.IsNullOrWhiteSpace(subjectAlternativeName)
-                ? []
-                : subjectAlternativeName.Split(["\r\n", "\r", "\n"], StringSplitOptions.RemoveEmptyEntries)
-                    .Select(n => DnsNameRegex().Match(n))
-                    .Where(r => r.Success && !string.IsNullOrWhiteSpace(r.Groups[1].Value))
-                    .Select(r => r.Groups[1].Value)
-                    .ToHashSet();
+            return subjectAlternativeName.SelectMany(x => string.IsNullOrWhiteSpace(x)
+                    ? []
+                    : x.Split(["\r\n", "\r", "\n"], StringSplitOptions.RemoveEmptyEntries)
+                        .Select(n => DnsNameRegex().Match(n))
+                        .Where(r => r.Success && !string.IsNullOrWhiteSpace(r.Groups[1].Value))
+                        .Select(r => r.Groups[1].Value))
+                .ToHashSet();
         }
-//
-//        public string ToPem()
-//        {
-//            return string.Concat("-----BEGIN CERTIFICATE-----\n",
-//                Convert.ToBase64String(cert.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks),
-//                "\n-----END CERTIFICATE-----");
-//        }
 
         public string ToPemChain(X509Certificate2Collection issuers)
         {

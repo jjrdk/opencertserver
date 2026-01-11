@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Est.Server.Handlers;
+﻿using OpenCertServer.Ca.Utils.X509Extensions;
+
+namespace OpenCertServer.Est.Server.Handlers;
 
 using System.IO;
 using System.Net;

@@ -1,10 +1,11 @@
+using OpenCertServer.Ca.Utils.X509Extensions;
+
 namespace OpenCertServer.CertServer;
 
 using System.Text;
 using Acme.Abstractions.IssuanceServices;
 using Acme.Abstractions.Model;
 using Ca;
-using Ca.Utils;
 
 internal sealed class DefaultIssuer : IIssueCertificates
 {

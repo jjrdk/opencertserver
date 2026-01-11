@@ -2,7 +2,7 @@ using System.Text;
 using OpenCertServer.Acme.Abstractions.IssuanceServices;
 using OpenCertServer.Acme.Abstractions.Model;
 using OpenCertServer.Ca;
-using OpenCertServer.Ca.Utils;
+using OpenCertServer.Ca.Utils.X509Extensions;
 
 namespace OpenCertServer.Lambda;
 

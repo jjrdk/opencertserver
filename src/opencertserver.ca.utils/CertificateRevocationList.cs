@@ -2,6 +2,7 @@ using System.Formats.Asn1;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using OpenCertServer.Ca.Utils.X509Extensions;
 
 namespace OpenCertServer.Ca.Utils;
 
@@ -21,7 +22,7 @@ public class CertificateRevocationList
     /// <param name="thisUpdate">The <see cref="DateTimeOffset"/> when the CRL was issued.</param>
     /// <param name="nextUpdate">The <see cref="DateTimeOffset"/> when the next CRL will be issued.</param>
     /// <param name="revokedCertificates">The <see cref="List{T}"/> of revoked <see cref="RevokedCertificates"/>.</param>
-    /// <param name="extensions">The CRL extionsions.</param>
+    /// <param name="extensions">The CRL extensions.</param>
     public CertificateRevocationList(
         CrlVersion version,
         BigInteger crlNumber,
@@ -31,7 +32,7 @@ public class CertificateRevocationList
         DateTimeOffset thisUpdate,
         DateTimeOffset? nextUpdate,
         IEnumerable<RevokedCertificate> revokedCertificates,
-        IEnumerable<CrlExtension>? extensions)
+        IEnumerable<X509Extension>? extensions)
     {
         Version = version;
         CrlNumber = crlNumber;
@@ -84,7 +85,7 @@ public class CertificateRevocationList
     /// </summary>
     public DateTimeOffset? NextUpdate { get; }
 
-    public IReadOnlyCollection<CrlExtension> Extensions { get; }
+    public IReadOnlyCollection<X509Extension> Extensions { get; }
 
     /// <summary>
     /// Defines the CRL version.
@@ -96,6 +97,15 @@ public class CertificateRevocationList
         V3 = 2
     }
 
+    public static CertificateRevocationList LoadPem(
+        ReadOnlySpan<char> pemCrl,
+        AsymmetricAlgorithm? issuerPublicKey = null)
+    {
+        pemCrl = pemCrl.Trim("-----BEGIN X509 CRL-----").Trim("-----END X509 CRL-----");
+        var pemBytes = Convert.FromBase64String(pemCrl.ToString());
+        return Load(pemBytes, issuerPublicKey);
+    }
+
     /// <summary>
     /// Reads and verifies a DER-encoded CRL using the issuer's public key.
     /// </summary>
@@ -103,7 +113,7 @@ public class CertificateRevocationList
     /// <param name="issuerPublicKey">The public key of the issuer.</param>
     /// <returns>A populated instance of a <see cref="CertificateRevocationList"/>.</returns>
     /// <exception cref="CryptographicException">Raised if the signature cannot be verified or the content is malformed.</exception>
-    public static CertificateRevocationList Load(ReadOnlyMemory<byte> crl, AsymmetricAlgorithm issuerPublicKey)
+    public static CertificateRevocationList Load(ReadOnlyMemory<byte> crl, AsymmetricAlgorithm? issuerPublicKey = null)
     {
         // CRL ::= SEQUENCE {
         //     tbsCertList             TBSCertList,
@@ -111,8 +121,7 @@ public class CertificateRevocationList
         //     signatureValue          BIT STRING
         // }
 
-        var tbsSpan = ReadSignedContent(crl);
-
+        var tbsSpan = issuerPublicKey == null ? ReadOnlySpan<byte>.Empty : ReadSignedContent(crl);
         BigInteger crlNumber = 0;
 
         var reader = new AsnReader(crl, AsnEncodingRules.DER);
@@ -124,7 +133,7 @@ public class CertificateRevocationList
 
         var signatureAlgo = GetHashAlgorithmFromOid(algoIdentifier.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier));
 
-        if (!VerifySignature(tbsSpan, signature, issuerPublicKey, signatureAlgo))
+        if (issuerPublicKey != null && !VerifySignature(tbsSpan, signature, issuerPublicKey!, signatureAlgo))
         {
             throw new CryptographicException("CRL signature verification failed.");
         }
@@ -144,7 +153,7 @@ public class CertificateRevocationList
 
         // revokedCertificates
         var list = ReadRevokedCertificates(ref tbsCertList, version);
-        var crlExtensionList = new List<CrlExtension>();
+        X509Extension[] crlExtensionList = [];
         if (version > 0 && tbsCertList.HasData)
         {
             var crlExtensionsExplicit =
@@ -152,46 +161,7 @@ public class CertificateRevocationList
             var crlExtensions = crlExtensionsExplicit.ReadSequence();
             crlExtensionsExplicit.ThrowIfNotEmpty();
 
-            while (crlExtensions.HasData)
-            {
-                var extension = crlExtensions.ReadSequence();
-                Oid? extnOid = null; //Oids.GetSharedOrNullOid(ref extension);
-                bool isCritical = false;
-                if (extnOid is null)
-                {
-                    extension.ReadObjectIdentifier();
-                }
-
-                if (extension.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean))
-                {
-                    isCritical = extension.ReadBoolean();
-                }
-
-                if (!extension.TryReadPrimitiveOctetString(out var extnValue))
-                {
-                    throw new CryptographicException("Invalid DER encoding for CRL extension value.");
-                }
-
-                // Since we're only matching against OIDs that come from GetSharedOrNullOid
-                // we can use ReferenceEquals and skip the Value string equality check in
-                // the Oid.ValueEquals extension method (as it will always be preempted by
-                // the ReferenceEquals or will evaluate to false).
-                if (ReferenceEquals(extnOid, new Oid()))
-                {
-                    var crlNumberReader = new AsnReader(
-                        extnValue,
-                        AsnEncodingRules.DER);
-
-                    crlNumber = crlNumberReader.ReadInteger();
-                    crlNumberReader.ThrowIfNotEmpty();
-                }
-
-                var crlExtension = new RawCrlExtension(
-                    extnOid ?? new Oid(),
-                    isCritical,
-                    extnValue.ToArray());
-                crlExtensionList.Add(crlExtension);
-            }
+            crlExtensionList = ReadCrlExtensions(crlExtensions).ToArray();
         }
 
         tbsCertList.ThrowIfNotEmpty();
@@ -206,6 +176,58 @@ public class CertificateRevocationList
             nextUpdate,
             list,
             crlExtensionList);
+    }
+
+    private static IEnumerable<X509Extension> ReadCrlExtensions(AsnReader crlExtensions)
+    {
+        while (crlExtensions.HasData)
+        {
+            var extension = crlExtensions.ReadSequence();
+            var isCritical = false;
+            var extnOid = new Oid(extension.ReadObjectIdentifier());
+
+            if (extension.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean))
+            {
+                isCritical = extension.ReadBoolean();
+            }
+
+            if (!extension.TryReadPrimitiveOctetString(out var extnValue))
+            {
+                throw new CryptographicException("Invalid DER encoding for CRL extension value.");
+            }
+
+            switch (extnOid.Value)
+            {
+                case "1.3.6.1.5.5.7.1.1": // Authority Information Access
+                    yield return new X509AuthorityInformationAccessExtension(extnValue.Span, isCritical);
+                    break;
+                case "2.5.29.35": // Authority Key Identifier
+                    yield return new X509AuthorityKeyIdentifierExtension(extnValue.Span, isCritical);
+                    break;
+                case "2.5.29.20": // CRL Number
+                {
+                    yield return new X509CrlNumberExtension(extnValue.Span, isCritical);
+                    break;
+                }
+                case "2.5.29.27": // Delta CRL Indicator
+                {
+                    yield return new X509DeltaCrlIndicatorExtension(extnValue.Span, isCritical);
+                    break;
+                }
+//                    case "2.5.29.46": // Freshest CRL
+//                        yield return new X509FreshestCrlExtension(extnValue.Span, isCritical);
+//                        break;
+//                    case "2.5.29.18": // Issuer Alternative Name
+//                        crlExtensionList.Add(new X509IssuerAltNameExtension(extnValue.Span, isCritical));
+//                        break;
+//                    case "2.5.29.28": // Issuing Distribution Point
+//                        crlExtensionList.Add(new X509IssuingDistributionPointExtension(extnValue.Span, isCritical));
+//                        break;
+                default:
+                    yield return new X509RawExtension(extnOid, isCritical, extnValue.ToArray());
+                    break;
+            }
+        }
     }
 
     /// <summary>
@@ -383,7 +405,7 @@ public class CertificateRevocationList
         X509RevocationReason? reason = null;
         X500DistinguishedName? certificateIssuer = null;
         DateTimeOffset? invalidityDate = null;
-        bool isCritical = false;
+        var isCritical = false;
 
         if (extension.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean))
         {

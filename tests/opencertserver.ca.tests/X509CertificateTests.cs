@@ -1,5 +1,6 @@
 namespace OpenCertServer.Ca.Tests;
 
+using Utils.X509Extensions;
 using System;
 using System.IO;
 using System.Linq;
@@ -7,7 +8,6 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
-using Utils;
 using Xunit;
 
 public sealed class X509CertificateTests : IDisposable
