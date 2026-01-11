@@ -57,20 +57,14 @@ public sealed partial class AcmeClient : IAcmeClient
 
         var certificateChain =
             await placedOrder.Order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10);
-        var collection = new X509Certificate2Collection();
-        collection.Add(certificateChain.Certificate);
+        var collection = new X509Certificate2Collection { certificateChain.Certificate };
         foreach (var cert in certificateChain.Issuers)
         {
             collection.Add(cert);
         }
 
         var pfxBytes =
-            collection.ExportPkcs12(Pkcs12ExportPbeParameters.Default, password); //certificateChain.ToPfx(keyPair);
-//
-//        pfxBuilder.FullChain = true;
-//
-//        var pfxBytes = pfxBuilder.Build(CertificateFriendlyName, password);
-
+            collection.ExportPkcs12(Pkcs12ExportPbeParameters.Default, password);
         LogCertificateAcquired();
 
         return X509CertificateLoader.LoadPkcs12(pfxBytes, null);

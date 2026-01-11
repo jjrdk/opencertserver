@@ -17,7 +17,7 @@ public interface IResourceContext<T>
     /// <summary>
     /// The timespan after which to retry the request
     /// </summary>
-    int RetryAfter { get; }
+    TimeSpan RetryAfter { get; }
 
     /// <summary>
     /// Gets the ACME resource.

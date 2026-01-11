@@ -76,13 +76,13 @@ public static class IOrderContextExtensions
 
             order = await context.Finalize(csr, key);
 
-            while ((order == null || order.Status == OrderStatus.Processing) && retryCount-- > 0)
+            while (order.Status == OrderStatus.Processing && retryCount-- > 0)
             {
-                await Task.Delay(TimeSpan.FromSeconds(Math.Max(context.RetryAfter, 1)));
+                await Task.Delay(context.RetryAfter);
                 order = await context.Resource();
             }
 
-            if (order?.Status != OrderStatus.Valid)
+            if (order.Status != OrderStatus.Valid)
             {
                 throw new AcmeException(Strings.ErrorFinalizeFailed);
             }

@@ -85,7 +85,7 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
         using var server = host.GetTestServer();
         var client = server.CreateClient();
 
-        var initializationTimeout = await Task.WhenAny(Task.Delay(10000, _fakeClient.OrderPlacedCts.Token));
+        var initializationTimeout = await Task.WhenAny(Task.Delay(1000, _fakeClient.OrderPlacedCts.Token));
         Assert.True(initializationTimeout.IsCanceled, "Fake LE client initialization timed out");
 
         var response = await client.GetAsync($"/.well-known/acme-challenge/{AcmeToken}");
@@ -93,7 +93,7 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(AcmeResponse, await response.Content.ReadAsStringAsync());
 
-        var finalizationTimeout = await Task.WhenAny(Task.Delay(10000, _fakeClient.OrderFinalizedCts.Token));
+        var finalizationTimeout = await Task.WhenAny(Task.Delay(1000, _fakeClient.OrderFinalizedCts.Token));
         Assert.True(finalizationTimeout.IsCanceled, "Fake LE client finalization timed out");
 
         var acmeRenewalService = (AcmeRenewalService)server.Services.GetRequiredService<IAcmeRenewalService>();

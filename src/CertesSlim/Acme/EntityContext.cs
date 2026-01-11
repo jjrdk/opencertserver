@@ -25,7 +25,7 @@ internal class EntityContext<T>
     /// <summary>
     /// The timespan after which to retry the request
     /// </summary>
-    public int RetryAfter { get; protected set; }
+    public TimeSpan RetryAfter { get; protected set; }
 
 
     /// <summary>
@@ -37,6 +37,7 @@ internal class EntityContext<T>
         IAcmeContext context,
         Uri location)
     {
+        RetryAfter = TimeSpan.FromSeconds(1);
         Context = context;
         Location = location;
     }
