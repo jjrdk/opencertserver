@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Ca;
+﻿using System.Collections.Immutable;
+
+namespace OpenCertServer.Ca;
 
 using System.Security.Cryptography.X509Certificates;
 
@@ -19,11 +21,11 @@ public abstract class SignCertificateResponse
 
     public sealed class Error : SignCertificateResponse
     {
-        internal Error(params string[] errors)
+        internal Error(params Span<string> errors)
         {
-            Errors = errors;
+            Errors = [..errors];
         }
 
-        public string[] Errors { get; }
+        public ImmutableArray<string> Errors { get; }
     }
 }

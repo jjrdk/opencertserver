@@ -30,6 +30,7 @@ public abstract class WebServerTests : IDisposable
         using var ecdsa = ECDsa.Create();
         var ecdsaReq = new CertificateRequest("CN=Test Server", ecdsa, HashAlgorithmName.SHA256);
         ecdsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
+        ecdsaReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(ecdsaReq.PublicKey, false));
         var ecdsaCert = ecdsaReq.CreateSelfSigned(
             DateTimeOffset.UtcNow.Date,
             DateTimeOffset.UtcNow.Date.AddYears(1));
@@ -41,6 +42,7 @@ public abstract class WebServerTests : IDisposable
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pss);
         rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
+        rsaReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(rsaReq.PublicKey, false));
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
         var rsaPublic = X509CertificateLoader.LoadCertificate(ecdsaCert.GetRawCertData());
 
@@ -65,7 +67,7 @@ public abstract class WebServerTests : IDisposable
                     sc.AddRouting()
                         .AddAuthorization()
                         .AddSingleton<IStoreCertificates>(new InMemoryCertificateStore(ecdsaPrivate))
-                        .AddEstServer(rsaPrivate, ecdsaPrivate)
+                        .AddEstServer(new CaConfiguration(rsaPrivate, ecdsaPrivate, TimeSpan.FromDays(90), ["test"], []))
                         .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
                         .AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
                         .AddCertificate(CertificateAuthenticationDefaults.AuthenticationScheme);

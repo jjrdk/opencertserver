@@ -1,13 +1,13 @@
 using System.Runtime.CompilerServices;
-using System.Security.Authentication;
-using System.Security.Cryptography;
-using OpenCertServer.Ca;
-using opencertserver.ca.server;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
 namespace OpenCertServer.CertServer;
 
+using System.Security.Authentication;
+using System.Security.Cryptography;
+using OpenCertServer.Ca;
+using opencertserver.ca.server;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Builder;
@@ -34,21 +34,60 @@ public sealed class Program
         var builder = WebApplication.CreateBuilder(args);
         builder.Configuration.AddEnvironmentVariables().AddCommandLine(args);
         var services = builder.Services;
-        var portIndex = Array.IndexOf(args, "--port");
-        var port = portIndex >= 0 ? int.Parse(args[portIndex + 1]) : 5001;
-        var dn = Array.IndexOf(args, "--dn");
-        if (dn >= 0)
+        var port = int.TryParse(builder.Configuration.GetSection("port").Value, out var p)
+            ? p
+            : 5001; //portIndex >= 0 ? int.Parse(args[portIndex + 1]) : 5001;
+        var index = 0;
+        List<string> ocspUrls = ["http://localhost/ocsp"];
+        List<string> caIssuerUrls = [];
+        while (index >= 0)
         {
-            var name = args[dn + 1];
+            index = Array.IndexOf(args, "--ocsp", index);
+            if (index < 0)
+            {
+                continue;
+            }
+
+            ocspUrls.Add(args[index + 1]);
+            index++;
+        }
+
+        index = 0;
+        while (index >= 0)
+        {
+            index = Array.IndexOf(args, "--ca-issuer", index);
+            if (index < 0)
+            {
+                continue;
+            }
+
+            caIssuerUrls.Add(args[index + 1]);
+            index++;
+        }
+
+        var dn = builder.Configuration.GetSection("dn");
+        if (dn.Value is not null)
+        {
             services = services.AddInMemoryEstServer(
-                new X500DistinguishedName(name.StartsWith("CN=") ? name : $"CN={name}"));
+                new X500DistinguishedName(
+                    dn.Value.StartsWith("CN=") ? dn.Value : $"CN={dn.Value}"),
+                TimeSpan.FromDays(90),
+                ocspUrls.ToArray(),
+                caIssuerUrls.ToArray());
         }
         else
         {
-            var rsaCert = await CreateCert(args, "--rsa", "--rsa-key");
-            var ecdsaCert = await CreateCert(args, "--ec", "--ec-key");
+            var certs = await Task.WhenAll(
+                CreateCert(args, "--rsa", "--rsa-key"),
+                CreateCert(args, "--ec", "--ec-key"));
 
-            services = services.AddEstServer(rsaCert, ecdsaCert);
+            services = services.AddEstServer(
+                new CaConfiguration(
+                    certs[0],
+                    certs[1],
+                    TimeSpan.FromDays(90),
+                    ocspUrls.ToArray(),
+                    caIssuerUrls.ToArray()));
         }
 
         var a = Array.IndexOf(args, "--authority");

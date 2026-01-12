@@ -31,6 +31,7 @@ public sealed class EstClientTests : IDisposable
         using var ecdsa = ECDsa.Create();
         var ecdsaReq = new CertificateRequest("CN=Test Server", ecdsa, HashAlgorithmName.SHA256);
         ecdsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
+        ecdsaReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(ecdsaReq.PublicKey, false));
         var ecdsaCert = ecdsaReq.CreateSelfSigned(
             DateTimeOffset.UtcNow.Date,
             DateTimeOffset.UtcNow.Date.AddYears(1));
@@ -41,6 +42,7 @@ public sealed class EstClientTests : IDisposable
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pss);
         rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
+        rsaReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(rsaReq.PublicKey, false));
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
 
         var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaCert).Build();
@@ -68,7 +70,7 @@ public sealed class EstClientTests : IDisposable
                     sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
                         .AddCertificate();
                     sc.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore(ecdsaPrivate));
-                    sc.AddEstServer(rsaPrivate, ecdsaPrivate);
+                    sc.AddEstServer(new CaConfiguration(rsaPrivate, ecdsaPrivate, TimeSpan.FromDays(90), ["test"], []));
                     sc.ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
                 })
                 .Configure(app => app.UseAuthentication().UseAuthorization().UseEstServer(attribute, attribute))

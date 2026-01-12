@@ -315,70 +315,76 @@ public static class Oids
     public static Oid OrganizationalUnitOid => field ??= OrganizationalUnit.InitializeOid();
     public static Oid EmailAddressOid => field ??= EmailAddress.InitializeOid();
 
-    public static Oid InitializeOid(this string oidValue)
+    extension(string oidValue)
     {
-        var oid = new Oid(oidValue, null);
+        public Oid InitializeOid()
+        {
+            var oid = new Oid(oidValue, null);
 
-        // Do not remove - the FriendlyName property get has side effects.
-        // On read, it initializes the friendly name based on the value and
-        // locks it to prevent any further changes.
-        _ = oid.FriendlyName;
+            // Do not remove - the FriendlyName property get has side effects.
+            // On read, it initializes the friendly name based on the value and
+            // locks it to prevent any further changes.
+            _ = oid.FriendlyName;
 
-        return oid;
+            return oid;
+        }
     }
 
-    public static Oid GetSharedOrNewOid(this AsnReader asnValueReader)
+    extension(AsnReader asnValueReader)
     {
-        var ret = asnValueReader.GetSharedOrNullOid();
-
-        if (ret is not null)
+        public Oid GetSharedOrNewOid()
         {
+            var ret = asnValueReader.GetSharedOrNullOid();
+
+            if (ret is not null)
+            {
+                return ret;
+            }
+
+            var oidValue = asnValueReader.ReadObjectIdentifier();
+            return new Oid(oidValue, null);
+        }
+
+        public Oid? GetSharedOrNullOid(Asn1Tag? expectedTag = null)
+        {
+            var tag = asnValueReader.PeekTag();
+
+            // This isn't a valid OID, so return null and let whatever's going to happen happen.
+            if (tag.IsConstructed)
+            {
+                return null;
+            }
+
+            var expected = expectedTag.GetValueOrDefault(Asn1Tag.ObjectIdentifier);
+
+            // Not the tag we're expecting, so don't match.
+            if (!tag.HasSameClassAndValue(expected))
+            {
+                return null;
+            }
+
+            var contentBytes = asnValueReader.PeekContentBytes().Span;
+
+            var ret = contentBytes switch
+            {
+                [0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x09, 0x01] => EmailAddressOid,
+                [0x55, 0x04, 0x03] => CommonNameOid,
+                [0x55, 0x04, 0x06] => CountryOrRegionNameOid,
+                [0x55, 0x04, 0x07] => LocalityNameOid,
+                [0x55, 0x04, 0x08] => StateOrProvinceNameOid,
+                [0x55, 0x04, 0x0A] => OrganizationOid,
+                [0x55, 0x04, 0x0B] => OrganizationalUnitOid,
+                [0x55, 0x1D, 0x14] => CrlNumberOid,
+                _ => null,
+            };
+
+            if (ret is not null)
+            {
+                // Move to the next item.
+                asnValueReader.ReadEncodedValue();
+            }
+
             return ret;
         }
-
-        var oidValue = asnValueReader.ReadObjectIdentifier();
-        return new Oid(oidValue, null);
-    }
-
-    public static Oid? GetSharedOrNullOid(this AsnReader asnValueReader, Asn1Tag? expectedTag = null)
-    {
-        var tag = asnValueReader.PeekTag();
-
-        // This isn't a valid OID, so return null and let whatever's going to happen happen.
-        if (tag.IsConstructed)
-        {
-            return null;
-        }
-
-        var expected = expectedTag.GetValueOrDefault(Asn1Tag.ObjectIdentifier);
-
-        // Not the tag we're expecting, so don't match.
-        if (!tag.HasSameClassAndValue(expected))
-        {
-            return null;
-        }
-
-        var contentBytes = asnValueReader.PeekContentBytes().Span;
-
-        var ret = contentBytes switch
-        {
-            [0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x09, 0x01] => EmailAddressOid,
-            [0x55, 0x04, 0x03] => CommonNameOid,
-            [0x55, 0x04, 0x06] => CountryOrRegionNameOid,
-            [0x55, 0x04, 0x07] => LocalityNameOid,
-            [0x55, 0x04, 0x08] => StateOrProvinceNameOid,
-            [0x55, 0x04, 0x0A] => OrganizationOid,
-            [0x55, 0x04, 0x0B] => OrganizationalUnitOid,
-            [0x55, 0x1D, 0x14] => CrlNumberOid,
-            _ => null,
-        };
-
-        if (ret is not null)
-        {
-            // Move to the next item.
-            asnValueReader.ReadEncodedValue();
-        }
-
-        return ret;
     }
 }

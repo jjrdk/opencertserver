@@ -7,6 +7,29 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using Utils;
 
+public record CaConfiguration
+{
+    public X509Certificate2 RsaCertificate { get; }
+    public X509Certificate2 EcdsaCertificate { get; }
+    public TimeSpan CertificateValidity { get; }
+    public string[] OcspUrls { get; }
+    public string[] CaIssuersUrls { get; }
+
+    public CaConfiguration(
+        X509Certificate2 rsaCertificate,
+        X509Certificate2 ecdsaCertificate,
+        TimeSpan certificateValidity,
+        string[] ocspUrls,
+        string[] caIssuersUrls)
+    {
+        RsaCertificate = rsaCertificate;
+        EcdsaCertificate = ecdsaCertificate;
+        CertificateValidity = certificateValidity;
+        OcspUrls = ocspUrls;
+        CaIssuersUrls = caIssuersUrls;
+    }
+}
+
 /// <summary>
 /// Defines the certificate authority class.
 /// </summary>
@@ -25,30 +48,24 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
       | X509KeyUsageFlags.KeyEncipherment
       | X509KeyUsageFlags.NonRepudiation;
 
+    private readonly CaConfiguration _config;
     private readonly ILogger<ICertificateAuthority> _logger;
-    private readonly X509Certificate2 _rsaCertificate;
-    private readonly X509Certificate2 _ecdsaCertificate;
     private readonly IStoreCertificates _certificateStore;
-    private readonly TimeSpan _certificateValidity;
     private readonly Func<X509Chain, bool> _x509ChainValidation;
     private readonly IValidateCertificateRequests[] _validators;
     private readonly bool _standAlone;
 
     private CertificateAuthority(
-        X509Certificate2 rsaCertificate,
-        X509Certificate2 ecdsaCertificate,
+        CaConfiguration config,
         IStoreCertificates certificateStore,
-        TimeSpan certificateValidity,
         Func<X509Chain, bool> x509ChainValidation,
         ILogger<CertificateAuthority> logger,
         Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
         bool standAlone = true,
         params IValidateCertificateRequests[] validators)
         : this(
-            rsaCertificate,
-            ecdsaCertificate,
+            config,
             certificateStore,
-            certificateValidity,
             x509ChainValidation,
             logger,
             certificateBackup,
@@ -60,56 +77,52 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     /// <summary>
     /// Initializes a new instance of the <see cref="CertificateAuthority"/> class.
     /// </summary>
-    /// <param name="rsaCertificate"></param>
-    /// <param name="ecdsaCertificate"></param>
+    /// <param name="config">The <see cref="CaConfiguration"/>.</param>
     /// <param name="certificateStore"></param>
-    /// <param name="certificateValidity"></param>
     /// <param name="x509ChainValidation"></param>
     /// <param name="logger"></param>
     /// <param name="certificateBackup"></param>
     /// <param name="validators"></param>
     /// <exception cref="ArgumentException"></exception>
     public CertificateAuthority(
-        X509Certificate2 rsaCertificate,
-        X509Certificate2 ecdsaCertificate,
+        CaConfiguration config,
         IStoreCertificates certificateStore,
-        TimeSpan certificateValidity,
         Func<X509Chain, bool> x509ChainValidation,
         ILogger<CertificateAuthority> logger,
         Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
         params IValidateCertificateRequests[] validators)
     {
-        if (!rsaCertificate.HasPrivateKey)
+        if (!config.RsaCertificate.HasPrivateKey)
         {
-            throw new ArgumentException("RSA certificate must have private key", nameof(rsaCertificate));
+            throw new ArgumentException("RSA certificate must have private key", nameof(config));
         }
 
-        if (!ecdsaCertificate.HasPrivateKey)
+        if (!config.EcdsaCertificate.HasPrivateKey)
         {
-            throw new ArgumentException("ECDSA certificate must have private key", nameof(ecdsaCertificate));
+            throw new ArgumentException("ECDSA certificate must have private key", nameof(config));
         }
 
+        _config = config;
         _logger = logger;
-        _rsaCertificate = rsaCertificate;
-        _ecdsaCertificate = ecdsaCertificate;
         _certificateStore = certificateStore;
-        _certificateValidity = certificateValidity;
         _x509ChainValidation = x509ChainValidation;
         _validators = validators.Concat(
             [
                 new OwnCertificateValidation(
-                    [_rsaCertificate, _ecdsaCertificate],
+                    [_config.RsaCertificate, _config.EcdsaCertificate],
                     _logger),
                 new DistinguishedNameValidation()
             ])
             .ToArray();
-        certificateBackup?.Invoke(_rsaCertificate, _ecdsaCertificate);
+        certificateBackup?.Invoke(_config.RsaCertificate, _config.EcdsaCertificate);
     }
 
     public static CertificateAuthority Create(
         X500DistinguishedName distinguishedName,
         Func<X509Certificate2, IStoreCertificates> certificateStore,
         TimeSpan certificateValidity,
+        string[] ocspUrls,
+        string[] caIssuersUrls,
         ILogger<CertificateAuthority> logger,
         Func<X509Chain, bool>? chainValidation = null,
         Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
@@ -123,11 +136,15 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             distinguishedName,
             UsageFlags,
             certificateValidity);
-        var ca = new CertificateAuthority(
+        var config = new CaConfiguration(
             rsaCert,
             ecdsaCert,
-            certificateStore(ecdsaCert),
             certificateValidity,
+            ocspUrls,
+            caIssuersUrls);
+        var ca = new CertificateAuthority(
+            config,
+            certificateStore(ecdsaCert),
             chainValidation ?? (_ => true),
             logger,
             certificateBackup,
@@ -148,20 +165,38 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
 
         if (_logger.IsEnabled(LogLevel.Information))
         {
-            LogCreatingCertificateForSubjectname(request.SubjectName.Name);
+            LogCreatingCertificateForSubjectName(request.SubjectName.Name);
         }
+
+        var toRemove = request.CertificateExtensions
+            .Where(ext => ext is X509AuthorityInformationAccessExtension or X509AuthorityKeyIdentifierExtension)
+            .ToArray();
+        foreach (var ext in toRemove)
+        {
+            request.CertificateExtensions.Remove(ext);
+        }
+        request.CertificateExtensions.Add(
+            new X509AuthorityInformationAccessExtension(_config.OcspUrls, _config.CaIssuersUrls));
+        request.CertificateExtensions.Add(
+            X509AuthorityKeyIdentifierExtension.CreateFromCertificate(
+                request.PublicKey.Oid.Value switch
+                {
+                    Oids.Rsa => _config.RsaCertificate,
+                    Oids.EcPublicKey => _config.EcdsaCertificate,
+                    _ => throw new InvalidOperationException($"Invalid Oid: {request.PublicKey.Oid.Value}")
+                }, true, true));
 
         var cert = request.PublicKey.Oid.Value switch
         {
-            CertificateConstants.RsaOid => request.Create(
-                _rsaCertificate,
+            Oids.Rsa => request.Create(
+                _config.RsaCertificate,
                 DateTimeOffset.UtcNow.Date,
-                DateTimeOffset.UtcNow.Date.Add(_certificateValidity),
+                DateTimeOffset.UtcNow.Date.Add(_config.CertificateValidity),
                 BitConverter.GetBytes(DateTimeOffset.UtcNow.Ticks)),
-            CertificateConstants.EcdsaOid => request.Create(
-                _ecdsaCertificate,
+            Oids.EcPublicKey => request.Create(
+                _config.EcdsaCertificate,
                 DateTimeOffset.UtcNow.Date,
-                DateTimeOffset.UtcNow.Date.Add(_certificateValidity),
+                DateTimeOffset.UtcNow.Date.Add(_config.CertificateValidity),
                 BitConverter.GetBytes(DateTimeOffset.UtcNow.Ticks)),
             _ => null
         };
@@ -180,8 +215,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             RevocationFlag = X509RevocationFlag.ExcludeRoot
         };
 
-        chain.ChainPolicy.ExtraStore.Add(_rsaCertificate);
-        chain.ChainPolicy.ExtraStore.Add(_ecdsaCertificate);
+        chain.ChainPolicy.ExtraStore.Add(_config.RsaCertificate);
+        chain.ChainPolicy.ExtraStore.Add(_config.EcdsaCertificate);
 
         var chainBuilt = _standAlone || chain.Build(cert);
 
@@ -193,8 +228,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
                 [
                     request.PublicKey.Oid.Value switch
                     {
-                        "1.2.840.113549.1.1.1" => _rsaCertificate,
-                        "1.2.840.10045.2.1" => _ecdsaCertificate,
+                        Oids.Rsa => _config.RsaCertificate,
+                        Oids.EcPublicKey => _config.EcdsaCertificate,
                         _ => throw new InvalidOperationException($"Invalid Oid: {request.PublicKey.Oid.Value}")
                     }
                 ]);
@@ -235,8 +270,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     {
         return
         [
-            X509Certificate2.CreateFromPem(_rsaCertificate.ExportCertificatePem()),
-            X509Certificate2.CreateFromPem(_ecdsaCertificate.ExportCertificatePem())
+            X509Certificate2.CreateFromPem(_config.RsaCertificate.ExportCertificatePem()),
+            X509Certificate2.CreateFromPem(_config.EcdsaCertificate.ExportCertificatePem())
         ];
     }
 
@@ -255,7 +290,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         X509KeyUsageFlags usageFlags,
         TimeSpan certificateValidity)
     {
-        using var parent = RSA.Create(4096);
+        using var parent = RSA.Create(3072);
         var parentReq = new CertificateRequest(
             distinguishedName,
             parent,
@@ -297,8 +332,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
 
     public void Dispose()
     {
-        _rsaCertificate.Dispose();
-        _ecdsaCertificate.Dispose();
+        _config.RsaCertificate.Dispose();
+        _config.EcdsaCertificate.Dispose();
     }
 
     /// <summary>
@@ -330,32 +365,24 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         }
     }
 
-    private sealed partial class OwnCertificateValidation : IValidateCertificateRequests
+    private sealed partial class OwnCertificateValidation(X509Certificate2Collection serverCertificates, ILogger logger)
+        : IValidateCertificateRequests
     {
-        private readonly X509Certificate2Collection _serverCertificates;
-        private readonly ILogger _logger;
-
-        public OwnCertificateValidation(X509Certificate2Collection serverCertificates, ILogger logger)
-        {
-            _serverCertificates = serverCertificates;
-            _logger = logger;
-        }
-
         public bool Validate(CertificateRequest request, X509Certificate2? reenrollingFrom = null)
         {
             var result = reenrollingFrom == null
-             || _serverCertificates
+             || serverCertificates
                     .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);
             if (!result)
             {
-                LogCouldNotValidateReEnrollmentFromReEnrollingfrom(reenrollingFrom!.IssuerName.Name);
+                LogCouldNotValidateReEnrollmentFromReEnrollingFrom(reenrollingFrom!.IssuerName.Name);
             }
 
             return result;
         }
 
         [LoggerMessage(LogLevel.Error, "Could not validate re-enrollment from {ReenrollingFrom}")]
-        partial void LogCouldNotValidateReEnrollmentFromReEnrollingfrom(string reenrollingFrom);
+        partial void LogCouldNotValidateReEnrollmentFromReEnrollingFrom(string reenrollingFrom);
     }
 
     private sealed class DistinguishedNameValidation : IValidateCertificateRequests
@@ -372,7 +399,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     partial void LogCouldNotValidateRequest();
 
     [LoggerMessage(LogLevel.Information, "Creating certificate for {SubjectName}")]
-    partial void LogCreatingCertificateForSubjectname(string subjectName);
+    partial void LogCreatingCertificateForSubjectName(string subjectName);
 
     [LoggerMessage(LogLevel.Error, "{Errors}")]
     partial void LogErrors(string errors);

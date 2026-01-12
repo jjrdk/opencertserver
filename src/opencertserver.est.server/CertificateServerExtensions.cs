@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Certificate;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 
 namespace OpenCertServer.Est.Server;
 
@@ -23,6 +25,8 @@ public static class CertificateServerExtensions
         public IServiceCollection AddInMemoryEstServer(
             X500DistinguishedName distinguishedName,
             TimeSpan certificateValidity = default,
+            string[]? ocspUrls = null,
+            string[]? caIssuersUrls = null,
             Func<X509Chain, bool>? chainValidation = null)
         {
             services.AddSingleton<Func<X509Certificate2, IStoreCertificates>>(_ =>
@@ -30,12 +34,16 @@ public static class CertificateServerExtensions
 
             return services.AddEstServer(
                 distinguishedName,
+                ocspUrls,
+                caIssuersUrls,
                 certificateValidity,
                 chainValidation);
         }
 
         public IServiceCollection AddEstServer(
             X500DistinguishedName distinguishedName,
+            string[]? ocspUrls = null,
+            string[]? caIssuersUrls = null,
             TimeSpan certificateValidity = default,
             Func<X509Chain, bool>? chainValidation = null)
         {
@@ -45,6 +53,8 @@ public static class CertificateServerExtensions
                     distinguishedName,
                     sp.GetRequiredService<Func<X509Certificate2, IStoreCertificates>>(),
                     certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
+                    ocspUrls ?? [],
+                    caIssuersUrls ?? [],
                     sp.GetRequiredService<ILogger<CertificateAuthority>>(),
                     chainValidation);
                 return certificateAuthority;
@@ -54,25 +64,22 @@ public static class CertificateServerExtensions
         }
 
         public IServiceCollection AddEstServer(
-            X509Certificate2 rsaCertificate,
-            X509Certificate2 ecdsaCertificate,
+            CaConfiguration configuration,
             Func<X509Chain, bool>? chainValidation = null)
         {
-            if (rsaCertificate.PublicKey.Oid.Value != CertificateConstants.RsaOid)
+            if (configuration.RsaCertificate.PublicKey.Oid.Value != Oids.Rsa)
             {
                 throw new ArgumentException("Must be an RSA key certificate");
             }
 
-            if (ecdsaCertificate.PublicKey.Oid.Value != CertificateConstants.EcdsaOid)
+            if (configuration.EcdsaCertificate.PublicKey.Oid.Value != Oids.EcPublicKey)
             {
                 throw new ArgumentException("Must be an ECDSA key certificate");
             }
 
             return services.AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
-                    rsaCertificate,
-                    ecdsaCertificate,
+                    configuration,
                     sp.GetRequiredService<IStoreCertificates>(),
-                    TimeSpan.FromDays(90),
                     chainValidation ?? (_ => true),
                     sp.GetRequiredService<ILogger<CertificateAuthority>>()))
                 .InnerAddEstServer();

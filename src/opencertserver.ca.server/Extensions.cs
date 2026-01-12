@@ -21,7 +21,7 @@ public static class Extensions
         {
             var groupBuilder = endpoints.MapGroup("/ca");
             groupBuilder
-                .MapDelete("revoke", RevocationHandler.Handle).RequireAuthorization(policy =>
+                .MapDelete("/revoke", RevocationHandler.Handle).RequireAuthorization(policy =>
                 {
                     policy.RequireAuthenticatedUser();
                 });

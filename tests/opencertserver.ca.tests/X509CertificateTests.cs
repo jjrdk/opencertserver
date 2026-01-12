@@ -1,3 +1,5 @@
+using OpenCertServer.Ca.Utils;
+
 namespace OpenCertServer.Ca.Tests;
 
 using Utils.X509Extensions;
@@ -21,6 +23,8 @@ public sealed class X509CertificateTests : IDisposable
             new X500DistinguishedName("CN=Test"),
             x => new InMemoryCertificateStore(x),
             TimeSpan.FromHours(1),
+            ["test"],
+            [],
             new NullLogger<CertificateAuthority>());
     }
 

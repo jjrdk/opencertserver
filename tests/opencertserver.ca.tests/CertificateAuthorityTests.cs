@@ -18,6 +18,8 @@ public sealed class CertificateAuthorityTests : IDisposable
         using var ecdsa = ECDsa.Create();
         var ecdsaReq = new CertificateRequest("CN=Test Server", ecdsa, HashAlgorithmName.SHA256);
         ecdsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
+        ecdsaReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(new PublicKey(ecdsa),
+            X509SubjectKeyIdentifierHashAlgorithm.Sha256, false));
         var ecdsaCert = ecdsaReq.CreateSelfSigned(
             DateTimeOffset.UtcNow.Date,
             DateTimeOffset.UtcNow.Date.AddYears(1));
@@ -28,14 +30,14 @@ public sealed class CertificateAuthorityTests : IDisposable
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pss);
         rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
+        rsaReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(new PublicKey(rsa),
+            X509SubjectKeyIdentifierHashAlgorithm.Sha256, false));
         var rsaCert = rsaReq.CreateSelfSigned(
             DateTimeOffset.UtcNow.Date,
             DateTimeOffset.UtcNow.Date.AddYears(1));
         _authority = new CertificateAuthority(
-            rsaCert,
-            ecdsaCert,
+            new CaConfiguration(rsaCert, ecdsaCert, TimeSpan.FromDays(90), ["test"], []),
             new InMemoryCertificateStore(ecdsaCert),
-            TimeSpan.FromDays(90),
             _ => true,
             new NullLogger<CertificateAuthority>());
     }
@@ -68,8 +70,12 @@ public sealed class CertificateAuthorityTests : IDisposable
         var cert = _authority.SignCertificateRequest(b64) as SignCertificateResponse.Success;
 
         Assert.Equal(
-            string.Join("", req.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)),
-            string.Join("", cert!.Certificate.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)));
+            string.Join("",
+                req.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+                    .OrderBy(x => x)),
+            string.Join("",
+                cert!.Certificate.SubjectName.Format(true)
+                    .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)));
     }
 
     [Fact]
@@ -79,8 +85,10 @@ public sealed class CertificateAuthorityTests : IDisposable
         X509Certificate2 ecdsa = null!;
         var ca = CertificateAuthority.Create(
             new X500DistinguishedName("CN=test"),
-            x=> new InMemoryCertificateStore(x),
+            x => new InMemoryCertificateStore(x),
             TimeSpan.FromDays(1),
+            [],
+            [],
             NullLogger<CertificateAuthority>.Instance,
             null,
             (c1, c2) =>

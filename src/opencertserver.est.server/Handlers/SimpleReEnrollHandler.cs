@@ -32,11 +32,11 @@ internal sealed class SimpleReEnrollHandler
 
         var request = cert.PublicKey.Oid.Value switch
         {
-            CertificateConstants.EcdsaOid => new CertificateRequest(
+            Oids.EcPublicKey => new CertificateRequest(
                 cert.SubjectName,
                 cert.GetECDsaPublicKey()!,
                 HashAlgorithmName.SHA256),
-            CertificateConstants.RsaOid => new CertificateRequest(
+            Oids.Rsa => new CertificateRequest(
                 cert.SubjectName,
                 cert.GetRSAPublicKey()!,
                 HashAlgorithmName.SHA256,
