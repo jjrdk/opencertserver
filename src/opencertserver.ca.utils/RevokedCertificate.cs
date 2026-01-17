@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
+using System.Formats.Asn1;
+using OpenCertServer.Ca.Utils.X509;
 
 namespace OpenCertServer.Ca.Utils;
 
-public record RevokedCertificate
+public class RevokedCertificate : AsnValue
 {
     public RevokedCertificate(
         byte[] serialNumber,
@@ -17,4 +19,23 @@ public record RevokedCertificate
     public byte[] Serial { get; }
     public DateTimeOffset RevocationTime { get; }
     public IReadOnlyCollection<CertificateExtension> Extensions { get; }
+
+    public override void Encode(AsnWriter writer, Asn1Tag? tag = null)
+    {
+        using (writer.PushSequence(tag))
+        {
+            writer.WriteInteger(Serial);
+            writer.WriteGeneralizedTime(RevocationTime);
+            if (Extensions.Count > 0)
+            {
+                using (writer.PushSequence())
+                {
+                    foreach (var ext in Extensions)
+                    {
+                        ext.Encode(writer);
+                    }
+                }
+            }
+        }
+    }
 }

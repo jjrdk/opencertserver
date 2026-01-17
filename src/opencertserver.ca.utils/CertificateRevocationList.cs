@@ -107,6 +107,100 @@ public class CertificateRevocationList
         return Load(pemBytes, issuerPublicKey);
     }
 
+    public byte[] Build(HashAlgorithmName hashAlgorithmName, AsymmetricAlgorithm signingKey)
+    {
+        var tbsCertList = WriteTbsCertList();
+        var hashAlgo = GetSignatureAlgorithmOid(hashAlgorithmName, signingKey);
+        var signature = signingKey switch
+        {
+            RSA rsa => rsa.SignData(tbsCertList, hashAlgorithmName, RSASignaturePadding.Pss),
+            ECDsa ecdsa => ecdsa.SignData(tbsCertList, hashAlgorithmName, DSASignatureFormat.Rfc3279DerSequence),
+            _ => throw new NotSupportedException($"Signing key type {signingKey.GetType()} not supported.")
+        };
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        using (writer.PushSequence())
+        {
+            // CertificateList
+            writer.WriteEncodedValue(tbsCertList); // tbsCertList
+            using (writer.PushSequence())
+            {
+                // signatureAlgorithm
+                writer.WriteObjectIdentifier(hashAlgo);
+            }
+
+            writer.WriteBitString(signature);
+        }
+
+        return writer.Encode();
+    }
+
+    private byte[] WriteTbsCertList()
+    {
+        var tbsCertSequenceWriter = new AsnWriter(AsnEncodingRules.DER);
+        using (tbsCertSequenceWriter.PushSequence())
+        {
+            // TBSCertList
+            tbsCertSequenceWriter.WriteInteger((int)Version); // version
+            // Write algo identifier
+            using (tbsCertSequenceWriter.PushSequence())
+            {
+                var hashAlgoOid = GetSignatureAlgorithmOid(SignatureAlgorithm, RSA.Create());
+                tbsCertSequenceWriter.WriteObjectIdentifier(hashAlgoOid);
+            }
+            // Write Distinguished Name
+
+            using (tbsCertSequenceWriter.PushSequence())
+            {
+                foreach (var relativeDistinguishedName in Issuer.EnumerateRelativeDistinguishedNames())
+                {
+                    using (tbsCertSequenceWriter.PushSetOf())
+                    {
+                        using (tbsCertSequenceWriter.PushSequence())
+                        {
+                            tbsCertSequenceWriter.WriteObjectIdentifier(relativeDistinguishedName.GetSingleElementType()
+                                .Value!);
+                            tbsCertSequenceWriter.WriteCharacterString(
+                                UniversalTagNumber.PrintableString,
+                                relativeDistinguishedName.GetSingleElementValue()!);
+                        }
+                    }
+                }
+            }
+
+            tbsCertSequenceWriter.WriteUtcTime(ThisUpdate);
+            if (NextUpdate.HasValue)
+            {
+                tbsCertSequenceWriter.WriteUtcTime(NextUpdate.Value);
+            }
+
+            // revokedCertificates
+            using (tbsCertSequenceWriter.PushSequence())
+            {
+                foreach (var revokedCertificate in RevokedCertificates)
+                {
+                    revokedCertificate.Encode(tbsCertSequenceWriter);
+                }
+            }
+
+            // extensions
+            if (Extensions.Count > 0)
+            {
+                using (tbsCertSequenceWriter.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0)))
+                {
+                    using (tbsCertSequenceWriter.PushSequence())
+                    {
+                        foreach (var extension in Extensions)
+                        {
+                        }
+                    }
+                }
+            }
+        }
+
+        var tbsCertList = tbsCertSequenceWriter.Encode();
+        return tbsCertList;
+    }
+
     /// <summary>
     /// Reads and verifies a DER-encoded CRL using the issuer's public key.
     /// </summary>
@@ -325,6 +419,23 @@ public class CertificateRevocationList
         };
     }
 
+    private static string GetSignatureAlgorithmOid(HashAlgorithmName hashAlgorithm, AsymmetricAlgorithm publicKey)
+    {
+        return (hashAlgorithm.Name, publicKey) switch
+        {
+            (nameof(SHA256), RSA) => "1.2.840.113549.1.1.10", // rsassaPss
+            (nameof(SHA384), RSA) => "1.2.840.113549.1.1.10",
+            (nameof(SHA512), RSA) => "1.2.840.113549.1.1.10",
+            (nameof(SHA1), RSA) => "1.2.840.113549.1.1.5", // sha1WithRSAEncryption
+            (nameof(SHA256), ECDsa) => "1.2.840.10045.4.3.2", // ecdsa-with-SHA256
+            (nameof(SHA384), ECDsa) => "1.2.840.10045.4.3.3",
+            (nameof(SHA512), ECDsa) => "1.2.840.10045.4.3.4",
+            (nameof(SHA1), ECDsa) => "1.2.840.10045.4.1", // ecdsa-with-SHA1
+            _ => throw new CryptographicException(
+                $"Unsupported signature algorithm: {hashAlgorithm.Name} with key type {publicKey.GetType()}.")
+        };
+    }
+
     private static int ReadVersion(AsnReader tbsCertList)
     {
         var version = 0;
@@ -381,7 +492,8 @@ public class CertificateRevocationList
 
             if (version > 0 && valueReader.HasData)
             {
-                if (!valueReader.PeekTag().HasSameClassAndValue(Asn1Tag.Sequence))
+                var peekTag = valueReader.PeekTag();
+                if (!peekTag.HasSameClassAndValue(Asn1Tag.Sequence))
                 {
                     throw new CryptographicException("Invalid DER encoding for revoked certificate extensions.");
                 }
@@ -403,14 +515,15 @@ public class CertificateRevocationList
         var extensions = reader.ReadSequence();
         while (extensions.HasData)
         {
-            var extension = extensions.ReadSequence();
-            var certificateExtension = ReadCertificateExtension(extension);
+            var certificateExtension = ReadCertificateExtension(extensions);
             yield return certificateExtension;
         }
     }
 
-    private static CertificateExtension ReadCertificateExtension(AsnReader extension)
+    private static CertificateExtension ReadCertificateExtension(AsnReader extensions)
     {
+        var peekTag = extensions.PeekTag();
+        var extension = extensions.ReadSequence();
         var extnOid = new Oid(extension.ReadObjectIdentifier());
         X509RevocationReason? reason = null;
         X500DistinguishedName? certificateIssuer = null;

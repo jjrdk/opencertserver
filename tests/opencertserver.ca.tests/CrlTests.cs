@@ -1,6 +1,8 @@
+using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils;
+using OpenCertServer.Ca.Utils.X509Extensions;
 using Xunit;
 
 namespace OpenCertServer.Ca.Tests;
@@ -36,6 +38,50 @@ public class CrlTests
     }
 
     [Fact]
+    public void CanBuildCrlAndReadBack()
+    {
+        var hashAlgorithmName = HashAlgorithmName.SHA256;
+        var certificate = GetRsaCertificate(hashAlgorithmName);
+        var crl = new CertificateRevocationList(CertificateRevocationList.CrlVersion.V2,
+            BigInteger.One,
+            [],
+            hashAlgorithmName,
+            certificate.SubjectName,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddDays(1),
+            [
+                new RevokedCertificate(
+                    new BigInteger(128).ToByteArray(),
+                    DateTimeOffset.UtcNow,
+                    new CertificateExtension(
+                        new Oid("2.5.29.21"),
+                        X509RevocationReason.KeyCompromise,
+                        null,
+                        null,
+                        false),
+                    new CertificateExtension(
+                        new Oid("2.5.29.29"),
+                        null,
+                        certificate.SubjectName,
+                        null,
+                        false),
+                    new CertificateExtension(new Oid("2.5.29.24"),
+                        null,
+                        null,
+                        DateTimeOffset.UtcNow,
+                        false))
+            ],
+            [
+                new X509CrlNumberExtension(BigInteger.One, false),
+                new X509AuthorityInformationAccessExtension(["test"],[])
+            ]);
+        var crlBytes = crl.Build(hashAlgorithmName, certificate.GetRSAPrivateKey()!);
+        var loadedCrl = CertificateRevocationList.Load(crlBytes, certificate.GetRSAPublicKey()!);
+
+        Assert.NotEmpty(loadedCrl.RevokedCertificates);
+    }
+
+    [Fact]
     public void CanReadCrl()
     {
         var hashAlgorithmName = HashAlgorithmName.SHA256;
@@ -45,7 +91,8 @@ public class CrlTests
 
         Assert.Equal("C=US, CN=Test CA", loadedCrl.Issuer.Name);
         Assert.Single(loadedCrl.RevokedCertificates);
-        Assert.Equal(X509RevocationReason.KeyCompromise, loadedCrl.RevokedCertificates.First().Extensions.First().Reason);
+        Assert.Equal(X509RevocationReason.KeyCompromise,
+            loadedCrl.RevokedCertificates.First().Extensions.First().Reason);
     }
 
     [Fact]
