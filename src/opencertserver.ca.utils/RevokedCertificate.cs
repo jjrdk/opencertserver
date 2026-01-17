@@ -4,7 +4,7 @@ namespace OpenCertServer.Ca.Utils;
 
 public record RevokedCertificate
 {
-    internal RevokedCertificate(
+    public RevokedCertificate(
         byte[] serialNumber,
         DateTimeOffset revocationTime,
         params Span<CertificateExtension> extensions)

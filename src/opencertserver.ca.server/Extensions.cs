@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using opencertserver.ca.server.Handlers;
@@ -30,4 +31,10 @@ public static class Extensions
             return endpoints;
         }
     }
+}
+
+[JsonSerializable(typeof(OpenCertServer.Ca.CertificateItem))]
+[JsonSerializable(typeof(OpenCertServer.Ca.CertificateItem[]))]
+internal partial class CaServerSerializerContext : System.Text.Json.Serialization.JsonSerializerContext
+{
 }

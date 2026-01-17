@@ -1,0 +1,34 @@
+using System.Security.Cryptography.X509Certificates;
+
+namespace OpenCertServer.Ca;
+
+public class CertificateItem
+{
+    public required string SerialNumber { get; set; }
+    public required string DistinguishedName { get; set; }
+    public DateTime NotBefore { get; set; }
+    public DateTime NotAfter { get; set; }
+
+    public bool IsRevoked
+    {
+        get { return RevocationReason != null; }
+    }
+
+    public X509RevocationReason? RevocationReason { get; set; }
+    public DateTimeOffset? RevocationDate { get; set; }
+    public required string Thumbprint { get; set; }
+    public required string PublicKeyPem { get; set; }
+
+    public static CertificateItem FromX509Certificate2(X509Certificate2 cert)
+    {
+        return new CertificateItem
+        {
+            SerialNumber = cert.GetSerialNumberString(),
+            DistinguishedName = cert.Subject,
+            NotBefore = cert.NotBefore,
+            NotAfter = cert.NotAfter,
+            Thumbprint = cert.Thumbprint,
+            PublicKeyPem = cert.ExportCertificatePem()
+        };
+    }
+}

@@ -2,6 +2,7 @@ using System.Formats.Asn1;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using OpenCertServer.Ca.Utils.X509;
 using OpenCertServer.Ca.Utils.X509Extensions;
 
 namespace OpenCertServer.Ca.Utils;
@@ -214,15 +215,23 @@ public class CertificateRevocationList
                     yield return new X509DeltaCrlIndicatorExtension(extnValue.Span, isCritical);
                     break;
                 }
-//                    case "2.5.29.46": // Freshest CRL
-//                        yield return new X509FreshestCrlExtension(extnValue.Span, isCritical);
-//                        break;
+                case "2.5.29.46": // Freshest CRL
+                    yield return new X509FreshestCrlExtension(extnValue.Span, isCritical);
+                    break;
 //                    case "2.5.29.18": // Issuer Alternative Name
 //                        crlExtensionList.Add(new X509IssuerAltNameExtension(extnValue.Span, isCritical));
 //                        break;
-//                    case "2.5.29.28": // Issuing Distribution Point
-//                        crlExtensionList.Add(new X509IssuingDistributionPointExtension(extnValue.Span, isCritical));
-//                        break;
+                case "2.5.29.28": // Issuing Distribution Point
+                    var reader = new AsnReader(extnValue, AsnEncodingRules.DER);
+                    var distributionPoint = new DistributionPoint(reader.ReadSequence());
+                    if (distributionPoint.DistributionPointName?.FullName?.Names.Length > 0)
+                    {
+                        yield return CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(
+                            distributionPoint.DistributionPointName!.FullName!.Names.Select(gn =>
+                                gn.Value.ToString()!), isCritical);
+                    }
+
+                    break;
                 default:
                     yield return new X509RawExtension(extnOid, isCritical, extnValue.ToArray());
                     break;

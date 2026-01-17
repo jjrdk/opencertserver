@@ -8,5 +8,7 @@ public interface IStoreCertificates
 
     bool RemoveCertificate(string serialNumber, X509RevocationReason reason);
 
-    byte[] GetRevocationList();
+    IEnumerable<CertificateItem> GetRevocationList(int page = 0, int pageSize = 100);
+
+    CertificateItem[] GetInventory(int page = 0, int pageSize = 100);
 }

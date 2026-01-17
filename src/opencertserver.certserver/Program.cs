@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
@@ -85,6 +86,7 @@ public sealed class Program
                 new CaConfiguration(
                     certs[0],
                     certs[1],
+                    BigInteger.Zero,
                     TimeSpan.FromDays(90),
                     ocspUrls.ToArray(),
                     caIssuerUrls.ToArray()));

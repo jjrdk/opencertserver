@@ -1,4 +1,7 @@
-﻿namespace OpenCertServer.Ca;
+﻿using System.Numerics;
+using System.Text;
+
+namespace OpenCertServer.Ca;
 
 using System;
 using System.Linq;
@@ -9,25 +12,28 @@ using Utils;
 
 public record CaConfiguration
 {
-    public X509Certificate2 RsaCertificate { get; }
-    public X509Certificate2 EcdsaCertificate { get; }
-    public TimeSpan CertificateValidity { get; }
-    public string[] OcspUrls { get; }
-    public string[] CaIssuersUrls { get; }
-
     public CaConfiguration(
         X509Certificate2 rsaCertificate,
         X509Certificate2 ecdsaCertificate,
+        BigInteger crlNumber,
         TimeSpan certificateValidity,
         string[] ocspUrls,
         string[] caIssuersUrls)
     {
         RsaCertificate = rsaCertificate;
         EcdsaCertificate = ecdsaCertificate;
+        CrlNumber = crlNumber;
         CertificateValidity = certificateValidity;
         OcspUrls = ocspUrls;
         CaIssuersUrls = caIssuersUrls;
     }
+
+    public X509Certificate2 RsaCertificate { get; }
+    public X509Certificate2 EcdsaCertificate { get; }
+    public BigInteger CrlNumber { get; }
+    public TimeSpan CertificateValidity { get; }
+    public string[] OcspUrls { get; }
+    public string[] CaIssuersUrls { get; }
 }
 
 /// <summary>
@@ -106,24 +112,23 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         _logger = logger;
         _certificateStore = certificateStore;
         _x509ChainValidation = x509ChainValidation;
-        _validators = validators.Concat(
-            [
-                new OwnCertificateValidation(
-                    [_config.RsaCertificate, _config.EcdsaCertificate],
-                    _logger),
-                new DistinguishedNameValidation()
-            ])
-            .ToArray();
+        _validators =
+        [
+            ..validators,
+            new OwnCertificateValidation([_config.RsaCertificate, _config.EcdsaCertificate], _logger),
+            new DistinguishedNameValidation(_logger)
+        ];
         certificateBackup?.Invoke(_config.RsaCertificate, _config.EcdsaCertificate);
     }
 
     public static CertificateAuthority Create(
         X500DistinguishedName distinguishedName,
-        Func<X509Certificate2, IStoreCertificates> certificateStore,
+        IStoreCertificates certificateStore,
         TimeSpan certificateValidity,
         string[] ocspUrls,
         string[] caIssuersUrls,
         ILogger<CertificateAuthority> logger,
+        BigInteger? crlNumber = null,
         Func<X509Chain, bool>? chainValidation = null,
         Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
         params IValidateCertificateRequests[] validators)
@@ -139,12 +144,13 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         var config = new CaConfiguration(
             rsaCert,
             ecdsaCert,
+            crlNumber ?? BigInteger.Zero,
             certificateValidity,
             ocspUrls,
             caIssuersUrls);
         var ca = new CertificateAuthority(
             config,
-            certificateStore(ecdsaCert),
+            certificateStore,
             chainValidation ?? (_ => true),
             logger,
             certificateBackup,
@@ -157,16 +163,23 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         CertificateRequest request,
         X509Certificate2? reenrollingFrom = null)
     {
-        if (!_validators.Aggregate(true, (b, v) => b && v.Validate(request)))
+        var validationResult = _validators.Aggregate(new List<string>(), (b, v) =>
+        {
+            var reason = v.Validate(request);
+            if (reason != null)
+            {
+                b.Add(reason);
+            }
+
+            return b;
+        });
+        if (validationResult.Count > 0)
         {
             LogCouldNotValidateRequest();
-            return new SignCertificateResponse.Error("Could not validate request");
+            return new SignCertificateResponse.Error(string.Join("\n", validationResult));
         }
 
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            LogCreatingCertificateForSubjectName(request.SubjectName.Name);
-        }
+        LogCreatingCertificateForSubjectName(request.SubjectName.Name);
 
         var toRemove = request.CertificateExtensions
             .Where(ext => ext is X509AuthorityInformationAccessExtension or X509AuthorityKeyIdentifierExtension)
@@ -175,6 +188,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         {
             request.CertificateExtensions.Remove(ext);
         }
+
         request.CertificateExtensions.Add(
             new X509AuthorityInformationAccessExtension(_config.OcspUrls, _config.CaIssuersUrls));
         request.CertificateExtensions.Add(
@@ -282,7 +296,23 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
 
     public byte[] GetRevocationList()
     {
-        return _certificateStore.GetRevocationList();
+        var list = _certificateStore.GetRevocationList();
+        var builder = new CertificateRevocationListBuilder();
+        foreach (var revoked in list)
+        {
+            builder.AddEntry(
+                Encoding.UTF8.GetBytes(revoked.SerialNumber),
+                revoked.RevocationDate,
+                revoked.RevocationReason);
+        }
+
+        var crl = builder.Build(
+            _config.EcdsaCertificate,
+            _config.CrlNumber + 1,
+            DateTimeOffset.UtcNow.AddDays(7),
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pss, thisUpdate: DateTimeOffset.UtcNow);
+        return crl;
     }
 
     private static X509Certificate2 CreateSelfSignedRsaCert(
@@ -368,31 +398,46 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     private sealed partial class OwnCertificateValidation(X509Certificate2Collection serverCertificates, ILogger logger)
         : IValidateCertificateRequests
     {
-        public bool Validate(CertificateRequest request, X509Certificate2? reenrollingFrom = null)
+        public string? Validate(CertificateRequest request, X509Certificate2? reenrollingFrom = null)
         {
             var result = reenrollingFrom == null
              || serverCertificates
                     .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);
-            if (!result)
+            if (result)
             {
-                LogCouldNotValidateReEnrollmentFromReEnrollingFrom(reenrollingFrom!.IssuerName.Name);
+                return null;
             }
 
-            return result;
+            LogCouldNotValidateReEnrollmentFromReEnrollingFrom(reenrollingFrom!.IssuerName.Name);
+            return "Re-enrollment certificate is not issued by this CA";
         }
 
         [LoggerMessage(LogLevel.Error, "Could not validate re-enrollment from {ReenrollingFrom}")]
         partial void LogCouldNotValidateReEnrollmentFromReEnrollingFrom(string reenrollingFrom);
     }
 
-    private sealed class DistinguishedNameValidation : IValidateCertificateRequests
+    private sealed partial class DistinguishedNameValidation : IValidateCertificateRequests
     {
-        public bool Validate(CertificateRequest request, X509Certificate2? reenrollingFrom = null)
+        private readonly ILogger _logger;
+
+        public DistinguishedNameValidation(ILogger logger)
         {
-            return request.SubjectName.Format(true)
-                .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-                .Any(x => x.StartsWith("CN="));
+            _logger = logger;
         }
+
+        public string? Validate(CertificateRequest request, X509Certificate2? reenrollingFrom = null)
+        {
+            if (request.SubjectName.Format(true)
+                .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+                .Any(x => x.StartsWith("CN=")))
+                return null;
+
+            LogDistinguishedNameNameDoesNotContainACommonNameCnAttribute(request.SubjectName.Format(false));
+            return "Subject name must contain a Common Name (CN) attribute";
+        }
+
+        [LoggerMessage(LogLevel.Error, "{DistinguishedName} name does not contain a Common Name (CN) attribute")]
+        partial void LogDistinguishedNameNameDoesNotContainACommonNameCnAttribute(string distinguishedName);
     }
 
     [LoggerMessage(LogLevel.Error, "Could not validate request")]

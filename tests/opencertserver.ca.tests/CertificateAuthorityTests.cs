@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace OpenCertServer.Ca.Tests;
 
 using System;
@@ -36,8 +38,8 @@ public sealed class CertificateAuthorityTests : IDisposable
             DateTimeOffset.UtcNow.Date,
             DateTimeOffset.UtcNow.Date.AddYears(1));
         _authority = new CertificateAuthority(
-            new CaConfiguration(rsaCert, ecdsaCert, TimeSpan.FromDays(90), ["test"], []),
-            new InMemoryCertificateStore(ecdsaCert),
+            new CaConfiguration(rsaCert, ecdsaCert, BigInteger.Zero, TimeSpan.FromDays(90), ["test"], []),
+            new InMemoryCertificateStore(),
             _ => true,
             new NullLogger<CertificateAuthority>());
     }
@@ -85,11 +87,12 @@ public sealed class CertificateAuthorityTests : IDisposable
         X509Certificate2 ecdsa = null!;
         var ca = CertificateAuthority.Create(
             new X500DistinguishedName("CN=test"),
-            x => new InMemoryCertificateStore(x),
+            new InMemoryCertificateStore(),
             TimeSpan.FromDays(1),
             [],
             [],
             NullLogger<CertificateAuthority>.Instance,
+            BigInteger.Zero,
             null,
             (c1, c2) =>
             {

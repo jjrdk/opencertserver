@@ -1,52 +1,45 @@
-using System.Numerics;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 
 namespace OpenCertServer.Ca;
 
 public class InMemoryCertificateStore : IStoreCertificates
 {
-    private readonly X509Certificate2 _issuerCertificate;
-    private byte[] _crlBytes;
-    private readonly Dictionary<string, (DateTimeOffset, X509RevocationReason)?> _certificates = new();
-
-    public InMemoryCertificateStore(X509Certificate2 issuerCertificate)
-    {
-        if (!issuerCertificate.HasPrivateKey)
-        {
-            throw new ArgumentException("Issuer certificate must have a private key", nameof(issuerCertificate));
-        }
-
-        _issuerCertificate = issuerCertificate;
-        _crlBytes = new CertificateRevocationListBuilder().Build(_issuerCertificate,
-            BigInteger.Zero,
-            DateTimeOffset.UtcNow.AddDays(1), HashAlgorithmName.SHA256);
-    }
+    private readonly Dictionary<string, CertificateItem> _certificates = new();
 
     public void AddCertificate(X509Certificate2 certificate)
     {
-        _certificates.Add(certificate.GetSerialNumberString(), null);
+        _certificates.Add(certificate.GetSerialNumberString(), CertificateItem.FromX509Certificate2(certificate));
     }
 
     public bool RemoveCertificate(string serialNumber, X509RevocationReason reason)
     {
-        var hasCert = _certificates.TryGetValue(serialNumber, out var value);
-        if (!hasCert || value != null)
+        if (!_certificates.TryGetValue(serialNumber, out var certificateItem))
         {
             return false;
         }
-
-        _certificates[serialNumber] = (DateTimeOffset.UtcNow, reason);
-        var builder = CertificateRevocationListBuilder.Load(_crlBytes, out var sn);
-        builder.AddEntry(Encoding.UTF8.GetBytes(serialNumber), DateTimeOffset.UtcNow, reason);
-        _crlBytes = builder.Build(_issuerCertificate, sn + 1, DateTimeOffset.UtcNow.AddDays(1),
-            HashAlgorithmName.SHA256);
+        certificateItem.RevocationDate = DateTimeOffset.UtcNow;
+        certificateItem.RevocationReason = reason;
         return true;
     }
 
-    public byte[] GetRevocationList()
+    public IEnumerable<CertificateItem> GetRevocationList(int page = 0, int pageSize = 100)
     {
-        return _crlBytes;
+        return _certificates
+            .OrderBy(x => x.Key)
+            .Where(x => x.Value.IsRevoked)
+            .Skip(page * pageSize)
+            .Take(pageSize)
+            .Select(x => x.Value)
+            .ToArray();
+    }
+
+    public CertificateItem[] GetInventory(int page = 0, int pageSize = 100)
+    {
+        return _certificates
+            .OrderBy(x => x.Key)
+            .Skip(page * pageSize)
+            .Take(pageSize)
+            .Select(x => x.Value)
+            .ToArray();
     }
 }

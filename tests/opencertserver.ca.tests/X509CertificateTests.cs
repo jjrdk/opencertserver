@@ -21,7 +21,7 @@ public sealed class X509CertificateTests : IDisposable
     {
         _ca = CertificateAuthority.Create(
             new X500DistinguishedName("CN=Test"),
-            x => new InMemoryCertificateStore(x),
+            new InMemoryCertificateStore(),
             TimeSpan.FromHours(1),
             ["test"],
             [],

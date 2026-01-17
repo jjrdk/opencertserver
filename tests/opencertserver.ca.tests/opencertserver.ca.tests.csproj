@@ -20,4 +20,13 @@
         <ProjectReference Include="..\..\src\opencertserver.ca\opencertserver.ca.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="data\id_ed25519">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="data\key_backup.pfx">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>

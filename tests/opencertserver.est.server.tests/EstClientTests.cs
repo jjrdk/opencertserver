@@ -1,3 +1,4 @@
+using System.Numerics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Hosting;
@@ -69,8 +70,9 @@ public sealed class EstClientTests : IDisposable
                     sc.AddAuthorization();
                     sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
                         .AddCertificate();
-                    sc.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore(ecdsaPrivate));
-                    sc.AddEstServer(new CaConfiguration(rsaPrivate, ecdsaPrivate, TimeSpan.FromDays(90), ["test"], []));
+                    sc.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore());
+                    sc.AddEstServer(new CaConfiguration(rsaPrivate, ecdsaPrivate, BigInteger.Zero,
+                        TimeSpan.FromDays(90), ["test"], []));
                     sc.ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
                 })
                 .Configure(app => app.UseAuthentication().UseAuthorization().UseEstServer(attribute, attribute))

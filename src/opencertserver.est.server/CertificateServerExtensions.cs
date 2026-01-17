@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Authentication.Certificate;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
 
 namespace OpenCertServer.Est.Server;
 
@@ -29,8 +27,7 @@ public static class CertificateServerExtensions
             string[]? caIssuersUrls = null,
             Func<X509Chain, bool>? chainValidation = null)
         {
-            services.AddSingleton<Func<X509Certificate2, IStoreCertificates>>(_ =>
-                c => new InMemoryCertificateStore(c));
+            services.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore());
 
             return services.AddEstServer(
                 distinguishedName,
@@ -51,12 +48,13 @@ public static class CertificateServerExtensions
             {
                 var certificateAuthority = CertificateAuthority.Create(
                     distinguishedName,
-                    sp.GetRequiredService<Func<X509Certificate2, IStoreCertificates>>(),
+                    sp.GetRequiredService<IStoreCertificates>(),
                     certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
                     ocspUrls ?? [],
                     caIssuersUrls ?? [],
                     sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                    chainValidation);
+                    chainValidation: chainValidation,
+                    validators: sp.GetServices<IValidateCertificateRequests>().ToArray());
                 return certificateAuthority;
             });
 
