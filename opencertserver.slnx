@@ -3,6 +3,8 @@
     <File Path="build.ps1" />
     <File Path="build.sh" />
     <File Path="Dockerfile" />
+    <File Path="docs\opencertserver_cp.md" />
+    <File Path="docs\opencertserver_cps.md" />
     <File Path="README.md" />
     <File Path="shared.proj" />
     <File Path="Docker.md" />
@@ -14,7 +16,7 @@
     <Project Path="tests\opencertserver.ca.tests\opencertserver.ca.tests.csproj" />
     <Project Path="tests\opencertserver.certserver.tests\opencertserver.certserver.tests.csproj" />
     <Project Path="tests\opencertserver.est.server.tests\opencertserver.est.server.tests.csproj" />
-    <Project Path="tests\opencertserver.lambda.tests\opencertserver.lambda.tests.csproj" Type="C#" />
+    <Project Path="tests\opencertserver.lambda.tests\opencertserver.lambda.tests.csproj" />
   </Folder>
   <Project Path="build\opencertserver.build\opencertserver.build.csproj" />
   <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
@@ -28,5 +30,5 @@
   <Project Path="src\opencertserver.est.client\opencertserver.est.client.csproj" />
   <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
   <Project Path="src\opencertserver.est.tool\opencertserver.est.tool.csproj" />
-  <Project Path="src\opencertserver.lambda\opencertserver.lambda.csproj" Type="C#" />
+  <Project Path="src\opencertserver.lambda\opencertserver.lambda.csproj" />
 </Solution>
