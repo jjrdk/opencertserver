@@ -9,13 +9,29 @@ using System.Security.Cryptography.X509Certificates;
 
 public static class EncodingExtensions
 {
+    extension(AsymmetricAlgorithm asymmetricAlgorithm)
+    {
+        public bool VerifySignature(
+            ReadOnlySpan<byte> data,
+            ReadOnlySpan<byte> signature,
+            HashAlgorithmName hashAlgorithm)
+        {
+            return asymmetricAlgorithm switch
+            {
+                RSA rsa => rsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm, RSASignaturePadding.Pkcs1) ||
+                    rsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm, RSASignaturePadding.Pss),
+                ECDsa ecdsa => ecdsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm,
+                    DSASignatureFormat.Rfc3279DerSequence),
+                _ => throw new NotSupportedException($"Public key type {asymmetricAlgorithm.GetType()} not supported.")
+            };
+        }
+    }
+
     extension(string value)
     {
         /// <summary>
         /// Base64 decode.
         /// </summary>
-        /// <param name="base64EncodedData">The base64 encoded data.</param>
-        /// <returns></returns>
         public byte[] Base64DecodeBytes()
         {
             var s = value

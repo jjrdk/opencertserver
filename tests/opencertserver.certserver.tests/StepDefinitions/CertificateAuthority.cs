@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using TechTalk.SpecFlow;
@@ -40,8 +41,17 @@ public partial class CertificateServerFeatures
     public async Task WhenIRevokeTheCertificate()
     {
         using var client = _server.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Delete,
-            $"ca/revoke?sn={_certCollection[0].GetSerialNumberString()}&reason={X509RevocationReason.KeyCompromise}");
+        var serialNumberString = _certCollection[0].GetSerialNumberString();
+        var compromise = X509RevocationReason.KeyCompromise;
+        var signature = _key.SignData(
+            Encoding.UTF8.GetBytes(
+                serialNumberString + compromise),
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pss);
+        var request = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"ca/revoke?sn={serialNumberString}&reason={compromise}&signature={Convert.ToBase64String(signature)}");
+        request.Headers.Add("X-Client-Cert", Convert.ToBase64String(_certCollection[0].Export(X509ContentType.Cert)));
         request.Headers.Add("Authorization", "Bearer valid-jwt");
         var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();

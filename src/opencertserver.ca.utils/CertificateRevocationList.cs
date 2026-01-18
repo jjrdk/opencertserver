@@ -221,7 +221,7 @@ public class CertificateRevocationList
 
         var signatureAlgo = algoIdentifier.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier).GetHashAlgorithmFromOid();
 
-        if (issuerPublicKey != null && !VerifySignature(tbsSpan, signature, issuerPublicKey!, signatureAlgo))
+        if (issuerPublicKey != null && !issuerPublicKey.VerifySignature(tbsSpan, signature, signatureAlgo))
         {
             throw new CryptographicException("CRL signature verification failed.");
         }
@@ -300,7 +300,7 @@ public class CertificateRevocationList
         var signature = signatureValue.Length > 0 && signatureValue[0] == 0
             ? signatureValue.AsSpan(1).ToArray()
             : signatureValue;
-        return VerifySignature(tbsSpan, signature, issuerPublicKey, hashAlgorithm);
+        return issuerPublicKey.VerifySignature(tbsSpan, signature, hashAlgorithm);
     }
 
     private static ReadOnlySpan<byte> ReadSignedContent(ReadOnlyMemory<byte> crlDer)
@@ -315,21 +315,5 @@ public class CertificateRevocationList
             Asn1Tag.Sequence);
         var tbsSpan = contentSpan[..(tbsOffset + tbsLength)];
         return tbsSpan;
-    }
-
-    private static bool VerifySignature(
-        ReadOnlySpan<byte> data,
-        ReadOnlySpan<byte> signature,
-        AsymmetricAlgorithm publicKey,
-        HashAlgorithmName hashAlgorithm)
-    {
-        return publicKey switch
-        {
-            RSA rsa => rsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm, RSASignaturePadding.Pkcs1) ||
-                rsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm, RSASignaturePadding.Pss),
-            ECDsa ecdsa => ecdsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm,
-                DSASignatureFormat.Rfc3279DerSequence),
-            _ => throw new NotSupportedException($"Public key type {publicKey.GetType()} not supported.")
-        };
     }
 }

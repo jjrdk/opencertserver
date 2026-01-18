@@ -55,7 +55,7 @@ public partial class CertificateServerFeatures
             "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
             Justification = "<Pending>")]
         void ConfigureApp(IApplicationBuilder app) =>
-            app.UseAcmeServer().UseEstServer().UseEndpoints(e =>
+            app.UseCertificateForwarding().UseAcmeServer().UseEstServer().UseEndpoints(e =>
             {
                 e.MapControllers();
                 e.MapCertificateAuthorityServer();
@@ -89,10 +89,16 @@ public partial class CertificateServerFeatures
                     {
                         OnAuthenticationFailed = c =>
                         {
+                            if (!c.Request.Headers.ContainsKey("Authorization"))
+                            {
+                                c.NoResult();
+                                return Task.CompletedTask;
+                            }
+
                             c.Principal =
                                 new ClaimsPrincipal(
                                     new ClaimsIdentity([new Claim("role", "user")],
-                                        "Bearer"));
+                                        JwtBearerDefaults.AuthenticationScheme));
                             c.Properties = new OAuthChallengeProperties
                             {
                                 AllowRefresh = false, RedirectUri = "http://localhost",
@@ -100,6 +106,7 @@ public partial class CertificateServerFeatures
                                 IsPersistent = false, Scope = ["openid"]
                             };
                             c.Success();
+
                             return Task.CompletedTask;
                         }
                     };
@@ -116,7 +123,6 @@ public partial class CertificateServerFeatures
                         KeyValuePair.Create("GN", ClaimTypes.GivenName),
                         KeyValuePair.Create("C", ClaimTypes.Country)
                     ]);
-
                     options.AllowedCertificateTypes = CertificateTypes.All;
                     options.ChainTrustValidationMode = X509ChainTrustMode.CustomRootTrust;
                     options.Events = new CertificateAuthenticationEvents
@@ -133,6 +139,11 @@ public partial class CertificateServerFeatures
                                     claims,
                                     CertificateAuthenticationDefaults.AuthenticationScheme));
                             context.Success();
+                            return Task.CompletedTask;
+                        },
+                        OnAuthenticationFailed = context =>
+                        {
+                            context.Fail("Invalid certificate");
                             return Task.CompletedTask;
                         }
                     };

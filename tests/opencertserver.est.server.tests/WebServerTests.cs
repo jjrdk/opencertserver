@@ -79,7 +79,7 @@ public abstract class WebServerTests : IDisposable
                     {
                         AuthenticationSchemes = CertificateAuthenticationDefaults.AuthenticationScheme
                     };
-                    app.UseAuthentication().UseAuthorization().UseEstServer(attribute, attribute);
+                    app.UseCertificateForwarding().UseAuthentication().UseAuthorization().UseEstServer(attribute, attribute);
                 });
             builder.ConfigureKestrel(k =>
             {
