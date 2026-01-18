@@ -237,6 +237,11 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         if (chainBuilt || _x509ChainValidation(chain))
         {
             _certificateStore.AddCertificate(cert);
+            if (reenrollingFrom != null)
+            {
+                _certificateStore.RemoveCertificate(reenrollingFrom.SerialNumber, X509RevocationReason.Superseded);
+            }
+
             return new SignCertificateResponse.Success(
                 cert,
                 [
@@ -263,12 +268,12 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             .Replace(Footer, "", StringComparison.OrdinalIgnoreCase)
             .Trim();
 
-        var csr = Base64DecodeBytes(request);
+        var csr = request.Base64DecodeBytes();
 
         return SignCertificateRequest(csr);
     }
 
-    private SignCertificateResponse SignCertificateRequest(byte[] request)
+    private SignCertificateResponse SignCertificateRequest(byte[] request, X509Certificate2? reenrollingFrom = null)
     {
         var csr = CertificateRequest.LoadSigningRequest(
             request,
@@ -276,7 +281,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
             RSASignaturePadding.Pss);
 
-        return SignCertificateRequest(csr);
+        return SignCertificateRequest(csr, reenrollingFrom);
     }
 
     /// <inheritdoc />
@@ -364,35 +369,6 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     {
         _config.RsaCertificate.Dispose();
         _config.EcdsaCertificate.Dispose();
-    }
-
-    /// <summary>
-    /// Base64 decode.
-    /// </summary>
-    /// <param name="base64EncodedData">The base64 encoded data.</param>
-    /// <returns></returns>
-    private static byte[] Base64DecodeBytes(string base64EncodedData)
-    {
-        var s = base64EncodedData
-            .Replace(" ", "+")
-            .Replace('-', '+')
-            .Replace('_', '/')
-            .Replace("\n", "")
-            .Replace("\r", "")
-            .Trim();
-        switch (s.Length % 4)
-        {
-            case 0:
-                return Convert.FromBase64String(s);
-            case 2:
-                s += "==";
-                goto case 0;
-            case 3:
-                s += "=";
-                goto case 0;
-            default:
-                throw new InvalidOperationException("Illegal base64url string!");
-        }
     }
 
     private sealed partial class OwnCertificateValidation(X509Certificate2Collection serverCertificates, ILogger logger)

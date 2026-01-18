@@ -2,7 +2,6 @@ using System.Formats.Asn1;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Ca.Utils.X509;
 using OpenCertServer.Ca.Utils.X509Extensions;
 
 namespace OpenCertServer.Ca.Utils;
@@ -16,33 +15,45 @@ public class CertificateRevocationList
     /// Initializes a new instance of the <see cref="CertificateRevocationList"/> class.
     /// </summary>
     /// <param name="version">The CRL format version.</param>
-    /// <param name="crlNumber">The CRL number.</param>
-    /// <param name="signature">The CRL signature.</param>
     /// <param name="signatureAlgorithm">The signature algorithm used.</param>
     /// <param name="issuer">The distinguished name of the CRL issuer.</param>
     /// <param name="thisUpdate">The <see cref="DateTimeOffset"/> when the CRL was issued.</param>
     /// <param name="nextUpdate">The <see cref="DateTimeOffset"/> when the next CRL will be issued.</param>
     /// <param name="revokedCertificates">The <see cref="List{T}"/> of revoked <see cref="RevokedCertificates"/>.</param>
     /// <param name="extensions">The CRL extensions.</param>
+    /// <remarks>
+    /// <para>
+    /// If the <paramref name="extensions"/> is not null, it must contain a <see cref="X509CrlNumberExtension"/> which defines a positive CRL number.
+    /// </para>
+    /// </remarks>
     public CertificateRevocationList(
         CrlVersion version,
-        BigInteger crlNumber,
-        byte[] signature,
         HashAlgorithmName signatureAlgorithm,
         X500DistinguishedName issuer,
         DateTimeOffset thisUpdate,
         DateTimeOffset? nextUpdate,
         IEnumerable<RevokedCertificate> revokedCertificates,
-        IEnumerable<X509Extension>? extensions)
+        IEnumerable<X509Extension>? extensions = null)
     {
+        Extensions = extensions == null
+            ? [new X509CrlNumberExtension(BigInteger.One, false)]
+            : extensions.ToList().AsReadOnly();
+
+        if (!Extensions.Any(e => e is X509CrlNumberExtension))
+        {
+            throw new ArgumentException("CRL extensions must include a CRL number extension.", nameof(extensions));
+        }
+
+        if (CrlNumber < 0)
+        {
+            throw new ArgumentException("CRL number must be non-negative.", nameof(extensions));
+        }
+
         Version = version;
-        CrlNumber = crlNumber;
-        Signature = signature;
         SignatureAlgorithm = signatureAlgorithm;
         Issuer = issuer;
         ThisUpdate = thisUpdate;
         NextUpdate = nextUpdate;
-        Extensions = extensions == null ? [] : extensions.ToList().AsReadOnly();
         RevokedCertificates = revokedCertificates.ToList().AsReadOnly();
     }
 
@@ -59,12 +70,10 @@ public class CertificateRevocationList
     /// <summary>
     /// Gets the CRL number.
     /// </summary>
-    public BigInteger CrlNumber { get; }
-
-    /// <summary>
-    /// Gets the CRL signature.
-    /// </summary>
-    public byte[] Signature { get; }
+    public BigInteger CrlNumber
+    {
+        get { return Extensions.OfType<X509CrlNumberExtension>().FirstOrDefault()?.CrlNumber ?? BigInteger.Zero; }
+    }
 
     /// <summary>
     /// Gets the signature algorithm used.
@@ -110,7 +119,7 @@ public class CertificateRevocationList
     public byte[] Build(HashAlgorithmName hashAlgorithmName, AsymmetricAlgorithm signingKey)
     {
         var tbsCertList = WriteTbsCertList();
-        var hashAlgo = GetSignatureAlgorithmOid(hashAlgorithmName, signingKey);
+        var hashAlgo = Oids.GetSignatureAlgorithmOid(hashAlgorithmName, signingKey);
         var signature = signingKey switch
         {
             RSA rsa => rsa.SignData(tbsCertList, hashAlgorithmName, RSASignaturePadding.Pss),
@@ -144,28 +153,12 @@ public class CertificateRevocationList
             // Write algo identifier
             using (tbsCertSequenceWriter.PushSequence())
             {
-                var hashAlgoOid = GetSignatureAlgorithmOid(SignatureAlgorithm, RSA.Create());
+                var hashAlgoOid = Oids.GetSignatureAlgorithmOid(SignatureAlgorithm, RSA.Create());
                 tbsCertSequenceWriter.WriteObjectIdentifier(hashAlgoOid);
             }
             // Write Distinguished Name
 
-            using (tbsCertSequenceWriter.PushSequence())
-            {
-                foreach (var relativeDistinguishedName in Issuer.EnumerateRelativeDistinguishedNames())
-                {
-                    using (tbsCertSequenceWriter.PushSetOf())
-                    {
-                        using (tbsCertSequenceWriter.PushSequence())
-                        {
-                            tbsCertSequenceWriter.WriteObjectIdentifier(relativeDistinguishedName.GetSingleElementType()
-                                .Value!);
-                            tbsCertSequenceWriter.WriteCharacterString(
-                                UniversalTagNumber.PrintableString,
-                                relativeDistinguishedName.GetSingleElementValue()!);
-                        }
-                    }
-                }
-            }
+            Issuer.Encode(tbsCertSequenceWriter);
 
             tbsCertSequenceWriter.WriteUtcTime(ThisUpdate);
             if (NextUpdate.HasValue)
@@ -191,6 +184,7 @@ public class CertificateRevocationList
                     {
                         foreach (var extension in Extensions)
                         {
+                            extension.Encode(tbsCertSequenceWriter);
                         }
                     }
                 }
@@ -217,7 +211,6 @@ public class CertificateRevocationList
         // }
 
         var tbsSpan = issuerPublicKey == null ? ReadOnlySpan<byte>.Empty : ReadSignedContent(crl);
-        BigInteger crlNumber = 0;
 
         var reader = new AsnReader(crl, AsnEncodingRules.DER);
         var certificateList = reader.ReadSequence();
@@ -226,28 +219,28 @@ public class CertificateRevocationList
         reader.ThrowIfNotEmpty();
         var signature = certificateList.ReadBitString(out _, Asn1Tag.PrimitiveBitString);
 
-        var signatureAlgo = GetHashAlgorithmFromOid(algoIdentifier.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier));
+        var signatureAlgo = algoIdentifier.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier).GetHashAlgorithmFromOid();
 
         if (issuerPublicKey != null && !VerifySignature(tbsSpan, signature, issuerPublicKey!, signatureAlgo))
         {
             throw new CryptographicException("CRL signature verification failed.");
         }
 
-        var version = ReadVersion(tbsCertList);
+        var version = tbsCertList.ReadVersion();
 
         // Discard algorithm identifier as it is supposed to match the outer one
         _ = tbsCertList.ReadSequence();
 
-        var distinguishedName = ReadDistinguishedName(ref tbsCertList);
+        var distinguishedName = tbsCertList.ReadDistinguishedName();
 
         // thisUpdate
-        var thisUpdate = ReadX509Time(ref tbsCertList);
+        var thisUpdate = tbsCertList.ReadX509Time();
 
         // nextUpdate
-        var nextUpdate = ReadX509TimeOpt(ref tbsCertList);
+        var nextUpdate = tbsCertList.ReadOptionalX509Time();
 
         // revokedCertificates
-        var list = ReadRevokedCertificates(ref tbsCertList, version);
+        var list = tbsCertList.ReadRevokedCertificates(version);
         X509Extension[] crlExtensionList = [];
         if (version > 0 && tbsCertList.HasData)
         {
@@ -256,81 +249,19 @@ public class CertificateRevocationList
             var crlExtensions = crlExtensionsExplicit.ReadSequence();
             crlExtensionsExplicit.ThrowIfNotEmpty();
 
-            crlExtensionList = ReadCrlExtensions(crlExtensions).ToArray();
+            crlExtensionList = [..crlExtensions.ReadCrlExtensions()];
         }
 
         tbsCertList.ThrowIfNotEmpty();
 
         return new CertificateRevocationList(
             (CrlVersion)version,
-            crlNumber,
-            signature,
             signatureAlgo,
             distinguishedName,
             thisUpdate,
             nextUpdate,
             list,
             crlExtensionList);
-    }
-
-    private static IEnumerable<X509Extension> ReadCrlExtensions(AsnReader crlExtensions)
-    {
-        while (crlExtensions.HasData)
-        {
-            var extension = crlExtensions.ReadSequence();
-            var isCritical = false;
-            var extnOid = new Oid(extension.ReadObjectIdentifier());
-
-            if (extension.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean))
-            {
-                isCritical = extension.ReadBoolean();
-            }
-
-            if (!extension.TryReadPrimitiveOctetString(out var extnValue))
-            {
-                throw new CryptographicException("Invalid DER encoding for CRL extension value.");
-            }
-
-            switch (extnOid.Value)
-            {
-                case "1.3.6.1.5.5.7.1.1": // Authority Information Access
-                    yield return new X509AuthorityInformationAccessExtension(extnValue.Span, isCritical);
-                    break;
-                case "2.5.29.35": // Authority Key Identifier
-                    yield return new X509AuthorityKeyIdentifierExtension(extnValue.Span, isCritical);
-                    break;
-                case "2.5.29.20": // CRL Number
-                {
-                    yield return new X509CrlNumberExtension(extnValue.Span, isCritical);
-                    break;
-                }
-                case "2.5.29.27": // Delta CRL Indicator
-                {
-                    yield return new X509DeltaCrlIndicatorExtension(extnValue.Span, isCritical);
-                    break;
-                }
-                case "2.5.29.46": // Freshest CRL
-                    yield return new X509FreshestCrlExtension(extnValue.Span, isCritical);
-                    break;
-//                    case "2.5.29.18": // Issuer Alternative Name
-//                        crlExtensionList.Add(new X509IssuerAltNameExtension(extnValue.Span, isCritical));
-//                        break;
-                case "2.5.29.28": // Issuing Distribution Point
-                    var reader = new AsnReader(extnValue, AsnEncodingRules.DER);
-                    var distributionPoint = new DistributionPoint(reader.ReadSequence());
-                    if (distributionPoint.DistributionPointName?.FullName?.Names.Length > 0)
-                    {
-                        yield return CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(
-                            distributionPoint.DistributionPointName!.FullName!.Names.Select(gn =>
-                                gn.Value.ToString()!), isCritical);
-                    }
-
-                    break;
-                default:
-                    yield return new X509RawExtension(extnOid, isCritical, extnValue.ToArray());
-                    break;
-            }
-        }
     }
 
     /// <summary>
@@ -357,7 +288,7 @@ public class CertificateRevocationList
         var oid = signatureAlgorithm.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier);
 
         // Map OID to HashAlgorithmName
-        var hashAlgorithm = GetHashAlgorithmFromOid(oid);
+        var hashAlgorithm = oid.GetHashAlgorithmFromOid();
 
         // 3. Read signatureValue (BIT STRING)
         var signatureValue = certificateList.ReadBitString(out var unusedBits, Asn1Tag.ConstructedBitString);
@@ -400,198 +331,5 @@ public class CertificateRevocationList
                 DSASignatureFormat.Rfc3279DerSequence),
             _ => throw new NotSupportedException($"Public key type {publicKey.GetType()} not supported.")
         };
-    }
-
-    private static HashAlgorithmName GetHashAlgorithmFromOid(string oid)
-    {
-        return oid switch
-        {
-            "1.2.840.113549.1.1.10" => HashAlgorithmName.SHA256, // rsassaPss
-            "1.2.840.113549.1.1.11" => HashAlgorithmName.SHA256, // sha256WithRSAEncryption
-            "1.2.840.113549.1.1.12" => HashAlgorithmName.SHA384,
-            "1.2.840.113549.1.1.13" => HashAlgorithmName.SHA512,
-            "1.2.840.113549.1.1.5" => HashAlgorithmName.SHA1, // sha1WithRSAEncryption
-            "1.2.840.10045.4.3.2" => HashAlgorithmName.SHA256, // ecdsa-with-SHA256
-            "1.2.840.10045.4.3.3" => HashAlgorithmName.SHA384,
-            "1.2.840.10045.4.3.4" => HashAlgorithmName.SHA512,
-            "1.2.840.10045.4.1" => HashAlgorithmName.SHA1, // ecdsa-with-SHA1
-            _ => throw new CryptographicException($"Unsupported signature algorithm OID: {oid}")
-        };
-    }
-
-    private static string GetSignatureAlgorithmOid(HashAlgorithmName hashAlgorithm, AsymmetricAlgorithm publicKey)
-    {
-        return (hashAlgorithm.Name, publicKey) switch
-        {
-            (nameof(SHA256), RSA) => "1.2.840.113549.1.1.10", // rsassaPss
-            (nameof(SHA384), RSA) => "1.2.840.113549.1.1.10",
-            (nameof(SHA512), RSA) => "1.2.840.113549.1.1.10",
-            (nameof(SHA1), RSA) => "1.2.840.113549.1.1.5", // sha1WithRSAEncryption
-            (nameof(SHA256), ECDsa) => "1.2.840.10045.4.3.2", // ecdsa-with-SHA256
-            (nameof(SHA384), ECDsa) => "1.2.840.10045.4.3.3",
-            (nameof(SHA512), ECDsa) => "1.2.840.10045.4.3.4",
-            (nameof(SHA1), ECDsa) => "1.2.840.10045.4.1", // ecdsa-with-SHA1
-            _ => throw new CryptographicException(
-                $"Unsupported signature algorithm: {hashAlgorithm.Name} with key type {publicKey.GetType()}.")
-        };
-    }
-
-    private static int ReadVersion(AsnReader tbsCertList)
-    {
-        var version = 0;
-
-        if (tbsCertList.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
-        {
-            // https://datatracker.ietf.org/doc/html/rfc5280#section-5.1 says the only
-            // version values are v1 (0) and v2 (1).
-            //
-            // Since v1 (0) is supposed to not write down the version value, v2 (1) is the
-            // only legal value to read.
-            if (!tbsCertList.TryReadInt32(out version) || version != 1)
-            {
-                throw new CryptographicException("Invalid CRL version.");
-            }
-        }
-
-        return version;
-    }
-
-    private static X500DistinguishedName ReadDistinguishedName(ref AsnReader tbsCertList)
-    {
-        // X500DN
-        var distinguishedName = new X500DistinguishedNameBuilder();
-        var issuerSequence = tbsCertList.ReadSequence();
-        while (issuerSequence.HasData)
-        {
-            var dnSet = issuerSequence.ReadSetOf();
-            var dnSeq = dnSet.ReadSequence(Asn1Tag.Sequence);
-            var dnAttrType = dnSeq.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier);
-            var dnAttrValue = dnSeq.ReadCharacterString(UniversalTagNumber.PrintableString);
-            distinguishedName.Add(dnAttrType, dnAttrValue, UniversalTagNumber.PrintableString);
-        }
-
-        return distinguishedName.Build();
-    }
-
-    private static List<RevokedCertificate> ReadRevokedCertificates(ref AsnReader tbsCertList, int version)
-    {
-        List<RevokedCertificate> list = [];
-        if (!tbsCertList.HasData || !tbsCertList.PeekTag().HasSameClassAndValue(Asn1Tag.Sequence))
-        {
-            return list;
-        }
-
-        var revokedCertificates = tbsCertList.ReadSequence();
-
-        while (revokedCertificates.HasData)
-        {
-            var valueReader = revokedCertificates.ReadSequence();
-            var serial = valueReader.ReadIntegerBytes().ToArray();
-            var revocationTime = ReadX509Time(ref valueReader);
-            CertificateExtension[] extensions = [];
-
-            if (version > 0 && valueReader.HasData)
-            {
-                var peekTag = valueReader.PeekTag();
-                if (!peekTag.HasSameClassAndValue(Asn1Tag.Sequence))
-                {
-                    throw new CryptographicException("Invalid DER encoding for revoked certificate extensions.");
-                }
-
-                extensions =
-                    ReadCertificateExtensions(valueReader).ToArray(); //valueReader.ReadEncodedValue().ToArray();
-            }
-
-            var revokedCertificate =
-                new RevokedCertificate(serial, revocationTime, extensions);
-            list.Add(revokedCertificate);
-        }
-
-        return list;
-    }
-
-    private static IEnumerable<CertificateExtension> ReadCertificateExtensions(AsnReader reader)
-    {
-        var extensions = reader.ReadSequence();
-        while (extensions.HasData)
-        {
-            var certificateExtension = ReadCertificateExtension(extensions);
-            yield return certificateExtension;
-        }
-    }
-
-    private static CertificateExtension ReadCertificateExtension(AsnReader extensions)
-    {
-        var peekTag = extensions.PeekTag();
-        var extension = extensions.ReadSequence();
-        var extnOid = new Oid(extension.ReadObjectIdentifier());
-        X509RevocationReason? reason = null;
-        X500DistinguishedName? certificateIssuer = null;
-        DateTimeOffset? invalidityDate = null;
-        var isCritical = false;
-
-        if (extension.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean))
-        {
-            isCritical = extension.ReadBoolean();
-        }
-
-        var extnValue = extension.ReadOctetString();
-
-        switch (extnOid.Value)
-        {
-            case "2.5.29.29": // certificate issuer
-            {
-                var extnReader = new AsnReader(extnValue, AsnEncodingRules.DER);
-                certificateIssuer = ReadDistinguishedName(ref extnReader);
-                break;
-            }
-            case "2.5.29.24": // invalidity date
-            {
-                var extnReader = new AsnReader(extnValue, AsnEncodingRules.DER);
-                invalidityDate = ReadX509Time(ref extnReader);
-                break;
-            }
-            case "2.5.29.21": // reason code
-            {
-                var extnReader = new AsnReader(extnValue, AsnEncodingRules.DER);
-                reason = extnReader.ReadEnumeratedValue<X509RevocationReason>();
-                if (!Enum.IsDefined(typeof(X509RevocationReason), (int)reason))
-                {
-                    throw new CryptographicException("Invalid revocation reason code.");
-                }
-
-                break;
-            }
-        }
-
-        var certificateExtension = new CertificateExtension(
-            extnOid,
-            reason,
-            certificateIssuer,
-            invalidityDate,
-            isCritical);
-        return certificateExtension;
-    }
-
-    private static DateTimeOffset ReadX509Time(ref AsnReader reader)
-    {
-        return reader.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime)
-            ? reader.ReadUtcTime()
-            : reader.ReadGeneralizedTime();
-    }
-
-    private static DateTimeOffset? ReadX509TimeOpt(ref AsnReader reader)
-    {
-        if (reader.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime))
-        {
-            return reader.ReadUtcTime();
-        }
-
-        if (reader.PeekTag().HasSameClassAndValue(Asn1Tag.GeneralizedTime))
-        {
-            return reader.ReadGeneralizedTime();
-        }
-
-        return null;
     }
 }

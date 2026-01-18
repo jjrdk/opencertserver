@@ -54,7 +54,7 @@ internal sealed class SimpleReEnrollHandler
             request.CertificateExtensions.Add(extension);
         }
 
-        var newCert = _certificateAuthority.SignCertificateRequest(request);
+        var newCert = _certificateAuthority.SignCertificateRequest(request, cert);
         if (newCert is not SignCertificateResponse.Success success)
         {
             ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;

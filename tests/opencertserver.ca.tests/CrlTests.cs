@@ -49,9 +49,8 @@ public class CrlTests
             "ECDSA" => GetEcDsaCertificate(hashAlgorithmName),
             _ => throw new ArgumentOutOfRangeException(nameof(algorithmType), algorithmType, null)
         };
-        var crl = new CertificateRevocationList(CertificateRevocationList.CrlVersion.V2,
-            BigInteger.One,
-            [],
+        var crl = new CertificateRevocationList(
+            CertificateRevocationList.CrlVersion.V2,
             hashAlgorithmName,
             certificate.SubjectName,
             DateTimeOffset.UtcNow,
@@ -97,7 +96,10 @@ public class CrlTests
         };
         var loadedCrl = CertificateRevocationList.Load(crlBytes, publicKey);
 
-        Assert.NotEmpty(loadedCrl.RevokedCertificates);
+        Assert.Equal(BigInteger.One, loadedCrl.CrlNumber);
+        Assert.Single(loadedCrl.RevokedCertificates);
+        Assert.Equal(3, loadedCrl.RevokedCertificates.First().Extensions.Count);
+        Assert.Equal(2, loadedCrl.Extensions.Count);
     }
 
     [Fact]

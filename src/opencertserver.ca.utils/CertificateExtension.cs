@@ -42,38 +42,71 @@ public class CertificateExtension : AsnValue
             switch (Oid.Value)
             {
                 case "2.5.29.29": // certificate issuer
-                    using (octetWriter.PushSequence())
-                    {
-                        foreach (var relativeDistinguishedName in
-                            CertificateIssuer!.EnumerateRelativeDistinguishedNames())
-                        {
-                            using (octetWriter.PushSetOf())
-                            {
-                                using (octetWriter.PushSequence())
-                                {
-                                    octetWriter.WriteObjectIdentifier(relativeDistinguishedName.GetSingleElementType()
-                                        .Value!);
-                                    octetWriter.WriteCharacterString(
-                                        UniversalTagNumber.PrintableString,
-                                        relativeDistinguishedName.GetSingleElementValue()!);
-                                }
-                            }
-                        }
-                    }
-
+                    CertificateIssuer!.Encode(octetWriter);
                     break;
                 case "2.5.29.24": // invalidity date
                     octetWriter.WriteUtcTime(InvalidityDate!.Value.ToUniversalTime());
                     break;
                 case "2.5.29.21": // reason code
-                {
                     octetWriter.WriteEnumeratedValue(Reason);
                     break;
-                }
             }
 
             var octet = octetWriter.Encode();
             writer.WriteOctetString(octet);
         }
     }
+
+    public static CertificateExtension Decode(AsnReader extensions)
+    {
+        var extension = extensions.ReadSequence();
+        var extnOid = new Oid(extension.ReadObjectIdentifier());
+        X509RevocationReason? reason = null;
+        X500DistinguishedName? certificateIssuer = null;
+        DateTimeOffset? invalidityDate = null;
+        var isCritical = false;
+
+        if (extension.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean))
+        {
+            isCritical = extension.ReadBoolean();
+        }
+
+        var extnValue = extension.ReadOctetString();
+
+        switch (extnOid.Value)
+        {
+            case "2.5.29.29": // certificate issuer
+            {
+                var extnReader = new AsnReader(extnValue, AsnEncodingRules.DER);
+                certificateIssuer = extnReader.ReadDistinguishedName();
+                break;
+            }
+            case "2.5.29.24": // invalidity date
+            {
+                var extnReader = new AsnReader(extnValue, AsnEncodingRules.DER);
+                invalidityDate = extnReader.ReadX509Time();
+                break;
+            }
+            case "2.5.29.21": // reason code
+            {
+                var extnReader = new AsnReader(extnValue, AsnEncodingRules.DER);
+                reason = extnReader.ReadEnumeratedValue<X509RevocationReason>();
+                if (!Enum.IsDefined(typeof(X509RevocationReason), (int)reason))
+                {
+                    throw new CryptographicException("Invalid revocation reason code.");
+                }
+
+                break;
+            }
+        }
+
+        var certificateExtension = new CertificateExtension(
+            extnOid,
+            reason,
+            certificateIssuer,
+            invalidityDate,
+            isCritical);
+        return certificateExtension;
+    }
+
 }

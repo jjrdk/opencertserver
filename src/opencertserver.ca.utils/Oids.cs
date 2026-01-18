@@ -315,76 +315,20 @@ public static class Oids
     public static Oid OrganizationalUnitOid => field ??= OrganizationalUnit.InitializeOid();
     public static Oid EmailAddressOid => field ??= EmailAddress.InitializeOid();
 
-    extension(string oidValue)
+    public static string GetSignatureAlgorithmOid(HashAlgorithmName hashAlgorithm, AsymmetricAlgorithm publicKey)
     {
-        public Oid InitializeOid()
+        return (hashAlgorithm.Name, publicKey) switch
         {
-            var oid = new Oid(oidValue, null);
-
-            // Do not remove - the FriendlyName property get has side effects.
-            // On read, it initializes the friendly name based on the value and
-            // locks it to prevent any further changes.
-            _ = oid.FriendlyName;
-
-            return oid;
-        }
-    }
-
-    extension(AsnReader asnValueReader)
-    {
-        public Oid GetSharedOrNewOid()
-        {
-            var ret = asnValueReader.GetSharedOrNullOid();
-
-            if (ret is not null)
-            {
-                return ret;
-            }
-
-            var oidValue = asnValueReader.ReadObjectIdentifier();
-            return new Oid(oidValue, null);
-        }
-
-        public Oid? GetSharedOrNullOid(Asn1Tag? expectedTag = null)
-        {
-            var tag = asnValueReader.PeekTag();
-
-            // This isn't a valid OID, so return null and let whatever's going to happen happen.
-            if (tag.IsConstructed)
-            {
-                return null;
-            }
-
-            var expected = expectedTag.GetValueOrDefault(Asn1Tag.ObjectIdentifier);
-
-            // Not the tag we're expecting, so don't match.
-            if (!tag.HasSameClassAndValue(expected))
-            {
-                return null;
-            }
-
-            var contentBytes = asnValueReader.PeekContentBytes().Span;
-
-            var ret = contentBytes switch
-            {
-                [0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x09, 0x01] => EmailAddressOid,
-                [0x55, 0x04, 0x03] => CommonNameOid,
-                [0x55, 0x04, 0x06] => CountryOrRegionNameOid,
-                [0x55, 0x04, 0x07] => LocalityNameOid,
-                [0x55, 0x04, 0x08] => StateOrProvinceNameOid,
-                [0x55, 0x04, 0x0A] => OrganizationOid,
-                [0x55, 0x04, 0x0B] => OrganizationalUnitOid,
-                [0x55, 0x1D, 0x14] => CrlNumberOid,
-                _ => null,
-            };
-
-            if (ret is not null)
-            {
-                // Move to the next item.
-                asnValueReader.ReadEncodedValue();
-            }
-
-            return ret;
-        }
+            (nameof(SHA256), RSA) => "1.2.840.113549.1.1.10", // rsassaPss
+            (nameof(SHA384), RSA) => "1.2.840.113549.1.1.10",
+            (nameof(SHA512), RSA) => "1.2.840.113549.1.1.10",
+            (nameof(SHA1), RSA) => "1.2.840.113549.1.1.5", // sha1WithRSAEncryption
+            (nameof(SHA256), ECDsa) => "1.2.840.10045.4.3.2", // ecdsa-with-SHA256
+            (nameof(SHA384), ECDsa) => "1.2.840.10045.4.3.3",
+            (nameof(SHA512), ECDsa) => "1.2.840.10045.4.3.4",
+            (nameof(SHA1), ECDsa) => "1.2.840.10045.4.1", // ecdsa-with-SHA1
+            _ => throw new CryptographicException(
+                $"Unsupported signature algorithm: {hashAlgorithm.Name} with key type {publicKey.GetType()}.")
+        };
     }
 }

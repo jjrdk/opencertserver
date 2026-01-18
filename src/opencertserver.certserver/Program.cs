@@ -128,8 +128,7 @@ public sealed class Program
                 var subjectAlternativeNameBuilder = new SubjectAlternativeNameBuilder();
                 subjectAlternativeNameBuilder.AddDnsName("localhost");
                 certificateRequest.CertificateExtensions.Add(subjectAlternativeNameBuilder.Build());
-                var response = ca.SignCertificateRequest(
-                    certificateRequest);
+                var response = ca.SignCertificateRequest(certificateRequest);
                 if (response is not SignCertificateResponse.Success success)
                 {
                     throw new InvalidOperationException("Could not create server certificate");
