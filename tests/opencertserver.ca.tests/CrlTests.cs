@@ -37,11 +37,18 @@ public class CrlTests
         Assert.NotEmpty(crl.RevokedCertificates);
     }
 
-    [Fact]
-    public void CanBuildCrlAndReadBack()
+    [Theory]
+    [InlineData("RSA")]
+    [InlineData("ECDSA")]
+    public void CanBuildCrlAndReadBack(string algorithmType)
     {
         var hashAlgorithmName = HashAlgorithmName.SHA256;
-        var certificate = GetRsaCertificate(hashAlgorithmName);
+        var certificate = algorithmType switch
+        {
+            "RSA" => GetRsaCertificate(hashAlgorithmName),
+            "ECDSA" => GetEcDsaCertificate(hashAlgorithmName),
+            _ => throw new ArgumentOutOfRangeException(nameof(algorithmType), algorithmType, null)
+        };
         var crl = new CertificateRevocationList(CertificateRevocationList.CrlVersion.V2,
             BigInteger.One,
             [],
@@ -75,8 +82,20 @@ public class CrlTests
                 new X509CrlNumberExtension(BigInteger.One, false),
                 new X509AuthorityInformationAccessExtension(["test"],[])
             ]);
-        var crlBytes = crl.Build(hashAlgorithmName, certificate.GetRSAPrivateKey()!);
-        var loadedCrl = CertificateRevocationList.Load(crlBytes, certificate.GetRSAPublicKey()!);
+        AsymmetricAlgorithm privateKey = algorithmType switch
+        {
+            "RSA" => certificate.GetRSAPrivateKey()!,
+            "ECDSA" => certificate.GetECDsaPrivateKey()!,
+            _ => throw new ArgumentOutOfRangeException(nameof(algorithmType), algorithmType, null)
+        };
+        var crlBytes = crl.Build(hashAlgorithmName, privateKey);
+        AsymmetricAlgorithm publicKey = algorithmType switch
+        {
+            "RSA" => certificate.GetRSAPublicKey()!,
+            "ECDSA" => certificate.GetECDsaPublicKey()!,
+            _ => throw new ArgumentOutOfRangeException(nameof(algorithmType), algorithmType, null)
+        };
+        var loadedCrl = CertificateRevocationList.Load(crlBytes, publicKey);
 
         Assert.NotEmpty(loadedCrl.RevokedCertificates);
     }
