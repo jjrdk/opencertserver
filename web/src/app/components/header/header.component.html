@@ -1,0 +1,30 @@
+<mat-toolbar color="primary">
+  <span class="title">OpenCertServer - Certificate Authority</span>
+  <span class="spacer"></span>
+  <nav *ngIf="isAuthenticated$ | async" class="nav-links">
+    <a mat-button routerLink="/certificates" routerLinkActive="active">
+      <mat-icon>certificate</mat-icon>
+      Certificates
+    </a>
+    <a mat-button routerLink="/ca-certificates" routerLinkActive="active">
+      <mat-icon>verified</mat-icon>
+      CA Certs
+    </a>
+    <a mat-button routerLink="/revoke" routerLinkActive="active">
+      <mat-icon>block</mat-icon>
+      Revoke
+    </a>
+  </nav>
+  <button mat-icon-button [matMenuTriggerFor]="menu" *ngIf="isAuthenticated$ | async">
+    <mat-icon>account_circle</mat-icon>
+  </button>
+  <mat-menu #menu="matMenu">
+    <div mat-menu-item disabled class="user-info">
+      {{ userName }}
+    </div>
+    <button mat-menu-item (click)="logout()">
+      <mat-icon>logout</mat-icon>
+      <span>Logout</span>
+    </button>
+  </mat-menu>
+</mat-toolbar>

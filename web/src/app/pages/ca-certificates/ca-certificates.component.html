@@ -1,0 +1,111 @@
+<div class="container">
+  <h1>CA Certificates</h1>
+
+  <div class="actions-bar" *ngIf="!loading && !error && certificates.length > 0">
+    <button mat-raised-button color="primary" (click)="downloadAll()">
+      <mat-icon>download</mat-icon>
+      Download All Certificates
+    </button>
+    <button mat-stroked-button (click)="refresh()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading CA certificates...</p>
+  </div>
+
+  <div *ngIf="error" class="error-container">
+    <mat-error>{{ error }}</mat-error>
+    <button mat-raised-button color="primary" (click)="refresh()">
+      Try Again
+    </button>
+  </div>
+
+  <div class="certificates-grid" *ngIf="!loading && !error && certificates.length > 0">
+    <mat-card *ngFor="let cert of certificates; let i = index" class="cert-card">
+      <mat-card-header>
+        <div mat-card-avatar class="cert-icon">
+          <mat-icon>verified</mat-icon>
+        </div>
+        <mat-card-title>CA Certificate #{{ i + 1 }}</mat-card-title>
+        <mat-card-subtitle>{{ cert.subject }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="cert-details">
+          <div class="detail-row">
+            <span class="label">Subject:</span>
+            <span class="value">{{ cert.subject }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Issuer:</span>
+            <span class="value">{{ cert.issuer }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Serial Number:</span>
+            <span class="value monospace">{{ cert.serialNumber }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Valid From:</span>
+            <span class="value">{{ cert.notBefore | date:'medium' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Valid Until:</span>
+            <span class="value">{{ cert.notAfter | date:'medium' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Thumbprint:</span>
+            <span class="value monospace small">{{ cert.thumbprint }}</span>
+          </div>
+        </div>
+
+        <mat-expansion-panel class="pem-panel">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon>code</mat-icon>
+              View PEM
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+          <pre class="pem-content">{{ cert.pem }}</pre>
+        </mat-expansion-panel>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <button mat-button color="primary" (click)="downloadCertificate(cert, i)">
+          <mat-icon>download</mat-icon>
+          Download
+        </button>
+        <button mat-button (click)="copyToClipboard(cert.pem)">
+          <mat-icon>content_copy</mat-icon>
+          Copy PEM
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!loading && !error && certificates.length === 0">
+    <mat-icon>shield</mat-icon>
+    <h2>No CA Certificates Found</h2>
+    <p>There are currently no CA certificates available.</p>
+  </div>
+
+  <mat-card class="info-card" *ngIf="!loading && !error && certificates.length > 0">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>info</mat-icon>
+        About CA Certificates
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <ul>
+        <li>These are the Certificate Authority (CA) certificates used to sign issued certificates.</li>
+        <li>Install these certificates in your trust store to validate certificates issued by this CA.</li>
+        <li>The certificates are provided in PEM format for compatibility with most systems.</li>
+        <li>You can download individual certificates or all certificates as a bundle.</li>
+      </ul>
+    </mat-card-content>
+  </mat-card>
+</div>

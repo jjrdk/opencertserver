@@ -1,0 +1,82 @@
+.container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+h1 {
+  margin-bottom: 24px;
+  color: #1976d2;
+}
+
+.filter-card {
+  margin-bottom: 24px;
+}
+
+.filter-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.search-field {
+  flex: 1;
+}
+
+.status-field {
+  min-width: 150px;
+}
+
+.table-card {
+  mat-card-content {
+    padding: 0;
+  }
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.error-container {
+  padding: 24px;
+  text-align: center;
+}
+
+.certificate-table {
+  width: 100%;
+  
+  th {
+    font-weight: 600;
+    color: #1976d2;
+  }
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  
+  &.status-valid {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+  }
+  
+  &.status-expired {
+    background-color: #fff3e0;
+    color: #ef6c00;
+  }
+  
+  &.status-revoked {
+    background-color: #ffebee;
+    color: #c62828;
+  }
+}
+
+mat-paginator {
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}

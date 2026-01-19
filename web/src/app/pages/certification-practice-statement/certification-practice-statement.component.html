@@ -1,0 +1,37 @@
+<div class="document-page">
+  <div class="document-header">
+    <div class="container">
+      <button mat-icon-button routerLink="/" class="back-button">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Certification Practice Statement</h1>
+      <p class="subtitle">Operational Practices and Procedures</p>
+    </div>
+  </div>
+
+  <div class="document-content">
+    <div class="container">
+      <div class="loading-container" *ngIf="loading">
+        <mat-spinner></mat-spinner>
+        <p>Loading document...</p>
+      </div>
+
+      <div class="error-container" *ngIf="error">
+        <mat-error>{{ error }}</mat-error>
+      </div>
+
+      <div class="markdown-content" *ngIf="!loading && !error" [innerHTML]="htmlContent"></div>
+
+      <div class="document-actions" *ngIf="!loading && !error">
+        <button mat-stroked-button routerLink="/">
+          <mat-icon>home</mat-icon>
+          Back to Home
+        </button>
+        <button mat-stroked-button routerLink="/certificate-policy">
+          <mat-icon>policy</mat-icon>
+          View Certificate Policy
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,155 @@
+<div class="hero">
+  <div class="hero-content">
+    <div class="logo-section">
+      <mat-icon class="hero-icon">verified_user</mat-icon>
+      <h1>OpenCertServer</h1>
+    </div>
+    <p class="tagline">Open Source Certificate Authority for Modern PKI</p>
+    <p class="description">
+      A non-commercial, open source Certificate Authority supporting EST (RFC 7030) and ACME (RFC 8555) protocols
+      for secure certificate management in community, educational, and research environments.
+    </p>
+    <div class="hero-actions">
+      <button mat-raised-button color="primary" routerLink="/login">
+        <mat-icon>login</mat-icon>
+        Get Started
+      </button>
+      <button mat-stroked-button (click)="openGitHub()">
+        <mat-icon>code</mat-icon>
+        View on GitHub
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="features">
+  <div class="container">
+    <h2>Key Features</h2>
+    <div class="features-grid">
+      <mat-card class="feature-card">
+        <mat-icon>security</mat-icon>
+        <h3>ACME Protocol Support</h3>
+        <p>Automated certificate issuance and renewal using the industry-standard ACME protocol (RFC 8555).</p>
+      </mat-card>
+
+      <mat-card class="feature-card">
+        <mat-icon>vpn_key</mat-icon>
+        <h3>EST Protocol</h3>
+        <p>Enrollment Over Secure Transport (RFC 7030) for flexible certificate management workflows.</p>
+      </mat-card>
+
+      <mat-card class="feature-card">
+        <mat-icon>lock</mat-icon>
+        <h3>OIDC Authentication</h3>
+        <p>Secure authentication using OpenID Connect for certificate management operations.</p>
+      </mat-card>
+
+      <mat-card class="feature-card">
+        <mat-icon>manage_search</mat-icon>
+        <h3>Certificate Management</h3>
+        <p>View, filter, and manage issued certificates through an intuitive web interface.</p>
+      </mat-card>
+
+      <mat-card class="feature-card">
+        <mat-icon>block</mat-icon>
+        <h3>Revocation Support</h3>
+        <p>Secure certificate revocation with cryptographic signature verification.</p>
+      </mat-card>
+
+      <mat-card class="feature-card">
+        <mat-icon>open_source</mat-icon>
+        <h3>Open Source</h3>
+        <p>Fully transparent, community-driven development with public documentation and code review.</p>
+      </mat-card>
+    </div>
+  </div>
+</div>
+
+<div class="protocols">
+  <div class="container">
+    <h2>Supported Standards</h2>
+    <div class="protocol-list">
+      <div class="protocol-item">
+        <mat-icon>check_circle</mat-icon>
+        <div>
+          <h4>RFC 8555 - ACME</h4>
+          <p>Automated Certificate Management Environment</p>
+        </div>
+      </div>
+      <div class="protocol-item">
+        <mat-icon>check_circle</mat-icon>
+        <div>
+          <h4>RFC 7030 - EST</h4>
+          <p>Enrollment Over Secure Transport</p>
+        </div>
+      </div>
+      <div class="protocol-item">
+        <mat-icon>check_circle</mat-icon>
+        <div>
+          <h4>X.509 v3</h4>
+          <p>Digital Certificate Standard</p>
+        </div>
+      </div>
+      <div class="protocol-item">
+        <mat-icon>check_circle</mat-icon>
+        <div>
+          <h4>OpenID Connect</h4>
+          <p>Modern Authentication Protocol</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="policy-section">
+  <div class="container">
+    <h2>Documentation & Policies</h2>
+    <div class="policy-cards">
+      <mat-card class="policy-card" routerLink="/certificate-policy">
+        <mat-icon>policy</mat-icon>
+        <h3>Certificate Policy</h3>
+        <p>Principles and requirements for CA operation and certificate usage.</p>
+        <button mat-button color="primary">
+          Read More
+          <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </mat-card>
+
+      <mat-card class="policy-card" routerLink="/certification-practice-statement">
+        <mat-icon>description</mat-icon>
+        <h3>Certification Practice Statement</h3>
+        <p>Operational practices and procedures for certificate management.</p>
+        <button mat-button color="primary">
+          Read More
+          <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </mat-card>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h4>OpenCertServer</h4>
+        <p>An open source Certificate Authority for the community.</p>
+      </div>
+      <div class="footer-section">
+        <h4>Resources</h4>
+        <a href="https://github.com/jjrdk/opencertserver" target="_blank" rel="noopener">GitHub Repository</a>
+        <a routerLink="/certificate-policy">Certificate Policy</a>
+        <a routerLink="/certification-practice-statement">CPS</a>
+      </div>
+      <div class="footer-section">
+        <h4>Quick Links</h4>
+        <a routerLink="/login">Login</a>
+        <a routerLink="/certificates">Certificates</a>
+        <a routerLink="/ca-certificates">CA Certificates</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 OpenCertServer. Licensed under open source terms. Not for commercial use.</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,104 @@
+<div class="container">
+  <h1>Revoke Certificate</h1>
+
+  <mat-card>
+    <mat-card-content>
+      <form #revocationForm="ngForm" (ngSubmit)="onSubmit()">
+        <div class="form-field">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Certificate Serial Number</mat-label>
+            <input matInput 
+                   [(ngModel)]="serialNumber" 
+                   name="serialNumber"
+                   required
+                   placeholder="Enter certificate serial number (hex)">
+            <mat-hint>Enter the hexadecimal serial number of the certificate to revoke</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="form-field">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Revocation Reason</mat-label>
+            <mat-select [(ngModel)]="revocationReason" name="reason" required>
+              <mat-option [value]="0">Unspecified</mat-option>
+              <mat-option [value]="1">Key Compromise</mat-option>
+              <mat-option [value]="2">CA Compromise</mat-option>
+              <mat-option [value]="3">Affiliation Changed</mat-option>
+              <mat-option [value]="4">Superseded</mat-option>
+              <mat-option [value]="5">Cessation of Operation</mat-option>
+              <mat-option [value]="6">Certificate Hold</mat-option>
+              <mat-option [value]="9">Privilege Withdrawn</mat-option>
+              <mat-option [value]="10">AA Compromise</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="form-field">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Private Key (PEM)</mat-label>
+            <textarea matInput 
+                      [(ngModel)]="privateKeyPem"
+                      name="privateKey"
+                      required
+                      rows="10"
+                      placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
+            <mat-hint>Paste your private key in PEM format to sign the revocation request</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="form-field upload-section">
+          <button mat-stroked-button type="button" (click)="fileInput.click()">
+            <mat-icon>upload_file</mat-icon>
+            Upload Private Key File
+          </button>
+          <input #fileInput type="file" hidden (change)="onFileSelected($event)" accept=".pem,.key">
+          <span *ngIf="uploadedFileName" class="file-name">{{ uploadedFileName }}</span>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <div class="alert-section" *ngIf="error">
+          <mat-error>{{ error }}</mat-error>
+        </div>
+
+        <div class="alert-section" *ngIf="success">
+          <div class="success-message">
+            <mat-icon>check_circle</mat-icon>
+            Certificate revoked successfully
+          </div>
+        </div>
+
+        <div class="actions">
+          <button mat-raised-button 
+                  color="warn" 
+                  type="submit"
+                  [disabled]="!revocationForm.valid || loading">
+            <mat-icon *ngIf="!loading">block</mat-icon>
+            <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
+            Revoke Certificate
+          </button>
+          <button mat-button type="button" (click)="onReset()">
+            Clear
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="info-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>info</mat-icon>
+        Important Information
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <ul>
+        <li>Certificate revocation is <strong>irreversible</strong>. Once revoked, the certificate cannot be reinstated.</li>
+        <li>Your private key is used to sign the revocation request and is <strong>never sent to the server</strong>.</li>
+        <li>The signature proves that you possess the private key corresponding to the certificate being revoked.</li>
+        <li>Ensure you select the appropriate revocation reason for compliance and auditing purposes.</li>
+      </ul>
+    </mat-card-content>
+  </mat-card>
+</div>

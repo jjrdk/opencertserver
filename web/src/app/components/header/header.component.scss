@@ -1,0 +1,35 @@
+.title {
+  margin-right: 24px;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.nav-links {
+  display: flex;
+  gap: 8px;
+  margin-right: 16px;
+
+  a {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: white;
+
+    mat-icon {
+      font-size: 20px;
+      height: 20px;
+      width: 20px;
+    }
+
+    &.active {
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+  }
+}
+
+.user-info {
+  cursor: default;
+  font-weight: 500;
+}

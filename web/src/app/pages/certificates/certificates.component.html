@@ -1,0 +1,82 @@
+<div class="container">
+  <h1>Certificates</h1>
+
+  <mat-card class="filter-card">
+    <mat-card-content>
+      <div class="filter-row">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Search</mat-label>
+          <input matInput [(ngModel)]="searchText" (ngModelChange)="applyFilter()" 
+                 placeholder="Search by subject, serial number, or issuer...">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="status-field">
+          <mat-label>Status</mat-label>
+          <mat-select [(value)]="statusFilter" (selectionChange)="applyFilter()">
+            <mat-option value="All">All</mat-option>
+            <mat-option value="Valid">Valid</mat-option>
+            <mat-option value="Expired">Expired</mat-option>
+            <mat-option value="Revoked">Revoked</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="table-card">
+    <mat-card-content>
+      <div *ngIf="loading" class="loading-container">
+        <mat-spinner></mat-spinner>
+      </div>
+
+      <div *ngIf="error" class="error-container">
+        <mat-error>{{ error }}</mat-error>
+      </div>
+
+      <table mat-table [dataSource]="dataSource" matSort class="certificate-table" *ngIf="!loading && !error">
+        <ng-container matColumnDef="serialNumber">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Serial Number</th>
+          <td mat-cell *matCellDef="let cert">{{ cert.serialNumber }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="subject">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Subject</th>
+          <td mat-cell *matCellDef="let cert">{{ cert.subject }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="issuer">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Issuer</th>
+          <td mat-cell *matCellDef="let cert">{{ cert.issuer }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="notBefore">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Valid From</th>
+          <td mat-cell *matCellDef="let cert">{{ cert.notBefore | date:'short' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="notAfter">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Valid Until</th>
+          <td mat-cell *matCellDef="let cert">{{ cert.notAfter | date:'short' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+          <td mat-cell *matCellDef="let cert">
+            <span class="status-badge" [ngClass]="'status-' + cert.status.toLowerCase()">
+              {{ cert.status }}
+            </span>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+
+      <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" 
+                     showFirstLastButtons 
+                     *ngIf="!loading && !error">
+      </mat-paginator>
+    </mat-card-content>
+  </mat-card>
+</div>
