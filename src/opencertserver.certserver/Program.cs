@@ -69,7 +69,7 @@ internal static class Program
         var dn = builder.Configuration.GetSection("dn");
         if (dn.Value is not null)
         {
-            services = services.AddInMemoryEstServer(
+            services = services.AddSelfSignedInMemoryEstServer(
                 new X500DistinguishedName(
                     dn.Value.StartsWith("CN=") ? dn.Value : $"CN={dn.Value}"),
                 TimeSpan.FromDays(90),

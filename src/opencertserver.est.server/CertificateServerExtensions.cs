@@ -21,7 +21,16 @@ public static class CertificateServerExtensions
 {
     extension(IServiceCollection services)
     {
-        public IServiceCollection AddInMemoryEstServer(
+        /// <summary>
+        /// Adds an in-memory EST server to the service collection.
+        /// </summary>
+        /// <param name="distinguishedName">The <see cref="X500DistinguishedName"/> for the server certificate.</param>
+        /// <param name="certificateValidity"></param>
+        /// <param name="ocspUrls"></param>
+        /// <param name="caIssuersUrls"></param>
+        /// <param name="chainValidation"></param>
+        /// <returns></returns>
+        public IServiceCollection AddSelfSignedInMemoryEstServer(
             X500DistinguishedName distinguishedName,
             TimeSpan certificateValidity = default,
             string[]? ocspUrls = null,
@@ -30,7 +39,7 @@ public static class CertificateServerExtensions
         {
             services.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore());
 
-            return services.AddEstServer(
+            return services.AddSelfSignedEstServer(
                 distinguishedName,
                 ocspUrls,
                 caIssuersUrls,
@@ -38,7 +47,7 @@ public static class CertificateServerExtensions
                 chainValidation);
         }
 
-        public IServiceCollection AddEstServer(
+        public IServiceCollection AddSelfSignedEstServer(
             X500DistinguishedName distinguishedName,
             string[]? ocspUrls = null,
             string[]? caIssuersUrls = null,

@@ -69,7 +69,7 @@ public partial class CertificateServerFeatures
             Justification = "<Pending>")]
         void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services) =>
 #pragma warning disable IL2066
-            services.AddInMemoryEstServer(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"])
+            services.AddSelfSignedInMemoryEstServer(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"])
                 .AddAcmeServer(ctx.Configuration, _ => _server.CreateClient(),
                     new AcmeServerOptions
                         { HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false } })

@@ -39,7 +39,7 @@ public class AttributeTypeValue : AsnValue
     {
         var seq = reader.ReadSequence();
         var oid = seq.ReadObjectIdentifier();
-        Oid =new Oid( oid);//.InitializeOid();
+        Oid =new Oid( oid);
         _tag = seq.PeekTag();
 
         if (_tag.TagClass == TagClass.Universal)
@@ -61,7 +61,7 @@ public class AttributeTypeValue : AsnValue
     public Oid Oid { get; }
     public string Value { get; }
 
-    public override void Encode(AsnWriter writer, Asn1Tag? tag)
+    public override void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         using (writer.PushSequence(tag))
         {
