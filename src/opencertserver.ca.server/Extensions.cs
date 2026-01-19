@@ -21,6 +21,8 @@ public static class Extensions
         public IEndpointRouteBuilder MapCertificateAuthorityServer()
         {
             var groupBuilder = endpoints.MapGroup("/ca");
+            groupBuilder.MapGet("/inventory", InventoryHandler.Handle)
+                .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(1)); }).AllowAnonymous();
             groupBuilder
                 .MapDelete("/revoke", RevocationHandler.Handle).RequireAuthorization(policy =>
                 {
