@@ -6,7 +6,7 @@
       <div class="filter-row">
         <mat-form-field appearance="outline" class="search-field">
           <mat-label>Search</mat-label>
-          <input matInput [(ngModel)]="searchText" (ngModelChange)="applyFilter()" 
+          <input matInput [(ngModel)]="searchText" (ngModelChange)="applyFilter()"
                  placeholder="Search by subject, serial number, or issuer...">
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
@@ -69,12 +69,21 @@
           </td>
         </ng-container>
 
+        <ng-container matColumnDef="thumbprint">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Thumbprint</th>
+          <td mat-cell *matCellDef="let cert">
+            <span class="status-badge" [ngClass]="'status-' + cert.status.toLowerCase()">
+              {{ cert.thumbprint }}
+            </span>
+          </td>
+        </ng-container>
+
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
       </table>
 
-      <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" 
-                     showFirstLastButtons 
+      <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]"
+                     showFirstLastButtons
                      *ngIf="!loading && !error">
       </mat-paginator>
     </mat-card-content>

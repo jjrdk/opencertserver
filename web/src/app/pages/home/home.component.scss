@@ -1,5 +1,5 @@
 .hero {
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  background: linear-gradient(135deg, #065aaa 0%, #1565c0 100%);
   color: white;
   padding: 80px 24px;
   text-align: center;
@@ -130,7 +130,7 @@
 
   .protocol-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
     gap: 24px;
     max-width: 1000px;
     margin: 0 auto;

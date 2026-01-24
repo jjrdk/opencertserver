@@ -18,23 +18,23 @@ export class AuthService {
   ) {}
 
   async initializeAuth(): Promise<void> {
-    const config = this.configService.getConfig();
-    
-    const authConfig: AuthConfig = {
-      issuer: config.oidc.issuer,
-      clientId: config.oidc.clientId,
-      redirectUri: config.oidc.redirectUri,
-      postLogoutRedirectUri: config.oidc.postLogoutRedirectUri,
-      scope: config.oidc.scope,
-      responseType: config.oidc.responseType,
-      requireHttps: config.oidc.requireHttps,
-      showDebugInformation: true
-    };
-
-    this.oauthService.configure(authConfig);
-    this.oauthService.setupAutomaticSilentRefresh();
-
     try {
+      const config = this.configService.getConfig();
+      
+      const authConfig: AuthConfig = {
+        issuer: config.oidc.issuer,
+        clientId: config.oidc.clientId,
+        redirectUri: config.oidc.redirectUri,
+        postLogoutRedirectUri: config.oidc.postLogoutRedirectUri,
+        scope: config.oidc.scope,
+        responseType: config.oidc.responseType,
+        requireHttps: config.oidc.requireHttps,
+        showDebugInformation: true
+      };
+
+      this.oauthService.configure(authConfig);
+      this.oauthService.setupAutomaticSilentRefresh();
+
       await this.oauthService.loadDiscoveryDocumentAndTryLogin();
       
       if (this.oauthService.hasValidAccessToken()) {
@@ -44,7 +44,9 @@ export class AuthService {
       }
     } catch (error) {
       console.error('Error during authentication initialization:', error);
+      console.warn('App will continue without authentication. Check OIDC provider configuration.');
       this.isAuthenticatedSubject.next(false);
+      // Don't rethrow - allow app to continue loading
     }
   }
 

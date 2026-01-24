@@ -32,9 +32,7 @@ import { CertificationPracticeStatementComponent } from './pages/certification-p
 
 @NgModule({
   declarations: [
-    HeaderComponent,
     LoginComponent,
-    HomeComponent,
     CertificatesComponent,
     RevokeComponent,
     CaCertificatesComponent,
@@ -62,9 +60,7 @@ import { CertificationPracticeStatementComponent } from './pages/certification-p
     MatExpansionModule
   ],
   exports: [
-    HeaderComponent,
     LoginComponent,
-    HomeComponent,
     CertificatesComponent,
     RevokeComponent,
     CaCertificatesComponent,

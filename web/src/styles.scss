@@ -3,7 +3,7 @@
 @include mat.core();
 
 $primary-palette: (
-  50: #e3f2fd,
+  50: #ffffff,
   100: #bbdefb,
   200: #90caf9,
   300: #64b5f6,
@@ -95,6 +95,6 @@ body {
 }
 
 .mat-toolbar.mat-primary {
-  background-color: mat.get-color-from-palette($my-primary, 700);
-  color: white;
+  background-color: mat.get-color-from-palette($my-primary, 50);
+  color: black;
 }

@@ -13,7 +13,7 @@ import { CertificateService } from '../../services/certificate.service';
 export class CertificatesComponent implements OnInit {
   displayedColumns: string[] = ['serialNumber', 'subject', 'issuer', 'notBefore', 'notAfter', 'status'];
   dataSource: MatTableDataSource<Certificate>;
-  
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -46,7 +46,7 @@ export class CertificatesComponent implements OnInit {
           status: this.determineStatus(cert),
           thumbprint: cert.thumbprint || cert.fingerprint || ''
         }));
-        
+
         this.dataSource.data = this.certificates;
         this.dataSource.paginator = this.paginator;
         this.dataSource.sort = this.sort;

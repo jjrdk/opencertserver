@@ -14,8 +14,13 @@ function initializeApp(
   authService: AuthService
 ) {
   return async () => {
-    await configService.loadConfig();
-    await authService.initializeAuth();
+    try {
+      await configService.loadConfig();
+      await authService.initializeAuth();
+    } catch (error) {
+      console.error('App initialization error:', error);
+      // Continue loading the app even if auth initialization fails
+    }
   };
 }
 
