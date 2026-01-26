@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Builder;
 
 public static class AcmeMiddlewareExtensions
 {
-    [RequiresUnreferencedCode("Uses AceMiddleware")]
+    [RequiresUnreferencedCode("Uses AcmeMiddleware")]
     public static IApplicationBuilder UseAcmeServer(this IApplicationBuilder builder)
     {
         return builder.UseMiddleware<AcmeMiddleware>();

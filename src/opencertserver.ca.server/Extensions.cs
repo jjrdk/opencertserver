@@ -1,5 +1,4 @@
 ﻿using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +28,9 @@ public static class Extensions
                 });
             groupBuilder.MapGet("/crl", CrlHandler.Handle)
                 .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
+            groupBuilder.MapGet("/inventory", InventoryHandler.HandleGet).AllowAnonymous();
+            groupBuilder.MapGet("/certificate", CertificateRetrievalHandler.HandleGet)
+                .AllowAnonymous();
             return endpoints;
         }
     }
@@ -36,6 +38,6 @@ public static class Extensions
 
 [JsonSerializable(typeof(OpenCertServer.Ca.CertificateItem))]
 [JsonSerializable(typeof(OpenCertServer.Ca.CertificateItem[]))]
-internal partial class CaServerSerializerContext : System.Text.Json.Serialization.JsonSerializerContext
+internal partial class CaServerSerializerContext : JsonSerializerContext
 {
 }

@@ -69,6 +69,6 @@ internal sealed class SimpleReEnrollHandler
 
         await writer.WriteLineAsync(pem).ConfigureAwait(false);
         await writer.FlushAsync().ConfigureAwait(false);
-        _certificateAuthority.RevokeCertificate(cert.GetSerialNumberString(), X509RevocationReason.Superseded);
+        await _certificateAuthority.RevokeCertificate(cert.GetSerialNumberString(), X509RevocationReason.Superseded);
     }
 }

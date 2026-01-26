@@ -22,7 +22,7 @@ public static class RevocationHandler
         }
         var signature = context.Request.Query["signature"].ToString().Base64DecodeBytes();
         var serialNumberHex = context.Request.Query["sn"].ToString();
-        var asymmetricAlgorithm = clientCert!.GetRSAPublicKey() ?? (AsymmetricAlgorithm?)clientCert!.GetECDsaPublicKey();
+        var asymmetricAlgorithm = clientCert!.GetRSAPublicKey() ?? (AsymmetricAlgorithm?)clientCert.GetECDsaPublicKey();
         var reasonString = context.Request.Query["reason"];
         if (asymmetricAlgorithm == null
          || !asymmetricAlgorithm.VerifySignature(
@@ -45,7 +45,7 @@ public static class RevocationHandler
         }
 
         var ca = context.RequestServices.GetRequiredService<ICertificateAuthority>();
-        var result = ca.RevokeCertificate(serialNumberHex, reason);
+        var result = await ca.RevokeCertificate(serialNumberHex, reason);
         context.Response.StatusCode = result ? (int)HttpStatusCode.OK : (int)HttpStatusCode.NotFound;
         await context.Response.CompleteAsync();
     }

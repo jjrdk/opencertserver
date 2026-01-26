@@ -6,16 +6,7 @@
 		<AssemblyName>opencertserver.acme.server</AssemblyName>
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-	  <WarningsNotAsErrors>IL2026</WarningsNotAsErrors>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-	  <WarningsNotAsErrors>IL2026</WarningsNotAsErrors>
-	</PropertyGroup>
-
 	<ItemGroup>
-<!--		<PackageReference Include="Certes" Version="3.0.4" />-->
 		<PackageReference Include="DnsClient" Version="1.8.0" />
 	</ItemGroup>
 

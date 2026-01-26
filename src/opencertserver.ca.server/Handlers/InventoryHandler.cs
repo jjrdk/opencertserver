@@ -7,7 +7,7 @@ namespace opencertserver.ca.server.Handlers;
 
 public static class InventoryHandler
 {
-    public static async Task Handle(HttpContext context)
+    public static async Task HandleGet(HttpContext context)
     {
         var store = context.RequestServices.GetRequiredService<IStoreCertificates>();
         var page = context.Request.Query.ContainsKey("page")

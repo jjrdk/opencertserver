@@ -10,7 +10,7 @@ public interface ICertificateAuthority
 
     X509Certificate2Collection GetRootCertificates();
 
-    bool RevokeCertificate(string serialNumber, X509RevocationReason reason);
+    Task<bool> RevokeCertificate(string serialNumber, X509RevocationReason reason);
 
-    byte[] GetRevocationList();
+    Task<byte[]> GetRevocationList();
 }

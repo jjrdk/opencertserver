@@ -18,7 +18,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <WarningsAsErrors />
-        <WarningsNotAsErrors>618;1701</WarningsNotAsErrors>
+        <WarningsNotAsErrors>618;1701;NU1900</WarningsNotAsErrors>
         <IsTrimmable>true</IsTrimmable>
         <IsAotCompatible>true</IsAotCompatible>
     </PropertyGroup>

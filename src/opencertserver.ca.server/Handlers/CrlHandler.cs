@@ -9,7 +9,7 @@ public static class CrlHandler
     public static async Task Handle(HttpContext context)
     {
         var ca = context.RequestServices.GetRequiredService<ICertificateAuthority>();
-        var crl = ca.GetRevocationList();
+        var crl = await ca.GetRevocationList();
         context.Response.ContentType = "application/pkix-crl";
         var writer = context.Response.BodyWriter;
         await writer.WriteAsync(crl);

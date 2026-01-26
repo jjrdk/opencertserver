@@ -294,16 +294,16 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         ];
     }
 
-    public bool RevokeCertificate(string serialNumber, X509RevocationReason reason)
+    public Task<bool> RevokeCertificate(string serialNumber, X509RevocationReason reason)
     {
         return _certificateStore.RemoveCertificate(serialNumber, reason);
     }
 
-    public byte[] GetRevocationList()
+    public async Task<byte[]> GetRevocationList()
     {
         var list = _certificateStore.GetRevocationList();
         var builder = new CertificateRevocationListBuilder();
-        foreach (var revoked in list)
+        await foreach (var revoked in list)
         {
             builder.AddEntry(
                 Encoding.UTF8.GetBytes(revoked.SerialNumber),
