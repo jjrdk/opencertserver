@@ -20,7 +20,7 @@ using OpenCertServer.Acme.Server.Extensions;
 using Acme.Server.Middleware;
 using Est.Server;
 
-public sealed class Program
+internal static class Program
 {
     [UnconditionalSuppressMessage("AOT",
         "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.",
