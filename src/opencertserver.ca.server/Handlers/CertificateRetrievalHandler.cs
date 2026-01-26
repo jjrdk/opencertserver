@@ -1,9 +1,8 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using OpenCertServer.Ca;
 
-namespace opencertserver.ca.server.Handlers;
+namespace OpenCertServer.Ca.Server.Handlers;
 
 public static class CertificateRetrievalHandler
 {

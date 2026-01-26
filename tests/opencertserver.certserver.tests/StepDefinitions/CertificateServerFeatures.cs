@@ -22,7 +22,7 @@ using OpenCertServer.Acme.Server.Configuration;
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Middleware;
 using OpenCertServer.Acme.Server.Services;
-using opencertserver.ca.server;
+using OpenCertServer.Ca.Server;
 using OpenCertServer.Est.Server;
 using TechTalk.SpecFlow;
 using Xunit;

@@ -4,10 +4,9 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using OpenCertServer.Ca;
 using OpenCertServer.Ca.Utils;
 
-namespace opencertserver.ca.server.Handlers;
+namespace OpenCertServer.Ca.Server.Handlers;
 
 public static class RevocationHandler
 {

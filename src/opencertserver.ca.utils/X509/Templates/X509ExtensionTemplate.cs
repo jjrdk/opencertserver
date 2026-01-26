@@ -1,8 +1,7 @@
 using System.Formats.Asn1;
 using System.Security.Cryptography;
-using OpenCertServer.Ca.Utils.X509;
 
-namespace OpenCertServer.Ca.Utils.X509Extensions.Templates;
+namespace OpenCertServer.Ca.Utils.X509.Templates;
 
 public class X509ExtensionTemplate : AsnValue
 {

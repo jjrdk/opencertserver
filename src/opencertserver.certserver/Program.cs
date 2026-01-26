@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using OpenCertServer.Ca.Server;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
@@ -8,7 +9,6 @@ namespace OpenCertServer.CertServer;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using OpenCertServer.Ca;
-using opencertserver.ca.server;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Builder;

@@ -1,14 +1,22 @@
 using System.Formats.Asn1;
-using OpenCertServer.Ca.Utils.X509;
 
-namespace OpenCertServer.Ca.Utils.X509Extensions.Templates;
+namespace OpenCertServer.Ca.Utils.X509.Templates;
 
 public class SingleAttributeTemplate : AsnValue
 {
-    public SingleAttributeTemplate(string oid, byte[]? rawValue)
+    public SingleAttributeTemplate(string oid, byte[]? rawValue = null)
     {
         Oid = oid;
         RawValue = rawValue;
+    }
+
+    public SingleAttributeTemplate(AsnReader reader)
+    {
+        Oid = reader.ReadObjectIdentifier();
+        if (reader.HasData)
+        {
+            RawValue = reader.ReadOctetString();
+        }
     }
 
     public string Oid { get; }
