@@ -28,7 +28,7 @@ public static class Extensions
                 });
             groupBuilder.MapGet("/crl", CrlHandler.Handle)
                 .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
-            groupBuilder.MapGet("/inventory", InventoryHandler.HandleGet).AllowAnonymous();
+            groupBuilder.MapGet("/inventory", InventoryHandler.Handle).AllowAnonymous();
             groupBuilder.MapGet("/certificate", CertificateRetrievalHandler.HandleGet)
                 .AllowAnonymous();
             return endpoints;

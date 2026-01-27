@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Certificate;
+using Microsoft.AspNetCore.Routing;
 
 namespace OpenCertServer.Est.Server;
 
@@ -99,53 +100,65 @@ public static class CertificateServerExtensions
             IAuthorizeData? enrollPolicy = null,
             IAuthorizeData? reEnrollPolicy = null)
         {
-            const string? wellKnownEst = "/.well-known/est";
             return app.UseCertificateForwarding()
                 .UseAuthentication()
                 .UseRouting()
                 .UseAuthorization()
                 .UseEndpoints(e =>
                 {
-                    var groupBuilder = e.MapGroup(wellKnownEst);
-                    groupBuilder.MapGet(
-                        "/cacert",
-                        async ctx =>
-                        {
-                            var handler = ctx.RequestServices.GetRequiredService<CaCertHandler>();
-                            await handler.Handle(ctx).ConfigureAwait(false);
-                        });
-                    var enrollBuilder = groupBuilder.MapPost(
-                        "/simpleenroll",
-                        async ctx =>
-                        {
-                            var handler = ctx.RequestServices.GetRequiredService<SimpleEnrollHandler>();
-                            await handler.Handle(ctx).ConfigureAwait(false);
-                        });
-                    if (enrollPolicy != null)
-                    {
-                        enrollBuilder.RequireAuthorization(enrollPolicy);
-                    }
-                    else
-                    {
-                        enrollBuilder.RequireAuthorization(ConfigurePolicy);
-                    }
-
-                    var reEnrollBuilder = groupBuilder.MapPost(
-                        "/simplereenroll",
-                        async ctx =>
-                        {
-                            var handler = ctx.RequestServices.GetRequiredService<SimpleReEnrollHandler>();
-                            await handler.Handle(ctx).ConfigureAwait(false);
-                        });
-                    if (reEnrollPolicy != null)
-                    {
-                        reEnrollBuilder.RequireAuthorization(reEnrollPolicy);
-                    }
-                    else
-                    {
-                        reEnrollBuilder.RequireAuthorization(ConfigurePolicy);
-                    }
+                    e.MapEstServer(enrollPolicy, reEnrollPolicy);
                 });
+        }
+    }
+
+    extension(IEndpointRouteBuilder endpoints)
+    {
+        public IEndpointRouteBuilder MapEstServer(
+            IAuthorizeData? enrollPolicy = null,
+            IAuthorizeData? reEnrollPolicy = null)
+        {
+            const string? wellKnownEst = "/.well-known/est";
+            var groupBuilder = endpoints.MapGroup(wellKnownEst);
+            groupBuilder.MapGet(
+                "/cacert",
+                async ctx =>
+                {
+                    var handler = ctx.RequestServices.GetRequiredService<CaCertHandler>();
+                    await handler.Handle(ctx).ConfigureAwait(false);
+                }).CacheOutput(b => b.Cache().Expire(TimeSpan.FromDays(30)));
+            var enrollBuilder = groupBuilder.MapPost(
+                "/simpleenroll",
+                async ctx =>
+                {
+                    var handler = ctx.RequestServices.GetRequiredService<SimpleEnrollHandler>();
+                    await handler.Handle(ctx).ConfigureAwait(false);
+                });
+            if (enrollPolicy != null)
+            {
+                enrollBuilder.RequireAuthorization(enrollPolicy);
+            }
+            else
+            {
+                enrollBuilder.RequireAuthorization(ConfigurePolicy);
+            }
+
+            var reEnrollBuilder = groupBuilder.MapPost(
+                "/simplereenroll",
+                async ctx =>
+                {
+                    var handler = ctx.RequestServices.GetRequiredService<SimpleReEnrollHandler>();
+                    await handler.Handle(ctx).ConfigureAwait(false);
+                });
+            if (reEnrollPolicy != null)
+            {
+                reEnrollBuilder.RequireAuthorization(reEnrollPolicy);
+            }
+            else
+            {
+                reEnrollBuilder.RequireAuthorization(ConfigurePolicy);
+            }
+
+            return endpoints;
         }
     }
 

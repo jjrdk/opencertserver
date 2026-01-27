@@ -86,7 +86,7 @@ public sealed class CertificateAuthorityTests : IDisposable
     {
         X509Certificate2 rsa = null!;
         X509Certificate2 ecdsa = null!;
-        var ca = CertificateAuthority.Create(
+        _ = CertificateAuthority.Create(
             new X500DistinguishedName("CN=test"),
             new InMemoryCertificateStore(),
             TimeSpan.FromDays(1),
@@ -108,12 +108,12 @@ public sealed class CertificateAuthorityTests : IDisposable
     [Fact]
     public void WhenCreatingWithBackupActionThenBacksUpCerts2()
     {
-        using (var rsa = File.OpenWrite("ca_rsa.pem"))
+        using (var rsa = new FileStream("ca_rsa.pem", FileMode.Create))
         {
-            using var rsaKey = File.OpenWrite("ca_rsa_key.pem");
-            using var ecdsa = File.OpenWrite("ca_ecdsa.pem");
-            using var ecdsaKey = File.OpenWrite("ca_ecdsa_key.pem");
-            var ca = CertificateAuthority.Create(
+            using var rsaKey = new FileStream("ca_rsa_key.pem", FileMode.Create);
+            using var ecdsa = new FileStream("ca_ecdsa.pem", FileMode.Create);
+            using var ecdsaKey = new FileStream("ca_ecdsa_key.pem", FileMode.Create);
+            _ = CertificateAuthority.Create(
                 new X500DistinguishedName("CN=reimers.io,DC=reimers.io,O=OpenCertServer,C=Switzerland"),
                 new InMemoryCertificateStore(),
                 TimeSpan.FromDays(2 * 365),
@@ -121,7 +121,7 @@ public sealed class CertificateAuthorityTests : IDisposable
                 ["https://ca.reimers.io"],
                 NullLogger<CertificateAuthority>.Instance,
                 BigInteger.Zero,
-                _=> true,
+                _ => true,
                 (c1, c2) =>
                 {
                     rsa.Write(Encoding.UTF8.GetBytes(c1.ExportCertificatePem()));
