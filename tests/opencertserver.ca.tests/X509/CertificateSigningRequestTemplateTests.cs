@@ -22,7 +22,7 @@ public class CertificateSigningRequestTemplateTests
         var encoded = writer.Encode();
 
         var reader = new AsnReader(encoded, AsnEncodingRules.CER);
-        var decoded = CertificateSigningRequestTemplate.Read(reader);
+        var decoded = new CertificateSigningRequestTemplate(reader);
 
         Assert.Equal(requestTemplate.Version, decoded.Version);
         Assert.Equal(Oids.CommonNameOid, decoded.Subject!.Name.RelativeNames[0].Attributes.First().Oid, OidComparer.Instance);

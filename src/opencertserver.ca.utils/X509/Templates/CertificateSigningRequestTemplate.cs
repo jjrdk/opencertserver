@@ -25,22 +25,14 @@ public class CertificateSigningRequestTemplate : AsnValue
         SubjectPublicKeyInfo = subjectPkInfo;
     }
 
-    public BigInteger Version { get; }
-
-    public NameTemplate? Subject { get; }
-
-    public SubjectPublicKeyInfoTemplate? SubjectPublicKeyInfo { get; }
-
-    public static CertificateSigningRequestTemplate Read(AsnReader reader)
+    public CertificateSigningRequestTemplate(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
-        var version = sequenceReader.ReadInteger();
-        NameTemplate? subject = null;
-        SubjectPublicKeyInfoTemplate? subjectPkInfo = null;
+        Version = sequenceReader.ReadInteger();
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(UniversalTagNumber.Sequence)))
         {
-            subject = new NameTemplate(sequenceReader);
+            Subject = new NameTemplate(sequenceReader);
         }
 
         if (sequenceReader.HasData)
@@ -48,12 +40,16 @@ public class CertificateSigningRequestTemplate : AsnValue
             var tag = sequenceReader.PeekTag();
             if (sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
             {
-                subjectPkInfo = new SubjectPublicKeyInfoTemplate(sequenceReader, tag);
+                SubjectPublicKeyInfo = new SubjectPublicKeyInfoTemplate(sequenceReader, tag);
             }
         }
-
-        return new CertificateSigningRequestTemplate(version, subject, subjectPkInfo);
     }
+
+    public BigInteger Version { get; }
+
+    public NameTemplate? Subject { get; }
+
+    public SubjectPublicKeyInfoTemplate? SubjectPublicKeyInfo { get; }
 
     public override void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
