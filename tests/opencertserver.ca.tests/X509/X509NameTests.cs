@@ -23,7 +23,7 @@ public class X509NameTests
         var rdn = reloaded.RelativeDistinguishedNames.First();
         var value = rdn.Values.First();
 
-        Assert.Equal(Oids.OrganizationalUnitOid, value.Oid, new OidComparer());
+        Assert.Equal(Oids.OrganizationalUnitOid, value.Oid, OidComparer.Instance);
         Assert.Equal("PartyNameValue", value.Value);
     }
 }

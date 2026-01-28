@@ -13,10 +13,10 @@ public class AttributeTypeValueTests
         var atv = new AttributeTypeValue(Oids.CommonNameOid,
             new Asn1Tag(TagClass.ContextSpecific, (int)UniversalTagNumber.UTF8String), "TestValue"u8);
         var writer = new AsnWriter(AsnEncodingRules.DER);
-        atv.Encode(writer, null);
+        atv.Encode(writer);
         var encoded = writer.Encode();
         var reloaded = new AttributeTypeValue(new AsnReader(encoded, AsnEncodingRules.DER));
-        Assert.Equal(Oids.CommonNameOid, reloaded.Oid, new OidComparer());
+        Assert.Equal(Oids.CommonNameOid, reloaded.Oid, OidComparer.Instance);
         Assert.Equal("TestValue", reloaded.Value);
     }
 }

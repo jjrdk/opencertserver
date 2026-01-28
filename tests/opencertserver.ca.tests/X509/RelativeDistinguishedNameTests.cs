@@ -21,7 +21,7 @@ public class RelativeDistinguishedNameTests
 
         var value = reloaded.Values.First();
 
-        Assert.Equal(Oids.OrganizationalUnitOid, value.Oid, new OidComparer());
+        Assert.Equal(Oids.OrganizationalUnitOid, value.Oid, OidComparer.Instance);
         Assert.Equal("PartyNameValue", value.Value);
     }
 }

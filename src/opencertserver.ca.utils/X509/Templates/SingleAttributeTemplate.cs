@@ -1,10 +1,11 @@
 using System.Formats.Asn1;
+using System.Security.Cryptography;
 
 namespace OpenCertServer.Ca.Utils.X509.Templates;
 
 public class SingleAttributeTemplate : AsnValue
 {
-    public SingleAttributeTemplate(string oid, byte[]? rawValue = null)
+    public SingleAttributeTemplate(Oid oid, byte[]? rawValue = null)
     {
         Oid = oid;
         RawValue = rawValue;
@@ -12,14 +13,15 @@ public class SingleAttributeTemplate : AsnValue
 
     public SingleAttributeTemplate(AsnReader reader)
     {
-        Oid = reader.ReadObjectIdentifier();
+        var sequenceReader = reader.ReadSequence();
+        Oid = sequenceReader.ReadObjectIdentifier().InitializeOid();
         if (reader.HasData)
         {
-            RawValue = reader.ReadOctetString();
+            RawValue = sequenceReader.ReadOctetString();
         }
     }
 
-    public string Oid { get; }
+    public Oid Oid { get; }
 
     public byte[]? RawValue { get; }
 
@@ -27,7 +29,7 @@ public class SingleAttributeTemplate : AsnValue
     {
         using (writer.PushSequence())
         {
-            writer.WriteObjectIdentifier(Oid);
+            writer.WriteObjectIdentifier(Oid.Value!);
             if (RawValue != null)
             {
                 writer.WriteOctetString(RawValue);

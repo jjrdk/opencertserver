@@ -13,7 +13,9 @@ public class CertificateSigningRequestTemplateTests
     {
         var requestTemplate = new CertificateSigningRequestTemplate(
             version: BigInteger.One,
-            subject: new NameTemplate(new RDNSequenceTemplate([])),
+            subject: new NameTemplate(new RDNSequenceTemplate([
+                new RelativeDistinguishedNameTemplate([new SingleAttributeTemplate(Oids.CommonNameOid)])
+            ])),
             subjectPkInfo: new SubjectPublicKeyInfoTemplate(Oids.RsaOid));
         var writer = new AsnWriter(AsnEncodingRules.CER);
         requestTemplate.Encode(writer);
@@ -23,7 +25,7 @@ public class CertificateSigningRequestTemplateTests
         var decoded = CertificateSigningRequestTemplate.Read(reader);
 
         Assert.Equal(requestTemplate.Version, decoded.Version);
-        Assert.NotNull(decoded.Subject);
-        Assert.NotNull(decoded.SubjectPublicKeyInfo);
+        Assert.Equal(Oids.CommonNameOid, decoded.Subject!.Name.RelativeNames[0].Attributes.First().Oid, OidComparer.Instance);
+        Assert.Equal(Oids.RsaOid,decoded.SubjectPublicKeyInfo!.AlgorithmOid, OidComparer.Instance);
     }
 }

@@ -4,6 +4,12 @@ namespace OpenCertServer.Ca.Tests.X509;
 
 internal class OidComparer : IEqualityComparer<Oid>
 {
+    public  static readonly OidComparer Instance = new();
+
+    private OidComparer()
+    {
+    }
+
     public bool Equals(Oid? x, Oid? y)
     {
         if (x is null && y is null)

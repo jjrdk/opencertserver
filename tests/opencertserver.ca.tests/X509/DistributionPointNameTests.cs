@@ -22,7 +22,7 @@ public class DistributionPointNameTests
 
         var value = reloaded.NameRelativeToCrlIssuer?.Values.First();
 
-        Assert.Equal(Oids.OrganizationalUnitOid, value?.Oid!, new OidComparer());
+        Assert.Equal(Oids.OrganizationalUnitOid, value?.Oid!, OidComparer.Instance);
         Assert.Equal("PartyNameValue", value?.Value);
         Assert.Null(reloaded.FullName);
     }
