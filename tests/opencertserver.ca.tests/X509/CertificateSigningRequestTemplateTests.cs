@@ -1,6 +1,5 @@
 using System.Formats.Asn1;
 using System.Numerics;
-using System.Security.Cryptography;
 using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.X509.Templates;
 using Xunit;
@@ -15,7 +14,7 @@ public class CertificateSigningRequestTemplateTests
         var requestTemplate = new CertificateSigningRequestTemplate(
             version: BigInteger.One,
             subject: new NameTemplate(new RDNSequenceTemplate([])),
-            subjectPkInfo: new SubjectPublicKeyInfoTemplate(new Oid("1.2.3")));
+            subjectPkInfo: new SubjectPublicKeyInfoTemplate(Oids.RsaOid));
         var writer = new AsnWriter(AsnEncodingRules.CER);
         requestTemplate.Encode(writer);
         var encoded = writer.Encode();

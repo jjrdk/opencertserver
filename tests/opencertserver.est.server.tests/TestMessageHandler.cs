@@ -1,12 +1,12 @@
 namespace OpenCertServer.Est.Tests;
 
-using Microsoft.AspNetCore.Http;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Primitives;
 

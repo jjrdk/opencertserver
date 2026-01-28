@@ -5,7 +5,6 @@ using OpenCertServer.Ca;
 
 namespace OpenCertServer.Est.Tests;
 
-using Microsoft.AspNetCore.Builder;
 using System;
 using System.Security.Authentication;
 using System.Security.Cryptography;
@@ -13,6 +12,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Configuration;
 using Microsoft.AspNetCore.Authentication.Certificate;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;

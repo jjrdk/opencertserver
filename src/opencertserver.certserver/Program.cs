@@ -6,19 +6,19 @@ using OpenCertServer.Ca.Server;
 
 namespace OpenCertServer.CertServer;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Authentication;
 using System.Security.Cryptography;
-using OpenCertServer.Ca;
-using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography.X509Certificates;
+using Acme.Abstractions.IssuanceServices;
+using Acme.Server.Middleware;
+using Est.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Acme.Abstractions.IssuanceServices;
 using OpenCertServer.Acme.Server.Extensions;
-using Acme.Server.Middleware;
-using Est.Server;
+using OpenCertServer.Ca;
 
 internal static class Program
 {

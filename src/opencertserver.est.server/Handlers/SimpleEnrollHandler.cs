@@ -7,8 +7,8 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Ca;
+using Microsoft.AspNetCore.Http;
 
 internal sealed class SimpleEnrollHandler
 {

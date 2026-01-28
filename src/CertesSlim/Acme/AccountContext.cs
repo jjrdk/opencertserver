@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text.Json;
-using CertesSlim.Extensions;
 using CertesSlim.Acme.Resource;
+using CertesSlim.Extensions;
 using CertesSlim.Json;
 
 namespace CertesSlim.Acme;

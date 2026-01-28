@@ -2,9 +2,9 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using opencertserver.ca.server.Handlers;
+using OpenCertServer.Ca.Server.Handlers;
 
-namespace opencertserver.ca.server;
+namespace OpenCertServer.Ca.Server;
 
 public static class Extensions
 {
@@ -30,7 +30,6 @@ public static class Extensions
                 });
             groupBuilder.MapGet("/crl", CrlHandler.Handle)
                 .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
-            groupBuilder.MapGet("/inventory", InventoryHandler.Handle).AllowAnonymous();
             groupBuilder.MapGet("/certificate", CertificateRetrievalHandler.HandleGet)
                 .AllowAnonymous();
             return endpoints;

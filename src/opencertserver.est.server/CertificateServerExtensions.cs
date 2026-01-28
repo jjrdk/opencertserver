@@ -5,6 +5,7 @@ namespace OpenCertServer.Est.Server;
 
 using System;
 using System.Security.Cryptography.X509Certificates;
+using Ca;
 using Ca.Utils;
 using Handlers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -12,7 +13,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Ca;
 
 /// <summary>
 /// Defines the certificate server extension methods.

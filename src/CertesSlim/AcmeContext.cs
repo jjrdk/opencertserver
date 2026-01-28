@@ -1,6 +1,6 @@
-﻿using CertesSlim.Extensions;
-using CertesSlim.Acme;
+﻿using CertesSlim.Acme;
 using CertesSlim.Acme.Resource;
+using CertesSlim.Extensions;
 using CertesSlim.Json;
 using Microsoft.IdentityModel.Tokens;
 using Directory = CertesSlim.Acme.Resource.Directory;

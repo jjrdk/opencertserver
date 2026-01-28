@@ -1,8 +1,8 @@
 ﻿namespace OpenCertServer.Est.Cli;
 
-using System.Text.Json;
-using System.Text;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
+using System.Text.Json;
 
 internal static partial class Program
 {

@@ -1,8 +1,8 @@
 namespace OpenCertServer.CertServer;
 
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 internal class ConfigureJwtBearerOptions(JwtParameters parameters) : IPostConfigureOptions<JwtBearerOptions>
 {
