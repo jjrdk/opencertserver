@@ -12,30 +12,58 @@ public class SubjectPublicKeyInfoTemplate : AsnValue
     }
      */
 
-    public SubjectPublicKeyInfoTemplate(Oid algorithm, byte[]? publicKey = null)
+    public SubjectPublicKeyInfoTemplate(Oid algorithmOid, Oid? curveOid = null, byte[]? publicKey = null)
     {
-        Algorithm = algorithm;
+        AlgorithmOid = algorithmOid;
+        CurveOid = curveOid;
         PublicKey = publicKey;
     }
 
     public SubjectPublicKeyInfoTemplate(AsnReader reader, Asn1Tag? expectedTag = null)
     {
         var sequenceReader = reader.ReadSequence(expectedTag);
-        Algorithm = new Oid(sequenceReader.ReadObjectIdentifier());
-        if (reader.HasData)
+        var algoReader = sequenceReader.ReadSequence();
+        AlgorithmOid = algoReader.ReadObjectIdentifier().InitializeOid();
+        switch (AlgorithmOid.Value)
+        {
+            case Oids.Rsa:
+                // Skip parameters for RSA (should be NULL)
+                algoReader.ReadNull();
+                break;
+            case Oids.EcPublicKey:
+                // Skip parameters for EC (should be named curve OID)
+                CurveOid = algoReader.ReadObjectIdentifier().InitializeOid();
+                break;
+        }
+        if (sequenceReader.HasData)
         {
             PublicKey = sequenceReader.ReadBitString(out _);
         }
     }
 
-    public Oid Algorithm { get; }
+    public Oid AlgorithmOid { get; }
+
+    public Oid? CurveOid { get; }
+
     public byte[]? PublicKey { get; }
 
     public override void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         using (writer.PushSequence(tag))
         {
-            writer.WriteObjectIdentifier(Algorithm.Value!);
+            using (writer.PushSequence())
+            {
+                writer.WriteObjectIdentifier(AlgorithmOid.Value!);
+                if (CurveOid?.Value != null)
+                {
+                    writer.WriteObjectIdentifier(CurveOid.Value);
+                }
+                else if (AlgorithmOid.Value == Oids.Rsa)
+                {
+                    writer.WriteNull();
+                }
+            }
+
             if (PublicKey != null)
             {
                 writer.WriteBitString(PublicKey.AsSpan());

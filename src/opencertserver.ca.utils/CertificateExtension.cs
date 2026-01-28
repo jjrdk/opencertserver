@@ -60,7 +60,7 @@ public class CertificateExtension : AsnValue
     public static CertificateExtension Decode(AsnReader extensions)
     {
         var extension = extensions.ReadSequence();
-        var extnOid = new Oid(extension.ReadObjectIdentifier());
+        var extnOid = extension.ReadObjectIdentifier().InitializeOid();
         X509RevocationReason? reason = null;
         X500DistinguishedName? certificateIssuer = null;
         DateTimeOffset? invalidityDate = null;

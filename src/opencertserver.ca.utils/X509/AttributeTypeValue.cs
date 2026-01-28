@@ -39,7 +39,7 @@ public class AttributeTypeValue : AsnValue
     {
         var seq = reader.ReadSequence();
         var oid = seq.ReadObjectIdentifier();
-        Oid =new Oid( oid);
+        Oid =oid.InitializeOid();
         _tag = seq.PeekTag();
 
         if (_tag.TagClass == TagClass.Universal)

@@ -19,7 +19,7 @@ public class X509ExtensionTemplate : AsnValue
     public static X509ExtensionTemplate Read(AsnReader reader)
     {
         var seqReader = reader.ReadSequence();
-        var oid = new Oid(seqReader.ReadObjectIdentifier());
+        var oid = seqReader.ReadObjectIdentifier().InitializeOid();
         var critical = false;
         AsnValue? value = null;
         if (seqReader.HasData && seqReader.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean))

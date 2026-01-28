@@ -140,7 +140,7 @@ public static class EncodingExtensions
             }
 
             var oidValue = reader.ReadObjectIdentifier();
-            return new Oid(oidValue, null);
+            return oidValue.InitializeOid();
         }
 
         public Oid? GetSharedOrNullOid(Asn1Tag? expectedTag = null)
@@ -303,7 +303,7 @@ public static class EncodingExtensions
         {
             var extensionSeq = reader.ReadSequence();
             var isCritical = false;
-            var extnOid = new Oid(extensionSeq.ReadObjectIdentifier());
+            var extnOid = extensionSeq.ReadObjectIdentifier().InitializeOid();
 
             if (extensionSeq.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean))
             {

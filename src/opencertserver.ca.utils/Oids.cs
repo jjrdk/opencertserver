@@ -318,6 +318,9 @@ public static class Oids
     {
         return (hashAlgorithm.Name, publicKey) switch
         {
+//            (nameof(SHA256), RSA) => "1.2.840.113549.1.1.1", // rsassaPkcs
+//            (nameof(SHA384), RSA) => "1.2.840.113549.1.1.1",
+//            (nameof(SHA512), RSA) => "1.2.840.113549.1.1.1",
             (nameof(SHA256), RSA) => "1.2.840.113549.1.1.10", // rsassaPss
             (nameof(SHA384), RSA) => "1.2.840.113549.1.1.10",
             (nameof(SHA512), RSA) => "1.2.840.113549.1.1.10",
