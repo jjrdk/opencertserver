@@ -1,19 +1,31 @@
+namespace OpenCertServer.Ca.Utils;
+
 using System.Formats.Asn1;
 using OpenCertServer.Ca.Utils.X509;
 using OpenCertServer.Ca.Utils.X509.Templates;
 
-namespace OpenCertServer.Ca.Utils;
-
+/// <summary>
+/// Defines a template for a sequence of relative distinguished names.
+/// </summary>
+/// <code>
+/// RDNSequenceTemplate ::= SEQUENCE OF RelativeDistinguishedNameTemplate
+/// </code>
 // ReSharper disable once InconsistentNaming
-public class RDNSequenceTemplate : AsnValue
+public class RDNSequenceTemplate : IAsnValue
 {
-    // RDNSequenceTemplate ::= SEQUENCE OF RelativeDistinguishedNameTemplate
-
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RDNSequenceTemplate"/> class.
+    /// </summary>
+    /// <param name="relativeDistinguishedNames">The sequence of <see cref="RelativeDistinguishedNameTemplate"/>.</param>
     public RDNSequenceTemplate(IEnumerable<RelativeDistinguishedNameTemplate> relativeDistinguishedNames)
     {
         RelativeNames = relativeDistinguishedNames.ToArray();
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RDNSequenceTemplate"/> class.
+    /// </summary>
+    /// <param name="reader">The <see cref="AsnReader"/> to read the content from.</param>
     public RDNSequenceTemplate(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
@@ -27,9 +39,13 @@ public class RDNSequenceTemplate : AsnValue
         RelativeNames = relativeDistinguishedNames.ToArray();
     }
 
+    /// <summary>
+    /// Gets the relative distinguished names in the sequence.
+    /// </summary>
     public RelativeDistinguishedNameTemplate[] RelativeNames { get; }
 
-    public override void Encode(AsnWriter writer, Asn1Tag? tag = null)
+    /// <inheritdoc />
+    public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         using (writer.PushSequence(tag))
         {

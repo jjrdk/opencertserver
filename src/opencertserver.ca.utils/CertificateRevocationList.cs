@@ -1,10 +1,10 @@
+namespace OpenCertServer.Ca.Utils;
+
 using System.Formats.Asn1;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils.X509Extensions;
-
-namespace OpenCertServer.Ca.Utils;
 
 /// <summary>
 /// Defines a Certificate Revocation List (CRL).

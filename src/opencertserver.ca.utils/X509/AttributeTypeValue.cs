@@ -1,8 +1,8 @@
+namespace OpenCertServer.Ca.Utils.X509;
+
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Text;
-
-namespace OpenCertServer.Ca.Utils.X509;
 
 /// <summary>
 /// Defines the AttributeTypeValue class.
@@ -14,9 +14,9 @@ namespace OpenCertServer.Ca.Utils.X509;
 ///   value              ANY
 /// }
 /// </code>
-public class AttributeTypeValue : AsnValue
+public class AttributeTypeValue : IAsnValue
 {
-    private Asn1Tag _tag;
+    private readonly Asn1Tag _tag;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AttributeTypeValue"/> class.
@@ -31,10 +31,18 @@ public class AttributeTypeValue : AsnValue
         Value = Encoding.UTF8.GetString(value);
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AttributeTypeValue"/> class.
+    /// </summary>
+    /// <param name="rawData">The raw data to read.</param>
     public AttributeTypeValue(ReadOnlyMemory<byte> rawData) : this(new AsnReader(rawData, AsnEncodingRules.DER))
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AttributeTypeValue"/> class.
+    /// </summary>
+    /// <param name="reader">The <see cref="AsnReader"/> to read the content from.</param>
     public AttributeTypeValue(AsnReader reader)
     {
         var seq = reader.ReadSequence();
@@ -58,10 +66,18 @@ public class AttributeTypeValue : AsnValue
         }
     }
 
+    /// <summary>
+    /// Gets the OID.
+    /// </summary>
     public Oid Oid { get; }
+
+    /// <summary>
+    /// Gets the value.
+    /// </summary>
     public string Value { get; }
 
-    public override void Encode(AsnWriter writer, Asn1Tag? tag = null)
+    /// <inheritdoc/>
+    public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         using (writer.PushSequence(tag))
         {

@@ -1,6 +1,6 @@
-using System.Formats.Asn1;
-
 namespace OpenCertServer.Ca.Utils.X509;
+
+using System.Formats.Asn1;
 
 /// <summary>
 /// Defines the EdiPartyName class.
@@ -10,14 +10,24 @@ namespace OpenCertServer.Ca.Utils.X509;
 ///  nameAssigner		[0]	DirectoryString {ub-name} OPTIONAL,
 ///  partyName		[1]	DirectoryString {ub-name} }
 /// </code>
-public class EdiPartyName : AsnValue
+public class EdiPartyName : IAsnValue
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EdiPartyName"/> class.
+    /// </summary>
+    /// <param name="partyName">The party name.</param>
+    /// <param name="nameAssigner">The name assigner.</param>
     public EdiPartyName(DirectoryString partyName, DirectoryString? nameAssigner = null)
     {
-        PartyName = partyName ?? throw new ArgumentNullException(nameof(partyName));
+        PartyName = partyName;
         NameAssigner = nameAssigner;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EdiPartyName"/> class.
+    /// </summary>
+    /// <param name="reader">The <see cref="AsnReader"/> to read content from.</param>
+    /// <exception cref="ArgumentException">Thrown if initial tag is content specific.</exception>
     public EdiPartyName(AsnReader reader)
     {
         var tag = reader.PeekTag();
@@ -51,11 +61,18 @@ public class EdiPartyName : AsnValue
         }
     }
 
+    /// <summary>
+    /// Gets the party name.
+    /// </summary>
     public DirectoryString PartyName { get; }
 
+    /// <summary>
+    /// Gets the optional name assigner.
+    /// </summary>
     public DirectoryString? NameAssigner { get; }
 
-    public override void Encode(AsnWriter writer, Asn1Tag? tag)
+    /// <inheritdoc/>
+    public void Encode(AsnWriter writer, Asn1Tag? tag)
     {
         using (writer.PushSequence(tag))
         {

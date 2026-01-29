@@ -1,6 +1,6 @@
-using System.Formats.Asn1;
-
 namespace OpenCertServer.Ca.Utils.X509;
+
+using System.Formats.Asn1;
 
 /// <summary>
 /// Defines the RelativeDistinguishedName class.
@@ -16,24 +16,36 @@ namespace OpenCertServer.Ca.Utils.X509;
 ///   value              ANY
 /// }
 /// </code>
-public class RelativeDistinguishedName : AsnValue
+public class RelativeDistinguishedName : IAsnValue
 {
-    public RelativeDistinguishedName(params AttributeTypeValue[] values)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RelativeDistinguishedName"/> class.
+    /// </summary>
+    /// <param name="values">The sequence of values.</param>
+    public RelativeDistinguishedName(params Span<AttributeTypeValue> values)
     {
-        Values = values.AsReadOnly();
+        Values = values.ToArray().AsReadOnly();
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RelativeDistinguishedName"/> class.
+    /// </summary>
+    /// <param name="rawData">The raw DER encoded data.</param>
     public RelativeDistinguishedName(ReadOnlyMemory<byte> rawData)
         : this(new AsnReader(rawData, AsnEncodingRules.DER))
     {
     }
 
-    public RelativeDistinguishedName(AsnReader outer)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RelativeDistinguishedName"/> class.
+    /// </summary>
+    /// <param name="reader">The <see cref="AsnReader"/> to read content from.</param>
+    public RelativeDistinguishedName(AsnReader reader)
     {
         List<AttributeTypeValue> values = [];
         // Windows does not enforce the sort order on multi-value RDNs.
-        var tag = outer.PeekTag();
-        var rdn = outer.ReadSetOf(skipSortOrderValidation: true, expectedTag: tag);
+        var tag = reader.PeekTag();
+        var rdn = reader.ReadSetOf(skipSortOrderValidation: true, expectedTag: tag);
         while (rdn.HasData)
         {
             values.Add(new AttributeTypeValue(rdn));
@@ -42,15 +54,19 @@ public class RelativeDistinguishedName : AsnValue
         Values = values;
     }
 
+    /// <summary>
+    /// Gets the collection of attribute type and value pairs.
+    /// </summary>
     public IReadOnlyCollection<AttributeTypeValue> Values { get; }
 
-    public override void Encode(AsnWriter writer, Asn1Tag? tag = null)
+    /// <inheritdoc/>
+    public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         using (writer.PushSetOf(tag))
         {
             foreach (var atv in Values)
             {
-                atv.Encode(writer, null);
+                atv.Encode(writer);
             }
         }
     }

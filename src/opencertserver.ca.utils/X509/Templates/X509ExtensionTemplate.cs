@@ -1,43 +1,41 @@
+namespace OpenCertServer.Ca.Utils.X509.Templates;
+
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 
-namespace OpenCertServer.Ca.Utils.X509.Templates;
-
-public class X509ExtensionTemplate : AsnValue
+public class X509ExtensionTemplate : IAsnValue
 {
     public Oid Oid { get; }
-    public AsnValue? Value { get; }
+    public IAsnValue? Value { get; }
     public bool Critical { get; }
 
-    public X509ExtensionTemplate(Oid oid, AsnValue? value, bool critical = false)
+    public X509ExtensionTemplate(Oid oid, IAsnValue? value, bool critical = false)
     {
         Oid = oid;
         Value = value;
         Critical = critical;
     }
 
-    public static X509ExtensionTemplate Read(AsnReader reader)
+    public X509ExtensionTemplate(AsnReader reader)
     {
         var seqReader = reader.ReadSequence();
-        var oid = seqReader.ReadObjectIdentifier().InitializeOid();
-        var critical = false;
-        AsnValue? value = null;
+        Oid = seqReader.ReadObjectIdentifier().InitializeOid();
         if (seqReader.HasData && seqReader.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean))
         {
-            critical = seqReader.ReadBoolean();
+            Critical = seqReader.ReadBoolean();
         }
 
-        if (seqReader.HasData)
+        if (!seqReader.HasData)
         {
-            var octetString = seqReader.ReadOctetString();
-            var valueReader = new AsnReader(octetString, AsnEncodingRules.DER);
-            value = new AsnString(Asn1Tag.Null, valueReader.ReadCharacterString(UniversalTagNumber.UTF8String));
+            return;
         }
 
-        return new X509ExtensionTemplate(oid, value, critical);
+        var octetString = seqReader.ReadOctetString();
+        var valueReader = new AsnReader(octetString, AsnEncodingRules.DER);
+        Value = new AsnString(Asn1Tag.Null, valueReader.ReadCharacterString(UniversalTagNumber.UTF8String));
     }
 
-    public override void Encode(AsnWriter writer, Asn1Tag? tag = null)
+    public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         using (writer.PushSequence())
         {

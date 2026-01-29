@@ -1,15 +1,22 @@
-﻿using System.Security.Cryptography;
+﻿namespace OpenCertServer.Ca.Utils.X509Extensions;
+
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
 
-namespace OpenCertServer.Ca.Utils.X509Extensions;
-
+/// <summary>
+/// Defines extension methods for <see cref="X509Certificate2"/>.
+/// </summary>
 public static partial class X509CertificatesExtensions
 {
     private const string SubjectAlternateNameOid = "2.5.29.17";
 
     extension(X509Certificate2 cert)
     {
+        /// <summary>
+        /// Gets the subject alternative names from the certificate.
+        /// </summary>
+        /// <returns>A <see cref="HashSet{T}"/> of SANs.</returns>
         public HashSet<string> GetSubjectAlternativeNames()
         {
             ArgumentNullException.ThrowIfNull(cert);
@@ -27,11 +34,21 @@ public static partial class X509CertificatesExtensions
                 .ToHashSet();
         }
 
+        /// <summary>
+        /// Converts the certificate and its issuers to a PEM chain.
+        /// </summary>
+        /// <param name="issuers">The certificate issuers.</param>
+        /// <returns>A PEM encoded string of certificates.</returns>
         public string ToPemChain(X509Certificate2Collection issuers)
         {
             return $"{cert.ExportCertificatePem()}\n{string.Join('\n', issuers.Select(x => x.ExportCertificatePem()))}";
         }
 
+        /// <summary>
+        /// Writes the certificate as a PFX to the output stream.
+        /// </summary>
+        /// <param name="outputStream">The <see cref="Stream"/> to write to.</param>
+        /// <param name="cancellation">The <see cref="CancellationToken"/> for the async operation.</param>
         public async Task WritePfx(Stream outputStream, CancellationToken cancellation = default)
         {
             var buffer = cert.Export(X509ContentType.Pfx);

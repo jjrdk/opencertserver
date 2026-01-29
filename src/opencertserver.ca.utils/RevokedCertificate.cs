@@ -1,11 +1,17 @@
+namespace OpenCertServer.Ca.Utils;
+
 using System.Collections.ObjectModel;
 using System.Formats.Asn1;
 using OpenCertServer.Ca.Utils.X509;
 
-namespace OpenCertServer.Ca.Utils;
-
-public class RevokedCertificate : AsnValue
+public class RevokedCertificate : IAsnValue
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RevokedCertificate"/> class.
+    /// </summary>
+    /// <param name="serialNumber">The serial number of the certificate.</param>
+    /// <param name="revocationTime">The revocation time.</param>
+    /// <param name="extensions">The certificate extensions.</param>
     public RevokedCertificate(
         byte[] serialNumber,
         DateTimeOffset revocationTime,
@@ -16,11 +22,23 @@ public class RevokedCertificate : AsnValue
         Extensions = new ReadOnlyCollection<CertificateExtension>(extensions.ToArray());
     }
 
+    /// <summary>
+    /// Gets the serial number of the revoked certificate.
+    /// </summary>
     public byte[] Serial { get; }
+
+    /// <summary>
+    /// Gets the revocation time of the certificate.
+    /// </summary>
     public DateTimeOffset RevocationTime { get; }
+
+    /// <summary>
+    /// Get the certificate extensions.
+    /// </summary>
     public IReadOnlyCollection<CertificateExtension> Extensions { get; }
 
-    public override void Encode(AsnWriter writer, Asn1Tag? tag = null)
+    /// <inheritdoc />
+    public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         using (writer.PushSequence(tag))
         {

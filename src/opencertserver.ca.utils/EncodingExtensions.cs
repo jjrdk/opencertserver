@@ -1,16 +1,26 @@
-﻿using System.Security.Cryptography;
+﻿namespace OpenCertServer.Ca.Utils;
+
+using System.Formats.Asn1;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils.X509;
 using OpenCertServer.Ca.Utils.X509Extensions;
 
-namespace OpenCertServer.Ca.Utils;
-
-using System.Formats.Asn1;
-using System.Security.Cryptography.X509Certificates;
-
+/// <summary>
+/// Defines extension methods for encoding and decoding various types.
+/// </summary>
 public static class EncodingExtensions
 {
     extension(AsymmetricAlgorithm asymmetricAlgorithm)
     {
+        /// <summary>
+        /// Verifies a digital signature using the specified asymmetric algorithm.
+        /// </summary>
+        /// <param name="data">The data to verify.</param>
+        /// <param name="signature">The signature to verify.</param>
+        /// <param name="hashAlgorithm">The <see cref="HashAlgorithmName"/> for the signature.</param>
+        /// <returns></returns>
+        /// <exception cref="NotSupportedException">Thrown if an unsupported asymmetric is found.</exception>
         public bool VerifySignature(
             ReadOnlySpan<byte> data,
             ReadOnlySpan<byte> signature,
@@ -247,8 +257,7 @@ public static class EncodingExtensions
             var extensions = reader.ReadSequence();
             while (extensions.HasData)
             {
-                var certificateExtension = CertificateExtension.Decode(extensions);
-                yield return certificateExtension;
+                yield return new CertificateExtension(extensions);
             }
         }
 

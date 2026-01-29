@@ -1,17 +1,25 @@
+namespace OpenCertServer.Ca.Utils.X509.Templates;
+
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 
-namespace OpenCertServer.Ca.Utils.X509.Templates;
-
-public class SubjectPublicKeyInfoTemplate : AsnValue
+/// <summary>
+/// Defines the SubjectPublicKeyInfoTemplate ASN.1 structure.
+/// </summary>
+/// <code>
+/// SubjectPublicKeyInfoTemplate{PUBLIC-KEY:IOSet} ::= SEQUENCE {
+///    algorithm AlgorithmIdentifier{PUBLIC-KEY, {IOSet}},
+///    subjectPublicKey BIT STRING OPTIONAL
+/// }
+/// </code>
+public class SubjectPublicKeyInfoTemplate : IAsnValue
 {
-    /*
-    SubjectPublicKeyInfoTemplate{PUBLIC-KEY:IOSet} ::= SEQUENCE {
-       algorithm AlgorithmIdentifier{PUBLIC-KEY, {IOSet}},
-       subjectPublicKey BIT STRING OPTIONAL
-    }
-     */
-
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SubjectPublicKeyInfoTemplate"/> class.
+    /// </summary>
+    /// <param name="algorithmOid">The algorithm <see cref="Oid"/>.</param>
+    /// <param name="curveOid">The optional elliptic curve <see cref="Oid"/>.</param>
+    /// <param name="publicKey">The subject public key.</param>
     public SubjectPublicKeyInfoTemplate(Oid algorithmOid, Oid? curveOid = null, byte[]? publicKey = null)
     {
         AlgorithmOid = algorithmOid;
@@ -19,6 +27,11 @@ public class SubjectPublicKeyInfoTemplate : AsnValue
         PublicKey = publicKey;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SubjectPublicKeyInfoTemplate"/> class.
+    /// </summary>
+    /// <param name="reader">The <see cref="AsnReader"/> to read content from.</param>
+    /// <param name="expectedTag">The expected <see cref="Asn1Tag"/> for the content.</param>
     public SubjectPublicKeyInfoTemplate(AsnReader reader, Asn1Tag? expectedTag = null)
     {
         var sequenceReader = reader.ReadSequence(expectedTag);
@@ -41,13 +54,23 @@ public class SubjectPublicKeyInfoTemplate : AsnValue
         }
     }
 
+    /// <summary>
+    /// Gets the algorithm <see cref="Oid"/>.
+    /// </summary>
     public Oid AlgorithmOid { get; }
 
+    /// <summary>
+    /// Gets the optional elliptic curve <see cref="Oid"/>.
+    /// </summary>
     public Oid? CurveOid { get; }
 
+    /// <summary>
+    /// Gets the subject public key.
+    /// </summary>
     public byte[]? PublicKey { get; }
 
-    public override void Encode(AsnWriter writer, Asn1Tag? tag = null)
+    /// <inheritdoc/>
+    public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         using (writer.PushSequence(tag))
         {

@@ -1,10 +1,9 @@
+namespace OpenCertServer.Ca.Tests.X509;
+
 using System.Formats.Asn1;
-using System.Numerics;
 using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.X509.Templates;
 using Xunit;
-
-namespace OpenCertServer.Ca.Tests.X509;
 
 public class CertificateSigningRequestTemplateTests
 {
@@ -12,7 +11,6 @@ public class CertificateSigningRequestTemplateTests
     public void CanReloadCertificateSigningRequestTemplate()
     {
         var requestTemplate = new CertificateSigningRequestTemplate(
-            version: BigInteger.One,
             subject: new NameTemplate(new RDNSequenceTemplate([
                 new RelativeDistinguishedNameTemplate([new SingleAttributeTemplate(Oids.CommonNameOid)])
             ])),
