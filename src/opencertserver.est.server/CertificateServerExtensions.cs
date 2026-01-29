@@ -1,16 +1,16 @@
-using Microsoft.AspNetCore.Authentication.Certificate;
-using Microsoft.AspNetCore.Routing;
-
 namespace OpenCertServer.Est.Server;
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography.X509Certificates;
 using Ca;
 using Ca.Utils;
 using Handlers;
+using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -30,16 +30,19 @@ public static class CertificateServerExtensions
         /// <param name="caIssuersUrls"></param>
         /// <param name="chainValidation"></param>
         /// <returns></returns>
-        public IServiceCollection AddSelfSignedInMemoryEstServer(
+        public IServiceCollection AddSelfSignedInMemoryEstServer<
+                [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+                TCsrAttrs>(
             X500DistinguishedName distinguishedName,
             TimeSpan certificateValidity = default,
             string[]? ocspUrls = null,
             string[]? caIssuersUrls = null,
             Func<X509Chain, bool>? chainValidation = null)
+            where TCsrAttrs : CsrAttributesHandler
         {
             services.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore());
 
-            return services.AddSelfSignedEstServer(
+            return services.AddSelfSignedEstServer<TCsrAttrs>(
                 distinguishedName,
                 ocspUrls,
                 caIssuersUrls,
@@ -47,12 +50,15 @@ public static class CertificateServerExtensions
                 chainValidation);
         }
 
-        public IServiceCollection AddSelfSignedEstServer(
+        public IServiceCollection AddSelfSignedEstServer<
+                [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+                TCsrAttrs>(
             X500DistinguishedName distinguishedName,
             string[]? ocspUrls = null,
             string[]? caIssuersUrls = null,
             TimeSpan certificateValidity = default,
             Func<X509Chain, bool>? chainValidation = null)
+            where TCsrAttrs : CsrAttributesHandler
         {
             services.AddSingleton<ICertificateAuthority>(sp =>
             {
@@ -68,12 +74,15 @@ public static class CertificateServerExtensions
                 return certificateAuthority;
             });
 
-            return services.InnerAddEstServer();
+            return services.InnerAddEstServer<TCsrAttrs>();
         }
 
-        public IServiceCollection AddEstServer(
+        public IServiceCollection AddEstServer<
+                [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+                TCsrAttrs>(
             CaConfiguration configuration,
             Func<X509Chain, bool>? chainValidation = null)
+            where TCsrAttrs : CsrAttributesHandler
         {
             if (configuration.RsaCertificate.PublicKey.Oid.Value != Oids.Rsa)
             {
@@ -85,17 +94,24 @@ public static class CertificateServerExtensions
                 throw new ArgumentException("Must be an ECDSA key certificate");
             }
 
-            return services.AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
+            return services
+                .AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
                     configuration,
                     sp.GetRequiredService<IStoreCertificates>(),
                     chainValidation ?? (_ => true),
                     sp.GetRequiredService<ILogger<CertificateAuthority>>()))
-                .InnerAddEstServer();
+                .InnerAddEstServer<TCsrAttrs>();
         }
 
-        private IServiceCollection InnerAddEstServer()
+        private IServiceCollection InnerAddEstServer<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+            TCsrAttrs>()
+            where TCsrAttrs : CsrAttributesHandler
         {
-            return services.AddTransient<CaCertHandler>()
+            return services
+                .AddScoped<CsrAttributesHandler, TCsrAttrs>()
+                .AddTransient<ServerKeyGenHandler>()
+                .AddTransient<CaCertHandler>()
                 .AddTransient<SimpleEnrollHandler>()
                 .AddTransient<SimpleReEnrollHandler>()
                 .AddTransient<X509Certificate2Collection>(sp =>
@@ -105,6 +121,12 @@ public static class CertificateServerExtensions
 
     extension(IApplicationBuilder app)
     {
+        /// <summary>
+        /// Registers the EST server middleware.
+        /// </summary>
+        /// <param name="enrollPolicy"></param>
+        /// <param name="reEnrollPolicy"></param>
+        /// <returns></returns>
         public IApplicationBuilder UseEstServer(
             IAuthorizeData? enrollPolicy = null,
             IAuthorizeData? reEnrollPolicy = null)
@@ -113,21 +135,38 @@ public static class CertificateServerExtensions
                 .UseAuthentication()
                 .UseRouting()
                 .UseAuthorization()
-                .UseEndpoints(e =>
-                {
-                    e.MapEstServer(enrollPolicy, reEnrollPolicy);
-                });
+                .UseEndpoints(e => { e.MapEstServer(enrollPolicy, reEnrollPolicy); });
         }
     }
 
     extension(IEndpointRouteBuilder endpoints)
     {
+        /// <summary>
+        /// Maps the EST server endpoints as defined in RFC 3070.
+        /// </summary>
+        /// <param name="enrollPolicy"></param>
+        /// <param name="reEnrollPolicy"></param>
+        /// <returns></returns>
         public IEndpointRouteBuilder MapEstServer(
             IAuthorizeData? enrollPolicy = null,
             IAuthorizeData? reEnrollPolicy = null)
         {
             const string? wellKnownEst = "/.well-known/est";
             var groupBuilder = endpoints.MapGroup(wellKnownEst);
+            groupBuilder.MapGet("/serverkeygen", async ctx =>
+                {
+                    var handler = ctx.RequestServices.GetRequiredService<ServerKeyGenHandler>();
+                    await handler.Handle(ctx);
+                })
+                .RequireAuthorization(p =>
+                    p.RequireAuthenticatedUser()
+                        .AddAuthenticationSchemes(CertificateAuthenticationDefaults.AuthenticationScheme));
+            groupBuilder.MapGet("/csrattrs",
+                async ctx =>
+                {
+                    var handler = ctx.RequestServices.GetRequiredService<CsrAttributesHandler>();
+                    await handler.Handle(ctx).ConfigureAwait(false);
+                }).RequireAuthorization(p => p.RequireAuthenticatedUser());
             groupBuilder.MapGet(
                 "/cacert",
                 async ctx =>

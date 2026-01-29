@@ -71,7 +71,7 @@ public sealed class EstClientTests : IDisposable
                     sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
                         .AddCertificate();
                     sc.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore());
-                    sc.AddEstServer(new CaConfiguration(rsaPrivate, ecdsaPrivate, BigInteger.Zero,
+                    sc.AddEstServer<TestCsrAttributesHandler>(new CaConfiguration(rsaPrivate, ecdsaPrivate, BigInteger.Zero,
                         TimeSpan.FromDays(90), ["test"], []));
                     sc.ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
                 })

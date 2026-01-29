@@ -68,7 +68,7 @@ public abstract class WebServerTests : IDisposable
                     sc.AddRouting()
                         .AddAuthorization()
                         .AddSingleton<IStoreCertificates>(new InMemoryCertificateStore())
-                        .AddEstServer(new CaConfiguration(rsaPrivate, ecdsaPrivate, BigInteger.Zero, TimeSpan.FromDays(90), ["test"], []))
+                        .AddEstServer<TestCsrAttributesHandler>(new CaConfiguration(rsaPrivate, ecdsaPrivate, BigInteger.Zero, TimeSpan.FromDays(90), ["test"], []))
                         .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
                         .AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
                         .AddCertificate(CertificateAuthenticationDefaults.AuthenticationScheme);

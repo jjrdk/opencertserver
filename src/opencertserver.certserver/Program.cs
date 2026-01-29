@@ -69,7 +69,7 @@ internal static class Program
         var dn = builder.Configuration.GetSection("dn");
         if (dn.Value is not null)
         {
-            services = services.AddSelfSignedInMemoryEstServer(
+            services = services.AddSelfSignedInMemoryEstServer<CsrAttributesHandler>(
                 new X500DistinguishedName(
                     dn.Value.StartsWith("CN=") ? dn.Value : $"CN={dn.Value}"),
                 TimeSpan.FromDays(90),
@@ -82,7 +82,7 @@ internal static class Program
                 CreateCert(args, "--rsa", "--rsa-key"),
                 CreateCert(args, "--ec", "--ec-key"));
 
-            services = services.AddEstServer(
+            services = services.AddEstServer<CsrAttributesHandler>(
                 new CaConfiguration(
                     certs[0],
                     certs[1],

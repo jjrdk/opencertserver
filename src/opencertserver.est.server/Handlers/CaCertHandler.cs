@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Est.Server.Handlers;
+﻿using System.Net.Mime;
+
+namespace OpenCertServer.Est.Server.Handlers;
 
 using System.Net;
 using System.Security.Cryptography.X509Certificates;

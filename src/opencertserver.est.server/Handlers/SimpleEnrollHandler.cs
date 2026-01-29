@@ -31,6 +31,10 @@ internal sealed class SimpleEnrollHandler
             await using var writer = new StreamWriter(ctx.Response.Body);
             var pem = success.Certificate.ToPemChain(success.Issuers);
             success.Certificate.Dispose();
+            foreach (var issuer in success.Issuers)
+            {
+                issuer.Dispose();
+            }
             await writer.WriteLineAsync(pem).ConfigureAwait(false);
             await writer.FlushAsync().ConfigureAwait(false);
         }

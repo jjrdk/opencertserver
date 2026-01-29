@@ -31,7 +31,9 @@ public partial class CertificateServerFeatures
     {
         var crl = (byte[])_scenarioContext["crl"];
         var builder = CertificateRevocationListBuilder.Load(crl, out _);
-        var revokedEntries = typeof(CertificateRevocationListBuilder).GetField("_revoked", BindingFlags.Instance | BindingFlags.NonPublic);
+        var revokedEntries =
+            typeof(CertificateRevocationListBuilder).GetField("_revoked",
+                BindingFlags.Instance | BindingFlags.NonPublic);
         var entries = (System.Collections.ICollection?)revokedEntries?.GetValue(builder);
         Assert.NotNull(entries);
         Assert.Empty(entries);
