@@ -1,0 +1,20 @@
+<div class="csr-attributes-container">
+  <h2>CSR Attributes</h2>
+  <div *ngIf="loading">Loading...</div>
+  <div *ngIf="error" class="error">{{ error }}</div>
+  <div *ngIf="decoded && !error">
+    <h3>Decoded CSR Template</h3>
+    <div><strong>Version:</strong> {{ decoded.version }}</div>
+    <div *ngIf="decoded.subject">
+      <strong>Subject:</strong>
+      <pre>{{ decoded.subject | json }}</pre>
+    </div>
+    <div *ngIf="decoded.subjectPkInfo">
+      <strong>Subject Public Key Info:</strong>
+      <pre>{{ decoded.subjectPkInfo | json }}</pre>
+    </div>
+    <div *ngIf="!decoded.subject && !decoded.subjectPkInfo">
+      <em>No subject or public key info present in template.</em>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,47 @@
+<div class="server-keygen-container">
+  <h2>Server Key Generation</h2>
+  <form (ngSubmit)="onSubmit(serverKeygenForm)" #serverKeygenForm="ngForm">
+    <mat-form-field appearance="fill">
+      <mat-label>Common Name (CN)</mat-label>
+      <input matInput name="cn" [(ngModel)]="dn.cn" required>
+    </mat-form-field>
+    <mat-form-field appearance="fill">
+      <mat-label>Organization (O)</mat-label>
+      <input matInput name="o" [(ngModel)]="dn.o">
+    </mat-form-field>
+    <mat-form-field appearance="fill">
+      <mat-label>Organizational Unit (OU)</mat-label>
+      <input matInput name="ou" [(ngModel)]="dn.ou">
+    </mat-form-field>
+    <mat-form-field appearance="fill">
+      <mat-label>Country (C)</mat-label>
+      <input matInput name="c" [(ngModel)]="dn.c">
+    </mat-form-field>
+    <mat-form-field appearance="fill">
+      <mat-label>State/Province (ST)</mat-label>
+      <input matInput name="st" [(ngModel)]="dn.st">
+    </mat-form-field>
+    <mat-form-field appearance="fill">
+      <mat-label>Locality (L)</mat-label>
+      <input matInput name="l" [(ngModel)]="dn.l">
+    </mat-form-field>
+    <div class="key-options">
+      <label>Key Type:</label>
+      <mat-radio-group name="keyType" [(ngModel)]="keyType">
+        <mat-radio-button value="RSA">RSA</mat-radio-button>
+        <mat-radio-button value="EC">ECDSA</mat-radio-button>
+      </mat-radio-group>
+    </div>
+    <button mat-raised-button color="primary" type="submit" [disabled]="loading">Request Server Keygen</button>
+  </form>
+  <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
+  <div *ngIf="error" class="error">{{ error }}</div>
+  <div class="result" *ngIf="certificate && privateKey">
+    <h3>Signed Certificate</h3>
+    <button mat-stroked-button color="accent" (click)="saveCertificate()">Save Certificate</button>
+    <pre>{{ certificate }}</pre>
+    <h3>Private Key</h3>
+    <button mat-stroked-button color="accent" (click)="savePrivateKey()">Save Private Key</button>
+    <pre>{{ privateKey }}</pre>
+  </div>
+</div>

@@ -3,6 +3,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { JsonPipe } from '@angular/common';
 
 // Material imports
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -17,6 +18,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 
@@ -29,6 +32,9 @@ import { RevokeComponent } from './pages/revoke/revoke.component';
 import { CaCertificatesComponent } from './pages/ca-certificates/ca-certificates.component';
 import { CertificatePolicyComponent } from './pages/certificate-policy/certificate-policy.component';
 import { CertificationPracticeStatementComponent } from './pages/certification-practice-statement/certification-practice-statement.component';
+import { CsrAttributesComponent } from './pages/csr-attributes/csr-attributes.component';
+import { EnrollComponent } from './pages/enroll/enroll.component';
+import { ServerKeygenComponent } from './pages/server-keygen/server-keygen.component';
 
 @NgModule({
   declarations: [
@@ -37,7 +43,10 @@ import { CertificationPracticeStatementComponent } from './pages/certification-p
     RevokeComponent,
     CaCertificatesComponent,
     CertificatePolicyComponent,
-    CertificationPracticeStatementComponent
+    CertificationPracticeStatementComponent,
+    CsrAttributesComponent,
+    EnrollComponent,
+    ServerKeygenComponent
   ],
   imports: [
     BrowserModule,
@@ -57,7 +66,10 @@ import { CertificationPracticeStatementComponent } from './pages/certification-p
     MatSelectModule,
     MatProgressSpinnerModule,
     MatDividerModule,
-    MatExpansionModule
+    MatExpansionModule,
+    MatRadioModule,
+    MatProgressBarModule,
+    JsonPipe
   ],
   exports: [
     LoginComponent,
@@ -65,7 +77,10 @@ import { CertificationPracticeStatementComponent } from './pages/certification-p
     RevokeComponent,
     CaCertificatesComponent,
     CertificatePolicyComponent,
-    CertificationPracticeStatementComponent
+    CertificationPracticeStatementComponent,
+    CsrAttributesComponent,
+    EnrollComponent,
+    ServerKeygenComponent
   ]
 })
 export class SharedModule { }
