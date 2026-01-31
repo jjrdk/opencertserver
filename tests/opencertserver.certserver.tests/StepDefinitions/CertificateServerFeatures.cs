@@ -22,9 +22,10 @@ using OpenCertServer.Acme.Server.Configuration;
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Middleware;
 using OpenCertServer.Acme.Server.Services;
+using OpenCertServer.Ca;
 using OpenCertServer.Ca.Server;
 using OpenCertServer.Est.Server;
-using TechTalk.SpecFlow;
+using Reqnroll;
 using Xunit;
 
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
@@ -70,6 +71,7 @@ public partial class CertificateServerFeatures
         void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services) =>
 #pragma warning disable IL2066
             services.AddSelfSignedInMemoryEstServer<TestCsrAttributesHandler>(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"])
+                .AddSingleton(sp=>sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates())
                 .AddAcmeServer(ctx.Configuration, _ => _server.CreateClient(),
                     new AcmeServerOptions
                         { HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false } })
@@ -79,6 +81,7 @@ public partial class CertificateServerFeatures
                 .Replace(new ServiceDescriptor(typeof(IValidateHttp01Challenges), typeof(PassAllChallenges),
                     ServiceLifetime.Transient))
                 .AddAcmeInMemoryStore()
+                .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
                 .AddRouting()
                 .AddAuthorization()
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -111,43 +114,7 @@ public partial class CertificateServerFeatures
                         }
                     };
                 })
-                .AddCertificate(options =>
-                {
-                    var knownPrefixes = ImmutableDictionary.CreateRange([
-                        KeyValuePair.Create("CN", ClaimTypes.Name),
-                        KeyValuePair.Create("E", ClaimTypes.Email),
-                        KeyValuePair.Create("OU", ClaimTypes.System),
-                        KeyValuePair.Create("O", "org"),
-                        KeyValuePair.Create("L", ClaimTypes.Locality),
-                        KeyValuePair.Create("SN", ClaimTypes.Surname),
-                        KeyValuePair.Create("GN", ClaimTypes.GivenName),
-                        KeyValuePair.Create("C", ClaimTypes.Country)
-                    ]);
-                    options.AllowedCertificateTypes = CertificateTypes.All;
-                    options.ChainTrustValidationMode = X509ChainTrustMode.CustomRootTrust;
-                    options.Events = new CertificateAuthenticationEvents
-                    {
-                        OnCertificateValidated = context =>
-                        {
-                            var claims = context.ClientCertificate.SubjectName.Name
-                                .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                                .Select(x => (x[..x.IndexOf('=')], x[(x.IndexOf('=') + 1)..]))
-                                .Where(x => knownPrefixes.ContainsKey(x.Item1))
-                                .Select(x => new Claim(knownPrefixes[x.Item1], x.Item2));
-                            context.Principal = new ClaimsPrincipal(
-                                new ClaimsIdentity(
-                                    claims,
-                                    CertificateAuthenticationDefaults.AuthenticationScheme));
-                            context.Success();
-                            return Task.CompletedTask;
-                        },
-                        OnAuthenticationFailed = context =>
-                        {
-                            context.Fail("Invalid certificate");
-                            return Task.CompletedTask;
-                        }
-                    };
-                });
+                .AddCertificate();
     }
 
     [Given(@"an ACME client for (.+)")]

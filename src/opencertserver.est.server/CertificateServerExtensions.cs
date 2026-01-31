@@ -132,8 +132,8 @@ public static class CertificateServerExtensions
             IAuthorizeData? reEnrollPolicy = null)
         {
             return app.UseCertificateForwarding()
-                .UseAuthentication()
                 .UseRouting()
+                .UseAuthentication()
                 .UseAuthorization()
                 .UseEndpoints(e => { e.MapEstServer(enrollPolicy, reEnrollPolicy); });
         }
@@ -161,19 +161,22 @@ public static class CertificateServerExtensions
                 .RequireAuthorization(p =>
                     p.RequireAuthenticatedUser()
                         .AddAuthenticationSchemes(CertificateAuthenticationDefaults.AuthenticationScheme));
-            groupBuilder.MapGet("/csrattrs",
+            groupBuilder.MapGet(
+                "/csrattrs",
                 async ctx =>
                 {
                     var handler = ctx.RequestServices.GetRequiredService<CsrAttributesHandler>();
                     await handler.Handle(ctx).ConfigureAwait(false);
                 }).RequireAuthorization(p => p.RequireAuthenticatedUser());
             groupBuilder.MapGet(
-                "/cacert",
-                async ctx =>
-                {
-                    var handler = ctx.RequestServices.GetRequiredService<CaCertHandler>();
-                    await handler.Handle(ctx).ConfigureAwait(false);
-                }).CacheOutput(b => b.Cache().Expire(TimeSpan.FromDays(30)));
+                    "/cacert",
+                    async ctx =>
+                    {
+                        var handler = ctx.RequestServices.GetRequiredService<CaCertHandler>();
+                        await handler.Handle(ctx).ConfigureAwait(false);
+                    })
+                .CacheOutput(b => b.Cache().Expire(TimeSpan.FromDays(30)))
+                .AllowAnonymous();
             var enrollBuilder = groupBuilder.MapPost(
                 "/simpleenroll",
                 async ctx =>

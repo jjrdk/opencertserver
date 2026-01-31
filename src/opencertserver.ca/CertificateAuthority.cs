@@ -12,6 +12,9 @@ using Utils;
 
 public record CaConfiguration
 {
+    private readonly byte[] _rsaBytes;
+    private readonly byte[] _ecdsaBytes;
+
     public CaConfiguration(
         X509Certificate2 rsaCertificate,
         X509Certificate2 ecdsaCertificate,
@@ -20,20 +23,50 @@ public record CaConfiguration
         string[] ocspUrls,
         string[] caIssuersUrls)
     {
-        RsaCertificate = rsaCertificate;
-        EcdsaCertificate = ecdsaCertificate;
+        _rsaBytes = rsaCertificate.ExportPkcs12(Pkcs12ExportPbeParameters.Pbes2Aes256Sha256, null);
+        _ecdsaBytes = ecdsaCertificate.ExportPkcs12(Pkcs12ExportPbeParameters.Pbes2Aes256Sha256, null);
         CrlNumber = crlNumber;
         CertificateValidity = certificateValidity;
         OcspUrls = ocspUrls;
         CaIssuersUrls = caIssuersUrls;
     }
 
-    public X509Certificate2 RsaCertificate { get; }
-    public X509Certificate2 EcdsaCertificate { get; }
+    public X509Certificate2 RsaCertificate
+    {
+        get
+        {
+            return X509CertificateLoader.LoadPkcs12(_rsaBytes, null,
+                loaderLimits: Pkcs12LoaderLimits.Defaults);
+        }
+    }
+
+    public X509Certificate2 EcdsaCertificate
+    {
+        get
+        {
+            return X509CertificateLoader.LoadPkcs12(_ecdsaBytes, null,
+                loaderLimits: Pkcs12LoaderLimits.Defaults);
+        }
+    }
+
     public BigInteger CrlNumber { get; }
     public TimeSpan CertificateValidity { get; }
     public string[] OcspUrls { get; }
     public string[] CaIssuersUrls { get; }
+
+    internal X509Certificate2 GetExportableRsaCertificate()
+    {
+        return X509CertificateLoader.LoadPkcs12(_rsaBytes, null,
+            keyStorageFlags: X509KeyStorageFlags.Exportable,
+            loaderLimits: Pkcs12LoaderLimits.Defaults);
+    }
+
+    internal X509Certificate2 GetExportableEcdsaCertificate()
+    {
+        return X509CertificateLoader.LoadPkcs12(_ecdsaBytes, null,
+            keyStorageFlags: X509KeyStorageFlags.Exportable,
+            loaderLimits: Pkcs12LoaderLimits.Defaults);
+    }
 }
 
 /// <summary>
@@ -118,7 +151,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             new OwnCertificateValidation([_config.RsaCertificate, _config.EcdsaCertificate], _logger),
             new DistinguishedNameValidation(_logger)
         ];
-        certificateBackup?.Invoke(_config.RsaCertificate, _config.EcdsaCertificate);
+
+        certificateBackup?.Invoke(_config.GetExportableRsaCertificate(), _config.GetExportableEcdsaCertificate());
     }
 
     public static CertificateAuthority Create(
@@ -192,13 +226,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         request.CertificateExtensions.Add(
             new X509AuthorityInformationAccessExtension(_config.OcspUrls, _config.CaIssuersUrls));
         request.CertificateExtensions.Add(
-            X509AuthorityKeyIdentifierExtension.CreateFromCertificate(
-                request.PublicKey.Oid.Value switch
-                {
-                    Oids.Rsa => _config.RsaCertificate,
-                    Oids.EcPublicKey => _config.EcdsaCertificate,
-                    _ => throw new InvalidOperationException($"Invalid Oid: {request.PublicKey.Oid.Value}")
-                }, true, true));
+            X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(request.PublicKey
+                .ExportSubjectPublicKeyInfo()));
 
         var cert = request.PublicKey.Oid.Value switch
         {

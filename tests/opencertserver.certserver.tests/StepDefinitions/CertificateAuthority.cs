@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using TechTalk.SpecFlow;
+using Reqnroll;
 using Xunit;
 
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;

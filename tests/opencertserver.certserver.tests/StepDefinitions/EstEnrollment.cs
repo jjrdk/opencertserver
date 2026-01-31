@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Est.Client;
-using TechTalk.SpecFlow;
+using Reqnroll;
 using Xunit;
 
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
@@ -23,9 +23,10 @@ public partial class CertificateServerFeatures
     public async Task WhenIEnrollWithAValidJwt()
     {
         _key = RSA.Create();
-        _certCollection = await _estClient.Enroll(new X500DistinguishedName("cn=reimers.io"), _key,
+        var (_, collection) = await _estClient.Enroll(new X500DistinguishedName("cn=test.reimers.io, ou=test"), _key,
             X509KeyUsageFlags.DigitalSignature,
             new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+        _certCollection = collection!;
     }
 
     [Then(@"I should get a certificate")]

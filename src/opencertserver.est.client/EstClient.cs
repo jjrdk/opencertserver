@@ -48,7 +48,7 @@ public sealed class EstClient : IDisposable
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use for the async operation.</param>
     /// <typeparam name="TAlgorithm">The <see cref="Type"/> of asymmetric key algorithm. The algorithm must be either <see cref="RSA"/> or <see cref="ECDsa"/>.</typeparam>
     /// <returns></returns>
-    public async Task<X509Certificate2Collection> Enroll<TAlgorithm>(
+    public async Task<(string?, X509Certificate2Collection?)> Enroll<TAlgorithm>(
         X500DistinguishedName distinguishedName,
         TAlgorithm key,
         X509KeyUsageFlags usageFlags,
@@ -61,7 +61,7 @@ public sealed class EstClient : IDisposable
             .ConfigureAwait(false);
         var collection = new X509Certificate2Collection();
         collection.ImportFromPem(bytes);
-        return collection;
+        return collection.Count == 0 ? (bytes, null) : (null, collection);
     }
 
     /// <summary>
@@ -117,6 +117,24 @@ public sealed class EstClient : IDisposable
         s.ImportFromPem(bytes);
 
         return s;
+    }
+
+    public async Task<X509Certificate2Collection> ServerCertificates(CancellationToken cancellationToken = default)
+    {
+        var requestUriBuilder = new UriBuilder(
+            Uri.UriSchemeHttps,
+            _estUri.Host,
+            _estUri.Port,
+            "/.well-known/est/cacert");
+
+        var client = new HttpClient(_messageHandler);
+        var response = await client
+            .GetAsync(requestUriBuilder.Uri, HttpCompletionOption.ResponseContentRead, cancellationToken)
+            .ConfigureAwait(false);
+        var bytes = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var coll = new X509Certificate2Collection();
+        coll.ImportFromPem(bytes);
+        return coll;
     }
 
     private async Task<string> RequestCertBytes(

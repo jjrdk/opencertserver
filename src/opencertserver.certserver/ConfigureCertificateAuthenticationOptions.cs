@@ -29,6 +29,7 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
     public void PostConfigure(string? name, CertificateAuthenticationOptions options)
     {
         options.AllowedCertificateTypes = CertificateTypes.All;
+        options.AdditionalChainCertificates = _certificates;
         options.CustomTrustStore = _certificates;
         options.ChainTrustValidationMode = X509ChainTrustMode.CustomRootTrust;
         options.Events = new CertificateAuthenticationEvents
@@ -36,6 +37,19 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
             OnCertificateValidated = context =>
             {
                 var claims = context.ClientCertificate.SubjectName.Name
+                    .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => (x[..x.IndexOf('=')], x[(x.IndexOf('=') + 1)..]))
+                    .Where(x => KnownPrefixes.ContainsKey(x.Item1))
+                    .Select(x => new Claim(x.Item1, x.Item2));
+                context.Principal =
+                    new ClaimsPrincipal(new ClaimsIdentity(claims,
+                        CertificateAuthenticationDefaults.AuthenticationScheme));
+                context.Success();
+                return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = context =>
+            {
+                var claims = context.HttpContext.Connection.ClientCertificate!.SubjectName.Name
                     .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                     .Select(x => (x[..x.IndexOf('=')], x[(x.IndexOf('=') + 1)..]))
                     .Where(x => KnownPrefixes.ContainsKey(x.Item1))

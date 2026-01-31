@@ -41,29 +41,48 @@ internal static partial class Program
         }
     }
 
-    private static Task<X509Certificate2Collection> RequestCertificate(
+    private static async Task<X509Certificate2Collection> RequestCertificate(
         EnrollArgs enrollArgs,
         EstClient client,
         X500DistinguishedName distinguishedName,
         RSA rsa)
     {
-        return client.Enroll(
+        var (error, collection) = await client.Enroll(
             distinguishedName,
             rsa,
             enrollArgs.UsageFlags,
             new AuthenticationHeaderValue(enrollArgs.AuthenticationType, enrollArgs.AccessToken));
+        if (error == null)
+        {
+            return collection!;
+        }
+
+        await Console.Error.WriteLineAsync($"Error enrolling certificate: {error}").ConfigureAwait(false);
+        Environment.Exit(1);
+
+        return collection!;
     }
 
-    private static Task<X509Certificate2Collection> RequestCertificate(
+    private static async Task<X509Certificate2Collection> RequestCertificate(
         EnrollArgs enrollArgs,
         EstClient client,
         X500DistinguishedName distinguishedName,
         ECDsa ecDsa)
     {
-        return client.Enroll(
+        var (error, collection) = await client.Enroll(
             distinguishedName,
             ecDsa,
             enrollArgs.UsageFlags,
             new AuthenticationHeaderValue(enrollArgs.AuthenticationType, enrollArgs.AccessToken));
+
+        if (error == null)
+        {
+            return collection!;
+        }
+
+        await Console.Error.WriteLineAsync($"Error enrolling certificate: {error}").ConfigureAwait(false);
+        Environment.Exit(1);
+
+        return collection!;
     }
 }
