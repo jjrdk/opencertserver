@@ -43,3 +43,8 @@ Feature: Certificate server compliance with EST (RFC 7030)
         Given a certificate server that complies with EST (RFC 7030)
         When a client requests the CA certificates
         Then the server should return the CA certificates in the correct format
+
+    Scenario: Successful retrieval of server attributes
+        Given a certificate server that complies with EST (RFC 7030)
+        When an authenticated client requests the server attributes
+        Then the server should return the server attributes in the correct format

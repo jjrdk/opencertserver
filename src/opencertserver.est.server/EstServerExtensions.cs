@@ -17,7 +17,7 @@ using Microsoft.Extensions.Logging;
 /// <summary>
 /// Defines the certificate server extension methods.
 /// </summary>
-public static class CertificateServerExtensions
+public static class EstServerExtensions
 {
     extension(IServiceCollection services)
     {
@@ -124,18 +124,22 @@ public static class CertificateServerExtensions
         /// <summary>
         /// Registers the EST server middleware.
         /// </summary>
-        /// <param name="enrollPolicy"></param>
-        /// <param name="reEnrollPolicy"></param>
+        /// <param name="enrollPolicy">The <see cref="AuthorizationPolicy"/> to apply to enrollment requests.</param>
+        /// <param name="reEnrollPolicy">The <see cref="AuthorizationPolicy"/> to apply to re-enrollment requests.</param>
+        /// <param name="csrAttrsPolicy">The <see cref="AuthorizationPolicy"/> to apply to CSR template requests.</param>
+        /// <param name="serverKeyGenPolicy">The <see cref="AuthorizationPolicy"/> to apply to server keygen requests.</param>
         /// <returns></returns>
         public IApplicationBuilder UseEstServer(
-            IAuthorizeData? enrollPolicy = null,
-            IAuthorizeData? reEnrollPolicy = null)
+            AuthorizationPolicy? enrollPolicy = null,
+            AuthorizationPolicy? reEnrollPolicy = null,
+            AuthorizationPolicy? csrAttrsPolicy = null,
+            AuthorizationPolicy? serverKeyGenPolicy = null)
         {
             return app.UseCertificateForwarding()
                 .UseRouting()
                 .UseAuthentication()
                 .UseAuthorization()
-                .UseEndpoints(e => { e.MapEstServer(enrollPolicy, reEnrollPolicy); });
+                .UseEndpoints(e => { e.MapEstServer(enrollPolicy, reEnrollPolicy, csrAttrsPolicy, serverKeyGenPolicy); });
         }
     }
 
@@ -144,30 +148,31 @@ public static class CertificateServerExtensions
         /// <summary>
         /// Maps the EST server endpoints as defined in RFC 3070.
         /// </summary>
-        /// <param name="enrollPolicy"></param>
-        /// <param name="reEnrollPolicy"></param>
-        /// <returns></returns>
+        /// <param name="enrollPolicy">The <see cref="AuthorizationPolicy"/> to apply to enrollment requests.</param>
+        /// <param name="reEnrollPolicy">The <see cref="AuthorizationPolicy"/> to apply to re-enrollment requests.</param>
+        /// <param name="csrAttrsPolicy">The <see cref="AuthorizationPolicy"/> to apply to CSR template requests.</param>
+        /// <param name="serverKeyGenPolicy">The <see cref="AuthorizationPolicy"/> to apply to server keygen requests.</param>
+        /// <returns>A configured <see cref="IEndpointRouteBuilder"/></returns>
         public IEndpointRouteBuilder MapEstServer(
-            IAuthorizeData? enrollPolicy = null,
-            IAuthorizeData? reEnrollPolicy = null)
+            AuthorizationPolicy? enrollPolicy = null,
+            AuthorizationPolicy? reEnrollPolicy = null,
+            AuthorizationPolicy? csrAttrsPolicy = null,
+            AuthorizationPolicy? serverKeyGenPolicy = null)
         {
             const string? wellKnownEst = "/.well-known/est";
             var groupBuilder = endpoints.MapGroup(wellKnownEst);
             groupBuilder.MapGet("/serverkeygen", async ctx =>
-                {
-                    var handler = ctx.RequestServices.GetRequiredService<ServerKeyGenHandler>();
-                    await handler.Handle(ctx);
-                })
-                .RequireAuthorization(p =>
-                    p.RequireAuthenticatedUser()
-                        .AddAuthenticationSchemes(CertificateAuthenticationDefaults.AuthenticationScheme));
+            {
+                var handler = ctx.RequestServices.GetRequiredService<ServerKeyGenHandler>();
+                await handler.Handle(ctx);
+            }).RequireAuthorization(serverKeyGenPolicy ?? ConfigurePolicy());
             groupBuilder.MapGet(
                 "/csrattrs",
                 async ctx =>
                 {
                     var handler = ctx.RequestServices.GetRequiredService<CsrAttributesHandler>();
                     await handler.Handle(ctx).ConfigureAwait(false);
-                }).RequireAuthorization(p => p.RequireAuthenticatedUser());
+                }).RequireAuthorization(csrAttrsPolicy ?? ConfigurePolicy());
             groupBuilder.MapGet(
                     "/cacert",
                     async ctx =>
@@ -183,15 +188,7 @@ public static class CertificateServerExtensions
                 {
                     var handler = ctx.RequestServices.GetRequiredService<SimpleEnrollHandler>();
                     await handler.Handle(ctx).ConfigureAwait(false);
-                });
-            if (enrollPolicy != null)
-            {
-                enrollBuilder.RequireAuthorization(enrollPolicy);
-            }
-            else
-            {
-                enrollBuilder.RequireAuthorization(ConfigurePolicy);
-            }
+                }).RequireAuthorization(enrollPolicy ?? ConfigurePolicy());
 
             var reEnrollBuilder = groupBuilder.MapPost(
                 "/simplereenroll",
@@ -199,25 +196,17 @@ public static class CertificateServerExtensions
                 {
                     var handler = ctx.RequestServices.GetRequiredService<SimpleReEnrollHandler>();
                     await handler.Handle(ctx).ConfigureAwait(false);
-                });
-            if (reEnrollPolicy != null)
-            {
-                reEnrollBuilder.RequireAuthorization(reEnrollPolicy);
-            }
-            else
-            {
-                reEnrollBuilder.RequireAuthorization(ConfigurePolicy);
-            }
+                }).RequireAuthorization(reEnrollPolicy ?? ConfigurePolicy());
 
             return endpoints;
         }
     }
 
-    private static void ConfigurePolicy(AuthorizationPolicyBuilder b)
+    private static AuthorizationPolicy ConfigurePolicy()
     {
-        b.AddAuthenticationSchemes(
+        return new AuthorizationPolicyBuilder().AddAuthenticationSchemes(
                 JwtBearerDefaults.AuthenticationScheme,
                 CertificateAuthenticationDefaults.AuthenticationScheme)
-            .RequireAuthenticatedUser();
+            .RequireAuthenticatedUser().Build();
     }
 }

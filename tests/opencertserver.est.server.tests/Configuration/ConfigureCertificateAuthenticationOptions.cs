@@ -1,3 +1,6 @@
+using System.Collections.Immutable;
+using System.Security.Claims;
+
 namespace OpenCertServer.Est.Tests.Configuration;
 
 using System.Security.Cryptography.X509Certificates;
@@ -5,33 +8,60 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.Extensions.Options;
 
-public sealed class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<CertificateAuthenticationOptions>
+public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<CertificateAuthenticationOptions>
 {
-    private readonly X509Certificate2Collection _certificate2Collection;
+    private static readonly ImmutableDictionary<string, string> KnownPrefixes = ImmutableDictionary.CreateRange([
+        KeyValuePair.Create("CN", ClaimTypes.Name),
+        KeyValuePair.Create("E", ClaimTypes.Email),
+        KeyValuePair.Create("OU", ClaimTypes.System),
+        KeyValuePair.Create("O", "org"),
+        KeyValuePair.Create("L", ClaimTypes.Locality),
+        KeyValuePair.Create("SN", ClaimTypes.Surname),
+        KeyValuePair.Create("GN", ClaimTypes.GivenName),
+        KeyValuePair.Create("C", ClaimTypes.Country)
+    ]);
 
-    public ConfigureCertificateAuthenticationOptions(X509Certificate2Collection certificate2Collection)
+    private readonly X509Certificate2Collection _certificates;
+
+    public ConfigureCertificateAuthenticationOptions(X509Certificate2Collection certificates)
     {
-        _certificate2Collection = certificate2Collection;
+        _certificates = certificates;
     }
 
     public void PostConfigure(string? name, CertificateAuthenticationOptions options)
     {
-        options.CustomTrustStore = _certificate2Collection;
-        options.ChainTrustValidationMode = X509ChainTrustMode.CustomRootTrust;
         options.AllowedCertificateTypes = CertificateTypes.All;
-        options.RevocationFlag = X509RevocationFlag.EndCertificateOnly;
-        options.RevocationMode = X509RevocationMode.Offline;
-        options.ValidateCertificateUse = false;
-        options.ValidateValidityPeriod = false;
+        options.AdditionalChainCertificates = _certificates;
+        options.CustomTrustStore = _certificates;
+        options.ChainTrustValidationMode = X509ChainTrustMode.CustomRootTrust;
         options.Events = new CertificateAuthenticationEvents
         {
-            OnChallenge = ctx =>
+            OnCertificateValidated = context =>
             {
-                ctx.HandleResponse();
+                var claims = context.ClientCertificate.SubjectName.Name
+                    .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => (x[..x.IndexOf('=')], x[(x.IndexOf('=') + 1)..]))
+                    .Where(x => KnownPrefixes.ContainsKey(x.Item1))
+                    .Select(x => new Claim(x.Item1, x.Item2));
+                context.Principal =
+                    new ClaimsPrincipal(new ClaimsIdentity(claims,
+                        CertificateAuthenticationDefaults.AuthenticationScheme));
+                context.Success();
                 return Task.CompletedTask;
             },
-            OnCertificateValidated = _ => Task.CompletedTask,
-            OnAuthenticationFailed = _ => Task.CompletedTask
+            OnAuthenticationFailed = context =>
+            {
+                var claims = context.HttpContext.Connection.ClientCertificate!.SubjectName.Name
+                    .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => (x[..x.IndexOf('=')], x[(x.IndexOf('=') + 1)..]))
+                    .Where(x => KnownPrefixes.ContainsKey(x.Item1))
+                    .Select(x => new Claim(x.Item1, x.Item2));
+                context.Principal =
+                    new ClaimsPrincipal(new ClaimsIdentity(claims,
+                        CertificateAuthenticationDefaults.AuthenticationScheme));
+                context.Success();
+                return Task.CompletedTask;
+            }
         };
     }
 }

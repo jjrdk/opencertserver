@@ -1,3 +1,6 @@
+using System.Net.Http.Headers;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+
 namespace OpenCertServer.Est.Tests.Steps;
 
 using System.Numerics;
@@ -15,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OpenCertServer.Ca;
+using OpenCertServer.Ca.Utils.X509.Templates;
 using OpenCertServer.Est.Client;
 using OpenCertServer.Est.Server;
 using OpenCertServer.Est.Tests.Configuration;
@@ -22,7 +26,7 @@ using Reqnroll;
 using Xunit;
 
 [Binding]
-public partial class EstServer
+public class EstServer
 {
     private readonly ScenarioContext _context;
     private TestServer _server = null!;
@@ -66,10 +70,6 @@ public partial class EstServer
         {
             builder.UseTestServer()
                 .ConfigureAppConfiguration(b => { b.AddEnvironmentVariables(); });
-            var attribute = new AuthorizeAttribute
-            {
-                AuthenticationSchemes = CertificateAuthenticationDefaults.AuthenticationScheme
-            };
             builder.ConfigureServices(sc =>
                 {
                     sc.AddCors(o => o.AddPolicy("AllowAll", b =>
@@ -81,16 +81,17 @@ public partial class EstServer
                     sc.AddRouting();
                     sc.AddAuthorization();
                     sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
-                        .AddCertificate();
+                        .AddCertificate()
+                        .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme);
                     sc.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore())
                         .AddEstServer<TestCsrAttributesHandler>(new CaConfiguration(rsaPrivate, ecdsaPrivate,
                             BigInteger.Zero,
                             TimeSpan.FromDays(90), ["test"], []))
-                        .ConfigureOptions<ConfigureCertificateAuthenticationOptions>();
+                        .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
+                        .ConfigureOptions<ConfigureOauthOptions>();
                 })
                 .Configure(app =>
-                    app.UseCors("AllowAll")
-                        .UseEstServer(attribute, attribute))
+                    app.UseCors("AllowAll").UseEstServer())
                 .ConfigureKestrel(k =>
                 {
                     k.AddServerHeader = false;
@@ -203,6 +204,17 @@ public partial class EstServer
         _context["enrolledCertificate"] = cert;
     }
 
+    [When("an authenticated client requests the server attributes")]
+    public async Task WhenAnAuthenticatedClientRequestsTheServerAttributes()
+    {
+        var client = new EstClient(new Uri("https://localhost/"), _server.CreateHandler());
+        var attributes = await client.GetCsrAttributes(
+            new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+
+        Assert.NotNull(attributes);
+        _context["csrAttributes"] = attributes;
+    }
+
     [When("the server returns a signed certificate")]
     [Then("the server returns a signed certificate")]
     public void ThenTheServerReturnsASignedCertificate()
@@ -221,19 +233,26 @@ public partial class EstServer
             ));
         var privateKey = (byte[])_context["privateKey"]!;
         var publicKey = (byte[])_context["publicKey"]!;
-        if (keytype == "RSA")
+        switch (keytype)
         {
-            using var rsa = RSA.Create();
-            rsa.ImportRSAPublicKey(publicKey, out _);
-            rsa.ImportRSAPrivateKey(privateKey, out _);
-            cert = await client.ReEnroll(rsa, cert[0]);
-        }
-        else if (keytype == "ECDsa")
-        {
-            using var ecdsa = ECDsa.Create();
-            ecdsa.ImportSubjectPublicKeyInfo(publicKey, out _);
-            ecdsa.ImportECPrivateKey(privateKey, out _);
-            cert = await client.ReEnroll(ecdsa, cert[0]);
+            case "RSA":
+            {
+                using var rsa = RSA.Create();
+                rsa.ImportRSAPublicKey(publicKey, out _);
+                rsa.ImportRSAPrivateKey(privateKey, out _);
+                cert = await client.ReEnroll(rsa, cert[0]);
+                break;
+            }
+            case "ECDsa":
+            {
+                using var ecdsa = ECDsa.Create();
+                ecdsa.ImportSubjectPublicKeyInfo(publicKey, out _);
+                ecdsa.ImportECPrivateKey(privateKey, out _);
+                cert = await client.ReEnroll(ecdsa, cert[0]);
+                break;
+            }
+            default:
+                throw new InvalidOperationException($"Unknown key type: {keytype}");
         }
 
         _context["enrolledCertificate"] = cert;
@@ -259,5 +278,11 @@ public partial class EstServer
     {
         Assert.IsType<X509Certificate2Collection>(_context["certificates"]);
         Assert.Equal(2, ((X509Certificate2Collection)_context["certificates"]).Count);
+    }
+
+    [Then("the server should return the server attributes in the correct format")]
+    public void ThenTheServerShouldReturnTheServerAttributesInTheCorrectFormat()
+    {
+        Assert.IsType<CertificateSigningRequestTemplate>(_context["csrAttributes"]);
     }
 }

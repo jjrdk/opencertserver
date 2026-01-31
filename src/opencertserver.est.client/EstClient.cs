@@ -1,4 +1,7 @@
-﻿namespace OpenCertServer.Est.Client;
+﻿using System.Formats.Asn1;
+using OpenCertServer.Ca.Utils.X509.Templates;
+
+namespace OpenCertServer.Est.Client;
 
 using System;
 using System.Net.Http;
@@ -204,5 +207,30 @@ public sealed class EstClient : IDisposable
     public void Dispose()
     {
         _messageHandler.Dispose();
+    }
+
+    public async Task<CertificateSigningRequestTemplate> GetCsrAttributes(
+        AuthenticationHeaderValue? authenticationHeader)
+    {
+        var requestUriBuilder = new UriBuilder(
+            Uri.UriSchemeHttps,
+            _estUri.Host,
+            _estUri.Port,
+            "/.well-known/est/csrattrs");
+
+        var client = new HttpClient(_messageHandler);
+        var request = new HttpRequestMessage
+        {
+            Method = HttpMethod.Get,
+            RequestUri = requestUriBuilder.Uri
+        };
+        request.Headers.Authorization = authenticationHeader;
+        var response = await client
+            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
+            .ConfigureAwait(false);
+        response = response.EnsureSuccessStatusCode();
+        var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        return new CertificateSigningRequestTemplate(new AsnReader(bytes, AsnEncodingRules.DER,
+            new AsnReaderOptions { SkipSetSortOrderVerification = true }));
     }
 }

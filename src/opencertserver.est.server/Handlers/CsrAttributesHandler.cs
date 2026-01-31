@@ -15,7 +15,7 @@ public abstract class CsrAttributesHandler
     public async Task Handle(HttpContext ctx)
     {
         var template = await GetTemplate(ctx.User).ConfigureAwait(false);
-        var writer = new AsnWriter(AsnEncodingRules.CER);
+        var writer = new AsnWriter(AsnEncodingRules.DER);
         template.Encode(writer);
         var encoded = writer.Encode();
         ctx.Response.ContentType = "application/csrattrs";
