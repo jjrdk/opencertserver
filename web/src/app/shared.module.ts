@@ -25,6 +25,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 
 // Components
 import { HeaderComponent } from './components/header/header.component';
+import { FooterComponent } from './components/footer/footer.component';
 import { LoginComponent } from './pages/login/login.component';
 import { HomeComponent } from './pages/home/home.component';
 import { CertificatesComponent } from './pages/certificates/certificates.component';
