@@ -13,7 +13,7 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - name: Build OpenCertServer
-        run: dotnet run --project ./build/opencertserver.build/opencertserver.build.csproj -c Release -o ./artifacts/buildOutput/opencertserver --sc
+        run: dotnet build opencertserver.slnx -c Release
       - name: Generate SBOM
         run: |
           mkdir -p ./artifacts/sbom
