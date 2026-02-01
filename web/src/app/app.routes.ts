@@ -15,7 +15,7 @@ export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
   { path: 'certificates', component: CertificatesComponent },
-  { path: 'ca-certificates', component: CaCertificatesComponent, canActivate: [authGuard] },
+  { path: 'ca-certificates', component: CaCertificatesComponent },
   { path: 'revoke', component: RevokeComponent, canActivate: [authGuard] },
   { path: 'certificate-policy', component: CertificatePolicyComponent },
   { path: 'certification-practice-statement', component: CertificationPracticeStatementComponent },

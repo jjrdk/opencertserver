@@ -1,0 +1,14 @@
+{
+  "api": {
+    "baseUrl": "http://localhost:5000"
+  },
+  "oidc": {
+    "issuer": "https://your-oidc-provider.com",
+    "clientId": "your-client-id",
+    "redirectUri": "http://localhost:4200/login-callback",
+    "postLogoutRedirectUri": "http://localhost:4200/",
+    "scope": "openid profile email",
+    "responseType": "code",
+    "requireHttps": false
+  }
+}

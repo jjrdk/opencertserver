@@ -18,7 +18,7 @@ export class ConfigService {
 
     try {
       this.config = await firstValueFrom(
-        this.http.get<AppConfig>('/config.json')
+        this.http.get<AppConfig>('/assets/config.json')
       );
       return this.config;
     } catch (error) {

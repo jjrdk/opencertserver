@@ -20,11 +20,14 @@ export class CaCertificateService {
     this.baseUrl = this.configService.getConfig().api.baseUrl;
   }
 
-  private getHeaders(): HttpHeaders {
-    const token = this.authService.getAccessToken();
-    return new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
+  private getHeaders(): HttpHeaders | undefined {
+    if (this.authService.isAuthenticated && this.authService.isAuthenticated()) {
+      const token = this.authService.getAccessToken();
+      return new HttpHeaders({
+        'Authorization': `Bearer ${token}`
+      });
+    }
+    return undefined;
   }
 
   /**
@@ -33,12 +36,22 @@ export class CaCertificateService {
    */
   getCaCertificates(): Observable<CaCertificate[]> {
     const url = `${this.baseUrl}/.well-known/est/cacerts`;
-    
-    return this.http.get(url, {
-      headers: this.getHeaders(),
-      responseType: 'text'
-    }).pipe(
-      map(pemData => this.parsePemCertificates(pemData))
+    const headers = this.getHeaders();
+    const options: any = { responseType: 'arraybuffer' };
+    if (headers) {
+      options.headers = headers;
+    }
+    return this.http.get(url, options).pipe(
+      map((data: ArrayBuffer | string) => {
+        let pemData: string;
+        if (typeof data === 'string') {
+          pemData = data;
+        } else {
+          // Convert ArrayBuffer to string (assume UTF-8 PEM)
+          pemData = new TextDecoder('utf-8').decode(data);
+        }
+        return this.parsePemCertificates(pemData);
+      })
     );
   }
 
