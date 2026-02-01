@@ -5,12 +5,9 @@
 		<Version>1.0.2</Version>
 		<OutputType>Exe</OutputType>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-
 		<PackAsTool>true</PackAsTool>
 		<ToolCommandName>est</ToolCommandName>
 		<PackageOutputPath>../../artifacts/tools</PackageOutputPath>
-		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<RootNamespace>OpenCertServer.Est.Cli</RootNamespace>
 
 	</PropertyGroup>

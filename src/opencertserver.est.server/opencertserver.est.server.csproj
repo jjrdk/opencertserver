@@ -4,8 +4,6 @@
     <PropertyGroup>
         <RootNamespace>OpenCertServer.Est.Server</RootNamespace>
         <AssemblyName>opencertserver.est.server</AssemblyName>
-        <Nullable>enable</Nullable>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="10.0.2" />

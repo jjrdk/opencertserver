@@ -11,7 +11,7 @@ public sealed class VersionTask : FrostingTask<BuildContext>
     // Tasks can be asynchronous
     public override void Run(BuildContext context)
     {
-        var versionInfo = context.GitVersion(new GitVersionSettings { UpdateAssemblyInfo = false });
+        var versionInfo = context.GitVersion(new GitVersionSettings { UpdateAssemblyInfo = false, NoNormalize = true });
         context.BuildVersion = versionInfo.BranchName == "master" || versionInfo.BranchName.StartsWith("tags/")
             ? versionInfo.MajorMinorPatch
             : $"{versionInfo.MajorMinorPatch}-{versionInfo.BranchName[(versionInfo.BranchName.IndexOf('/') + 1)..]}.{versionInfo.CommitsSinceVersionSource}";
