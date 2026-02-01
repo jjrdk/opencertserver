@@ -8,23 +8,11 @@ jobs:
     steps:
       - name: Get the sources
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
       - name: Build OpenCertServer
         run: dotnet build opencertserver.slnx -c Release
-      - name: Generate SBOM
-        run: |
-          mkdir -p ./artifacts/sbom
-          curl -Lo $RUNNER_TEMP/sbom-tool https://github.com/microsoft/sbom-tool/releases/latest/download/sbom-tool-linux-x64
-          chmod +x $RUNNER_TEMP/sbom-tool
-          $RUNNER_TEMP/sbom-tool generate -b ./artifacts/buildOutput/dotauth -bc . -pn DotAuth -pv 1.0.0 -ps reimers.io -nsb https://sbom.reimers.io/opencertserver -m ./artifacts/sbom
-      - name: Upload a SBOM Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          path: ./artifacts/sbom
-      - name: Upload test reports
-        uses: actions/upload-artifact@v4
-        with:
-          path: ./artifacts/testreports
