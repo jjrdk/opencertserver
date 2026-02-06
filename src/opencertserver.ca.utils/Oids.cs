@@ -48,6 +48,7 @@ public static class Oids
     public const string ApplicationCertPolicies = "1.3.6.1.4.1.311.21.10";
     public const string AuthorityInformationAccess = "1.3.6.1.5.5.7.1.1";
     public const string OcspEndpoint = "1.3.6.1.5.5.7.48.1";
+    public const string OcspBasicResponse = "1.3.6.1.5.5.7.48.1.1";
     public const string CertificateAuthorityIssuers = "1.3.6.1.5.5.7.48.2";
     public const string Pkcs9ExtensionRequest = "1.2.840.113549.1.9.14";
     public const string MsPkcs12KeyProviderName = "1.3.6.1.4.1.311.17.1";

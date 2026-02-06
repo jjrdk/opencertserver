@@ -25,12 +25,13 @@ public class CertId : IAsnValue
     }
 
     public CertId(AsnReader reader)
-    {var sequenceReader = reader.ReadSequence();
+    {
+        var sequenceReader = reader.ReadSequence();
         Algorithm = new AlgorithmIdentifier(sequenceReader);
         IssuerNameHash = sequenceReader.ReadOctetString();
         IssuerKeyHash = sequenceReader.ReadOctetString();
         SerialNumber = sequenceReader.ReadIntegerBytes().ToArray();
-        reader.ThrowIfNotEmpty();
+        sequenceReader.ThrowIfNotEmpty();
     }
 
     public AlgorithmIdentifier Algorithm { get; }

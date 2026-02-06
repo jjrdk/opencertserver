@@ -43,17 +43,17 @@ public class AlgorithmIdentifier : IAsnValue
 
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
-        using (writer.PushSequence(tag))
+        writer.PushSequence(tag);
+        writer.WriteObjectIdentifier(AlgorithmOid.Value!);
+        if (CurveOid?.Value != null)
         {
-            writer.WriteObjectIdentifier(AlgorithmOid.Value!);
-            if (CurveOid?.Value != null)
-            {
-                writer.WriteObjectIdentifier(CurveOid.Value);
-            }
-            else
-            {
-                writer.WriteNull();
-            }
+            writer.WriteObjectIdentifier(CurveOid.Value);
         }
+        else
+        {
+            writer.WriteNull();
+        }
+
+        writer.PopSequence(tag);
     }
 }

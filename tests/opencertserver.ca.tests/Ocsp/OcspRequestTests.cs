@@ -1,10 +1,10 @@
+namespace OpenCertServer.Ca.Tests.Ocsp;
+
 using System.Formats.Asn1;
 using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ocsp;
 using OpenCertServer.Ca.Utils.X509;
 using Xunit;
-
-namespace OpenCertServer.Ca.Tests.Ocsp;
 
 public class OcspRequestTests
 {
