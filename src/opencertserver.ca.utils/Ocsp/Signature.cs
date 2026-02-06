@@ -23,13 +23,14 @@ public class Signature : IAsnValue
         Certs = certs;
     }
 
-    public Signature(AsnReader reader)
+    public Signature(AsnReader reader, Asn1Tag? expectedTag = null)
     {
-        AlgorithmIdentifier = new AlgorithmIdentifier(reader);
-        SignatureBytes = reader.ReadBitString(out _);
-        if (reader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
+        var sequenceReader = reader.ReadSequence(expectedTag);
+        AlgorithmIdentifier = new AlgorithmIdentifier(sequenceReader);
+        SignatureBytes = sequenceReader.ReadBitString(out _);
+        if (sequenceReader.HasData && sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
         {
-            var certsReader = reader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
+            var certsReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
             var certs = new List<X509Certificate2>();
             while (certsReader.HasData)
             {
@@ -40,7 +41,7 @@ public class Signature : IAsnValue
             Certs = certs;
         }
 
-        reader.ThrowIfNotEmpty();
+        sequenceReader.ThrowIfNotEmpty();
     }
 
     public AlgorithmIdentifier AlgorithmIdentifier { get; }
@@ -51,5 +52,20 @@ public class Signature : IAsnValue
 
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
+        writer.PushSequence(tag);
+        AlgorithmIdentifier.Encode(writer);
+        writer.WriteBitString(SignatureBytes);
+        if (Certs != null)
+        {
+            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
+            foreach (var cert in Certs)
+            {
+                writer.WriteEncodedValue(cert.RawData);
+            }
+
+            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
+        }
+
+        writer.PopSequence(tag);
     }
 }

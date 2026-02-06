@@ -79,7 +79,7 @@ public static class EncodingExtensions
             }
         }
 
-        public HashAlgorithmName GetHashAlgorithmFromOid()
+        public HashAlgorithmName GetHashAlgorithmNameFromOid()
         {
             return value switch
             {
@@ -93,6 +93,19 @@ public static class EncodingExtensions
                 "1.2.840.10045.4.3.4" => HashAlgorithmName.SHA512,
                 "1.2.840.10045.4.1" => HashAlgorithmName.SHA1, // ecdsa-with-SHA1
                 _ => throw new CryptographicException($"Unsupported signature algorithm OID: {value}")
+            };
+        }
+
+        public HashAlgorithm GetHashAlgorithmFromOid()
+        {
+            return value switch
+            {
+                "1.2.840.113549.2.5" => MD5.Create(),
+                "1.2.840.113549.2.2" => SHA1.Create(),
+                "1.2.840.113549.2.9" => SHA256.Create(),
+                "1.2.840.113549.2.10" => SHA384.Create(),
+                "1.2.840.113549.2.11" => SHA512.Create(),
+                _ => throw new CryptographicException($"Unsupported hash algorithm OID: {value}")
             };
         }
 
@@ -372,6 +385,35 @@ public static class EncodingExtensions
             }
 
             throw new CryptographicException("Unsupported CRL extension.");
+        }
+    }
+
+    extension(HashAlgorithmName hashAlgorithmName)
+    {
+        public HashAlgorithm CreateHashAlgorithm()
+        {
+            return hashAlgorithmName.Name switch
+            {
+                "MD5" => MD5.Create(),
+                "SHA1" => SHA1.Create(),
+                "SHA256" => SHA256.Create(),
+                "SHA384" => SHA384.Create(),
+                "SHA512" => SHA512.Create(),
+                _ => throw new CryptographicException($"Unsupported hash algorithm: {hashAlgorithmName.Name}")
+            };
+        }
+
+        public Oid GetHashAlgorithmOid()
+        {
+            return hashAlgorithmName.Name switch
+            {
+                "MD5" => Oids.Md5.InitializeOid(),
+                "SHA1" => Oids.Sha1.InitializeOid(),
+                "SHA256" => Oids.Sha256Oid,
+                "SHA384" => Oids.Sha384.InitializeOid(),
+                "SHA512" => Oids.Sha512.InitializeOid(),
+                _ => throw new CryptographicException($"Unsupported hash algorithm: {hashAlgorithmName.Name}")
+            };
         }
     }
 }

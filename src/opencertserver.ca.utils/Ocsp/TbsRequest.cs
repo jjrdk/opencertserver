@@ -1,4 +1,5 @@
 using System.Formats.Asn1;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils.X509;
 
@@ -104,6 +105,7 @@ public class TbsRequest : IAsnValue
             {
                 request.Encode(writer);
             }
+
             writer.PopSequence();
         }
 
@@ -119,5 +121,27 @@ public class TbsRequest : IAsnValue
         }
 
         writer.PopSequence(tag);
+    }
+
+    public Signature Sign(AsymmetricAlgorithm key)
+    {
+        var signatureGenerator = key switch
+        {
+            RSA rsa => X509SignatureGenerator.CreateForRSA(rsa, RSASignaturePadding.Pss),
+            ECDsa ecdsa => X509SignatureGenerator.CreateForECDsa(ecdsa),
+            _ => throw new InvalidOperationException("Unsupported signing algorithm")
+        };
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        Encode(writer);
+        var dataToSign = writer.Encode();
+        var signature = signatureGenerator.SignData(dataToSign, HashAlgorithmName.SHA256);
+        var algorithmIdentifier = key switch
+        {
+            RSA => new AlgorithmIdentifier(Oids.RsaOid),
+            ECDsa ecdsa => new AlgorithmIdentifier(Oids.EcPublicKey.InitializeOid(),
+                ecdsa.ExportExplicitParameters(false).Curve.Oid),
+            _ => throw new InvalidOperationException("Unsupported signing algorithm")
+        };
+        return new Signature(algorithmIdentifier, signature);
     }
 }

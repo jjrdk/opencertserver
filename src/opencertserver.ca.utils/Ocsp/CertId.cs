@@ -1,4 +1,6 @@
 using System.Formats.Asn1;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils.X509;
 
 namespace OpenCertServer.Ca.Utils.Ocsp;
@@ -32,6 +34,16 @@ public class CertId : IAsnValue
         IssuerKeyHash = sequenceReader.ReadOctetString();
         SerialNumber = sequenceReader.ReadIntegerBytes().ToArray();
         sequenceReader.ThrowIfNotEmpty();
+    }
+
+    public static CertId Create(X509Certificate2 certificate, HashAlgorithmName hashAlgorithm)
+    {
+        var hasher = hashAlgorithm.CreateHashAlgorithm();
+        return new CertId(
+            new AlgorithmIdentifier(hashAlgorithm.GetHashAlgorithmOid()),
+            hasher.ComputeHash(certificate.IssuerName.RawData),
+            hasher.ComputeHash(certificate.GetPublicKey()),
+            certificate.SerialNumberBytes.ToArray());
     }
 
     public AlgorithmIdentifier Algorithm { get; }

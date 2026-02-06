@@ -209,7 +209,7 @@ public class CertificateRevocationList
         reader.ThrowIfNotEmpty();
         var signature = certificateList.ReadBitString(out _, Asn1Tag.PrimitiveBitString);
 
-        var signatureAlgo = algoIdentifier.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier).GetHashAlgorithmFromOid();
+        var signatureAlgo = algoIdentifier.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier).GetHashAlgorithmNameFromOid();
 
         if (issuerPublicKey != null && !issuerPublicKey.VerifySignature(tbsSpan, signature, signatureAlgo))
         {
@@ -278,7 +278,7 @@ public class CertificateRevocationList
         var oid = signatureAlgorithm.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier);
 
         // Map OID to HashAlgorithmName
-        var hashAlgorithm = oid.GetHashAlgorithmFromOid();
+        var hashAlgorithm = oid.GetHashAlgorithmNameFromOid();
 
         // 3. Read signatureValue (BIT STRING)
         var signatureValue = certificateList.ReadBitString(out var unusedBits, Asn1Tag.ConstructedBitString);

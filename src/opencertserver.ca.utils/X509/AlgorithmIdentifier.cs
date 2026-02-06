@@ -14,12 +14,6 @@ public class AlgorithmIdentifier : IAsnValue
     public AlgorithmIdentifier(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
-        var tag = sequenceReader.PeekTag();
-        while (tag.HasSameClassAndValue(new Asn1Tag(UniversalTagNumber.Sequence)))
-        {
-            sequenceReader = sequenceReader.ReadSequence();
-            tag = sequenceReader.PeekTag();
-        }
 
         AlgorithmOid = sequenceReader.ReadObjectIdentifier().InitializeOid();
         switch (AlgorithmOid.Value)

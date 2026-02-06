@@ -14,22 +14,21 @@ namespace OpenCertServer.Ca.Utils.Ocsp;
 /// </code>
 public class OcspRequest : IAsnValue
 {
-    public OcspRequest(TbsRequest tbsRequest, Signature? optionalSignature = null)
+    public OcspRequest(TbsRequest tbsRequest, Signature? signature = null)
     {
         TbsRequest = tbsRequest;
-        OptionalSignature = optionalSignature;
+        Signature = signature;
     }
 
     public OcspRequest(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
         TbsRequest = new TbsRequest(sequenceReader);
+        var tag = new Asn1Tag(TagClass.ContextSpecific, 0);
         if (sequenceReader.HasData &&
-            sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
+            sequenceReader.PeekTag().HasSameClassAndValue(tag))
         {
-            var sigReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
-            OptionalSignature = new Signature(reader);
-            sigReader.ThrowIfNotEmpty();
+            Signature = new Signature(sequenceReader, tag);
         }
 
         sequenceReader.ThrowIfNotEmpty();
@@ -37,13 +36,13 @@ public class OcspRequest : IAsnValue
 
     public TbsRequest TbsRequest { get; }
 
-    public Signature? OptionalSignature { get; }
+    public Signature? Signature { get; }
 
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         writer.PushSequence(tag);
         TbsRequest.Encode(writer);
-        OptionalSignature?.Encode(writer, new Asn1Tag(TagClass.ContextSpecific, 0));
+        Signature?.Encode(writer, new Asn1Tag(TagClass.ContextSpecific, 0));
         writer.PopSequence(tag);
     }
 }

@@ -16,12 +16,12 @@ public partial class CertificateServerFeatures
     {
         using var client = _server.CreateClient();
         var serialNumberString = _certCollection[0].SerialNumberBytes;
-        var ocspRequest = new OcspRequest(
-            new TbsRequest(requestList:
-            [
-                new Request(new CertId(new AlgorithmIdentifier(Oids.Sha256Oid),
-                    SHA256.HashData(_certCollection[0].IssuerName.RawData), [], serialNumberString.ToArray()))
-            ]));
+        var tbsRequest = new TbsRequest(requestList:
+        [
+            new Request(CertId.Create(_certCollection[0], HashAlgorithmName.SHA256))
+        ]);
+        var signature = tbsRequest.Sign(_key);
+        var ocspRequest = new OcspRequest(tbsRequest, signature);
         var ocspResponse = await GetOcspResponse(ocspRequest);
         Assert.Equal(OcspResponseStatus.Successful, ocspResponse.ResponseStatus);
         var basicResponse = ocspResponse.ResponseBytes!.GetBasicResponse();
@@ -34,12 +34,12 @@ public partial class CertificateServerFeatures
     public async Task ThenTheCertificateShouldBeRevokedInOcsp()
     {
         var serialNumberString = _certCollection[0].SerialNumberBytes;
-        var ocspRequest = new OcspRequest(
-            new TbsRequest(requestList:
-            [
-                new Request(new CertId(new AlgorithmIdentifier(Oids.Sha256Oid),
-                    SHA256.HashData(_certCollection[0].IssuerName.RawData), [], serialNumberString.ToArray()))
-            ]));
+        var tbsRequest = new TbsRequest(requestList:
+        [
+            new Request(CertId.Create(_certCollection[0], HashAlgorithmName.SHA256))
+        ]);
+        var signature = tbsRequest.Sign(_key);
+        var ocspRequest = new OcspRequest(tbsRequest, signature);
         var ocspResponse = await GetOcspResponse(ocspRequest);
         Assert.Equal(OcspResponseStatus.Successful, ocspResponse.ResponseStatus);
         var basicResponse = ocspResponse.ResponseBytes!.GetBasicResponse();
