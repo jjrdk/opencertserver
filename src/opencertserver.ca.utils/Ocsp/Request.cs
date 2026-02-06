@@ -17,14 +17,14 @@ public class Request : IAsnValue
 {
     public Request(CertId certId, X509ExtensionCollection? singleRequestExtensions = null)
     {
-        CertIdentifer = certId;
+        CertIdentifier = certId;
         SingleRequestExtensions = singleRequestExtensions;
     }
 
     public Request(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
-        CertIdentifer = new CertId(sequenceReader);
+        CertIdentifier = new CertId(sequenceReader);
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
         {
@@ -42,25 +42,25 @@ public class Request : IAsnValue
         sequenceReader.ThrowIfNotEmpty();
     }
 
-    public CertId CertIdentifer { get; }
+    public CertId CertIdentifier { get; }
 
     public X509ExtensionCollection? SingleRequestExtensions { get; }
 
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
-        using (writer.PushSequence(tag))
+        writer.PushSequence(tag);
+        CertIdentifier.Encode(writer);
+        if (SingleRequestExtensions != null)
         {
-            CertIdentifer.Encode(writer);
-            if (SingleRequestExtensions != null)
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0)))
             {
-                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0)))
+                foreach (var ext in SingleRequestExtensions)
                 {
-                    foreach (var ext in SingleRequestExtensions)
-                    {
-                        ext.Encode(writer);
-                    }
+                    ext.Encode(writer);
                 }
             }
         }
+
+        writer.PopSequence(tag);
     }
 }

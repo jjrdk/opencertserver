@@ -41,10 +41,9 @@ public class OcspRequest : IAsnValue
 
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
-        using (writer.PushSequence(tag))
-        {
-            TbsRequest.Encode(writer);
-            OptionalSignature?.Encode(writer, new Asn1Tag(TagClass.ContextSpecific, 0));
-        }
+        writer.PushSequence(tag);
+        TbsRequest.Encode(writer);
+        OptionalSignature?.Encode(writer, new Asn1Tag(TagClass.ContextSpecific, 0));
+        writer.PopSequence(tag);
     }
 }

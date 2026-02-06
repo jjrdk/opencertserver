@@ -1,4 +1,5 @@
 using System.Security.Cryptography.X509Certificates;
+using OpenCertServer.Ca.Utils.Ocsp;
 
 namespace OpenCertServer.Ca;
 
@@ -33,6 +34,21 @@ public class InMemoryCertificateStore : IStoreCertificates
             .Take(pageSize)
             .Select(x => x.Value.AsInfo())
             .ToAsyncEnumerable();
+    }
+
+    public async Task<(CertId, CertificateStatus, RevokedInfo?)> GetCertificateStatus(CertId certId)
+    {
+        await Task.Yield();
+        var found = _certificates.TryGetValue(Convert.ToHexString(certId.SerialNumber), out var certificateItem);
+        if (!found)
+        {
+            return (certId, CertificateStatus.Unknown, null);
+        }
+
+        return certificateItem!.IsRevoked
+            ? (certId, CertificateStatus.Revoked,
+               new RevokedInfo(certificateItem.RevocationDate!.Value, certificateItem.RevocationReason))
+            : (certId, CertificateStatus.Good, null);
     }
 
     public IAsyncEnumerable<CertificateItemInfo> GetInventory(int page = 0, int pageSize = 100)

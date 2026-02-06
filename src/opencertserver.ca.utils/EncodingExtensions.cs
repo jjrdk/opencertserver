@@ -11,6 +11,19 @@ using OpenCertServer.Ca.Utils.X509Extensions;
 /// </summary>
 public static class EncodingExtensions
 {
+    extension(IAsnValue asnValue)
+    {
+        /// <summary>
+        /// Encodes the ASN.1 value using DER encoding rules.
+        /// </summary>
+        public byte[] GetBytes()
+        {
+            var writer = new AsnWriter(AsnEncodingRules.DER);
+            asnValue.Encode(writer);
+            return writer.Encode();
+        }
+    }
+
     extension(AsymmetricAlgorithm asymmetricAlgorithm)
     {
         /// <summary>

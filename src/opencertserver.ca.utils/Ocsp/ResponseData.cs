@@ -26,7 +26,7 @@ public class ResponseData : IAsnValue
         Version = version;
         ResponderId = responderId;
         ProducedAt = producedAt;
-        Responses = responses;
+        Responses = responses.ToArray().AsReadOnly();
     }
 
     public ResponseData(AsnReader reader)
@@ -63,7 +63,7 @@ public class ResponseData : IAsnValue
 
     public DateTimeOffset ProducedAt { get; }
 
-    public IEnumerable<SingleResponse> Responses { get; }
+    public IReadOnlyCollection<SingleResponse> Responses { get; }
 
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {

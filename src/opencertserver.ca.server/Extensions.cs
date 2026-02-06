@@ -1,10 +1,10 @@
-﻿using System.Text.Json.Serialization;
+﻿namespace OpenCertServer.Ca.Server;
+
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using OpenCertServer.Ca.Server.Handlers;
-
-namespace OpenCertServer.Ca.Server;
+using Handlers;
 
 public static class Extensions
 {
@@ -30,6 +30,7 @@ public static class Extensions
                 });
             groupBuilder.MapGet("/crl", CrlHandler.Handle)
                 .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
+            groupBuilder.MapPost("/ocsp", OcspHandler.Handle).AllowAnonymous();
             groupBuilder.MapGet("/certificate", CertificateRetrievalHandler.HandleGet)
                 .AllowAnonymous();
             return endpoints;
@@ -37,8 +38,8 @@ public static class Extensions
     }
 }
 
-[JsonSerializable(typeof(OpenCertServer.Ca.CertificateItem))]
-[JsonSerializable(typeof(OpenCertServer.Ca.CertificateItem[]))]
+[JsonSerializable(typeof(CertificateItem))]
+[JsonSerializable(typeof(CertificateItem[]))]
 internal partial class CaServerSerializerContext : JsonSerializerContext
 {
 }

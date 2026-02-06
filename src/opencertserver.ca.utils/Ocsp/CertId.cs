@@ -44,12 +44,11 @@ public class CertId : IAsnValue
 
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
-        using (writer.PushSequence(tag))
-        {
-            Algorithm.Encode(writer);
-            writer.WriteOctetString(IssuerNameHash);
-            writer.WriteOctetString(IssuerKeyHash);
-            writer.WriteInteger(SerialNumber);
-        }
+        writer.PushSequence(tag);
+        Algorithm.Encode(writer);
+        writer.WriteOctetString(IssuerNameHash);
+        writer.WriteOctetString(IssuerKeyHash);
+        writer.WriteInteger(SerialNumber);
+        writer.PopSequence(tag);
     }
 }

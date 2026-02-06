@@ -20,7 +20,7 @@ public static class OcspResponseStatusExtensions
 
     public static OcspBasicResponse GetBasicResponse(this ResponseBytes response)
     {
-        if (response.ResponseType.Value != "")
+        if (response.ResponseType.Value != Oids.OcspBasicResponse)
         {
             throw new InvalidOperationException("Unsupported OCSP response type");
         }

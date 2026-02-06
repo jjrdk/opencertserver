@@ -1,4 +1,5 @@
 using System.Security.Cryptography.X509Certificates;
+using OpenCertServer.Ca.Utils.Ocsp;
 
 namespace OpenCertServer.Ca;
 
@@ -9,6 +10,8 @@ public interface IStoreCertificates
     Task<bool> RemoveCertificate(string serialNumber, X509RevocationReason reason);
 
     IAsyncEnumerable<CertificateItemInfo> GetRevocationList(int page = 0, int pageSize = 100);
+
+    Task<(CertId, CertificateStatus, RevokedInfo?)> GetCertificateStatus(CertId certId);
 
     IAsyncEnumerable<CertificateItemInfo> GetInventory(int page = 0, int pageSize = 100);
 

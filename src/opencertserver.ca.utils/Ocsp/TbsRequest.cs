@@ -82,44 +82,42 @@ public class TbsRequest : IAsnValue
 
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
-        using (writer.PushSequence(tag))
+        writer.PushSequence(tag);
+        if (Version != TypeVersion.V1)
         {
-            if (Version != TypeVersion.V1)
-            {
-                var integer = (int)Version;
-                writer.WriteInteger(integer, new Asn1Tag(TagClass.ContextSpecific, 0, true));
-            }
+            var integer = (int)Version;
+            writer.WriteInteger(integer, new Asn1Tag(TagClass.ContextSpecific, 0, true));
+        }
 
-            if (RequestorName != null)
+        if (RequestorName != null)
+        {
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
             {
-                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
-                {
-                    RequestorName?.Encode(writer);
-                }
-            }
-
-
-            if (RequestList.Count > 0)
-            {
-                using (writer.PushSequence())
-                {
-                    foreach (var request in RequestList)
-                    {
-                        request.Encode(writer);
-                    }
-                }
-            }
-
-            if (RequestExtensions != null)
-            {
-                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 2, true)))
-                {
-                    foreach (var ext in RequestExtensions)
-                    {
-                        ext.Encode(writer);
-                    }
-                }
+                RequestorName?.Encode(writer);
             }
         }
+
+        if (RequestList.Count > 0)
+        {
+            writer.PushSequence();
+            foreach (var request in RequestList)
+            {
+                request.Encode(writer);
+            }
+            writer.PopSequence();
+        }
+
+        if (RequestExtensions != null)
+        {
+            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 2, true));
+            foreach (var ext in RequestExtensions)
+            {
+                ext.Encode(writer);
+            }
+
+            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 2, true));
+        }
+
+        writer.PopSequence(tag);
     }
 }

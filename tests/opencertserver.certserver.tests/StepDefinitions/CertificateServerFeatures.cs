@@ -22,6 +22,7 @@ using OpenCertServer.Acme.Server.Middleware;
 using OpenCertServer.Acme.Server.Services;
 using OpenCertServer.Ca;
 using OpenCertServer.Ca.Server;
+using OpenCertServer.Ca.Utils.Ocsp;
 using OpenCertServer.Est.Server;
 using Reqnroll;
 using Xunit;
@@ -68,7 +69,9 @@ public partial class CertificateServerFeatures
             Justification = "<Pending>")]
         void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services) =>
 #pragma warning disable IL2066
-            services.AddSelfSignedInMemoryEstServer<TestCsrAttributesHandler>(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"])
+            services
+                .AddSingleton<IResponderId>(new ResponderIdByKey("test"u8.ToArray()))
+                .AddSelfSignedInMemoryEstServer<TestCsrAttributesHandler>(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"])
                 .AddSingleton(sp=>sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates())
                 .AddAcmeServer(ctx.Configuration, _ => _server.CreateClient(),
                     new AcmeServerOptions
