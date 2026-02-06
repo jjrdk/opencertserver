@@ -16,3 +16,5 @@ jobs:
           dotnet-version: 10.0.x
       - name: Build OpenCertServer
         run: dotnet build opencertserver.slnx -c Release
+      - name: Test OpenCertServer
+        run: dotnet test opencertserver.slnx -c Release

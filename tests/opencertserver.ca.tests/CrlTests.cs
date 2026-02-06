@@ -50,7 +50,7 @@ public class CrlTests
             _ => throw new ArgumentOutOfRangeException(nameof(algorithmType), algorithmType, null)
         };
         var crl = new CertificateRevocationList(
-            CertificateRevocationList.CrlVersion.V2,
+            TypeVersion.V2,
             hashAlgorithmName,
             certificate.SubjectName,
             DateTimeOffset.UtcNow,

@@ -1,7 +1,6 @@
 namespace OpenCertServer.Ca.Utils.X509.Templates;
 
 using System.Formats.Asn1;
-using System.Security.Cryptography;
 
 /// <summary>
 /// Defines the SubjectPublicKeyInfoTemplate ASN.1 structure.
@@ -17,13 +16,11 @@ public class SubjectPublicKeyInfoTemplate : IAsnValue
     /// <summary>
     /// Initializes a new instance of the <see cref="SubjectPublicKeyInfoTemplate"/> class.
     /// </summary>
-    /// <param name="algorithmOid">The algorithm <see cref="Oid"/>.</param>
-    /// <param name="curveOid">The optional elliptic curve <see cref="Oid"/>.</param>
+    /// <param name="algorithmIdentifier">The algorithm <see cref="AlgorithmIdentifier"/>.</param>
     /// <param name="publicKey">The subject public key.</param>
-    public SubjectPublicKeyInfoTemplate(Oid algorithmOid, Oid? curveOid = null, byte[]? publicKey = null)
+    public SubjectPublicKeyInfoTemplate(AlgorithmIdentifier algorithmIdentifier, byte[]? publicKey = null)
     {
-        AlgorithmOid = algorithmOid;
-        CurveOid = curveOid;
+        AlgorithmIdentifier = algorithmIdentifier;
         PublicKey = publicKey;
     }
 
@@ -35,19 +32,7 @@ public class SubjectPublicKeyInfoTemplate : IAsnValue
     public SubjectPublicKeyInfoTemplate(AsnReader reader, Asn1Tag? expectedTag = null)
     {
         var sequenceReader = reader.ReadSequence(expectedTag);
-        var algoReader = sequenceReader.ReadSequence();
-        AlgorithmOid = algoReader.ReadObjectIdentifier().InitializeOid();
-        switch (AlgorithmOid.Value)
-        {
-            case Oids.Rsa:
-                // Skip parameters for RSA (should be NULL)
-                algoReader.ReadNull();
-                break;
-            case Oids.EcPublicKey:
-                // Skip parameters for EC (should be named curve OID)
-                CurveOid = algoReader.ReadObjectIdentifier().InitializeOid();
-                break;
-        }
+        AlgorithmIdentifier = new AlgorithmIdentifier(sequenceReader);
         if (sequenceReader.HasData)
         {
             PublicKey = sequenceReader.ReadBitString(out _);
@@ -55,14 +40,9 @@ public class SubjectPublicKeyInfoTemplate : IAsnValue
     }
 
     /// <summary>
-    /// Gets the algorithm <see cref="Oid"/>.
+    /// Gets the algorithm <see cref="AlgorithmIdentifier"/>.
     /// </summary>
-    public Oid AlgorithmOid { get; }
-
-    /// <summary>
-    /// Gets the optional elliptic curve <see cref="Oid"/>.
-    /// </summary>
-    public Oid? CurveOid { get; }
+    public AlgorithmIdentifier AlgorithmIdentifier { get; }
 
     /// <summary>
     /// Gets the subject public key.
@@ -74,18 +54,7 @@ public class SubjectPublicKeyInfoTemplate : IAsnValue
     {
         using (writer.PushSequence(tag))
         {
-            using (writer.PushSequence())
-            {
-                writer.WriteObjectIdentifier(AlgorithmOid.Value!);
-                if (CurveOid?.Value != null)
-                {
-                    writer.WriteObjectIdentifier(CurveOid.Value);
-                }
-                else if (AlgorithmOid.Value == Oids.Rsa)
-                {
-                    writer.WriteNull();
-                }
-            }
+            AlgorithmIdentifier.Encode(writer);
 
             if (PublicKey != null)
             {

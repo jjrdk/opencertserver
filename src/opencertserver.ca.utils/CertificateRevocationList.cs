@@ -27,7 +27,7 @@ public class CertificateRevocationList
     /// </para>
     /// </remarks>
     public CertificateRevocationList(
-        CrlVersion version,
+        TypeVersion version,
         HashAlgorithmName signatureAlgorithm,
         X500DistinguishedName issuer,
         DateTimeOffset thisUpdate,
@@ -65,7 +65,7 @@ public class CertificateRevocationList
     /// <summary>
     /// Gets the CRL version.
     /// </summary>
-    public CrlVersion Version { get; }
+    public TypeVersion Version { get; }
 
     /// <summary>
     /// Gets the CRL number.
@@ -96,16 +96,6 @@ public class CertificateRevocationList
     public DateTimeOffset? NextUpdate { get; }
 
     public IReadOnlyCollection<X509Extension> Extensions { get; }
-
-    /// <summary>
-    /// Defines the CRL version.
-    /// </summary>
-    public enum CrlVersion
-    {
-        V1 = 0,
-        V2 = 1,
-        V3 = 2
-    }
 
     public static CertificateRevocationList LoadPem(
         ReadOnlySpan<char> pemCrl,
@@ -255,7 +245,7 @@ public class CertificateRevocationList
         tbsCertList.ThrowIfNotEmpty();
 
         return new CertificateRevocationList(
-            (CrlVersion)version,
+            (TypeVersion)version,
             signatureAlgo,
             distinguishedName,
             thisUpdate,

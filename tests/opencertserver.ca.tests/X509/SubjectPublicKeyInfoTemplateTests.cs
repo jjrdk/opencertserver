@@ -14,8 +14,8 @@ public class SubjectPublicKeyInfoTemplateTests
         var info = key.ExportSubjectPublicKeyInfo();
         var reader = new AsnReader(info, AsnEncodingRules.DER);
         var spki = new Utils.X509.Templates.SubjectPublicKeyInfoTemplate(reader);
-        Assert.Equal(Oids.EcPublicKey, spki.AlgorithmOid.Value);
-        Assert.Equal(Oids.secp521r1, spki.CurveOid!.Value);
+        Assert.Equal(Oids.EcPublicKey, spki.AlgorithmIdentifier.AlgorithmOid.Value);
+        Assert.Equal(Oids.secp521r1, spki.AlgorithmIdentifier.CurveOid!.Value);
         Assert.NotNull(spki.PublicKey);
     }
 
@@ -26,8 +26,8 @@ public class SubjectPublicKeyInfoTemplateTests
         var info = key.ExportSubjectPublicKeyInfo();
         var reader = new AsnReader(info, AsnEncodingRules.DER);
         var spki = new Utils.X509.Templates.SubjectPublicKeyInfoTemplate(reader);
-        Assert.Equal(Oids.Rsa, spki.AlgorithmOid.Value);
-        Assert.Null(spki.CurveOid);
+        Assert.Equal(Oids.Rsa, spki.AlgorithmIdentifier.AlgorithmOid.Value);
+        Assert.Null(spki.AlgorithmIdentifier.CurveOid);
         Assert.NotNull(spki.PublicKey);
     }
 }

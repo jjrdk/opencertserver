@@ -1,3 +1,5 @@
+using OpenCertServer.Ca.Utils.X509;
+
 namespace OpenCertServer.Ca.Tests.X509;
 
 using System.Formats.Asn1;
@@ -14,7 +16,7 @@ public class CertificateSigningRequestTemplateTests
             subject: new NameTemplate(new RDNSequenceTemplate([
                 new RelativeDistinguishedNameTemplate([new SingleAttributeTemplate(Oids.CommonNameOid)])
             ])),
-            subjectPkInfo: new SubjectPublicKeyInfoTemplate(Oids.RsaOid));
+            subjectPkInfo: new SubjectPublicKeyInfoTemplate(new AlgorithmIdentifier(Oids.RsaOid)));
         var writer = new AsnWriter(AsnEncodingRules.CER);
         requestTemplate.Encode(writer);
         var encoded = writer.Encode();
@@ -24,6 +26,6 @@ public class CertificateSigningRequestTemplateTests
 
         Assert.Equal(requestTemplate.Version, decoded.Version);
         Assert.Equal(Oids.CommonNameOid, decoded.Subject!.Name.RelativeNames[0].Attributes.First().Oid, OidComparer.Instance);
-        Assert.Equal(Oids.RsaOid,decoded.SubjectPublicKeyInfo!.AlgorithmOid, OidComparer.Instance);
+        Assert.Equal(Oids.RsaOid,decoded.SubjectPublicKeyInfo!.AlgorithmIdentifier.AlgorithmOid, OidComparer.Instance);
     }
 }
