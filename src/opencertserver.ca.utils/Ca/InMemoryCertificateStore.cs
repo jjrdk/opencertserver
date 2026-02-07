@@ -1,7 +1,7 @@
+namespace OpenCertServer.Ca.Utils.Ca;
+
 using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils.Ocsp;
-
-namespace OpenCertServer.Ca;
 
 public class InMemoryCertificateStore : IStoreCertificates
 {

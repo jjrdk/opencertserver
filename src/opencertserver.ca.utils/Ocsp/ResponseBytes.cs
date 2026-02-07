@@ -1,8 +1,8 @@
+namespace OpenCertServer.Ca.Utils.Ocsp;
+
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using OpenCertServer.Ca.Utils.X509;
-
-namespace OpenCertServer.Ca.Utils.Ocsp;
 
 public class ResponseBytes : IAsnValue
 {

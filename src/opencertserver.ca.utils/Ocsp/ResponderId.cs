@@ -1,7 +1,7 @@
+namespace OpenCertServer.Ca.Utils.Ocsp;
+
 using System.Formats.Asn1;
 using OpenCertServer.Ca.Utils.X509;
-
-namespace OpenCertServer.Ca.Utils.Ocsp;
 
 /// <summary>
 /// Defines the ResponderID structure as per RFC 6960.

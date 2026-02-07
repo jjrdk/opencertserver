@@ -1,13 +1,13 @@
-using System.Diagnostics.CodeAnalysis;
+using OpenCertServer.Ca.Utils.X509.Templates;
 
 namespace OpenCertServer.Est.Server.Handlers;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Formats.Asn1;
 using System.Net;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
-using OpenCertServer.Ca.Utils.X509.Templates;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
 public abstract class CsrAttributesHandler

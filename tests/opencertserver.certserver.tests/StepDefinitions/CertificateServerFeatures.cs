@@ -1,3 +1,7 @@
+using OpenCertServer.Ca.Utils.Ca;
+
+namespace OpenCertServer.CertServer.Tests.StepDefinitions;
+
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
@@ -20,14 +24,12 @@ using OpenCertServer.Acme.Server.Configuration;
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Middleware;
 using OpenCertServer.Acme.Server.Services;
-using OpenCertServer.Ca;
 using OpenCertServer.Ca.Server;
+using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ocsp;
 using OpenCertServer.Est.Server;
 using Reqnroll;
 using Xunit;
-
-namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 [Binding]
 public partial class CertificateServerFeatures
@@ -68,16 +70,16 @@ public partial class CertificateServerFeatures
             "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.",
             Justification = "<Pending>")]
         void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services) =>
-#pragma warning disable IL2066
             services
                 .AddSingleton<IResponderId>(new ResponderIdByKey("test"u8.ToArray()))
-                .AddSelfSignedInMemoryEstServer<TestCsrAttributesHandler>(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"])
+                .AddInMemoryCertificateStore()
+                .AddSelfSignedCertificateAuthority(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"])
+                .AddEstServer<TestCsrAttributesHandler>()
                 .AddSingleton(sp=>sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates())
                 .AddAcmeServer(ctx.Configuration, _ => _server.CreateClient(),
                     new AcmeServerOptions
                         { HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false } })
                 .AddSingleton<ICsrValidator, DefaultCsrValidator>()
-#pragma warning restore IL2066
                 .AddSingleton<IIssueCertificates, DefaultIssuer>()
                 .Replace(new ServiceDescriptor(typeof(IValidateHttp01Challenges), typeof(PassAllChallenges),
                     ServiceLifetime.Transient))

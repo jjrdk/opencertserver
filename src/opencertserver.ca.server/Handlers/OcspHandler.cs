@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Ca.Utils;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.X509;
 
 namespace OpenCertServer.Ca.Server.Handlers;

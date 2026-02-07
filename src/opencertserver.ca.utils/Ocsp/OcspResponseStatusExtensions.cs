@@ -1,6 +1,6 @@
-using System.Formats.Asn1;
-
 namespace OpenCertServer.Ca.Utils.Ocsp;
+
+using System.Formats.Asn1;
 
 public static class OcspResponseStatusExtensions
 {

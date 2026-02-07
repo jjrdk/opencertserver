@@ -1,6 +1,6 @@
-using System.Security.Cryptography.X509Certificates;
+namespace OpenCertServer.Ca.Utils.Ca;
 
-namespace OpenCertServer.Ca;
+using System.Security.Cryptography.X509Certificates;
 
 public class CertificateItemInfo
 {

@@ -1,10 +1,12 @@
+using OpenCertServer.Ca.Utils;
+using OpenCertServer.Ca.Utils.Ca;
+
 namespace OpenCertServer.Est.Server;
 
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography.X509Certificates;
 using Ca;
-using Ca.Utils;
 using Handlers;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -12,94 +14,29 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Defines the certificate server extension methods.
 /// </summary>
 public static class EstServerExtensions
 {
+    /// <summary>
+    /// <para>
+    /// Registers an in-memory certificate store to the service collection.
+    /// </para>
+    /// <para>
+    /// This is useful for testing and development purposes, but should not be used in production environments.
+    /// </para>
+    /// </summary>
+    /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
     extension(IServiceCollection services)
     {
-        /// <summary>
-        /// Adds an in-memory EST server to the service collection.
-        /// </summary>
-        /// <param name="distinguishedName">The <see cref="X500DistinguishedName"/> for the server certificate.</param>
-        /// <param name="certificateValidity"></param>
-        /// <param name="ocspUrls"></param>
-        /// <param name="caIssuersUrls"></param>
-        /// <param name="chainValidation"></param>
-        /// <returns></returns>
-        public IServiceCollection AddSelfSignedInMemoryEstServer<
-                [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
-                TCsrAttrs>(
-            X500DistinguishedName distinguishedName,
-            TimeSpan certificateValidity = default,
-            string[]? ocspUrls = null,
-            string[]? caIssuersUrls = null,
-            Func<X509Chain, bool>? chainValidation = null)
-            where TCsrAttrs : CsrAttributesHandler
-        {
-            services.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore());
-
-            return services.AddSelfSignedEstServer<TCsrAttrs>(
-                distinguishedName,
-                ocspUrls,
-                caIssuersUrls,
-                certificateValidity,
-                chainValidation);
-        }
-
-        public IServiceCollection AddSelfSignedEstServer<
-                [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
-                TCsrAttrs>(
-            X500DistinguishedName distinguishedName,
-            string[]? ocspUrls = null,
-            string[]? caIssuersUrls = null,
-            TimeSpan certificateValidity = default,
-            Func<X509Chain, bool>? chainValidation = null)
-            where TCsrAttrs : CsrAttributesHandler
-        {
-            services.AddSingleton<ICertificateAuthority>(sp =>
-            {
-                var certificateAuthority = CertificateAuthority.Create(
-                    distinguishedName,
-                    sp.GetRequiredService<IStoreCertificates>(),
-                    certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
-                    ocspUrls ?? [],
-                    caIssuersUrls ?? [],
-                    sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                    chainValidation: chainValidation,
-                    validators: sp.GetServices<IValidateCertificateRequests>().ToArray());
-                return certificateAuthority;
-            });
-
-            return services.InnerAddEstServer<TCsrAttrs>();
-        }
-
         public IServiceCollection AddEstServer<
                 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
-                TCsrAttrs>(
-            CaConfiguration configuration,
-            Func<X509Chain, bool>? chainValidation = null)
+                TCsrAttrs>()
             where TCsrAttrs : CsrAttributesHandler
         {
-            if (configuration.RsaCertificate.PublicKey.Oid.Value != Oids.Rsa)
-            {
-                throw new ArgumentException("Must be an RSA key certificate");
-            }
-
-            if (configuration.EcdsaCertificate.PublicKey.Oid.Value != Oids.EcPublicKey)
-            {
-                throw new ArgumentException("Must be an ECDSA key certificate");
-            }
-
             return services
-                .AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
-                    configuration,
-                    sp.GetRequiredService<IStoreCertificates>(),
-                    chainValidation ?? (_ => true),
-                    sp.GetRequiredService<ILogger<CertificateAuthority>>()))
                 .InnerAddEstServer<TCsrAttrs>();
         }
 
@@ -139,7 +76,10 @@ public static class EstServerExtensions
                 .UseRouting()
                 .UseAuthentication()
                 .UseAuthorization()
-                .UseEndpoints(e => { e.MapEstServer(enrollPolicy, reEnrollPolicy, csrAttrsPolicy, serverKeyGenPolicy); });
+                .UseEndpoints(e =>
+                {
+                    e.MapEstServer(enrollPolicy, reEnrollPolicy, csrAttrsPolicy, serverKeyGenPolicy);
+                });
         }
     }
 
@@ -182,7 +122,7 @@ public static class EstServerExtensions
                     })
                 .CacheOutput(b => b.Cache().Expire(TimeSpan.FromDays(30)))
                 .AllowAnonymous();
-            var enrollBuilder = groupBuilder.MapPost(
+            groupBuilder.MapPost(
                 "/simpleenroll",
                 async ctx =>
                 {
@@ -190,7 +130,7 @@ public static class EstServerExtensions
                     await handler.Handle(ctx).ConfigureAwait(false);
                 }).RequireAuthorization(enrollPolicy ?? ConfigurePolicy());
 
-            var reEnrollBuilder = groupBuilder.MapPost(
+            groupBuilder.MapPost(
                 "/simplereenroll",
                 async ctx =>
                 {

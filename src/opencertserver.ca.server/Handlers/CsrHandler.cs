@@ -1,31 +1,20 @@
-﻿using OpenCertServer.Ca.Utils;
+using System.Net;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.X509Extensions;
 
-namespace OpenCertServer.Est.Server.Handlers;
+namespace OpenCertServer.Ca.Server.Handlers;
 
-using System.IO;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using Ca;
-using Microsoft.AspNetCore.Http;
-
-internal sealed class SimpleEnrollHandler
+public static class CsrHandler
 {
-    private readonly ICertificateAuthority _certificateAuthority;
-
-    public SimpleEnrollHandler(ICertificateAuthority certificateAuthority)
+    public static async Task Handle(HttpContext ctx)
     {
-        _certificateAuthority = certificateAuthority;
-    }
-
-    public async Task Handle(HttpContext ctx)
-    {
-        using var reader = new StreamReader(ctx.Request.Body, Encoding.UTF8);
-        var request = await reader.ReadToEndAsync().ConfigureAwait(false);
-        var newCert = _certificateAuthority.SignCertificateRequestPem(request);
-        if (newCert is SignCertificateResponse.Success success)
+        var ca = ctx.RequestServices.GetRequiredService<ICertificateAuthority>();
+        using var reader = new StreamReader(ctx.Request.Body);
+        var csrPem = await reader.ReadToEndAsync();
+        var certResponse = ca.SignCertificateRequestPem(csrPem);
+        if (certResponse is SignCertificateResponse.Success success)
         {
             ctx.Response.StatusCode = (int)HttpStatusCode.OK;
             ctx.Response.ContentType = Constants.PemMimeType;
@@ -41,7 +30,7 @@ internal sealed class SimpleEnrollHandler
         }
         else
         {
-            var error = (SignCertificateResponse.Error)newCert;
+            var error = (SignCertificateResponse.Error)certResponse;
             ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             ctx.Response.ContentType = Constants.TextPlainMimeType;
             await using var writer = new StreamWriter(ctx.Response.Body);

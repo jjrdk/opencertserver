@@ -1,14 +1,12 @@
-using System.Net.Http.Headers;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-
 namespace OpenCertServer.Est.Tests.Steps;
 
+using System.Net.Http.Headers;
 using System.Numerics;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication.Certificate;
-using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -18,6 +16,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OpenCertServer.Ca;
+using OpenCertServer.Ca.Server;
 using OpenCertServer.Ca.Utils.X509.Templates;
 using OpenCertServer.Est.Client;
 using OpenCertServer.Est.Server;
@@ -83,10 +82,16 @@ public class EstServer
                     sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
                         .AddCertificate()
                         .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme);
-                    sc.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore())
-                        .AddEstServer<TestCsrAttributesHandler>(new CaConfiguration(rsaPrivate, ecdsaPrivate,
-                            BigInteger.Zero,
-                            TimeSpan.FromDays(90), ["test"], []))
+                    sc.AddInMemoryCertificateStore()
+                        .AddCertificateAuthority(
+                            new CaConfiguration(
+                                rsaPrivate,
+                                ecdsaPrivate,
+                                BigInteger.Zero,
+                                TimeSpan.FromDays(90),
+                                ["test"],
+                                []))
+                        .AddEstServer<TestCsrAttributesHandler>()
                         .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
                         .ConfigureOptions<ConfigureOauthOptions>();
                 })

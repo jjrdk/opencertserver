@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using System.Text;
+using OpenCertServer.Ca.Utils.Ca;
 
 namespace OpenCertServer.Ca;
 
@@ -74,9 +75,6 @@ public record CaConfiguration
 /// </summary>
 public sealed partial class CertificateAuthority : ICertificateAuthority, IDisposable
 {
-    //private const string Header = "-----BEGIN CERTIFICATE REQUEST-----";
-    private const string Footer = "-----END CERTIFICATE REQUEST-----";
-
     private const X509KeyUsageFlags UsageFlags = X509KeyUsageFlags.CrlSign
       | X509KeyUsageFlags.DataEncipherment
       | X509KeyUsageFlags.DecipherOnly
@@ -155,7 +153,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         certificateBackup?.Invoke(_config.GetExportableRsaCertificate(), _config.GetExportableEcdsaCertificate());
     }
 
-    public static CertificateAuthority Create(
+    public static CertificateAuthority CreateSelfSigned(
         X500DistinguishedName distinguishedName,
         IStoreCertificates certificateStore,
         TimeSpan certificateValidity,

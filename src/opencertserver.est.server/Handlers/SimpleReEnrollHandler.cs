@@ -1,4 +1,5 @@
-﻿using OpenCertServer.Ca.Utils.X509Extensions;
+﻿using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Ca.Utils.X509Extensions;
 
 namespace OpenCertServer.Est.Server.Handlers;
 

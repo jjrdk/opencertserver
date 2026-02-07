@@ -1,3 +1,5 @@
+using OpenCertServer.Ca.Utils;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.X509Extensions;
 
 namespace OpenCertServer.CertServer;

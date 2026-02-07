@@ -1,5 +1,6 @@
 using System.Formats.Asn1;
 using OpenCertServer.Ca.Utils;
+using OpenCertServer.Ca.Utils.Ca;
 
 namespace OpenCertServer.Ca.Tests;
 
@@ -20,7 +21,7 @@ public sealed class X509CertificateTests : IDisposable
 
     public X509CertificateTests()
     {
-        _ca = CertificateAuthority.Create(
+        _ca = CertificateAuthority.CreateSelfSigned(
             new X500DistinguishedName("CN=Test"),
             new InMemoryCertificateStore(),
             TimeSpan.FromHours(1),

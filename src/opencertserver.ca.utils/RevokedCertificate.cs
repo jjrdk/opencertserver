@@ -1,3 +1,5 @@
+using OpenCertServer.Ca.Utils.X509Extensions;
+
 namespace OpenCertServer.Ca.Utils;
 
 using System.Collections.ObjectModel;

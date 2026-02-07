@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Text;
+using OpenCertServer.Ca.Utils.Ca;
 
 namespace OpenCertServer.Ca.Tests;
 
@@ -87,7 +88,7 @@ public sealed class CertificateAuthorityTests : IDisposable
     {
         X509Certificate2 rsa = null!;
         X509Certificate2 ecdsa = null!;
-        _ = CertificateAuthority.Create(
+        _ = CertificateAuthority.CreateSelfSigned(
             new X500DistinguishedName("CN=test"),
             new InMemoryCertificateStore(),
             TimeSpan.FromDays(1),
@@ -114,7 +115,7 @@ public sealed class CertificateAuthorityTests : IDisposable
             using var rsaKey = new FileStream("ca_rsa_key.pem", FileMode.Create);
             using var ecdsa = new FileStream("ca_ecdsa.pem", FileMode.Create);
             using var ecdsaKey = new FileStream("ca_ecdsa_key.pem", FileMode.Create);
-            _ = CertificateAuthority.Create(
+            _ = CertificateAuthority.CreateSelfSigned(
                 new X500DistinguishedName("CN=reimers.io,DC=reimers.io,O=OpenCertServer,C=Switzerland"),
                 new InMemoryCertificateStore(),
                 TimeSpan.FromDays(2 * 365),

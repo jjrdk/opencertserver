@@ -1,14 +1,15 @@
+using OpenCertServer.Ca.Utils.Ca;
+
+namespace OpenCertServer.Est.Server.Handlers;
+
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
-using OpenCertServer.Ca;
 using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.X509Extensions;
-
-namespace OpenCertServer.Est.Server.Handlers;
 
 internal class ServerKeyGenHandler
 {
