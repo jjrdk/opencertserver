@@ -1,4 +1,9 @@
 ﻿<Solution>
+  <Folder Name="/servers/">
+    <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
+    <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
+    <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path="build.ps1" />
     <File Path="build.sh" />
@@ -19,16 +24,13 @@
     <Project Path="tests\opencertserver.lambda.tests\opencertserver.lambda.tests.csproj" />
   </Folder>
   <Project Path="build\opencertserver.build\opencertserver.build.csproj" />
-  <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
   <Project Path="src\CertesSlim\CertesSlim.csproj" />
   <Project Path="src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
   <Project Path="src\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj" />
   <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
   <Project Path="src\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
   <Project Path="src\opencertserver.ca\opencertserver.ca.csproj" />
-  <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
   <Project Path="src\opencertserver.est.client\opencertserver.est.client.csproj" />
-  <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
   <Project Path="src\opencertserver.est.tool\opencertserver.est.tool.csproj" />
   <Project Path="src\opencertserver.lambda\opencertserver.lambda.csproj" />
 </Solution>
