@@ -12,7 +12,7 @@ public class X509NameTests
     {
         var x509Name = new X509Name(
             new RelativeDistinguishedName(
-                new AttributeTypeValue(Oids.OrganizationalUnitOid,
+                new AttributeTypeValue(Oids.OrganizationalUnit.InitializeOid(),
                     new Asn1Tag(TagClass.ContextSpecific, (int)UniversalTagNumber.UTF8String), "PartyNameValue"u8)
             ));
         var writer = new AsnWriter(AsnEncodingRules.DER);
@@ -23,7 +23,7 @@ public class X509NameTests
         var rdn = reloaded.RelativeDistinguishedNames.First();
         var value = rdn.Values.First();
 
-        Assert.Equal(Oids.OrganizationalUnitOid, value.Oid, OidComparer.Instance);
+        Assert.Equal(Oids.OrganizationalUnit.InitializeOid(), value.Oid, OidComparer.Instance);
         Assert.Equal("PartyNameValue", value.Value);
     }
 }

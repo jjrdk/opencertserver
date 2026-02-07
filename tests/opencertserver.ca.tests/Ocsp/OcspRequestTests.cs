@@ -48,7 +48,7 @@ public class OcspRequestTests
                         "abc"u8.ToArray(),
                         "abc"u8.ToArray(), "123"u8.ToArray()))
                 ]),
-            new Signature(new AlgorithmIdentifier(Oids.RsaOid), "signhere"u8.ToArray()));
+            new Signature(new AlgorithmIdentifier(Oids.Rsa.InitializeOid()), "signhere"u8.ToArray()));
         var writer = new AsnWriter(AsnEncodingRules.DER);
         request.Encode(writer);
         var encodedBytes = writer.Encode();

@@ -10,13 +10,13 @@ public class AttributeTypeValueTests
     [Fact]
     public void CanReloadAttributeTypeValue()
     {
-        var atv = new AttributeTypeValue(Oids.CommonNameOid,
+        var atv = new AttributeTypeValue(Oids.CommonName.InitializeOid(),
             new Asn1Tag(TagClass.ContextSpecific, (int)UniversalTagNumber.UTF8String), "TestValue"u8);
         var writer = new AsnWriter(AsnEncodingRules.DER);
         atv.Encode(writer);
         var encoded = writer.Encode();
         var reloaded = new AttributeTypeValue(new AsnReader(encoded, AsnEncodingRules.DER));
-        Assert.Equal(Oids.CommonNameOid, reloaded.Oid, OidComparer.Instance);
+        Assert.Equal(Oids.CommonName.InitializeOid(), reloaded.Oid, OidComparer.Instance);
         Assert.Equal("TestValue", reloaded.Value);
     }
 }

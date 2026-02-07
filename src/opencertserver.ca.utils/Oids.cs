@@ -49,6 +49,7 @@ public static class Oids
     public const string AuthorityInformationAccess = "1.3.6.1.5.5.7.1.1";
     public const string OcspEndpoint = "1.3.6.1.5.5.7.48.1";
     public const string OcspBasicResponse = "1.3.6.1.5.5.7.48.1.1";
+    public const string OcspNonce = "1.3.6.1.5.5.7.48.1.2";
     public const string CertificateAuthorityIssuers = "1.3.6.1.5.5.7.48.2";
     public const string Pkcs9ExtensionRequest = "1.2.840.113549.1.9.14";
     public const string MsPkcs12KeyProviderName = "1.3.6.1.4.1.311.17.1";
@@ -278,42 +279,6 @@ public static class Oids
 
     // id-alg-ml-kem-1024
     public const string MlKem1024 = "2.16.840.1.101.3.4.4.3";
-
-    public static Oid RsaOid => field ??= Rsa.InitializeOid();
-    public static Oid EcPublicKeyOid => field ??= EcPublicKey.InitializeOid();
-    public static Oid TripleDesCbcOid => field ??= TripleDesCbc.InitializeOid();
-    public static Oid Aes256CbcOid => field ??= Aes256Cbc.InitializeOid();
-    public static Oid secp256r1Oid => field ??= new Oid(secp256r1, nameof(ECCurve.NamedCurves.nistP256));
-    public static Oid secp384r1Oid => field ??= new Oid(secp384r1, nameof(ECCurve.NamedCurves.nistP384));
-    public static Oid secp521r1Oid => field ??= new Oid(secp521r1, nameof(ECCurve.NamedCurves.nistP521));
-    public static Oid Sha256Oid => field ??= Sha256.InitializeOid();
-
-    public static Oid Pkcs7DataOid => field ??= Pkcs7Data.InitializeOid();
-    public static Oid ContentTypeOid => field ??= ContentType.InitializeOid();
-    public static Oid DocumentDescriptionOid => field ??= DocumentDescription.InitializeOid();
-    public static Oid DocumentNameOid => field ??= DocumentName.InitializeOid();
-    public static Oid LocalKeyIdOid => field ??= LocalKeyId.InitializeOid();
-    public static Oid MessageDigestOid => field ??= MessageDigest.InitializeOid();
-    public static Oid SigningTimeOid => field ??= SigningTime.InitializeOid();
-    public static Oid Pkcs9ExtensionRequestOid => field ??= Pkcs9ExtensionRequest.InitializeOid();
-
-    public static Oid BasicConstraints2Oid => field ??= BasicConstraints2.InitializeOid();
-    public static Oid EnhancedKeyUsageOid => field ??= EnhancedKeyUsage.InitializeOid();
-    public static Oid KeyUsageOid => field ??= KeyUsage.InitializeOid();
-    public static Oid AuthorityKeyIdentifierOid => field ??= AuthorityKeyIdentifier.InitializeOid();
-    public static Oid SubjectKeyIdentifierOid => field ??= SubjectKeyIdentifier.InitializeOid();
-    public static Oid SubjectAltNameOid => field ??= SubjectAltName.InitializeOid();
-    public static Oid AuthorityInformationAccessOid => field ??= AuthorityInformationAccess.InitializeOid();
-    public static Oid CrlNumberOid => field ??= CrlNumber.InitializeOid();
-    public static Oid CrlDistributionPointsOid => field ??= CrlDistributionPoints.InitializeOid();
-
-    public static Oid CommonNameOid => field ??= CommonName.InitializeOid();
-    public static Oid CountryOrRegionNameOid => field ??= CountryOrRegionName.InitializeOid();
-    public static Oid LocalityNameOid => field ??= LocalityName.InitializeOid();
-    public static Oid StateOrProvinceNameOid => field ??= StateOrProvinceName.InitializeOid();
-    public static Oid OrganizationOid => field ??= Organization.InitializeOid();
-    public static Oid OrganizationalUnitOid => field ??= OrganizationalUnit.InitializeOid();
-    public static Oid EmailAddressOid => field ??= EmailAddress.InitializeOid();
 
     public static string GetSignatureAlgorithmOid(HashAlgorithmName hashAlgorithm, AsymmetricAlgorithm publicKey)
     {

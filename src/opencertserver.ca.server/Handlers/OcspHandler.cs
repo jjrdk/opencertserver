@@ -44,7 +44,7 @@ public class OcspHandler
                             DateTimeOffset.UtcNow,
                             searchResults.Select(r =>
                                 new SingleResponse(r.Item1, (r.Item2, r.Item3), DateTimeOffset.UtcNow))),
-                        new AlgorithmIdentifier(Oids.EcPublicKeyOid, Oids.secp521r1Oid), []));
+                        new AlgorithmIdentifier(Oids.EcPublicKey.InitializeOid(), Oids.secp521r1.InitializeOid()), []));
             }
         }
         catch (Exception)

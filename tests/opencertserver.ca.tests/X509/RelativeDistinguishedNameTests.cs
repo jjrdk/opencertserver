@@ -11,7 +11,7 @@ public class RelativeDistinguishedNameTests
     public void CanReloadRelativeDistinguishedName()
     {
         var rdn = new RelativeDistinguishedName(
-            new AttributeTypeValue(Oids.OrganizationalUnitOid,
+            new AttributeTypeValue(Oids.OrganizationalUnit.InitializeOid(),
                 new Asn1Tag(TagClass.ContextSpecific, (int)UniversalTagNumber.UTF8String), "PartyNameValue"u8)
         );
         var writer = new AsnWriter(AsnEncodingRules.DER);
@@ -21,7 +21,7 @@ public class RelativeDistinguishedNameTests
 
         var value = reloaded.Values.First();
 
-        Assert.Equal(Oids.OrganizationalUnitOid, value.Oid, OidComparer.Instance);
+        Assert.Equal(Oids.OrganizationalUnit.InitializeOid(), value.Oid, OidComparer.Instance);
         Assert.Equal("PartyNameValue", value.Value);
     }
 }

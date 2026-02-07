@@ -12,7 +12,7 @@ public class DistributionPointNameTests
     {
         var dpn = new DistributionPointName(DistributionPointName.DistributionPointNameType.NameRelativeToCrlIssuer,
             new RelativeDistinguishedName(
-                new AttributeTypeValue(Oids.OrganizationalUnitOid,
+                new AttributeTypeValue(Oids.OrganizationalUnit.InitializeOid(),
                     new Asn1Tag(TagClass.ContextSpecific, (int)UniversalTagNumber.UTF8String), "PartyNameValue"u8)
             ));
         var writer = new AsnWriter(AsnEncodingRules.DER);
@@ -22,7 +22,7 @@ public class DistributionPointNameTests
 
         var value = reloaded.NameRelativeToCrlIssuer?.Values.First();
 
-        Assert.Equal(Oids.OrganizationalUnitOid, value?.Oid!, OidComparer.Instance);
+        Assert.Equal(Oids.OrganizationalUnit.InitializeOid(), value?.Oid!, OidComparer.Instance);
         Assert.Equal("PartyNameValue", value?.Value);
         Assert.Null(reloaded.FullName);
     }

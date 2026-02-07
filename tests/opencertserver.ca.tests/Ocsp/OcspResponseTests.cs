@@ -30,7 +30,7 @@ public class OcspResponseTests
                             DateTimeOffset.UtcNow,
                             DateTimeOffset.UtcNow.AddDays(1))
                     ]),
-                new AlgorithmIdentifier(Oids.RsaOid), "signhere"u8.ToArray()));
+                new AlgorithmIdentifier(Oids.Rsa.InitializeOid()), "signhere"u8.ToArray()));
         var writer = new AsnWriter(AsnEncodingRules.DER);
         response.Encode(writer);
         var encodedBytes = writer.Encode();

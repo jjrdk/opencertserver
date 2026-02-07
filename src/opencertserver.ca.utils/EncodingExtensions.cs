@@ -41,7 +41,8 @@ public static class EncodingExtensions
         {
             return asymmetricAlgorithm switch
             {
-                RSA rsa => rsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm, RSASignaturePadding.Pkcs1) ||
+                RSA rsa => rsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm,
+                        RSASignaturePadding.Pkcs1) ||
                     rsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm, RSASignaturePadding.Pss),
                 ECDsa ecdsa => ecdsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm,
                     DSASignatureFormat.Rfc3279DerSequence),
@@ -201,14 +202,14 @@ public static class EncodingExtensions
 
             var ret = contentBytes switch
             {
-                [0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x09, 0x01] => Oids.EmailAddressOid,
-                [0x55, 0x04, 0x03] => Oids.CommonNameOid,
-                [0x55, 0x04, 0x06] => Oids.CountryOrRegionNameOid,
-                [0x55, 0x04, 0x07] => Oids.LocalityNameOid,
-                [0x55, 0x04, 0x08] => Oids.StateOrProvinceNameOid,
-                [0x55, 0x04, 0x0A] => Oids.OrganizationOid,
-                [0x55, 0x04, 0x0B] => Oids.OrganizationalUnitOid,
-                [0x55, 0x1D, 0x14] => Oids.CrlNumberOid,
+                [0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x09, 0x01] => Oids.EmailAddress.InitializeOid(),
+                [0x55, 0x04, 0x03] => Oids.CommonName.InitializeOid(),
+                [0x55, 0x04, 0x06] => Oids.CountryOrRegionName.InitializeOid(),
+                [0x55, 0x04, 0x07] => Oids.LocalityName.InitializeOid(),
+                [0x55, 0x04, 0x08] => Oids.StateOrProvinceName.InitializeOid(),
+                [0x55, 0x04, 0x0A] => Oids.Organization.InitializeOid(),
+                [0x55, 0x04, 0x0B] => Oids.OrganizationalUnit.InitializeOid(),
+                [0x55, 0x1D, 0x14] => Oids.CrlNumber.InitializeOid(),
                 _ => null,
             };
 
@@ -409,7 +410,7 @@ public static class EncodingExtensions
             {
                 "MD5" => Oids.Md5.InitializeOid(),
                 "SHA1" => Oids.Sha1.InitializeOid(),
-                "SHA256" => Oids.Sha256Oid,
+                "SHA256" => Oids.Sha256.InitializeOid(),
                 "SHA384" => Oids.Sha384.InitializeOid(),
                 "SHA512" => Oids.Sha512.InitializeOid(),
                 _ => throw new CryptographicException($"Unsupported hash algorithm: {hashAlgorithmName.Name}")

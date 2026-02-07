@@ -1,5 +1,3 @@
-using OpenCertServer.Ca.Utils.Ca;
-
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Diagnostics.CodeAnalysis;
@@ -25,7 +23,7 @@ using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Middleware;
 using OpenCertServer.Acme.Server.Services;
 using OpenCertServer.Ca.Server;
-using OpenCertServer.Ca.Utils;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Ocsp;
 using OpenCertServer.Est.Server;
 using Reqnroll;
@@ -70,6 +68,7 @@ public partial class CertificateServerFeatures
             "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.",
             Justification = "<Pending>")]
         void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services) =>
+#pragma warning disable IL2066
             services
                 .AddSingleton<IResponderId>(new ResponderIdByKey("test"u8.ToArray()))
                 .AddInMemoryCertificateStore()
@@ -80,6 +79,7 @@ public partial class CertificateServerFeatures
                     new AcmeServerOptions
                         { HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false } })
                 .AddSingleton<ICsrValidator, DefaultCsrValidator>()
+#pragma warning restore IL2066
                 .AddSingleton<IIssueCertificates, DefaultIssuer>()
                 .Replace(new ServiceDescriptor(typeof(IValidateHttp01Challenges), typeof(PassAllChallenges),
                     ServiceLifetime.Transient))

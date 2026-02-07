@@ -17,7 +17,7 @@ public partial class CertificateServerFeatures
         using var client = _server.CreateClient();
         var tbsRequest = new TbsRequest(requestList:
         [
-            new Request(new CertId(new AlgorithmIdentifier(Oids.RsaOid),
+            new Request(new CertId(new AlgorithmIdentifier(Oids.Rsa.InitializeOid()),
                 "abc"u8.ToArray(),
                 "abc"u8.ToArray(),
                 "123"u8.ToArray()))
