@@ -52,8 +52,9 @@ public sealed class CertificateAuthorityTests : IDisposable
 
         var req = CreateCertificateRequest(rsa);
         var bytes = req.CreateSigningRequest();
-        var csr = Convert.ToBase64String(bytes);
-        var cert = _authority.SignCertificateRequest(csr) as SignCertificateResponse.Success;
+        var cert =
+            _authority.SignCertificateRequestPem(PemEncoding.WriteString("CERTIFICATE REQUEST", bytes)) as
+                SignCertificateResponse.Success;
 
         static IEnumerable<string> GetParts(X500DistinguishedName name)
         {
@@ -70,7 +71,7 @@ public sealed class CertificateAuthorityTests : IDisposable
 
         var req = CreateCertificateRequest(rsa);
         var b64 = req.ToPkcs10();
-        var cert = _authority.SignCertificateRequest(b64) as SignCertificateResponse.Success;
+        var cert = _authority.SignCertificateRequestPem(b64) as SignCertificateResponse.Success;
 
         Assert.Equal(
             string.Join("",

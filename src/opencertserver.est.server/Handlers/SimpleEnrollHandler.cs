@@ -23,7 +23,7 @@ internal sealed class SimpleEnrollHandler
     {
         using var reader = new StreamReader(ctx.Request.Body, Encoding.UTF8);
         var request = await reader.ReadToEndAsync().ConfigureAwait(false);
-        var newCert = _certificateAuthority.SignCertificateRequest(request);
+        var newCert = _certificateAuthority.SignCertificateRequestPem(request);
         if (newCert is SignCertificateResponse.Success success)
         {
             ctx.Response.StatusCode = (int)HttpStatusCode.OK;

@@ -74,7 +74,7 @@ public record CaConfiguration
 /// </summary>
 public sealed partial class CertificateAuthority : ICertificateAuthority, IDisposable
 {
-    private const string Header = "-----BEGIN CERTIFICATE REQUEST-----";
+    //private const string Header = "-----BEGIN CERTIFICATE REQUEST-----";
     private const string Footer = "-----END CERTIFICATE REQUEST-----";
 
     private const X509KeyUsageFlags UsageFlags = X509KeyUsageFlags.CrlSign
@@ -291,13 +291,19 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         return new SignCertificateResponse.Error(errors);
     }
 
-    public SignCertificateResponse SignCertificateRequest(string request)
+    public SignCertificateResponse SignCertificateRequestPem(string request)
     {
-        request = request.Replace(Header, "", StringComparison.OrdinalIgnoreCase)
-            .Replace(Footer, "", StringComparison.OrdinalIgnoreCase)
-            .Trim();
-
-        var csr = request.Base64DecodeBytes();
+        var hasPem = PemEncoding.TryFind(request, out var fields);
+        byte[] csr;
+        if (!hasPem)
+        {
+            csr = request.Base64DecodeBytes();
+        }
+        else
+        {
+            var r = request.AsSpan(fields.Base64Data);
+            csr = Convert.FromBase64CharArray(r.ToArray(), 0, r.Length);
+        }
 
         return SignCertificateRequest(csr);
     }

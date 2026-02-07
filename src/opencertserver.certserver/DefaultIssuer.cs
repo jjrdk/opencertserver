@@ -25,7 +25,7 @@ internal sealed class DefaultIssuer : IIssueCertificates
         await Task.Yield();
         cancellationToken.ThrowIfCancellationRequested();
 
-        var cert = _ca.SignCertificateRequest(csr);
+        var cert = _ca.SignCertificateRequestPem(csr);
         return cert switch
         {
             SignCertificateResponse.Success success => (

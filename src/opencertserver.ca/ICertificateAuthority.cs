@@ -6,7 +6,7 @@ public interface ICertificateAuthority
 {
     SignCertificateResponse SignCertificateRequest(CertificateRequest request, X509Certificate2? reenrollingFrom = null);
 
-    SignCertificateResponse SignCertificateRequest(string request);
+    SignCertificateResponse SignCertificateRequestPem(string request);
 
     X509Certificate2Collection GetRootCertificates();
 
