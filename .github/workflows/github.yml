@@ -3,8 +3,8 @@ name: CI
 on: [ push ]
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Get the sources
         uses: actions/checkout@v5
