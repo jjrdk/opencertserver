@@ -10,3 +10,7 @@ Feature: OCSP lookup
         Then the certificate should be valid in OCSP
         When I revoke the certificate
         Then the certificate should be revoked in OCSP
+
+    Scenario: Unknown certificate
+        When I check OCSP for an unknown certificate
+        Then the response should indicate the certificate is unknown
