@@ -124,27 +124,6 @@ internal static class Program
         builder.WebHost.UseKestrel(options =>
         {
             options.AddServerHeader = false;
-            options.ConfigureHttpsDefaults(https =>
-            {
-                using var ecdsa = ECDsa.Create();
-                var ca = options.ApplicationServices.GetRequiredService<ICertificateAuthority>();
-                var certificateRequest = new CertificateRequest($"CN=localhost", ecdsa, HashAlgorithmName.SHA256);
-                certificateRequest.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
-                certificateRequest.CertificateExtensions.Add(
-                    new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
-                var subjectAlternativeNameBuilder = new SubjectAlternativeNameBuilder();
-                subjectAlternativeNameBuilder.AddDnsName("localhost");
-                certificateRequest.CertificateExtensions.Add(subjectAlternativeNameBuilder.Build());
-                var response = ca.SignCertificateRequest(certificateRequest);
-                if (response is not SignCertificateResponse.Success success)
-                {
-                    throw new InvalidOperationException("Could not create server certificate");
-                }
-
-                https.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
-                var cert = success.Certificate.CopyWithPrivateKey(ecdsa);
-                https.ServerCertificate = cert;
-            });
         }).UseUrls($"https://*:{port}");
         var app = builder.Build();
         app.UseHttpsRedirection()
