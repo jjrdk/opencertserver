@@ -14,7 +14,13 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 25.x
       - name: Build OpenCertServer
         run: dotnet build opencertserver.slnx -c Release
       - name: Test OpenCertServer
         run: dotnet test opencertserver.slnx -c Release
+      - name: Build OpenCertServer UI
+        run: cd web && npm install && npm run build
