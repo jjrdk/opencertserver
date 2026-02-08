@@ -35,7 +35,7 @@ export class CaCertificateService {
    * Returns PEM-encoded certificates
    */
   getCaCertificates(): Observable<CaCertificate[]> {
-    const url = `${this.baseUrl}/.well-known/est/cacerts`;
+    const url = `${this.baseUrl}/.well-known/est/cacert`;
     const headers = this.getHeaders();
     const options: any = { responseType: 'arraybuffer' };
     if (headers) {
@@ -121,7 +121,7 @@ export class CaCertificateService {
   private extractCertificateData(bytes: Uint8Array): any {
     // This is a placeholder implementation
     // In a real application, use a library like node-forge or @peculiar/x509
-    
+
     // For now, return placeholder data
     // The actual parsing would require proper ASN.1/DER decoding
     return {
