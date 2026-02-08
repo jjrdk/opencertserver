@@ -4,7 +4,7 @@ on: [ push ]
 
 jobs:
   build:
-    runs-on: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: [ubuntu-latest, windows-latest]
     steps:
       - name: Get the sources
         uses: actions/checkout@v5
