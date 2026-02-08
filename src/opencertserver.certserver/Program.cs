@@ -1,7 +1,6 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using OpenCertServer.Ca.Server;
-using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
@@ -36,12 +35,15 @@ internal static class Program
 
         var builder = WebApplication.CreateBuilder(args);
         builder.Configuration.AddEnvironmentVariables().AddCommandLine(args);
-        var services = builder.Services;
+        var services = builder.Services.AddCors(o =>
+                o.AddDefaultPolicy(b =>
+                    b.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(x => true).AllowCredentials()))
+            .AddInMemoryCertificateStore();
         var port = int.TryParse(builder.Configuration.GetSection("port").Value, out var p)
             ? p
             : 5001; //portIndex >= 0 ? int.Parse(args[portIndex + 1]) : 5001;
         var index = 0;
-        List<string> ocspUrls = ["http://localhost/ocsp"];
+        List<string> ocspUrls = ["http://localhost:6001/ocsp"];
         List<string> caIssuerUrls = [];
         while (index >= 0)
         {
@@ -145,7 +147,9 @@ internal static class Program
             });
         }).UseUrls($"https://*:{port}");
         var app = builder.Build();
-        app.UseForwardedHeaders(forwardedHeadersOptions)
+        app.UseHttpsRedirection()
+            .UseCors(c => c.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(x => true).AllowCredentials())
+            .UseForwardedHeaders(forwardedHeadersOptions)
             .UseHealthChecks("/health")
             .UseAcmeServer()
             .UseEstServer()
