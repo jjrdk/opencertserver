@@ -3,9 +3,10 @@ import { CaCertificateService } from '../../services/ca-certificate.service';
 import { CaCertificate } from '../../models/ca-certificate.model';
 
 @Component({
-  selector: 'app-ca-certificates',
-  templateUrl: './ca-certificates.component.html',
-  styleUrls: ['./ca-certificates.component.scss']
+    selector: 'app-ca-certificates',
+    templateUrl: './ca-certificates.component.html',
+    styleUrls: ['./ca-certificates.component.scss'],
+    standalone: false
 })
 export class CaCertificatesComponent implements OnInit {
   certificates: CaCertificate[] = [];

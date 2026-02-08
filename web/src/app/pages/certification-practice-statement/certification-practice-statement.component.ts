@@ -3,9 +3,10 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { DocumentService } from '../../services/document.service';
 
 @Component({
-  selector: 'app-certification-practice-statement',
-  templateUrl: './certification-practice-statement.component.html',
-  styleUrls: ['./certification-practice-statement.component.scss']
+    selector: 'app-certification-practice-statement',
+    templateUrl: './certification-practice-statement.component.html',
+    styleUrls: ['./certification-practice-statement.component.scss'],
+    standalone: false
 })
 export class CertificationPracticeStatementComponent implements OnInit {
   htmlContent: SafeHtml = '';

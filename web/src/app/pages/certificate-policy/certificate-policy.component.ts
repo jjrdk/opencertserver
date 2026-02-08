@@ -3,9 +3,10 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { DocumentService } from '../../services/document.service';
 
 @Component({
-  selector: 'app-certificate-policy',
-  templateUrl: './certificate-policy.component.html',
-  styleUrls: ['./certificate-policy.component.scss']
+    selector: 'app-certificate-policy',
+    templateUrl: './certificate-policy.component.html',
+    styleUrls: ['./certificate-policy.component.scss'],
+    standalone: false
 })
 export class CertificatePolicyComponent implements OnInit {
   htmlContent: SafeHtml = '';

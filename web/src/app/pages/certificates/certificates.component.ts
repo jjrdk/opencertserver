@@ -6,9 +6,10 @@ import { Certificate } from '../../models/certificate.model';
 import { CertificateService } from '../../services/certificate.service';
 
 @Component({
-  selector: 'app-certificates',
-  templateUrl: './certificates.component.html',
-  styleUrls: ['./certificates.component.scss']
+    selector: 'app-certificates',
+    templateUrl: './certificates.component.html',
+    styleUrls: ['./certificates.component.scss'],
+    standalone: false
 })
 export class CertificatesComponent implements OnInit {
   displayedColumns: string[] = ['serialNumber', 'subject', 'issuer', 'notBefore', 'notAfter', 'status'];

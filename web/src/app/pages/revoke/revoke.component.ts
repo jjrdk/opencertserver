@@ -3,9 +3,10 @@ import { RevocationService } from '../../services/revocation.service';
 import { RevocationReason } from '../../models/revocation.model';
 
 @Component({
-  selector: 'app-revoke',
-  templateUrl: './revoke.component.html',
-  styleUrls: ['./revoke.component.scss']
+    selector: 'app-revoke',
+    templateUrl: './revoke.component.html',
+    styleUrls: ['./revoke.component.scss'],
+    standalone: false
 })
 export class RevokeComponent {
   serialNumber: string = '';

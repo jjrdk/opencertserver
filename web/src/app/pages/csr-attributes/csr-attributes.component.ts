@@ -3,9 +3,10 @@ import { CsrAttributesService } from '../../services/csr-attributes.service';
 import * as asn1js from 'asn1js';
 
 @Component({
-  selector: 'app-csr-attributes',
-  templateUrl: './csr-attributes.component.html',
-  styleUrls: ['./csr-attributes.component.scss']
+    selector: 'app-csr-attributes',
+    templateUrl: './csr-attributes.component.html',
+    styleUrls: ['./csr-attributes.component.scss'],
+    standalone: false
 })
 export class CsrAttributesComponent implements OnInit {
   derData?: ArrayBuffer;

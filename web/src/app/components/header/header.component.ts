@@ -9,8 +9,7 @@ import { Observable } from 'rxjs';
 import {RouterLink, RouterLinkActive} from "@angular/router";
 
 @Component({
-  selector: 'app-header',
-  standalone: true,
+    selector: 'app-header',
     imports: [
         CommonModule,
         MatToolbarModule,
@@ -20,8 +19,8 @@ import {RouterLink, RouterLinkActive} from "@angular/router";
         RouterLink,
         RouterLinkActive
     ],
-  templateUrl: './header.component.html',
-  styleUrls: ['./header.component.scss']
+    templateUrl: './header.component.html',
+    styleUrls: ['./header.component.scss']
 })
 export class HeaderComponent implements OnInit {
   isAuthenticated$: Observable<boolean>;

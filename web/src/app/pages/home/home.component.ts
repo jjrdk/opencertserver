@@ -6,17 +6,16 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 
 @Component({
-  selector: 'app-home',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule,
-    MatCardModule,
-    MatIconModule,
-    MatButtonModule
-  ],
-  templateUrl: './home.component.html',
-  styleUrls: ['./home.component.scss']
+    selector: 'app-home',
+    imports: [
+        CommonModule,
+        RouterModule,
+        MatCardModule,
+        MatIconModule,
+        MatButtonModule
+    ],
+    templateUrl: './home.component.html',
+    styleUrls: ['./home.component.scss']
 })
 export class HomeComponent {
   openGitHub(): void {

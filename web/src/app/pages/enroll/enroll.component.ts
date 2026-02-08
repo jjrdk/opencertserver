@@ -4,9 +4,10 @@ import * as asn1js from 'asn1js';
 import * as pkijs from 'pkijs';
 
 @Component({
-  selector: 'app-enroll',
-  templateUrl: './enroll.component.html',
-  styleUrls: ['./enroll.component.scss']
+    selector: 'app-enroll',
+    templateUrl: './enroll.component.html',
+    styleUrls: ['./enroll.component.scss'],
+    standalone: false
 })
 export class EnrollComponent {
   dn = {

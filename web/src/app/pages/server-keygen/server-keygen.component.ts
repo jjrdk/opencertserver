@@ -4,8 +4,9 @@
   @Component({
     selector: 'app-server-keygen',
     templateUrl: './server-keygen.component.html',
-    styleUrls: ['./server-keygen.component.scss']
-  })
+    styleUrls: ['./server-keygen.component.scss'],
+    standalone: false
+})
   export class ServerKeygenComponent {
     dn = {
       cn: '',
