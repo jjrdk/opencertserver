@@ -2,7 +2,7 @@
   <Import Project="../../shared.proj" />
 
   <PropertyGroup>
-    <Authors>Certes Contributors</Authors>
+    <Authors>Certes Contributors; Jacob Reimers</Authors>
     <Company />
     <Product>Certes ACME Client</Product>
     <Title>$(Product)</Title>
@@ -13,7 +13,6 @@
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/fszlin/certes</RepositoryUrl>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\Certes.xml</DocumentationFile>
-    <PackageIcon>logo.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
