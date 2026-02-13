@@ -1,29 +1,27 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿namespace OpenCertServer.Acme.Server.Filters;
 
-namespace OpenCertServer.Acme.Server.Filters;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Mvc.Routing;
-
-public sealed class AcmeIndexLinkFilter : IActionFilter
+public sealed class AcmeIndexLinkFilter : IEndpointFilter
 {
-    private readonly IUrlHelperFactory _urlHelperFactory;
+    private readonly LinkGenerator _linkGenerator;
 
-    public AcmeIndexLinkFilter(IUrlHelperFactory urlHelperFactory)
+    public AcmeIndexLinkFilter(LinkGenerator linkGenerator)
     {
-        _urlHelperFactory = urlHelperFactory;
+        _linkGenerator = linkGenerator;
     }
 
-    public void OnActionExecuted(ActionExecutedContext context) { }
-
-    public void OnActionExecuting(ActionExecutingContext context)
+    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        var urlHelper = _urlHelperFactory.GetUrlHelper(context);
-
-        var linkHeaderUrl = urlHelper.RouteUrl("Directory", null, "https");
+        var linkHeaderUrl =
+            _linkGenerator.GetPathByRouteValues(
+                routeName: "Directory",
+                httpContext: context.HttpContext,
+                options: new LinkOptions { LowercaseUrls = true }); //, null, "https");
         var linkHeader = $"<{linkHeaderUrl}>;rel=\"index\"";
 
         context.HttpContext.Response.GetTypedHeaders().Set("Link", linkHeader);
+        return await next(context);
     }
 }

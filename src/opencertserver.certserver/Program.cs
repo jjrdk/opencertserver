@@ -1,5 +1,7 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using OpenCertServer.Acme.Server;
+using OpenCertServer.Acme.Server.MinimalApi;
 using OpenCertServer.Ca.Server;
 using OpenCertServer.Ca.Utils.Ca;
 
@@ -8,11 +10,8 @@ using OpenCertServer.Ca.Utils.Ca;
 namespace OpenCertServer.CertServer;
 
 using System.Diagnostics.CodeAnalysis;
-using System.Security.Authentication;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Acme.Abstractions.IssuanceServices;
-using Acme.Server.Middleware;
 using Est.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;

@@ -1,6 +1,7 @@
 ﻿<Solution>
   <Folder Name="/servers/">
     <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
+    <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
     <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
     <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
   </Folder>
@@ -27,7 +28,6 @@
   <Project Path="src\CertesSlim\CertesSlim.csproj" />
   <Project Path="src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
   <Project Path="src\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj" />
-  <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
   <Project Path="src\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
   <Project Path="src\opencertserver.ca\opencertserver.ca.csproj" />
   <Project Path="src\opencertserver.est.client\opencertserver.est.client.csproj" />

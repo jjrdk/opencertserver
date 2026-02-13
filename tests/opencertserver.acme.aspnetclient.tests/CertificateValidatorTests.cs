@@ -1,3 +1,5 @@
+using CertesSlim.Extensions;
+
 namespace OpenCertServer.Acme.AspNetClient.Tests;
 
 using System;
@@ -13,7 +15,7 @@ public sealed class CertificateValidatorTests
     public void IsCertificateValid_OnNullCert_ShouldReturnFalse()
     {
         var certificateValidator = new CertificateValidator(
-            new LetsEncryptOptions(),
+            new LetsEncryptOptions { CertificateSigningRequest = new CsrInfo() },
             new NullLogger<CertificateValidator>());
 
         Assert.False(certificateValidator.IsCertificateValid(null));
@@ -26,6 +28,7 @@ public sealed class CertificateValidatorTests
         var certificateValidator = new CertificateValidator(
             new LetsEncryptOptions
             {
+                CertificateSigningRequest = new CsrInfo(),
                 TimeUntilExpiryBeforeRenewal = vs.TimeUntilExpiryBeforeRenewal,
                 TimeAfterIssueDateBeforeRenewal = vs.TimeAfterIssueDateBeforeRenewal
             },
@@ -68,7 +71,8 @@ public sealed class CertificateValidatorTests
         {
             static string Show(TimeSpan? ts) => ts == null ? "Never" : ts.Value.ToString("g");
 
-            return $"ValidatorSettings: ({Show(TimeUntilExpiryBeforeRenewal)}, {Show(TimeAfterIssueDateBeforeRenewal)})";
+            return
+                $"ValidatorSettings: ({Show(TimeUntilExpiryBeforeRenewal)}, {Show(TimeAfterIssueDateBeforeRenewal)})";
         }
     }
 
@@ -125,8 +129,8 @@ public sealed class CertificateValidatorTests
         {
             return
             [
-                new CertificateDates(certStart,  certEnd),
-                new ValidatorSettings(timeUntilExpiryBeforeRenewal,  timeAfterIssueDateBeforeRenewal),
+                new CertificateDates(certStart, certEnd),
+                new ValidatorSettings(timeUntilExpiryBeforeRenewal, timeAfterIssueDateBeforeRenewal),
                 isValid
             ];
         }

@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Ca.Server;
+﻿using Microsoft.AspNetCore.Http;
+
+namespace OpenCertServer.Ca.Server;
 
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
@@ -34,7 +36,7 @@ public static class Extensions
         /// </summary>
         /// <param name="configuration">The CA server configuration.</param>
         /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
-        /// <returns></returns>
+        /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
         public IServiceCollection AddCertificateAuthority(
             CaConfiguration configuration,
             Func<X509Chain, bool>? chainValidation = null)
@@ -49,11 +51,14 @@ public static class Extensions
                 throw new ArgumentException("Must be an ECDSA key certificate");
             }
 
-            return services.AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
-                configuration,
-                sp.GetRequiredService<IStoreCertificates>(),
-                chainValidation ?? (_ => true),
-                sp.GetRequiredService<ILogger<CertificateAuthority>>()));
+            return services.AddSingleton<ICertificateAuthority>(sp =>
+            {
+                return new CertificateAuthority(
+                    configuration,
+                    sp.GetRequiredService<IStoreCertificates>(),
+                    chainValidation ?? (_ => true),
+                    sp.GetRequiredService<ILogger<CertificateAuthority>>());
+            });
         }
 
         /// <summary>
@@ -125,7 +130,7 @@ public static class Extensions
                 });
             groupBuilder.MapGet("/crl", CrlHandler.Handle)
                 .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
-            groupBuilder.MapPost("/ocsp", OcspHandler.Handle).AllowAnonymous();
+            groupBuilder.MapPost("/ocsp", OcspHandler.Handle).WithName("ocsp").AllowAnonymous();
             groupBuilder.MapGet("/certificate", CertificateRetrievalHandler.HandleGet)
                 .AllowAnonymous();
             return endpoints;

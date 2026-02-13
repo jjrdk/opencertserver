@@ -1,3 +1,5 @@
+using CertesSlim.Json;
+
 namespace OpenCertServer.Acme.Abstractions.RequestServices;
 
 using System.Threading;
@@ -7,7 +9,7 @@ using HttpModel.Requests;
 public interface IRequestValidationService
 {
     Task ValidateRequestAsync(
-        AcmeRawPostRequest request,
+        JwsPayload request,
         AcmeHeader header,
         string requestUrl,
         CancellationToken cancellationToken);

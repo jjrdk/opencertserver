@@ -1,4 +1,5 @@
 ﻿using Microsoft.IdentityModel.Tokens;
+using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
 
 namespace OpenCertServer.Acme.Abstractions.Services;
 
@@ -19,5 +20,5 @@ public interface IAccountService
 
     Task<Account?> LoadAccount(string accountId, CancellationToken cancellationToken = default);
 
-    Task<Account> FromRequest(CancellationToken cancellationToken = default);
+    Task<Account> FromRequest(AcmeHeader header, CancellationToken cancellationToken = default);
 }

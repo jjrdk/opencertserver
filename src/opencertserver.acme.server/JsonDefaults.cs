@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using CertesSlim.Json;
 using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
 using OpenCertServer.Acme.Abstractions.Model;
 
@@ -8,7 +9,7 @@ namespace OpenCertServer.Acme.Server;
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(Account))]
 [JsonSerializable(typeof(AcmeHeader))]
-[JsonSerializable(typeof(AcmeRawPostRequest))]
+[JsonSerializable(typeof(JwsPayload))]
 [JsonSerializable(typeof(CreateOrGetAccount))]
 [JsonSerializable(typeof(CreateOrderRequest))]
 [JsonSerializable(typeof(FinalizeOrderRequest))]

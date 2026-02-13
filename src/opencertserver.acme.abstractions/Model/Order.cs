@@ -3,11 +3,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
-using Extensions;
 
 [Serializable]
-public sealed class Order : IVersioned, ISerializable
+public sealed class Order : IVersioned
 {
     private static readonly Dictionary<OrderStatus, OrderStatus[]> ValidStatusTransitions =
         new()
@@ -56,12 +54,12 @@ public sealed class Order : IVersioned, ISerializable
 
     public void SetStatus(OrderStatus nextStatus)
     {
-        if (!ValidStatusTransitions.ContainsKey(Status))
+        if (!ValidStatusTransitions.TryGetValue(Status, out var transition))
         {
             throw new InvalidOperationException($"Cannot do challenge status transition from '{Status}'.");
         }
 
-        if (!ValidStatusTransitions[Status].Contains(nextStatus))
+        if (!transition.Contains(nextStatus))
         {
             throw new InvalidOperationException($"Cannot do challenge status transition from '{Status}' to {nextStatus}.");
         }
@@ -78,76 +76,6 @@ public sealed class Order : IVersioned, ISerializable
         else if (Authorizations.Any(a => a.Status.IsInvalid()))
         {
             SetStatus(OrderStatus.Invalid);
-        }
-    }
-
-
-
-    // --- Serialization Methods --- //
-
-    private Order(SerializationInfo info, StreamingContext streamingContext)
-    {
-        if (info is null)
-        {
-            throw new ArgumentNullException(nameof(info));
-        }
-
-        OrderId = info.GetRequiredString(nameof(OrderId));
-        AccountId = info.GetRequiredString(nameof(AccountId));
-
-        Status = Enum.Parse<OrderStatus>(info.GetString(nameof(Status))!); //(OrderStatus)info.GetInt32(nameof(Status));
-
-        Identifiers = info.GetRequiredValue<List<Identifier>>(nameof(Identifiers));
-        Authorizations = info.GetRequiredValue<List<Authorization>>(nameof(Authorizations));
-
-        foreach (var auth in Authorizations)
-        {
-            auth.Order = this;
-        }
-
-        NotBefore = info.TryGetValue<DateTimeOffset?>(nameof(NotBefore));
-        NotAfter = info.TryGetValue<DateTimeOffset?>(nameof(NotAfter));
-        Expires = info.TryGetValue<DateTimeOffset?>(nameof(Expires));
-
-        Error = info.TryGetValue<AcmeError?>(nameof(Error));
-        Version = info.GetInt64(nameof(Version));
-
-        CertificateSigningRequest = info.TryGetValue<string?>(nameof(CertificateSigningRequest));
-        Certificate = info.TryGetValue<byte[]?>(nameof(Certificate));
-    }
-
-    public void GetObjectData(SerializationInfo info, StreamingContext context)
-    {
-        if (info is null)
-        {
-            throw new ArgumentNullException(nameof(info));
-        }
-
-        info.AddValue("SerializationVersion", 1);
-
-        info.AddValue(nameof(OrderId), OrderId);
-        info.AddValue(nameof(AccountId), AccountId);
-
-        info.AddValue(nameof(Status), Status);
-
-        info.AddValue(nameof(Identifiers), Identifiers);
-        info.AddValue(nameof(Authorizations), Authorizations);
-
-        info.AddValue(nameof(NotBefore), NotBefore);
-        info.AddValue(nameof(NotAfter), NotAfter);
-        info.AddValue(nameof(Expires), Expires);
-
-        info.AddValue(nameof(Error), Error);
-        info.AddValue(nameof(Version), Version);
-
-        if (CertificateSigningRequest != null)
-        {
-            info.AddValue(nameof(CertificateSigningRequest), CertificateSigningRequest);
-        }
-
-        if (Certificate != null)
-        {
-            info.AddValue(nameof(Certificate), Certificate);
         }
     }
 }

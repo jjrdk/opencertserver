@@ -1,4 +1,5 @@
 ﻿using Microsoft.IdentityModel.Tokens;
+using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
 
 namespace OpenCertServer.Acme.Server.Services;
 
@@ -8,18 +9,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.Model;
 using Abstractions.Model.Exceptions;
-using Abstractions.RequestServices;
 using Abstractions.Services;
 using Abstractions.Storage;
 
 public sealed class DefaultAccountService : IAccountService
 {
-    private readonly IAcmeRequestProvider _requestProvider;
     private readonly IStoreAccounts _accountStore;
 
-    public DefaultAccountService(IAcmeRequestProvider requestProvider, IStoreAccounts accountStore)
+    public DefaultAccountService(IStoreAccounts accountStore)
     {
-        _requestProvider = requestProvider;
         _accountStore = accountStore;
     }
 
@@ -41,17 +39,10 @@ public sealed class DefaultAccountService : IAccountService
         return account;
     }
 
-    public async Task<Account> FromRequest(CancellationToken cancellationToken)
+    public async Task<Account> FromRequest(AcmeHeader header, CancellationToken cancellationToken)
     {
-        var requestHeader = _requestProvider.GetHeader();
-
-        //if (string.IsNullOrEmpty(requestHeader.Kid))
-        //{
-        //    throw new MalformedRequestException("Kid header is missing");
-        //}
-
         //TODO: Get accountId from Kid?
-        var accountId = requestHeader.GetAccountId();
+        var accountId = header.GetAccountId();
         var account = await LoadAccount(accountId, cancellationToken);
         ValidateAccount(account);
 

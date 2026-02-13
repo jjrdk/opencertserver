@@ -1,12 +1,11 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿namespace OpenCertServer.Acme.Server.Filters;
 
-namespace OpenCertServer.Acme.Server.Filters;
-
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Mvc.Routing;
 
-[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Method)]
 public sealed class AcmeLocationAttribute : Attribute, IFilterMetadata
 {
     public AcmeLocationAttribute(string routeName)
@@ -17,36 +16,28 @@ public sealed class AcmeLocationAttribute : Attribute, IFilterMetadata
     public string RouteName { get; }
 }
 
-public sealed class AcmeLocationFilter : IActionFilter
+public sealed class AcmeLocationFilter : IEndpointFilter
 {
-    private readonly IUrlHelperFactory _urlHelperFactory;
+    private readonly LinkGenerator _linkGenerator;
 
-    public AcmeLocationFilter(IUrlHelperFactory urlHelperFactory)
+    public AcmeLocationFilter(LinkGenerator linkGenerator)
     {
-        _urlHelperFactory = urlHelperFactory;
+        _linkGenerator = linkGenerator;
     }
 
-    public void OnActionExecuted(ActionExecutedContext context)
+    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        var locationAttribute = context.ActionDescriptor.FilterDescriptors
-            .Select(x => x.Filter)
-            .OfType<AcmeLocationAttribute>()
-            .FirstOrDefault();
-
+        var locationAttribute =context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<AcmeLocationAttribute>();
         if (locationAttribute == null)
         {
-            return;
+            return await next(context);
         }
-
-        var urlHelper = _urlHelperFactory.GetUrlHelper(context);
-
-        var locationHeaderUrl = urlHelper.RouteUrl(locationAttribute.RouteName, context.RouteData.Values, "https");
+        var locationHeaderUrl = _linkGenerator.GetUriByRouteValues(context.HttpContext,
+            locationAttribute.RouteName,
+            context.HttpContext.Request.RouteValues, Uri.UriSchemeHttps);
         var locationHeader = $"{locationHeaderUrl}";
 
-        context.HttpContext.Response.GetTypedHeaders().Set("Location", locationHeader);
-    }
-
-    public void OnActionExecuting(ActionExecutingContext context)
-    {
+        context.HttpContext.Response.GetTypedHeaders().Set(HeaderNames.Location, locationHeader);
+        return await next(context);
     }
 }

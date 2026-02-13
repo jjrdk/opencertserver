@@ -66,7 +66,7 @@ public sealed class DefaultOrderService : IOrderService
         return order;
     }
 
-    public async Task<Challenge> ProcessChallenge(
+    public async Task<Challenge?> ProcessChallenge(
         Account account,
         string orderId,
         string authId,

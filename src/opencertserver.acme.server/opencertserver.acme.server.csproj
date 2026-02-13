@@ -1,23 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<Import Project="../../shared.proj" />
-	<PropertyGroup>
-		<RootNamespace>OpenCertServer.Acme.Server</RootNamespace>
-		<AssemblyName>opencertserver.acme.server</AssemblyName>
-	</PropertyGroup>
+    <Import Project="../../shared.proj"/>
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Acme.Server</RootNamespace>
+        <AssemblyName>opencertserver.acme.server</AssemblyName>
+        <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+        <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
+    </PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="DnsClient" Version="1.8.0" />
-	</ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="DnsClient" Version="1.8.0"/>
+    </ItemGroup>
 
-	<ItemGroup>
-		<FrameworkReference Include="Microsoft.AspNetCore.App" />
-	</ItemGroup>
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App"/>
+    </ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\CertesSlim\CertesSlim.csproj" />
-		<ProjectReference Include="..\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
-		<ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
-	</ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\CertesSlim\CertesSlim.csproj"/>
+        <ProjectReference Include="..\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj"/>
+        <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj"/>
+    </ItemGroup>
 
 </Project>

@@ -11,4 +11,8 @@
 	  <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <ProjectReference Include="..\CertesSlim\CertesSlim.csproj" />
+	</ItemGroup>
+
 </Project>

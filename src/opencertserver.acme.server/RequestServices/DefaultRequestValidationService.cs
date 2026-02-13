@@ -1,3 +1,5 @@
+using CertesSlim.Json;
+
 namespace OpenCertServer.Acme.Server.RequestServices;
 
 using System;
@@ -29,7 +31,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
         _logger = logger;
     }
 
-    public async Task ValidateRequestAsync(AcmeRawPostRequest request, AcmeHeader header,
+    public async Task ValidateRequestAsync(JwsPayload request, AcmeHeader header,
         string requestUrl, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -67,7 +69,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
             throw new BadSignatureAlgorithmException();
         }
 
-        if (header.Jwk != null && header.Kid != null)
+        if (header is { Jwk: not null, Kid: not null })
         {
             throw new MalformedRequestException("Do not provide both Jwk and Kid.");
         }
@@ -98,7 +100,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
         _logger.LogDebug("successfully validated replay nonce");
     }
 
-    private async Task ValidateSignatureAsync(AcmeRawPostRequest request, AcmeHeader header, CancellationToken cancellationToken)
+    private async Task ValidateSignatureAsync(JwsPayload request, AcmeHeader header, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -127,7 +129,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
         }
 
         using var signatureProvider = new AsymmetricSignatureProvider(jwk, header.Alg);
-        var plainText = System.Text.Encoding.UTF8.GetBytes($"{request.Header}.{request.Payload ?? ""}");
+        var plainText = System.Text.Encoding.UTF8.GetBytes($"{request.Protected}.{request.Payload ?? ""}");
         var signature = Base64UrlEncoder.DecodeBytes(request.Signature);
 
         if (!signatureProvider.Verify(plainText, signature))

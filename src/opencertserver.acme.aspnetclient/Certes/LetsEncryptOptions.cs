@@ -9,27 +9,27 @@ using global::CertesSlim.Acme;
 
 public abstract class AcmeOptions
 {
-    public IEnumerable<string>? Domains { get; set; }
+    public string[] Domains { get; init; } = [];
 
     /// <summary>
     /// Used only for LetsEncrypt to contact you when the domain is about to expire - not actually validated.
     /// </summary>
-    public string Email { get; set; } = null!;
+    public string Email { get; init; } = null!;
 
     /// <summary>
     /// The amount of time before the expiry date of the certificate that a new one is created. Defaults to 30 days.
     /// </summary>
-    public TimeSpan? TimeUntilExpiryBeforeRenewal { get; set; } = TimeSpan.FromDays(30);
+    public TimeSpan? TimeUntilExpiryBeforeRenewal { get; init; } = TimeSpan.FromDays(30);
 
     /// <summary>
     /// The amount of time after the last renewal date that a new one is created. Defaults to null.
     /// </summary>
-    public TimeSpan? TimeAfterIssueDateBeforeRenewal { get; set; }
+    public TimeSpan? TimeAfterIssueDateBeforeRenewal { get; init; }
 
     /// <summary>
     /// Recommended while testing - increases your rate limit towards LetsEncrypt. Defaults to false.
     /// </summary>
-    public bool UseStaging { get; set; }
+    public bool UseStaging { get; init; }
 
     /// <summary>
     /// Gets the uri which will be used to talk to LetsEncrypt servers.
@@ -39,7 +39,7 @@ public abstract class AcmeOptions
     /// <summary>
     /// Required. Sent to LetsEncrypt to let them know what details you want in your certificate. Some of the properties are optional.
     /// </summary>
-    public CsrInfo CertificateSigningRequest { get; set; } = null!;
+    public required CsrInfo CertificateSigningRequest { get; init; }
 
     /// <summary>
     /// Gets or sets the renewal fail mode - i.e. what happens if an exception is thrown in the certificate renewal process.
@@ -49,7 +49,7 @@ public abstract class AcmeOptions
     /// <summary>
     /// Gets or sets the <see cref="KeyAlgorithm"/> used to request a new LetsEncrypt certificate.
     /// </summary>
-    public string KeyAlgorithm { get; set; } = SecurityAlgorithms.EcdsaSha256;
+    public string KeyAlgorithm { get; init; } = SecurityAlgorithms.EcdsaSha256;
 
     /// <summary>
     /// Get or set a delay before the initial run of the renewal service (subsequent runs will be at 1hr intervals)
