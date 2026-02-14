@@ -4,7 +4,6 @@ namespace OpenCertServer.Acme.Abstractions.Model;
 
 using System;
 
-[Serializable]
 public sealed class Identifier
 {
     private static readonly string[] SupportedTypes = ["dns"];
@@ -41,6 +40,6 @@ public sealed class Identifier
 
     public bool IsWildcard
     {
-        get { return Value.StartsWith("*", StringComparison.InvariantCulture); }
+        get { return Value.StartsWith('*'); }
     }
 }
