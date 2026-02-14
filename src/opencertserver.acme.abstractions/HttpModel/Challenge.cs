@@ -10,20 +10,13 @@ public sealed class Challenge
 {
     public Challenge(Model.Challenge model, string challengeUrl)
     {
-        if (model is null)
-        {
-            throw new ArgumentNullException(nameof(model));
-        }
-
-        if (string.IsNullOrEmpty(challengeUrl))
-        {
-            throw new ArgumentNullException(nameof(challengeUrl));
-        }
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentException.ThrowIfNullOrEmpty(challengeUrl);
 
         Type = model.Type;
         Token = model.Token;
 
-        Status = EnumMappings.GetEnumString(model.Status);
+        Status = model.Status.ToString().ToLowerInvariant();
         Url = challengeUrl;
 
         Validated = model.Validated?.ToString("o", CultureInfo.InvariantCulture);

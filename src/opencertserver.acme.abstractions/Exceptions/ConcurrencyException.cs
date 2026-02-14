@@ -1,6 +1,4 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model.Exceptions;
-
-using System;
+﻿namespace OpenCertServer.Acme.Abstractions.Exceptions;
 
 public sealed class ConcurrencyException : InvalidOperationException
 {

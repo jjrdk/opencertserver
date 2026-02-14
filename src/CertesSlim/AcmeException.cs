@@ -4,8 +4,7 @@
 /// The exception that is thrown when an error occurs while processing ACME operations.
 /// </summary>
 /// <seealso cref="Exception" />
-[Serializable]
-public class AcmeException : Exception
+ public class AcmeException : Exception
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="AcmeException"/> class.

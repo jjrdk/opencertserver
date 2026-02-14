@@ -1,4 +1,5 @@
 using CertesSlim.Json;
+using OpenCertServer.Acme.Abstractions.Exceptions;
 
 namespace OpenCertServer.Acme.Server.RequestServices;
 
@@ -7,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.HttpModel.Requests;
 using Abstractions.Model;
-using Abstractions.Model.Exceptions;
 using Abstractions.RequestServices;
 using Abstractions.Services;
 using Abstractions.Storage;

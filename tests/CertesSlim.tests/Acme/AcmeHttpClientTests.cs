@@ -146,7 +146,7 @@ public class AcmeHttpClientTests
         var ctx = new AcmeContext(WellKnownServers.LetsEncryptStagingV2, key, httpMock);
 
         await Assert.ThrowsAsync<AcmeRequestException>(() => ctx.NewAccount("", true));
-        await SubstituteExtensions.Received(httpMock, 2)
+        await httpMock.Received(2)
             .Post<Account, object>(MockDirectoryV2.NewAccount, Arg.Any<object>());
     }
 }

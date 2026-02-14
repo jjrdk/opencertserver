@@ -1,4 +1,6 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using CertesSlim.Acme.Resource;
+using Microsoft.IdentityModel.Tokens;
+using OpenCertServer.Acme.Abstractions.Exceptions;
 using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
 
 namespace OpenCertServer.Acme.Server.Services;
@@ -8,7 +10,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.Model;
-using Abstractions.Model.Exceptions;
 using Abstractions.Services;
 using Abstractions.Storage;
 

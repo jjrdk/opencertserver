@@ -1,21 +1,25 @@
+using OpenCertServer.Acme.Abstractions.Exceptions;
+
 namespace OpenCertServer.Acme.Abstractions.Model;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
-using Exceptions;
-using Extensions;
 
-[Serializable]
-public sealed class AcmeError : ISerializable
+public sealed class AcmeError
 {
     private string? _type;
     private string? _detail;
 
-    private AcmeError() { }
+    private AcmeError()
+    {
+    }
 
-    public AcmeError(string type, string detail, Identifier? identifier = null, IEnumerable<AcmeError>? subErrors = null)
+    public AcmeError(
+        string type,
+        string detail,
+        Identifier? identifier = null,
+        IEnumerable<AcmeError>? subErrors = null)
     {
         Type = type;
 
@@ -44,45 +48,4 @@ public sealed class AcmeError : ISerializable
     public Identifier? Identifier { get; }
 
     public List<AcmeError>? SubErrors { get; }
-
-
-
-    // --- Serialization Methods --- //
-
-    private AcmeError(SerializationInfo info, StreamingContext streamingContext)
-    {
-        if (info is null)
-        {
-            throw new ArgumentNullException(nameof(info));
-        }
-
-        Type = info.GetRequiredString(nameof(Type));
-        Detail = info.GetRequiredString(nameof(Detail));
-
-        Identifier = info.TryGetValue<Identifier>(nameof(Identifier));
-        SubErrors = info.TryGetValue<List<AcmeError>>(nameof(SubErrors));
-    }
-
-    public void GetObjectData(SerializationInfo info, StreamingContext context)
-    {
-        if (info is null)
-        {
-            throw new ArgumentNullException(nameof(info));
-        }
-
-        info.AddValue("SerializationVersion", 1);
-
-        info.AddValue(nameof(Type), Type);
-        info.AddValue(nameof(Detail), Detail);
-
-        if (Identifier != null)
-        {
-            info.AddValue(nameof(Identifier), Identifier);
-        }
-
-        if (SubErrors != null)
-        {
-            info.AddValue(nameof(SubErrors), SubErrors);
-        }
-    }
 }

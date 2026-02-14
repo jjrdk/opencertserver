@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Http;
+using OpenCertServer.Acme.Server.Endpoints;
 using OpenCertServer.Acme.Server.Filters;
 
 namespace OpenCertServer.Acme.Server;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
-using OpenCertServer.Acme.Server.MinimalApi;
 
 public static class AcmeRegistration
 {

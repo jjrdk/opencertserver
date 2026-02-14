@@ -15,7 +15,7 @@ public class ISignatureKeyExtensionsTests
         using (var sha256 = SHA256.Create())
         {
             Assert.Equal(
-                JwsConvert.ToBase64String(sha256.ComputeHash(Encoding.UTF8.GetBytes(key.KeyAuthorization("token")))),
+                sha256.ComputeHash(Encoding.UTF8.GetBytes(key.KeyAuthorization("token"))).ToBase64String(),
                 key.DnsTxt("token"));
         }
     }

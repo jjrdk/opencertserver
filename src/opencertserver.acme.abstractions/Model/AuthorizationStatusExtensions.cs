@@ -1,10 +1,12 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model;
+﻿using CertesSlim.Acme.Resource;
+
+namespace OpenCertServer.Acme.Abstractions.Model;
 
 using System.Linq;
 
 public static class AuthorizationStatusExtensions
 {
-    private static readonly AuthorizationStatus[] _invalidStatus =
+    private static readonly AuthorizationStatus[] InvalidStatus =
     [
         AuthorizationStatus.Invalid,
         AuthorizationStatus.Deactivated,
@@ -14,6 +16,6 @@ public static class AuthorizationStatusExtensions
 
     public static bool IsInvalid(this AuthorizationStatus status)
     {
-        return _invalidStatus.Contains(status);
+        return InvalidStatus.Contains(status);
     }
 }

@@ -15,11 +15,11 @@ public class JwsConvertTests
             })
         {
             var data = Encoding.UTF8.GetBytes(s);
-            var str = JwsConvert.ToBase64String(data);
-            var reverted = JwsConvert.FromBase64String(str);
+            var str = data.ToBase64String();
+            var reverted = str.FromBase64String();
             Assert.Equal(data, reverted);
         }
 
-        Assert.Throws<AcmeException>(() => JwsConvert.FromBase64String("/not a valid base 64 string/!"));
+        Assert.Throws<AcmeException>(() => "/not a valid base 64 string/!".FromBase64String());
     }
 }

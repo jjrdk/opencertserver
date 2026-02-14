@@ -9,7 +9,8 @@ namespace CertesSlim.Json;
 /// <summary>
 /// Defines the serializer context for CertesSlim.
 /// </summary>
-[JsonSourceGenerationOptions(UseStringEnumConverter = true, WriteIndented = false,
+[JsonSourceGenerationOptions(
+    UseStringEnumConverter = true, WriteIndented = false,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(Account))]
 [JsonSerializable(typeof(Account.Payload))]

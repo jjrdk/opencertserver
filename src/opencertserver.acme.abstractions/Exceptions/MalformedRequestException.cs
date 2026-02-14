@@ -1,4 +1,6 @@
-namespace OpenCertServer.Acme.Abstractions.Model.Exceptions;
+using CertesSlim.Acme.Resource;
+
+namespace OpenCertServer.Acme.Abstractions.Exceptions;
 
 public class MalformedRequestException : AcmeException
 {
@@ -58,7 +60,7 @@ public sealed class ConflictRequestException : MalformedRequestException
     public ConflictRequestException(ChallengeStatus attemptedStatus)
         : this("challenge", $"{attemptedStatus}")
     { }
-        
+
     public ConflictRequestException(AccountStatus expectedStatus, AccountStatus actualStatus)
         : this("account", $"{expectedStatus}", $"{actualStatus}")
     { }

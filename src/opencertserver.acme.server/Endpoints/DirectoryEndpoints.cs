@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Options;
 using OpenCertServer.Acme.Server.Configuration;
 
-namespace OpenCertServer.Acme.Server.MinimalApi;
+namespace OpenCertServer.Acme.Server.Endpoints;
 
 public static class DirectoryEndpoints
 {

@@ -3,9 +3,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using OpenCertServer.Acme.Abstractions.Services;
-using OpenCertServer.Acme.Server.Filters;
 
-namespace OpenCertServer.Acme.Server.MinimalApi;
+namespace OpenCertServer.Acme.Server.Endpoints;
 
 public static partial class NonceEndpoints
 {

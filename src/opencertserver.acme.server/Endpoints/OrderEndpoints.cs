@@ -2,14 +2,14 @@ using CertesSlim.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using OpenCertServer.Acme.Abstractions.Exceptions;
 using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
 using OpenCertServer.Acme.Abstractions.Model;
-using OpenCertServer.Acme.Abstractions.Model.Exceptions;
 using OpenCertServer.Acme.Abstractions.Services;
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Filters;
 
-namespace OpenCertServer.Acme.Server.MinimalApi;
+namespace OpenCertServer.Acme.Server.Endpoints;
 
 public static class OrderEndpoints
 {
@@ -155,25 +155,27 @@ public static class OrderEndpoints
         HttpContext context,
         LinkGenerator links,
         Order order,
-        out IEnumerable<string> authorizationUrls,
-        out string finalizeUrl,
-        out string certificateUrl)
+        out IEnumerable<Uri> authorizationUrls,
+        out Uri? finalizeUrl,
+        out Uri? certificateUrl)
     {
         authorizationUrls = order.Authorizations.Select(x =>
-            links.GetUriByName(context,
+        {
+            var uri = links.GetUriByName(context,
                 "GetAuthorization",
                 new RouteValueDictionary([
                     KeyValuePair.Create<string, string?>("orderId", order.OrderId),
                     KeyValuePair.Create<string, string?>("authId", x.AuthorizationId)
-                ]), scheme: Uri.UriSchemeHttps)
-         ?? string.Empty);
+                ]), scheme: Uri.UriSchemeHttps);
+            return new Uri(uri!);
+        });
         var routeDic = new RouteValueDictionary([
             KeyValuePair.Create<string, string?>("orderId", order.OrderId)
         ]);
-        finalizeUrl = links.GetUriByName(context, "FinalizeOrder", routeDic, scheme: Uri.UriSchemeHttps) ??
-            string.Empty;
-        certificateUrl = links.GetUriByName(context, "GetCertificate", routeDic, scheme: Uri.UriSchemeHttps) ??
-            string.Empty;
+        var fu = links.GetUriByName(context, "FinalizeOrder", routeDic, scheme: Uri.UriSchemeHttps);
+        var cu = links.GetUriByName(context, "GetCertificate", routeDic, scheme: Uri.UriSchemeHttps);
+        finalizeUrl = fu != null ? new Uri(fu) : null;
+        certificateUrl = cu != null ? new Uri(cu) : null;
     }
 
     private static string GetChallengeUrl(HttpContext context, LinkGenerator links, Challenge challenge)

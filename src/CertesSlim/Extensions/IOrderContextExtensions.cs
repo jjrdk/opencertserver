@@ -1,4 +1,5 @@
-﻿using CertesSlim.Acme;
+﻿using System.Security.Cryptography.X509Certificates;
+using CertesSlim.Acme;
 using CertesSlim.Acme.Resource;
 using CertesSlim.Pkcs;
 using CertesSlim.Properties;

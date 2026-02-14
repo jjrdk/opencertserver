@@ -21,7 +21,7 @@ public sealed class Authorization
             throw new ArgumentNullException(nameof(challenges));
         }
 
-        Status = EnumMappings.GetEnumString(model.Status);
+        Status = model.Status.ToString().ToLowerInvariant();
 
         Expires = model.Expires.ToString("o", CultureInfo.InvariantCulture);
         Wildcard = model.IsWildcard;

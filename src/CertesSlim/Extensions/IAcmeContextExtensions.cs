@@ -1,7 +1,7 @@
-﻿using CertesSlim.Acme;
-using Directory = CertesSlim.Acme.Resource.Directory;
+﻿namespace CertesSlim.Extensions;
 
-namespace CertesSlim.Extensions;
+using CertesSlim.Acme;
+using Directory = CertesSlim.Acme.Resource.Directory;
 
 /// <summary>
 /// Extension methods for <see cref="IAcmeContext"/>.

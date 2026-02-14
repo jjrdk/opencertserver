@@ -28,13 +28,13 @@ public static class KeyFactory
                 var ecdsa512Jwk = new ECDsaSecurityKey(ECDsa.Create(ECCurve.NamedCurves.nistP521));
                 return new Key(SecurityAlgorithms.EcdsaSha512, ecdsa512Jwk, HashAlgorithmName.SHA512);
             case SecurityAlgorithms.RsaSha256:
-                var rsaJwk = new RsaSecurityKey(RSA.Create(keySize ?? 2048));
+                var rsaJwk = new RsaSecurityKey(RSA.Create(keySize ?? 3072));
                 return new Key(SecurityAlgorithms.RsaSha256, rsaJwk, HashAlgorithmName.SHA256);
             case SecurityAlgorithms.RsaSha384:
-                var rsa384Jwk = new RsaSecurityKey(RSA.Create(keySize ?? 2048));
+                var rsa384Jwk = new RsaSecurityKey(RSA.Create(keySize ?? 3072));
                 return new Key(SecurityAlgorithms.RsaSha384, rsa384Jwk, HashAlgorithmName.SHA384);
             case SecurityAlgorithms.RsaSha512:
-                var rsa512Jwk = new RsaSecurityKey(RSA.Create(keySize ?? 2048));
+                var rsa512Jwk = new RsaSecurityKey(RSA.Create(keySize ?? 3072));
                 return new Key(SecurityAlgorithms.RsaSha512, rsa512Jwk, HashAlgorithmName.SHA512);
             default:
                 throw new NotSupportedException($"The algorithm '{algorithm}' is not supported.");

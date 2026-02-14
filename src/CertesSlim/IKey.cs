@@ -73,7 +73,7 @@ public static class ISignatureKeyExtensions
         public string Thumbprint()
         {
             var jwkThumbprint = key.GenerateThumbprint();
-            return JwsConvert.ToBase64String(jwkThumbprint);
+            return jwkThumbprint.ToBase64String();
         }
 
         /// <summary>
@@ -96,7 +96,7 @@ public static class ISignatureKeyExtensions
         {
             var keyAuthz = key.KeyAuthorization(token);
             var hashed = SHA256.HashData(Encoding.UTF8.GetBytes(keyAuthz));
-            return JwsConvert.ToBase64String(hashed);
+            return hashed.ToBase64String();
         }
     }
 

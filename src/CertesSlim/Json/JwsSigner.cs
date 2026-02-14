@@ -7,7 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 namespace CertesSlim.Json;
 
 /// <summary>
-/// Represents an signer for JSON Web Signature.
+/// Represents a signer for JSON Web Signature.
 /// </summary>
 internal class JwsSigner
 {
@@ -63,8 +63,8 @@ internal class JwsSigner
         var protectedHeaderJson =
             JsonSerializer.Serialize(protectedHeader, CertesSerializerContext.Default.ProtectedHeader);
 
-        var payloadEncoded = JwsConvert.ToBase64String(Encoding.UTF8.GetBytes(entityJson));
-        var protectedHeaderEncoded = JwsConvert.ToBase64String(Encoding.UTF8.GetBytes(protectedHeaderJson));
+        var payloadEncoded = Encoding.UTF8.GetBytes(entityJson).ToBase64String();
+        var protectedHeaderEncoded = Encoding.UTF8.GetBytes(protectedHeaderJson).ToBase64String();
 
         var signature = $"{protectedHeaderEncoded}.{payloadEncoded}";
         var signatureBytes = Encoding.UTF8.GetBytes(signature);
@@ -74,7 +74,7 @@ internal class JwsSigner
             RsaSecurityKey r => r.Rsa.SignData(signatureBytes, _keyPair.HashAlgorithm, RSASignaturePadding.Pss),
             _ => throw new NotSupportedException("Unsupported key type.")
         };
-        var signedSignatureEncoded = JwsConvert.ToBase64String(signedSignatureBytes);
+        var signedSignatureEncoded = signedSignatureBytes.ToBase64String();
 
         var body = new JwsPayload
         {

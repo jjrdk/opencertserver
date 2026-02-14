@@ -10,12 +10,9 @@ public sealed class Account
 {
     public Account(Model.Account model, string ordersUrl)
     {
-        if (model is null)
-        {
-            throw new ArgumentNullException(nameof(model));
-        }
+        ArgumentNullException.ThrowIfNull(model);
 
-        Status = EnumMappings.GetEnumString(model.Status);
+        Status = model.Status.ToString().ToLowerInvariant();
 
         Contact = model.Contacts;
         TermsOfServiceAgreed = model.TosAccepted.HasValue;

@@ -17,7 +17,7 @@ public class DirectoryStringTests
     {
         var directoryString = new DirectoryString("testString", tagNumber);
         var writer = new AsnWriter(AsnEncodingRules.DER);
-        directoryString.Encode(writer, null);
+        directoryString.Encode(writer);
         var encoded = writer.Encode();
         var reloaded = new DirectoryString(encoded);
 

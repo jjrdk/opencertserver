@@ -1,12 +1,12 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using OpenCertServer.Acme.Abstractions.Exceptions;
 
 namespace OpenCertServer.Acme.Server.Stores;
 
 using System.Text;
 using System.Text.RegularExpressions;
 using Abstractions.Model;
-using Abstractions.Model.Exceptions;
 using Configuration;
 using Microsoft.Extensions.Options;
 

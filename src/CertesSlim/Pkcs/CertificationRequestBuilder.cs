@@ -1,22 +1,15 @@
-﻿using System.Security.Cryptography;
+﻿namespace CertesSlim.Pkcs;
+
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.IdentityModel.Tokens;
-
-namespace CertesSlim.Pkcs;
 
 /// <summary>
 /// Represents a CSR builder.
 /// </summary>
-/// <seealso cref="ICertificationRequestBuilder" />
-public class CertificationRequestBuilder : ICertificationRequestBuilder
+public class CertificationRequestBuilder
 {
-    private static readonly string[] _validX509Names =
-    [
-        "CN", "C", "L", "ST", "O", "OU", "E"
-    ];
-
-    private Dictionary<string, string> _values = new();
-//    private IKey? _keyPair;
+    private readonly X500DistinguishedNameBuilder _distinguishedNameBuilder = new();
 
     /// <summary>
     /// Gets the key.
@@ -69,13 +62,33 @@ public class CertificationRequestBuilder : ICertificationRequestBuilder
     /// </exception>
     public void AddName(string keyOrCommonName, string value)
     {
-        if (!_validX509Names.Contains(keyOrCommonName, StringComparer.OrdinalIgnoreCase))
+        switch (keyOrCommonName.ToUpperInvariant())
         {
-            throw new ArgumentOutOfRangeException(nameof(keyOrCommonName),
-                $"The key '{keyOrCommonName}' is not a valid X509 name.");
+            case "CN":
+                _distinguishedNameBuilder.AddCommonName(value);
+                break;
+            case "C":
+                _distinguishedNameBuilder.AddCountryOrRegion(value);
+                break;
+            case "L":
+                _distinguishedNameBuilder.AddLocalityName(value);
+                break;
+            case "ST":
+                _distinguishedNameBuilder.AddStateOrProvinceName(value);
+                break;
+            case "O":
+                _distinguishedNameBuilder.AddOrganizationName(value);
+                break;
+            case "OU":
+                _distinguishedNameBuilder.AddOrganizationalUnitName(value);
+                break;
+            case "E":
+                _distinguishedNameBuilder.AddEmailAddress(value);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(keyOrCommonName),
+                    $"The key '{keyOrCommonName}' is not a valid X509 name.");
         }
-
-        _values[keyOrCommonName] = value;
     }
 
     /// <summary>
@@ -92,18 +105,20 @@ public class CertificationRequestBuilder : ICertificationRequestBuilder
 
     private CertificateRequest GeneratePkcs10()
     {
-        var x509 = new X500DistinguishedName(string.Join(", ", _values.Select(kv => $"{kv.Key}={kv.Value}")));
+        var x509 = _distinguishedNameBuilder.Build();
 
         var nameBuilder = new SubjectAlternativeNameBuilder();
         foreach (var altName in SubjectAlternativeNames.Distinct())
         {
             nameBuilder.AddDnsName(altName);
         }
+
         var altNames = nameBuilder.Build();
 
         var cr = Key.SecurityKey switch
         {
-            RsaSecurityKey rsaKey => new CertificateRequest(x509, rsaKey.Rsa!, Key.HashAlgorithm, RSASignaturePadding.Pss),
+            RsaSecurityKey rsaKey => new CertificateRequest(x509, rsaKey.Rsa!, Key.HashAlgorithm,
+                RSASignaturePadding.Pss),
             ECDsaSecurityKey ecdsaKey => new CertificateRequest(x509, ecdsaKey.ECDsa!, Key.HashAlgorithm),
             _ => throw new NotSupportedException($"The key algorithm '{Key.Algorithm}' is not supported.")
         };

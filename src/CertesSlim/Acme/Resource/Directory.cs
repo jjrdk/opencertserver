@@ -59,7 +59,7 @@ public class Directory
     /// The metadata.
     /// </value>
     [JsonPropertyName("meta")]
-    public DirectoryMeta Meta { get; }
+    public DirectoryMeta? Meta { get; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Directory"/> class.
@@ -76,7 +76,7 @@ public class Directory
         Uri newOrder,
         Uri revokeCert,
         Uri keyChange,
-        DirectoryMeta meta)
+        DirectoryMeta? meta)
     {
         NewNonce = newNonce;
         NewAccount = newAccount;

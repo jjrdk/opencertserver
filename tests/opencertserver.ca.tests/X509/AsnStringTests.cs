@@ -12,7 +12,7 @@ public class AsnStringTests
         var asn1Tag = new Asn1Tag(UniversalTagNumber.IA5String);
         var asnString = new AsnString(asn1Tag, "TestValue");
         var writer = new AsnWriter(AsnEncodingRules.DER);
-        asnString.Encode(writer, null);
+        asnString.Encode(writer);
         var encoded = writer.Encode();
         var reader = new AsnReader(encoded, AsnEncodingRules.DER);
         var tag = reader.PeekTag();

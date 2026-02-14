@@ -1,4 +1,6 @@
 ﻿using CertesSlim.Acme;
+using CertesSlim.Acme.Resource;
+using OpenCertServer.Acme.Abstractions.Exceptions;
 
 namespace OpenCertServer.Acme.Server.Services;
 
@@ -9,7 +11,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.IssuanceServices;
 using Abstractions.Model;
-using Abstractions.Model.Exceptions;
 using Abstractions.Services;
 using Abstractions.Storage;
 

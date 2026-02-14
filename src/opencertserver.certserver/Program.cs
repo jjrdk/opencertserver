@@ -1,30 +1,23 @@
-using System.Numerics;
 using System.Runtime.CompilerServices;
-using OpenCertServer.Acme.Server;
-using OpenCertServer.Acme.Server.MinimalApi;
-using OpenCertServer.Ca.Server;
-using OpenCertServer.Ca.Utils.Ca;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
 namespace OpenCertServer.CertServer;
 
-using System.Diagnostics.CodeAnalysis;
-using System.Security.Cryptography.X509Certificates;
-using Acme.Abstractions.IssuanceServices;
+using System.Numerics;
+using System.Security.Cryptography.X509Certificates;using Acme.Abstractions.IssuanceServices;
 using Est.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OpenCertServer.Acme.Server;
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Ca;
+using OpenCertServer.Ca.Server;
 
 internal static class Program
 {
-    [UnconditionalSuppressMessage("AOT",
-        "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.",
-        Justification = "<Pending>")]
     public static async Task Main(string[] args)
     {
         if (args.Length == 0)

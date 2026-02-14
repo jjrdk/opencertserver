@@ -62,7 +62,7 @@ public class GeneralNames : IAsnValue
         {
             foreach (var name in Names)
             {
-                name.Encode(writer, null);
+                name.Encode(writer);
             }
         }
     }

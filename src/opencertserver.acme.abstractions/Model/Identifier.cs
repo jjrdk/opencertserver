@@ -1,12 +1,11 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model;
+﻿using OpenCertServer.Acme.Abstractions.Exceptions;
+
+namespace OpenCertServer.Acme.Abstractions.Model;
 
 using System;
-using System.Runtime.Serialization;
-using Exceptions;
-using Extensions;
 
 [Serializable]
-public sealed class Identifier : ISerializable
+public sealed class Identifier
 {
     private static readonly string[] SupportedTypes = ["dns"];
 
@@ -43,32 +42,5 @@ public sealed class Identifier : ISerializable
     public bool IsWildcard
     {
         get { return Value.StartsWith("*", StringComparison.InvariantCulture); }
-    }
-
-
-    // --- Serialization Methods --- //
-
-    private Identifier(SerializationInfo info, StreamingContext streamingContext)
-    {
-        if (info is null)
-        {
-            throw new ArgumentNullException(nameof(info));
-        }
-
-        Type = info.GetRequiredString(nameof(Type));
-        Value = info.GetRequiredString(nameof(Value));
-    }
-
-    public void GetObjectData(SerializationInfo info, StreamingContext context)
-    {
-        if (info is null)
-        {
-            throw new ArgumentNullException(nameof(info));
-        }
-
-        info.AddValue("SerializationVersion", 1);
-
-        info.AddValue(nameof(Type), Type);
-        info.AddValue(nameof(Value), Value);
     }
 }

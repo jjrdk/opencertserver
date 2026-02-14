@@ -5,7 +5,10 @@ using OpenCertServer.Acme.Abstractions.Model;
 
 namespace OpenCertServer.Acme.Server;
 
-[JsonSourceGenerationOptions(UseStringEnumConverter = true, WriteIndented = false,
+[JsonSourceGenerationOptions(
+    UseStringEnumConverter = true,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWriting,
+    WriteIndented = false,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(Account))]
 [JsonSerializable(typeof(AcmeHeader))]

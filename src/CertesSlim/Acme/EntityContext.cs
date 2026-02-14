@@ -48,7 +48,7 @@ internal class EntityContext<T>
     /// <returns>The resource entity data.</returns>
     public virtual async Task<T> Resource()
     {
-        var resp = await Context.HttpClient.Post<T, object>(Context, Location, null, true);
+        var resp = await Context.HttpClient.Post<T, object>(Context, Location, null);
         return resp.Resource;
     }
 }

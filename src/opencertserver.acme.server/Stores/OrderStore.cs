@@ -1,8 +1,11 @@
-﻿namespace OpenCertServer.Acme.Server.Stores;
+﻿using CertesSlim.Acme.Resource;
+using OpenCertServer.Acme.Abstractions.Exceptions;
+using Directory = System.IO.Directory;
+
+namespace OpenCertServer.Acme.Server.Stores;
 
 using System.Globalization;
 using Abstractions.Model;
-using Abstractions.Model.Exceptions;
 using Abstractions.Storage;
 using Configuration;
 using Microsoft.Extensions.Logging;

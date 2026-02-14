@@ -1,4 +1,4 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model.Exceptions;
+﻿namespace OpenCertServer.Acme.Abstractions.Exceptions;
 
 public sealed class BadNonceException : AcmeException
 {

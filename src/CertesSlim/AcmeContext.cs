@@ -111,7 +111,7 @@ public class AcmeContext : IAcmeContext
         var jws = new JwsSigner(newKey);
         var body = jws.Sign(keyChange, url: endpoint);
 
-        var resp = await HttpClient.Post<Account, JwsPayload>(this, endpoint, body, true);
+        var resp = await HttpClient.Post<Account, JwsPayload>(this, endpoint, body);
 
         AccountKey = newKey;
         return resp.Resource;
@@ -215,7 +215,7 @@ public class AcmeContext : IAcmeContext
             NotAfter = notAfter
         };
 
-        var order = await HttpClient.Post<Order, Order>(this, endpoint, body, true);
+        var order = await HttpClient.Post<Order, Order>(this, endpoint, body);
         return new OrderContext(this, order.Location);
     }
 

@@ -31,7 +31,7 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
     public async Task<Account> Deactivate()
     {
         var payload = new Account { Status = AccountStatus.Deactivated };
-        var resp = await Context.HttpClient.Post<Account, Account>(Context, Location, payload, true);
+        var resp = await Context.HttpClient.Post<Account, Account>(Context, Location, payload);
         return resp.Resource;
     }
 
@@ -68,7 +68,7 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
             account.TermsOfServiceAgreed = true;
         }
 
-        var response = await Context.HttpClient.Post<Account, Account>(Context, location, account, true);
+        var response = await Context.HttpClient.Post<Account, Account>(Context, location, account);
         return response.Resource;
     }
 
@@ -101,13 +101,11 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
             };
 
             var headerJson = JsonSerializer.Serialize(header, CertesSerializerContext.Default.Header);
-            var protectedHeaderBase64 = JwsConvert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(headerJson));
+            var protectedHeaderBase64 = System.Text.Encoding.UTF8.GetBytes(headerJson).ToBase64String();
 
-            var accountKeyBase64 = JwsConvert.ToBase64String(
-                System.Text.Encoding.UTF8.GetBytes(
-                    JsonSerializer.Serialize(context.AccountKey.JsonWebKey, CertesSerializerContext.Default.JsonWebKey)
-                )
-            );
+            var accountKeyBase64 = System.Text.Encoding.UTF8.GetBytes(
+                JsonSerializer.Serialize(context.AccountKey.JsonWebKey, CertesSerializerContext.Default.JsonWebKey)
+            ).ToBase64String();
 
             var signingBytes = System.Text.Encoding.ASCII.GetBytes($"{protectedHeaderBase64}.{accountKeyBase64}");
 
@@ -117,20 +115,20 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
             switch (header.Alg)
             {
                 case "HS512":
-                    using (var hs512 = new HMACSHA512(JwsConvert.FromBase64String(eabKey)))
+                    using (var hs512 = new HMACSHA512(eabKey.FromBase64String()))
                         signatureHash = hs512.ComputeHash(signingBytes);
                     break;
                 case "HS384":
-                    using (var hs384 = new HMACSHA384(JwsConvert.FromBase64String(eabKey)))
+                    using (var hs384 = new HMACSHA384(eabKey.FromBase64String()))
                         signatureHash = hs384.ComputeHash(signingBytes);
                     break;
                 default:
-                    using (var hs256 = new HMACSHA256(JwsConvert.FromBase64String(eabKey)))
+                    using (var hs256 = new HMACSHA256(eabKey.FromBase64String()))
                         signatureHash = hs256.ComputeHash(signingBytes);
                     break;
             }
 
-            var signatureBase64 = JwsConvert.ToBase64String(signatureHash);
+            var signatureBase64 = signatureHash.ToBase64String();
 
             body.ExternalAccountBinding = new
             {

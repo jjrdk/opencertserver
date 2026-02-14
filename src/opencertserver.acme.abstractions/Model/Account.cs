@@ -1,4 +1,5 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using CertesSlim.Acme.Resource;
+using Microsoft.IdentityModel.Tokens;
 
 namespace OpenCertServer.Acme.Abstractions.Model;
 
@@ -6,8 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-[Serializable]
-public sealed class Account : IVersioned
+ public sealed class Account : IVersioned
 {
     public Account(JsonWebKey jwk, IEnumerable<string>? contacts, DateTimeOffset? tosAccepted)
     {

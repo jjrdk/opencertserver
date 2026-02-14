@@ -18,7 +18,7 @@ public class IOrderContextExtensionsTests
         var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem");
 
         var orderCtxMock = Substitute.For<IOrderContext>();
-        orderCtxMock.Download(null).Returns(new CertificateChain(pem));
+        orderCtxMock.Download().Returns(new CertificateChain(pem));
         orderCtxMock.Resource().Returns(new Order
         {
             Identifiers =
@@ -40,9 +40,9 @@ public class IOrderContextExtensionsTests
         var key = KeyFactory.NewKey(SecurityAlgorithms.RsaSha256);
         var certInfo = await orderCtxMock.Generate(new CsrInfo
         {
-            CountryName = "C",
+            CountryName = "CH",
             CommonName = "www.certes.com"
-        }, key, null);
+        }, key);
 
         Assert.Equal(
             pem.Where(c => !char.IsWhiteSpace(c)),
@@ -50,8 +50,8 @@ public class IOrderContextExtensionsTests
 
         var certInfoNoCn = await orderCtxMock.Generate(new CsrInfo
         {
-            CountryName = "C"
-        }, key, null);
+            CountryName = "CH"
+        }, key);
 
         Assert.Equal(
             pem.Where(c => !char.IsWhiteSpace(c)),
@@ -64,7 +64,7 @@ public class IOrderContextExtensionsTests
         var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem");
 
         var orderCtxMock = Substitute.For<IOrderContext>();
-        orderCtxMock.Download(null).Returns(new CertificateChain(pem));
+        orderCtxMock.Download().Returns(new CertificateChain(pem));
         orderCtxMock.Resource().Returns(new Order
         {
             Identifiers =
@@ -86,9 +86,9 @@ public class IOrderContextExtensionsTests
         var key = KeyFactory.NewKey(SecurityAlgorithms.RsaSha256);
         var certInfo = await orderCtxMock.Generate(new CsrInfo
         {
-            CountryName = "C",
+            CountryName = "CH",
             CommonName = "www.certes.com"
-        }, key, null);
+        }, key);
 
         Assert.Equal(
             pem.Where(c => !char.IsWhiteSpace(c)),
@@ -96,8 +96,8 @@ public class IOrderContextExtensionsTests
 
         var certInfoNoCn = await orderCtxMock.Generate(new CsrInfo
         {
-            CountryName = "C"
-        }, key, null);
+            CountryName = "CH"
+        }, key);
 
         Assert.Equal(
             pem.Where(c => !char.IsWhiteSpace(c)),
@@ -110,7 +110,7 @@ public class IOrderContextExtensionsTests
         var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem");
 
         var orderCtxMock = Substitute.For<IOrderContext>();
-        orderCtxMock.Download(null).Returns(new CertificateChain(pem));
+        orderCtxMock.Download().Returns(new CertificateChain(pem));
         orderCtxMock.Resource()
             .Returns(
                 new Order
@@ -182,7 +182,7 @@ public class IOrderContextExtensionsTests
         var key = KeyFactory.NewKey(SecurityAlgorithms.RsaSha256);
         var certInfo = await orderCtxMock.Generate(new CsrInfo
         {
-            CountryName = "C",
+            CountryName = "CH",
             CommonName = "www.certes.com"
         }, key, null, 5);
 
@@ -192,7 +192,7 @@ public class IOrderContextExtensionsTests
 
         var certInfoNoCn = await orderCtxMock.Generate(new CsrInfo
         {
-            CountryName = "C"
+            CountryName = "CH"
         }, key);
 
         Assert.Equal(
@@ -260,9 +260,9 @@ public class IOrderContextExtensionsTests
         var key = KeyFactory.NewKey(SecurityAlgorithms.RsaSha256);
         var certInfoDefaultRoot = await orderCtxMock.Generate(new CsrInfo
         {
-            CountryName = "C",
+            CountryName = "CH",
             CommonName = "www.certes.com"
-        }, key, null);
+        }, key);
 
         Assert.Equal(
             defaultpem.Where(c => !char.IsWhiteSpace(c)),
@@ -270,7 +270,7 @@ public class IOrderContextExtensionsTests
 
         var certInfoAlternateRoot = await orderCtxMock.Generate(new CsrInfo
         {
-            CountryName = "C",
+            CountryName = "CH",
             CommonName = "www.certes.com"
         }, key, "AlternateRoot");
 
@@ -280,7 +280,7 @@ public class IOrderContextExtensionsTests
 
         var certInfoUnknownRoot = await orderCtxMock.Generate(new CsrInfo
         {
-            CountryName = "C",
+            CountryName = "CH",
             CommonName = "www.certes.com"
         }, key, "UnknownRoot");
 
@@ -309,7 +309,7 @@ public class IOrderContextExtensionsTests
             {
                 CountryName = "C",
                 CommonName = "www.certes.com"
-            }, key, null));
+            }, key));
     }
 
     [Fact]
@@ -318,7 +318,7 @@ public class IOrderContextExtensionsTests
         var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem");
 
         var orderCtxMock = Substitute.For<IOrderContext>();
-        orderCtxMock.Download(null).Returns(new CertificateChain(pem));
+        orderCtxMock.Download().Returns(new CertificateChain(pem));
         orderCtxMock.Resource().Returns(new Order
         {
             Identifiers =
@@ -341,9 +341,9 @@ public class IOrderContextExtensionsTests
         await Assert.ThrowsAsync<AcmeException>(() =>
             orderCtxMock.Generate(new CsrInfo
             {
-                CountryName = "C",
+                CountryName = "CH",
                 CommonName = "www.certes.com"
-            }, key, null));
+            }, key));
     }
 
     [Fact]
@@ -352,7 +352,7 @@ public class IOrderContextExtensionsTests
         var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem");
 
         var orderCtxMock = Substitute.For<IOrderContext>();
-        orderCtxMock.Download(null).Returns(new CertificateChain(pem));
+        orderCtxMock.Download().Returns(new CertificateChain(pem));
         orderCtxMock.Resource()
             .Returns(new Order
                 {
@@ -401,7 +401,7 @@ public class IOrderContextExtensionsTests
         await Assert.ThrowsAsync<AcmeException>(() =>
             orderCtxMock.Generate(new CsrInfo
             {
-                CountryName = "C",
+                CountryName = "CH",
                 CommonName = "www.certes.com"
             }, key));
     }

@@ -5,12 +5,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.IdentityModel.Tokens;
+using OpenCertServer.Acme.Abstractions.Exceptions;
 using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
-using OpenCertServer.Acme.Abstractions.Model.Exceptions;
 using OpenCertServer.Acme.Abstractions.Services;
 using Account = OpenCertServer.Acme.Abstractions.HttpModel.Account;
 
-namespace OpenCertServer.Acme.Server.MinimalApi;
+namespace OpenCertServer.Acme.Server.Endpoints;
 
 public static class AccountEndpoints
 {

@@ -1,10 +1,11 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model;
+﻿using CertesSlim.Acme.Resource;
+
+namespace OpenCertServer.Acme.Abstractions.Model;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-[Serializable]
 public sealed class Order : IVersioned
 {
     private static readonly Dictionary<OrderStatus, OrderStatus[]> ValidStatusTransitions =
@@ -61,7 +62,8 @@ public sealed class Order : IVersioned
 
         if (!transition.Contains(nextStatus))
         {
-            throw new InvalidOperationException($"Cannot do challenge status transition from '{Status}' to {nextStatus}.");
+            throw new InvalidOperationException(
+                $"Cannot do challenge status transition from '{Status}' to {nextStatus}.");
         }
 
         Status = nextStatus;

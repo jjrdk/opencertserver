@@ -1,7 +1,6 @@
-﻿namespace OpenCertServer.Acme.Abstractions.Model.Exceptions;
+﻿using System.Runtime.CompilerServices;
 
-using System;
-using System.Runtime.CompilerServices;
+namespace OpenCertServer.Acme.Abstractions.Exceptions;
 
 public sealed class NotInitializedException : InvalidOperationException
 {

@@ -1,7 +1,7 @@
-﻿using CertesSlim.Acme;
-using CertesSlim.Acme.Resource;
+﻿namespace CertesSlim.Extensions;
 
-namespace CertesSlim.Extensions;
+using CertesSlim.Acme;
+using CertesSlim.Acme.Resource;
 
 /// <summary>
 /// Extension methods for <see cref="IAccountContext"/>.

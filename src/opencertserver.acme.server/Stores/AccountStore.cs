@@ -1,7 +1,8 @@
-﻿namespace OpenCertServer.Acme.Server.Stores;
+﻿using OpenCertServer.Acme.Abstractions.Exceptions;
+
+namespace OpenCertServer.Acme.Server.Stores;
 
 using Abstractions.Model;
-using Abstractions.Model.Exceptions;
 using Abstractions.Storage;
 using Configuration;
 using Microsoft.Extensions.Options;

@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.Server.Workers;
+﻿using CertesSlim.Acme.Resource;
+
+namespace OpenCertServer.Acme.Server.Workers;
 
 using System;
 using System.Threading;

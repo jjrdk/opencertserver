@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.Abstractions.HttpModel;
+﻿using CertesSlim.Acme.Resource;
+
+namespace OpenCertServer.Acme.Abstractions.HttpModel;
 
 using System.Collections.Generic;
 using System.Globalization;
@@ -12,31 +14,14 @@ public sealed class Order
 {
     public Order(
         Model.Order model,
-        IEnumerable<string> authorizationUrls,
-        string finalizeUrl,
-        string certificateUrl)
+        IEnumerable<Uri> authorizationUrls,
+        Uri? finalizeUrl,
+        Uri? certificateUrl)
     {
-        if (model is null)
-        {
-            throw new ArgumentNullException(nameof(model));
-        }
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(authorizationUrls);
 
-        if (authorizationUrls is null)
-        {
-            throw new ArgumentNullException(nameof(authorizationUrls));
-        }
-
-        if (string.IsNullOrEmpty(finalizeUrl))
-        {
-            throw new ArgumentNullException(nameof(finalizeUrl));
-        }
-
-        if (string.IsNullOrEmpty(certificateUrl))
-        {
-            throw new ArgumentNullException(nameof(certificateUrl));
-        }
-
-        Status = EnumMappings.GetEnumString(model.Status);
+        Status = model.Status.ToString().ToLowerInvariant();
 
         Expires = model.Expires?.ToString("o", CultureInfo.InvariantCulture);
         NotBefore = model.NotBefore?.ToString("o", CultureInfo.InvariantCulture);
@@ -48,10 +33,10 @@ public sealed class Order
 
         switch (model.Status)
         {
-            case Model.OrderStatus.Ready:
+            case OrderStatus.Ready:
                 Finalize = finalizeUrl;
                 break;
-            case Model.OrderStatus.Valid:
+            case OrderStatus.Valid:
                 Certificate = certificateUrl;
                 break;
         }
@@ -72,8 +57,8 @@ public sealed class Order
 
     public AcmeError? Error { get; }
 
-    public List<string> Authorizations { get; }
+    public List<Uri> Authorizations { get; }
 
-    public string? Finalize { get; }
-    public string? Certificate { get; }
+    public Uri? Finalize { get; }
+    public Uri? Certificate { get; }
 }

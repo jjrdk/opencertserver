@@ -11,9 +11,19 @@ public static class JwsConvert
     /// <summary>
     /// Encodes the data to the base64 string without padding.
     /// </summary>
-    /// <param name="data">The data to encoded.</param>
+    /// <param name="data">The data to be encoded.</param>
     /// <returns>The encoded data.</returns>
-    public static string ToBase64String(ReadOnlyMemory<byte>? data)
+    public static string ToBase64String(this byte[]? data)
+    {
+        return ToBase64String(data != null ? new ReadOnlyMemory<byte>(data) : null);
+    }
+
+    /// <summary>
+    /// Encodes the data to the base64 string without padding.
+    /// </summary>
+    /// <param name="data">The data to be encoded.</param>
+    /// <returns>The encoded data.</returns>
+    public static string ToBase64String(this ReadOnlyMemory<byte>? data)
     {
         if (!data.HasValue || data.Value.Length == 0)
         {
@@ -33,7 +43,7 @@ public static class JwsConvert
     /// <param name="data">The data.</param>
     /// <returns>The decoded data.</returns>
     /// <exception cref="System.Exception">If <paramref name="data"/> is illegal base64 URL string.</exception>
-    public static byte[] FromBase64String(string data)
+    public static byte[] FromBase64String(this string data)
     {
         var s = data;
         s = s.Replace('-', '+'); // 62nd char of encoding

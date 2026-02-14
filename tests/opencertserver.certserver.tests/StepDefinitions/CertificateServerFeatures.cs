@@ -1,6 +1,3 @@
-using OpenCertServer.Acme.Server;
-using OpenCertServer.Acme.Server.MinimalApi;
-
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Diagnostics.CodeAnalysis;
@@ -21,6 +18,7 @@ using OpenCertServer.Acme.Abstractions.IssuanceServices;
 using OpenCertServer.Acme.Abstractions.Services;
 using OpenCertServer.Acme.AspNetClient.Certes;
 using OpenCertServer.Acme.AspNetClient.Persistence;
+using OpenCertServer.Acme.Server;
 using OpenCertServer.Acme.Server.Configuration;
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Services;
