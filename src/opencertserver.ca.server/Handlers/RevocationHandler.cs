@@ -1,3 +1,5 @@
+namespace OpenCertServer.Ca.Server.Handlers;
+
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -6,8 +8,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
-
-namespace OpenCertServer.Ca.Server.Handlers;
 
 public static class RevocationHandler
 {
@@ -22,7 +22,7 @@ public static class RevocationHandler
         }
         var signature = context.Request.Query["signature"].ToString().Base64DecodeBytes();
         var serialNumberHex = context.Request.Query["sn"].ToString();
-        var asymmetricAlgorithm = clientCert!.GetRSAPublicKey() ?? (AsymmetricAlgorithm?)clientCert.GetECDsaPublicKey();
+        var asymmetricAlgorithm = clientCert.GetRSAPublicKey() ?? (AsymmetricAlgorithm?)clientCert.GetECDsaPublicKey();
         var reasonString = context.Request.Query["reason"];
         if (asymmetricAlgorithm == null
          || !asymmetricAlgorithm.VerifySignature(

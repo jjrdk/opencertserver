@@ -1,6 +1,7 @@
+using System.Text.Json;
+
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using CertesSlim.Extensions;
@@ -51,24 +52,13 @@ public partial class CertificateServerFeatures
         _server = host.GetTestServer();
         return;
 
-        [UnconditionalSuppressMessage("Trimming",
-            "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
-            Justification = "<Pending>")]
         void ConfigureApp(IApplicationBuilder app) =>
             app.UseCertificateForwarding().UseAcmeServer().UseEstServer().UseEndpoints(e =>
             {
-//                e.MapControllers();
                 e.MapCertificateAuthorityServer();
             });
 
-        [UnconditionalSuppressMessage("Trimming",
-            "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
-            Justification = "<Pending>")]
-        [UnconditionalSuppressMessage("AOT",
-            "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.",
-            Justification = "<Pending>")]
         void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services) =>
-#pragma warning disable IL2066
             services
                 .AddSingleton<IResponderId>(new ResponderIdByKey("test"u8.ToArray()))
                 .AddInMemoryCertificateStore()
@@ -79,7 +69,6 @@ public partial class CertificateServerFeatures
                     new AcmeServerOptions
                         { HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false } })
                 .AddSingleton<ICsrValidator, DefaultCsrValidator>()
-#pragma warning restore IL2066
                 .AddSingleton<IIssueCertificates, DefaultIssuer>()
                 .Replace(new ServiceDescriptor(typeof(IValidateHttp01Challenges), typeof(PassAllChallenges),
                     ServiceLifetime.Transient))
@@ -151,6 +140,20 @@ public partial class CertificateServerFeatures
         _scenarioContext["placedOrder"] = placedOrder;
     }
 
+    [When("I query the certificate inventory")]
+    public async Task WhenIQueryTheCertificateInventory()
+    {
+        var client = _server.CreateClient();
+        var response = await client.GetAsync("/ca/inventory");
+        response.EnsureSuccessStatusCode();
+        var inventory = await JsonSerializer.DeserializeAsync<CertificateItemInfo[]>(
+            await response.Content.ReadAsStreamAsync(), CaServerSerializerContext.Default.CertificateItemInfoArray);
+
+        Assert.NotNull(inventory);
+
+        _scenarioContext["inventory"] = inventory;
+    }
+
     [Then(@"the client receives a certificate")]
     public async Task ThenTheClientReceivesACertificate()
     {
@@ -158,5 +161,14 @@ public partial class CertificateServerFeatures
          ?? throw new InvalidOperationException());
 
         Assert.NotNull(cert);
+    }
+
+    [Then("the certificate should be included in the inventory")]
+    public void ThenTheCertificateShouldBeIncludedInTheInventory()
+    {
+        var inventory = _scenarioContext["inventory"] as CertificateItemInfo[]
+         ?? throw new InvalidOperationException();
+
+        Assert.Single(inventory);
     }
 }

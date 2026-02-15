@@ -1,10 +1,10 @@
+namespace OpenCertServer.Ca.Server.Handlers;
+
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
-
-namespace OpenCertServer.Ca.Server.Handlers;
 
 public static class InventoryHandler
 {
@@ -14,10 +14,10 @@ public static class InventoryHandler
         var page = context.Request.Query.ContainsKey("page")
             ? int.TryParse(context.Request.Query["page"], out var p) ? p : 0
             : 0;
-        var inventory = store.GetInventory(page);
+        var inventory = await store.GetInventory(page).ToArrayAsync();
         context.Response.ContentType = "application/json";
         await JsonSerializer.SerializeAsync(context.Response.Body, inventory,
-            CaServerSerializerContext.Default.CertificateItemArray);
+            CaServerSerializerContext.Default.CertificateItemInfoArray);
         await context.Response.Body.FlushAsync();
     }
 }

@@ -5,7 +5,6 @@
 		<RootNamespace>OpenCertServer.CertServer</RootNamespace>
 		<UserSecretsId>cb0364b8-e43a-47c6-aa32-5f49429f0388</UserSecretsId>
 		<OutputType>Exe</OutputType>
-		<SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
 		<TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
 	</PropertyGroup>
 

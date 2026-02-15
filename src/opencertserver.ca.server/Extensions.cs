@@ -140,6 +140,8 @@ public static class Extensions
 
 [JsonSerializable(typeof(CertificateItem))]
 [JsonSerializable(typeof(CertificateItem[]))]
+[JsonSerializable(typeof(CertificateItemInfo))]
+[JsonSerializable(typeof(CertificateItemInfo[]))]
 internal partial class CaServerSerializerContext : JsonSerializerContext
 {
 }

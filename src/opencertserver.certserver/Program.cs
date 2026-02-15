@@ -29,7 +29,7 @@ internal static class Program
         builder.Configuration.AddEnvironmentVariables().AddCommandLine(args);
         var services = builder.Services.AddCors(o =>
                 o.AddDefaultPolicy(b =>
-                    b.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(x => true).AllowCredentials()))
+                    b.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(_ => true).AllowCredentials()))
             .AddInMemoryCertificateStore();
         var port = int.TryParse(builder.Configuration.GetSection("port").Value, out var p)
             ? p
@@ -119,7 +119,7 @@ internal static class Program
         }).UseUrls($"https://*:{port}");
         var app = builder.Build();
         app.UseHttpsRedirection()
-            .UseCors(c => c.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(x => true).AllowCredentials())
+            .UseCors(c => c.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(_ => true).AllowCredentials())
             .UseForwardedHeaders(forwardedHeadersOptions)
             .UseHealthChecks("/health")
             .UseAcmeServer()

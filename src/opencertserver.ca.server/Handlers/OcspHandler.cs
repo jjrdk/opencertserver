@@ -1,15 +1,14 @@
+namespace OpenCertServer.Ca.Server.Handlers;
+
+using System.Formats.Asn1;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Ca.Utils.Ocsp;
 using OpenCertServer.Ca.Utils.X509;
 
-namespace OpenCertServer.Ca.Server.Handlers;
-
-using System.Formats.Asn1;
-using OpenCertServer.Ca.Utils.Ocsp;
-
-public class OcspHandler
+public static class OcspHandler
 {
     public static async Task Handle(HttpContext context)
     {

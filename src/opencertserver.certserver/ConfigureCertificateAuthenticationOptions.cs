@@ -1,10 +1,10 @@
+namespace OpenCertServer.CertServer;
+
 using System.Collections.Immutable;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.Extensions.Options;
-
-namespace OpenCertServer.CertServer;
 
 public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<CertificateAuthenticationOptions>
 {

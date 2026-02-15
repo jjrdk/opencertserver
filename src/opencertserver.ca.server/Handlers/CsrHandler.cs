@@ -1,10 +1,10 @@
+namespace OpenCertServer.Ca.Server.Handlers;
+
 using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.X509Extensions;
-
-namespace OpenCertServer.Ca.Server.Handlers;
 
 public static class CsrHandler
 {
