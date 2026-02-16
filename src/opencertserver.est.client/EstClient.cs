@@ -18,8 +18,6 @@ using Ca.Utils;
 /// </summary>
 public sealed class EstClient : IDisposable
 {
-    private const string ClientAuthentication = "1.3.6.1.5.5.7.3.2";
-    private const string TimeStamping = "1.3.6.1.5.5.7.3.8";
     private readonly Uri _estUri;
     private readonly HttpMessageHandler _messageHandler;
 
@@ -198,7 +196,13 @@ public sealed class EstClient : IDisposable
         req.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
         req.CertificateExtensions.Add(new X509KeyUsageExtension(usageFlags, false));
         req.CertificateExtensions.Add(
-            new X509EnhancedKeyUsageExtension([new Oid(TimeStamping), new Oid(ClientAuthentication)], true));
+            new X509EnhancedKeyUsageExtension(
+                [
+                    Oids.TimeStampingPurpose.InitializeOid(),
+                    Oids.ClientAuthenticationPurpose.InitializeOid(),
+                    Oids.ServerAuthenticationPurpose.InitializeOid()
+                ],
+                true));
         req.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(req.PublicKey, false));
         return req;
     }
