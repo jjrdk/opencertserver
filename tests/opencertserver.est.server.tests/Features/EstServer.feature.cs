@@ -17,21 +17,21 @@ namespace OpenCertServer.Est.Tests.Features
     
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Reqnroll", "3.0.0.0")]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    public partial class CertificateServerComplianceWithESTRFC7030Feature : object, global::Xunit.IClassFixture<CertificateServerComplianceWithESTRFC7030Feature.FixtureData>, global::Xunit.IAsyncLifetime
+    public partial class CertificateServerComplianceWithESTRFC7030Feature : object, Xunit.IClassFixture<CertificateServerComplianceWithESTRFC7030Feature.FixtureData>, Xunit.IAsyncLifetime
     {
         
         private global::Reqnroll.ITestRunner testRunner;
+        
+        private Xunit.ITestOutputHelper _testOutputHelper;
         
         private static string[] featureTags = ((string[])(null));
         
         private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "Certificate server compliance with EST (RFC 7030)", null, global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
-        private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
-        
 #line 1 "EstServer.feature"
 #line hidden
         
-        public CertificateServerComplianceWithESTRFC7030Feature(CertificateServerComplianceWithESTRFC7030Feature.FixtureData fixtureData, global::Xunit.Abstractions.ITestOutputHelper testOutputHelper)
+        public CertificateServerComplianceWithESTRFC7030Feature(CertificateServerComplianceWithESTRFC7030Feature.FixtureData fixtureData, Xunit.ITestOutputHelper testOutputHelper)
         {
             this._testOutputHelper = testOutputHelper;
         }
@@ -90,7 +90,7 @@ namespace OpenCertServer.Est.Tests.Features
         public void ScenarioInitialize(global::Reqnroll.ScenarioInfo scenarioInfo, global::Reqnroll.RuleInfo ruleInfo)
         {
             testRunner.OnScenarioInitialize(scenarioInfo, ruleInfo);
-            testRunner.ScenarioContext.ScenarioContainer.RegisterInstanceAs<global::Xunit.Abstractions.ITestOutputHelper>(_testOutputHelper);
+            testRunner.ScenarioContext.ScenarioContainer.RegisterInstanceAs<Xunit.ITestOutputHelper>(_testOutputHelper);
         }
         
         public async global::System.Threading.Tasks.Task ScenarioStartAsync()
@@ -108,7 +108,7 @@ namespace OpenCertServer.Est.Tests.Features
             return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/EstServer.feature.ndjson", 11);
         }
         
-        async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
+        async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
         {
             try
             {
@@ -118,7 +118,7 @@ namespace OpenCertServer.Est.Tests.Features
             {
                 try
                 {
-                    ((global::Xunit.IAsyncLifetime)(this)).DisposeAsync();
+                    ((Xunit.IAsyncLifetime)(this)).DisposeAsync();
                 }
                 catch (System.Exception e2)
                 {
@@ -128,12 +128,12 @@ namespace OpenCertServer.Est.Tests.Features
             }
         }
         
-        async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.DisposeAsync()
+        async System.Threading.Tasks.ValueTask System.IAsyncDisposable.DisposeAsync()
         {
             await this.TestTearDownAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Successful enrollment of a new RSA certificate")]
+        [global::Xunit.FactAttribute(DisplayName="Successful enrollment of a new RSA certificate")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
         [global::Xunit.TraitAttribute("Description", "Successful enrollment of a new RSA certificate")]
         public async global::System.Threading.Tasks.Task SuccessfulEnrollmentOfANewRSACertificate()
@@ -167,7 +167,7 @@ namespace OpenCertServer.Est.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Successful enrollment of a new ECDsa certificate")]
+        [global::Xunit.FactAttribute(DisplayName="Successful enrollment of a new ECDsa certificate")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
         [global::Xunit.TraitAttribute("Description", "Successful enrollment of a new ECDsa certificate")]
         public async global::System.Threading.Tasks.Task SuccessfulEnrollmentOfANewECDsaCertificate()
@@ -201,7 +201,7 @@ namespace OpenCertServer.Est.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Successful re-enrollment of a new RSA certificate")]
+        [global::Xunit.FactAttribute(DisplayName="Successful re-enrollment of a new RSA certificate")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
         [global::Xunit.TraitAttribute("Description", "Successful re-enrollment of a new RSA certificate")]
         public async global::System.Threading.Tasks.Task SuccessfulRe_EnrollmentOfANewRSACertificate()
@@ -241,7 +241,7 @@ namespace OpenCertServer.Est.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Successful re-enrollment of a new ECDsa certificate")]
+        [global::Xunit.FactAttribute(DisplayName="Successful re-enrollment of a new ECDsa certificate")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
         [global::Xunit.TraitAttribute("Description", "Successful re-enrollment of a new ECDsa certificate")]
         public async global::System.Threading.Tasks.Task SuccessfulRe_EnrollmentOfANewECDsaCertificate()
@@ -281,7 +281,7 @@ namespace OpenCertServer.Est.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Failed enrollment of a new RSA certificate")]
+        [global::Xunit.FactAttribute(DisplayName="Failed enrollment of a new RSA certificate")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
         [global::Xunit.TraitAttribute("Description", "Failed enrollment of a new RSA certificate")]
         public async global::System.Threading.Tasks.Task FailedEnrollmentOfANewRSACertificate()
@@ -315,7 +315,7 @@ namespace OpenCertServer.Est.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Failed enrollment of a new ECDsa certificate")]
+        [global::Xunit.FactAttribute(DisplayName="Failed enrollment of a new ECDsa certificate")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
         [global::Xunit.TraitAttribute("Description", "Failed enrollment of a new ECDsa certificate")]
         public async global::System.Threading.Tasks.Task FailedEnrollmentOfANewECDsaCertificate()
@@ -350,7 +350,7 @@ namespace OpenCertServer.Est.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Failed enrollment due to invalid CSR")]
+        [global::Xunit.FactAttribute(DisplayName="Failed enrollment due to invalid CSR")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
         [global::Xunit.TraitAttribute("Description", "Failed enrollment due to invalid CSR")]
         public async global::System.Threading.Tasks.Task FailedEnrollmentDueToInvalidCSR()
@@ -384,7 +384,7 @@ namespace OpenCertServer.Est.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Successful retrieval of CA certificates")]
+        [global::Xunit.FactAttribute(DisplayName="Successful retrieval of CA certificates")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
         [global::Xunit.TraitAttribute("Description", "Successful retrieval of CA certificates")]
         public async global::System.Threading.Tasks.Task SuccessfulRetrievalOfCACertificates()
@@ -418,7 +418,7 @@ namespace OpenCertServer.Est.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Successful retrieval of server attributes")]
+        [global::Xunit.FactAttribute(DisplayName="Successful retrieval of server attributes")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
         [global::Xunit.TraitAttribute("Description", "Successful retrieval of server attributes")]
         public async global::System.Threading.Tasks.Task SuccessfulRetrievalOfServerAttributes()
@@ -454,15 +454,15 @@ namespace OpenCertServer.Est.Tests.Features
         
         [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Reqnroll", "3.0.0.0")]
         [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-        public class FixtureData : object, global::Xunit.IAsyncLifetime
+        public class FixtureData : object, Xunit.IAsyncLifetime
         {
             
-            async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
+            async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
             {
                 await CertificateServerComplianceWithESTRFC7030Feature.FeatureSetupAsync();
             }
             
-            async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.DisposeAsync()
+            async System.Threading.Tasks.ValueTask System.IAsyncDisposable.DisposeAsync()
             {
                 await CertificateServerComplianceWithESTRFC7030Feature.FeatureTearDownAsync();
             }

@@ -15,7 +15,8 @@ public class ValuesControllerTests
     {
         var lambdaFunction = new LambdaEntryPoint();
 
-        var requestStr = await File.ReadAllTextAsync("./SampleRequests/ValuesController-Get.json");
+        var requestStr = await File.ReadAllTextAsync("./SampleRequests/ValuesController-Get.json",
+            TestContext.Current.CancellationToken);
         var request = JsonSerializer.Deserialize<APIGatewayProxyRequest>(requestStr, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true

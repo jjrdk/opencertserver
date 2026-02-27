@@ -1,5 +1,3 @@
-using System.Formats.Asn1;
-using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
 
 namespace OpenCertServer.Ca.Tests;
@@ -65,7 +63,7 @@ public sealed class X509CertificateTests : IDisposable
                 }
             }) as SignCertificateResponse.Success;
         await using var ms = new MemoryStream();
-        await cert!.Certificate.WritePfx(ms);
+        await cert!.Certificate.WritePfx(ms, TestContext.Current.CancellationToken);
 
         var newCert = X509CertificateLoader.LoadPkcs12(ms.ToArray(), null);
         Assert.NotNull(newCert.PublicKey);
