@@ -11,5 +11,5 @@ public interface IStoreOrders
 
     Task SaveOrder(Order order, CancellationToken cancellationToken);
 
-    Task<List<Order>> GetValidatableOrders(CancellationToken cancellationToken);
+    Task<IReadOnlyList<Order>> GetValidatableOrders(CancellationToken cancellationToken);
 }

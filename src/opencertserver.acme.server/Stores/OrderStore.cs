@@ -112,7 +112,7 @@ public sealed class OrderStore : StoreBase, IStoreOrders
         }
     }
 
-    public async Task<List<Order>> GetValidatableOrders(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<Order>> GetValidatableOrders(CancellationToken cancellationToken)
     {
         var result = new List<Order>();
 
