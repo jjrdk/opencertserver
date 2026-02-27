@@ -23,11 +23,11 @@ internal sealed class InMemoryOrderStore : IStoreOrders
     }
 
     /// <inheritdoc />
-    public Task<List<Order>> GetValidatableOrders(CancellationToken cancellationToken)
+    public Task<IReadOnlyList<Order>> GetValidatableOrders(CancellationToken cancellationToken)
     {
         var orders = _orders.Values.Where(
                 o => o.Authorizations.Any(a => a.Challenges.Any(c => c.Status == ChallengeStatus.Processing)))
-            .ToList();
-        return Task.FromResult(orders);
+            .ToList().AsReadOnly();
+        return Task.FromResult<IReadOnlyList<Order>>(orders);
     }
 }
