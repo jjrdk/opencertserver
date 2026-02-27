@@ -63,10 +63,11 @@ public sealed class LetsEncryptClientTests
     [Fact]
     public async Task Should_TolerateNullInput()
     {
-        _persistenceService.GetPersistedSiteCertificate()!
+        _persistenceService.GetPersistedSiteCertificate(TestContext.Current.CancellationToken)!
             .Returns(Task.FromResult(ValidCert));
 
-        var output = await _sut.RenewCertificateIfNeeded("test");
+        var output =
+            await _sut.RenewCertificateIfNeeded("test", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(CertificateRenewalStatus.LoadedFromStore, output.Status);
         Assert.Equal(ValidCert, output.Certificate);
@@ -76,7 +77,7 @@ public sealed class LetsEncryptClientTests
     public async Task OnValidMemoryCertificate_ShouldNotAttemptRenewal()
     {
         var input = ValidCert;
-        var output = await _sut.RenewCertificateIfNeeded("test", input);
+        var output = await _sut.RenewCertificateIfNeeded("test", input, TestContext.Current.CancellationToken);
 
         Assert.Equal(CertificateRenewalStatus.Unchanged, output.Status);
         Assert.True(ReferenceEquals(input, output.Certificate));
@@ -88,9 +89,10 @@ public sealed class LetsEncryptClientTests
         var input = InvalidCert;
         var stored = ValidCert;
 
-        _persistenceService.GetPersistedSiteCertificate()!.Returns(Task.FromResult(stored));
+        _persistenceService.GetPersistedSiteCertificate(TestContext.Current.CancellationToken)!.Returns(
+            Task.FromResult(stored));
 
-        var output = await _sut.RenewCertificateIfNeeded("test", input);
+        var output = await _sut.RenewCertificateIfNeeded("test", input, TestContext.Current.CancellationToken);
 
         Assert.Equal(CertificateRenewalStatus.LoadedFromStore, output.Status);
         Assert.Equal(stored, output.Certificate);
@@ -100,7 +102,8 @@ public sealed class LetsEncryptClientTests
     public async Task OnNoValidCertificateAvailable_ShouldRenewCertificate()
     {
         // arrange
-        _persistenceService.GetPersistedSiteCertificate()!.Returns(Task.FromResult(InvalidCert));
+        _persistenceService.GetPersistedSiteCertificate(TestContext.Current.CancellationToken)!.Returns(
+            Task.FromResult(InvalidCert));
 
         var dtos = new[] { new ChallengeDto("ping", "pong", ["test.com"]) };
         var placedOrder = new PlacedOrder(dtos, Substitute.For<IOrderContext>(), []);
@@ -117,11 +120,12 @@ public sealed class LetsEncryptClientTests
             ));
 
         var newCertificate = X509CertificateLoader.LoadCertificate(newCertBytes);
-        _persistenceService.PersistSiteCertificate(newCertificate).Returns(Task.CompletedTask);
+        _persistenceService.PersistSiteCertificate(newCertificate, TestContext.Current.CancellationToken)
+            .Returns(Task.CompletedTask);
 
         // act
 
-        var output = await _sut.RenewCertificateIfNeeded("test", current: null);
+        var output = await _sut.RenewCertificateIfNeeded("test", current: null, TestContext.Current.CancellationToken);
 
         // assert
 
@@ -129,7 +133,7 @@ public sealed class LetsEncryptClientTests
         Assert.Equivalent(newCertBytes, output.Certificate?.RawData);
 
         _certificateValidator.Received(1).IsCertificateValid(null);
-        await _persistenceService.Received(1).GetPersistedSiteCertificate();
+        await _persistenceService.Received(1).GetPersistedSiteCertificate(TestContext.Current.CancellationToken);
         _certificateValidator.Received(1).IsCertificateValid(InvalidCert);
         await _letsEncryptClient.Received(1).PlaceOrder();
         await _persistenceService.Received(1).PersistChallenges(dtos);

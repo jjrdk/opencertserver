@@ -30,7 +30,7 @@ public sealed class PersistenceServiceTests
     [Fact]
     public async Task MissingSiteCertificateReturnsNull()
     {
-        Assert.Null(await PersistenceService.GetPersistedSiteCertificate());
+        Assert.Null(await PersistenceService.GetPersistedSiteCertificate(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -50,9 +50,9 @@ public sealed class PersistenceServiceTests
     {
         var testCert = SelfSignedCertificate.Make(new DateTime(2020, 5, 24), new DateTime(2020, 5, 26));
 
-        await PersistenceService.PersistSiteCertificate(testCert);
+        await PersistenceService.PersistSiteCertificate(testCert, TestContext.Current.CancellationToken);
 
-        var retrievedCert = await PersistenceService.GetPersistedSiteCertificate();
+        var retrievedCert = await PersistenceService.GetPersistedSiteCertificate(TestContext.Current.CancellationToken);
 
         Assert.Equal(testCert.RawData, retrievedCert?.RawData);
     }

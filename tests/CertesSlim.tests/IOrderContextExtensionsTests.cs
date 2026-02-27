@@ -15,7 +15,7 @@ public class IOrderContextExtensionsTests
     [Fact]
     public async Task CanGenerateCertificateWhenOrderReady()
     {
-        var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem");
+        var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem", TestContext.Current.CancellationToken);
 
         var orderCtxMock = Substitute.For<IOrderContext>();
         orderCtxMock.Download().Returns(new CertificateChain(pem));
@@ -61,7 +61,7 @@ public class IOrderContextExtensionsTests
     [Fact]
     public async Task CanGenerateCertificateWhenOrderPending()
     {
-        var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem");
+        var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem", TestContext.Current.CancellationToken);
 
         var orderCtxMock = Substitute.For<IOrderContext>();
         orderCtxMock.Download().Returns(new CertificateChain(pem));
@@ -107,7 +107,7 @@ public class IOrderContextExtensionsTests
     [Fact]
     public async Task CanGenerateCertificateWhenOrderProcessing()
     {
-        var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem");
+        var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem", TestContext.Current.CancellationToken);
 
         var orderCtxMock = Substitute.For<IOrderContext>();
         orderCtxMock.Download().Returns(new CertificateChain(pem));
@@ -206,8 +206,9 @@ public class IOrderContextExtensionsTests
     [Fact]
     public async Task CanGenerateWithAlternateLink()
     {
-        var defaultpem = await File.ReadAllTextAsync("./Data/defaultLeaf.pem");
-        var alternatepem = await File.ReadAllTextAsync("./Data/alternateLeaf.pem");
+        var defaultpem = await File.ReadAllTextAsync("./Data/defaultLeaf.pem", TestContext.Current.CancellationToken);
+        var alternatepem =
+            await File.ReadAllTextAsync("./Data/alternateLeaf.pem", TestContext.Current.CancellationToken);
 
         var accountLoc = new System.Uri("http://acme.d/account/101");
         var orderLoc = new System.Uri("http://acme.d/order/101");
@@ -315,7 +316,7 @@ public class IOrderContextExtensionsTests
     [Fact]
     public async Task ThrowWhenFinalizeFailed()
     {
-        var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem");
+        var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem", TestContext.Current.CancellationToken);
 
         var orderCtxMock = Substitute.For<IOrderContext>();
         orderCtxMock.Download().Returns(new CertificateChain(pem));
@@ -349,7 +350,7 @@ public class IOrderContextExtensionsTests
     [Fact]
     public async Task ThrowWhenProcessintTooOften()
     {
-        var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem");
+        var pem = await File.ReadAllTextAsync("./Data/cert-es256.pem", TestContext.Current.CancellationToken);
 
         var orderCtxMock = Substitute.For<IOrderContext>();
         orderCtxMock.Download().Returns(new CertificateChain(pem));

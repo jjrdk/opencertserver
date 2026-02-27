@@ -29,7 +29,7 @@ public abstract class TimedHostedService : IHostedService, IDisposable
     {
         if (EnableService)
         {
-            _logger.LogInformation("Timed Hosted Service running.");
+            _logger.LogInformation("Timed Hosted Service running");
             _timer = new Timer(DoWorkCallback, null, TimeSpan.FromSeconds(15), TimerInterval);
         }
 
@@ -51,7 +51,7 @@ public abstract class TimedHostedService : IHostedService, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "TimedHostedService failed with exception.");
+            _logger.LogError(ex, "TimedHostedService failed with exception");
         }
         finally {
             _interlock.Release();

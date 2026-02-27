@@ -10,8 +10,9 @@ public sealed class HostedValidationService : TimedHostedService
 {
     private readonly IOptions<AcmeServerOptions> _options;
 
-    public HostedValidationService(IOptions<AcmeServerOptions> options, 
-        IServiceProvider services, ILogger<TimedHostedService> logger) 
+    public HostedValidationService(IOptions<AcmeServerOptions> options,
+        IServiceProvider services,
+        ILogger<HostedValidationService> logger)
         : base(services, logger)
     {
         _options = options;

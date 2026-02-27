@@ -88,10 +88,11 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
         var initializationTimeout = await Task.WhenAny(Task.Delay(1000, _fakeClient.OrderPlacedCts.Token));
         Assert.True(initializationTimeout.IsCanceled, "Fake LE client initialization timed out");
 
-        var response = await client.GetAsync($"/.well-known/acme-challenge/{AcmeToken}");
+        var response = await client.GetAsync($"/.well-known/acme-challenge/{AcmeToken}",
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(AcmeResponse, await response.Content.ReadAsStringAsync());
+        Assert.Equal(AcmeResponse, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var finalizationTimeout = await Task.WhenAny(Task.Delay(1000, _fakeClient.OrderFinalizedCts.Token));
         Assert.True(finalizationTimeout.IsCanceled, "Fake LE client finalization timed out");
