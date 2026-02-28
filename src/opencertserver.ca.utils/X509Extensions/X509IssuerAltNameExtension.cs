@@ -4,7 +4,7 @@ using System.Security.Cryptography.X509Certificates;
 namespace OpenCertServer.Ca.Utils.X509Extensions;
 
 /// <summary>
-/// Defines the X509 Delta CRL Indicator Extension
+/// Defines the X509 Issuer Alternative Name Extension.
 /// </summary>
 public class X509IssuerAltNameExtension : X509Extension
 {
