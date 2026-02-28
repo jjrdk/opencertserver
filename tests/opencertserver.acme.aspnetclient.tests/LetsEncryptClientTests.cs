@@ -125,7 +125,7 @@ public sealed class LetsEncryptClientTests
 
         // act
 
-        var output = await _sut.RenewCertificateIfNeeded("test", current: null, TestContext.Current.CancellationToken);
+        var output = await _sut.RenewCertificateIfNeeded("test", current: null, cancellationToken: TestContext.Current.CancellationToken);
 
         // assert
 
