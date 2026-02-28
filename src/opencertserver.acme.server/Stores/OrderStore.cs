@@ -144,6 +144,6 @@ public sealed class OrderStore : StoreBase, IStoreOrders
             }
         }
 
-        return result;
+        return result.AsReadOnly();
     }
 }
