@@ -221,7 +221,6 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             request.CertificateExtensions.Remove(ext);
         }
 
-        new X509EnhancedKeyUsageExtension(new OidCollection{Oids.ServerAuthenticationPurpose.InitializeOid()}, true);
         request.CertificateExtensions.Add(
             new X509AuthorityInformationAccessExtension(_config.OcspUrls, _config.CaIssuersUrls));
         request.CertificateExtensions.Add(
