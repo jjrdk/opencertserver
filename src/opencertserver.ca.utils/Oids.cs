@@ -229,7 +229,7 @@ public static class Oids
     public const string CodeSigningPurpose = "1.3.6.1.5.5.7.3.3";
     public const string EmailProtectionPurpose = "1.3.6.1.5.5.7.3.4";
     public const string CertificateTrustListSigningPurpose = "1.3.6.1.4.1.311.10.3.1";
-    public const string MicrosoftServerGatedCryptoPurpose = "1.3.6.1.4.311.10.3.3";
+    public const string MicrosoftServerGatedCryptoPurpose = "1.3.6.1.4.1.311.10.3.3";
     public const string MicrosoftEncryptingFileSystemPurpose = "1.3.6.1.4.1.311.10.3.4";
 
     // RFC3161 Timestamping
