@@ -12,7 +12,7 @@ public sealed class HostedValidationService : TimedHostedService
 
     public HostedValidationService(IOptions<AcmeServerOptions> options,
         IServiceProvider services,
-        ILogger<HostedValidationService> logger)
+        ILogger<TimedHostedService> logger)
         : base(services, logger)
     {
         _options = options;
