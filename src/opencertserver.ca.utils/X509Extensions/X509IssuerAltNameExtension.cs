@@ -12,6 +12,16 @@ public class X509IssuerAltNameExtension : X509Extension
     /// Initializes a new instance of the <see cref="X509IssuerAltNameExtension"/> class.
     /// </summary>
     /// <param name="rawData">The raw extension data.</param>
+    /// <param name="isCritical">Indicates whether the extension is critical.</param>
+    public X509IssuerAltNameExtension(ReadOnlySpan<byte> rawData, bool isCritical)
+        : base(new Oid("2.5.29.18", "Issuer Alt Name"), rawData, isCritical)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="X509IssuerAltNameExtension"/> class.
+    /// </summary>
+    /// <param name="rawData">The raw extension data.</param>
     public X509IssuerAltNameExtension(ReadOnlySpan<byte> rawData)
         : base(new Oid("2.5.29.18", "Issuer Alt Name"), rawData, false)
     {
