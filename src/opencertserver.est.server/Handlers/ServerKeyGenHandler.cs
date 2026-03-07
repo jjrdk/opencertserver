@@ -22,56 +22,67 @@ internal class ServerKeyGenHandler
 
     public async Task Handle(HttpContext ctx)
     {
-        using var reader = new StreamReader(ctx.Request.Body, Encoding.UTF8);
-        var request = await reader.ReadToEndAsync().ConfigureAwait(false);
-        var csr = request.Base64DecodeBytes();
-        var signingRequest = CertificateRequest.LoadSigningRequest(
-            csr,
-            HashAlgorithmName.SHA256,
-            CertificateRequestLoadOptions.SkipSignatureValidation,
-            RSASignaturePadding.Pss);
-        using var ecdsa = ECDsa.Create();
-        signingRequest = new CertificateRequest(signingRequest.SubjectName, ecdsa, HashAlgorithmName.SHA256);
-        var newCert = _certificateAuthority.SignCertificateRequest(signingRequest);
-        if (newCert is SignCertificateResponse.Success success)
+        try
         {
-            var mpr = new MultipartContent();
-            mpr.Add(new ReadOnlyMemoryContent(ecdsa.ExportPkcs8PrivateKey())
+            using var reader = new StreamReader(ctx.Request.Body, Encoding.UTF8);
+            var request = await reader.ReadToEndAsync().ConfigureAwait(false);
+            var csr = request.Base64DecodeBytes();
+            var signingRequest = CertificateRequest.LoadSigningRequest(
+                csr,
+                HashAlgorithmName.SHA256,
+                CertificateRequestLoadOptions.SkipSignatureValidation,
+                RSASignaturePadding.Pss);
+            using var ecdsa = ECDsa.Create();
+            signingRequest = new CertificateRequest(signingRequest.SubjectName, ecdsa, HashAlgorithmName.SHA256);
+            var newCert = _certificateAuthority.SignCertificateRequest(signingRequest);
+            if (newCert is SignCertificateResponse.Success success)
             {
-                Headers =
+                var mpr = new MultipartContent();
+                mpr.Add(new ReadOnlyMemoryContent(ecdsa.ExportPkcs8PrivateKey())
                 {
-                    { HeaderNames.ContentType, Constants.Pkcs8 },
-                    { "Content-Transfer-Encoding", "base64" }
-                }
-            });
-            mpr.Add(new StringContent(success.Certificate.ToPemChain(success.Issuers))
-            {
-                Headers =
+                    Headers =
+                    {
+                        { HeaderNames.ContentType, Constants.Pkcs8 },
+                        { "Content-Transfer-Encoding", "base64" }
+                    }
+                });
+                mpr.Add(new StringContent(success.Certificate.ToPemChain(success.Issuers))
                 {
-                    { HeaderNames.ContentType, Constants.PemMimeType }
+                    Headers =
+                    {
+                        { HeaderNames.ContentType, Constants.PemMimeType }
+                    }
+                });
+                ctx.Response.StatusCode = (int)HttpStatusCode.OK;
+                ctx.Response.ContentType = Constants.MultiPartMixed;
+                await mpr.CopyToAsync(ctx.Response.Body);
+                await ctx.Response.Body.FlushAsync().ConfigureAwait(false);
+                success.Certificate.Dispose();
+                foreach (var issuer in success.Issuers)
+                {
+                    issuer.Dispose();
                 }
-            });
-            ctx.Response.StatusCode = (int)HttpStatusCode.OK;
-            ctx.Response.ContentType = Constants.MultiPartMixed;
-            await mpr.CopyToAsync(ctx.Response.Body);
-            await ctx.Response.Body.FlushAsync().ConfigureAwait(false);
-            success.Certificate.Dispose();
-            foreach (var issuer in success.Issuers)
+            }
+            else
             {
-                issuer.Dispose();
+                var error = (SignCertificateResponse.Error)newCert;
+                ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                ctx.Response.ContentType = Constants.TextPlainMimeType;
+                await using var writer = new StreamWriter(ctx.Response.Body);
+                foreach (var line in error.Errors)
+                {
+                    await writer.WriteLineAsync(line).ConfigureAwait(false);
+                }
+
+                await writer.FlushAsync().ConfigureAwait(false);
             }
         }
-        else
+        catch (Exception)
         {
-            var error = (SignCertificateResponse.Error)newCert;
             ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             ctx.Response.ContentType = Constants.TextPlainMimeType;
             await using var writer = new StreamWriter(ctx.Response.Body);
-            foreach (var line in error.Errors)
-            {
-                await writer.WriteLineAsync(line).ConfigureAwait(false);
-            }
-
+            await writer.WriteLineAsync("An error occurred while processing the request.").ConfigureAwait(false);
             await writer.FlushAsync().ConfigureAwait(false);
         }
     }

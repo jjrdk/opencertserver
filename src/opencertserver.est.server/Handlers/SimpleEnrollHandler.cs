@@ -1,5 +1,4 @@
-﻿using OpenCertServer.Ca.Utils;
-using OpenCertServer.Ca.Utils.Ca;
+﻿using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.X509Extensions;
 
 namespace OpenCertServer.Est.Server.Handlers;
@@ -8,7 +7,6 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using Ca;
 using Microsoft.AspNetCore.Http;
 
 internal sealed class SimpleEnrollHandler

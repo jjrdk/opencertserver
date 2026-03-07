@@ -1,6 +1,5 @@
 using System.Formats.Asn1;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ocsp;
 using OpenCertServer.Ca.Utils.X509;

@@ -4,7 +4,6 @@ using Microsoft.IdentityModel.Tokens;
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using System;
-using System.Collections.Generic;
 using global::CertesSlim.Acme;
 
 public abstract class AcmeOptions

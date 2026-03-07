@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using OpenCertServer.Ca.Utils.X509.Templates;
-using OpenCertServer.Est.Server.Handlers;
 
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 

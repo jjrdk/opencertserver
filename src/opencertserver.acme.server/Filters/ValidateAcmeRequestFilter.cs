@@ -1,6 +1,4 @@
-using System.Text.Json;
 using CertesSlim.Json;
-using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
 using OpenCertServer.Acme.Server.Extensions;
 
 namespace OpenCertServer.Acme.Server.Filters;
@@ -8,7 +6,6 @@ namespace OpenCertServer.Acme.Server.Filters;
 using Abstractions.RequestServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.AspNetCore.Mvc.Filters;
 
 public sealed class ValidateAcmeRequestFilter : IEndpointFilter
 {

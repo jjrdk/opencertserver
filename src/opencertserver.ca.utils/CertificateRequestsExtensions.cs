@@ -2,9 +2,7 @@
 
 namespace OpenCertServer.Ca.Utils;
 
-using System;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 
 /// <summary>
 /// Defines extension methods for handling certificate requests.

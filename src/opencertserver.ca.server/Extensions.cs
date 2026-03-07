@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-
-namespace OpenCertServer.Ca.Server;
+﻿namespace OpenCertServer.Ca.Server;
 
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;

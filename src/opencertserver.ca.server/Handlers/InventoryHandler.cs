@@ -3,7 +3,6 @@ namespace OpenCertServer.Ca.Server.Handlers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
 
 public static class InventoryHandler

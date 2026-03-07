@@ -8,7 +8,6 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
-using Ca;
 using Ca.Utils;
 using Microsoft.AspNetCore.Http;
 

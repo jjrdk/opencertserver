@@ -1,7 +1,5 @@
 ﻿namespace OpenCertServer.Acme.Server.Configuration;
 
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.IO;
 
 public sealed class FileStoreOptions
