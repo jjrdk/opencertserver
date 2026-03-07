@@ -1,4 +1,3 @@
-using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
 
 namespace OpenCertServer.Est.Server;
@@ -6,7 +5,6 @@ namespace OpenCertServer.Est.Server;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography.X509Certificates;
-using Ca;
 using Handlers;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -101,7 +99,7 @@ public static class EstServerExtensions
         {
             const string? wellKnownEst = "/.well-known/est";
             var groupBuilder = endpoints.MapGroup(wellKnownEst);
-            groupBuilder.MapGet("/serverkeygen", async ctx =>
+            groupBuilder.MapPost("/serverkeygen", async ctx =>
             {
                 var handler = ctx.RequestServices.GetRequiredService<ServerKeyGenHandler>();
                 await handler.Handle(ctx);
