@@ -26,12 +26,15 @@ internal class ServerKeyGenHandler
         {
             using var reader = new StreamReader(ctx.Request.Body, Encoding.UTF8);
             var request = await reader.ReadToEndAsync().ConfigureAwait(false);
-            var csr = request.Base64DecodeBytes();
-            var signingRequest = CertificateRequest.LoadSigningRequest(
-                csr,
-                HashAlgorithmName.SHA256,
-                CertificateRequestLoadOptions.SkipSignatureValidation,
-                RSASignaturePadding.Pss);
+            var signingRequest = request.StartsWith("-----BEGIN CERTIFICATE REQUEST-----")
+                ? CertificateRequest.LoadSigningRequestPem(
+                    request,
+                    HashAlgorithmName.SHA256)
+                : CertificateRequest.LoadSigningRequest(
+                    request.Base64DecodeBytes(),
+                    HashAlgorithmName.SHA256,
+                    CertificateRequestLoadOptions.SkipSignatureValidation,
+                    RSASignaturePadding.Pss);
             using var ecdsa = ECDsa.Create();
             signingRequest = new CertificateRequest(signingRequest.SubjectName, ecdsa, HashAlgorithmName.SHA256);
             var newCert = _certificateAuthority.SignCertificateRequest(signingRequest);
