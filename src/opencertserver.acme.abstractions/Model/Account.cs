@@ -19,7 +19,7 @@ using System.Linq;
     }
 
     public string AccountId { get; }
-    public AccountStatus Status { get; private set; }
+    public AccountStatus Status { get; set; }
 
     public JsonWebKey Jwk { get; }
 

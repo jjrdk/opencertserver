@@ -172,7 +172,7 @@ public sealed class LetsEncryptClientTests
 
         var placedOrder = new PlacedOrder(null, orderContext, [challenge1, challenge2]);
 
-        var options = new LetsEncryptOptions { CertificateSigningRequest = new CsrInfo() };
+        var options = new LetsEncryptOptions { CertificateSigningRequest = new CsrInfo(), AccountPassword = "test" };
 
         var client = new AcmeClient(
             new AcmeContext(

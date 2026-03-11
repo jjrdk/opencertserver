@@ -5,7 +5,8 @@ using System.Runtime.CompilerServices;
 namespace OpenCertServer.CertServer;
 
 using System.Numerics;
-using System.Security.Cryptography.X509Certificates;using Acme.Abstractions.IssuanceServices;
+using System.Security.Cryptography.X509Certificates;
+using Acme.Abstractions.IssuanceServices;
 using Est.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -26,10 +27,23 @@ internal static class Program
         }
 
         var builder = WebApplication.CreateBuilder(args);
-        builder.Configuration.AddEnvironmentVariables().AddCommandLine(args);
-        var services = builder.Services.AddCors(o =>
-                o.AddDefaultPolicy(b =>
-                    b.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(_ => true).AllowCredentials()))
+        builder.Configuration.AddEnvironmentVariables().AddCommandLine(args)
+            .AddJsonFile("appsettings.json", true, true);
+        var services = builder.Services
+            .AddCors(options =>
+            {
+                options.AddPolicy("TrustedClients", pb =>
+                {
+                    pb
+                        .WithOrigins(
+                            builder
+                                .Configuration.GetRequiredSection("Cors")
+                                .GetValue<string[]>("TrustedOrigins")!)
+                        .AllowCredentials()
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            })
             .AddInMemoryCertificateStore();
         var port = int.TryParse(builder.Configuration.GetSection("port").Value, out var p)
             ? p
@@ -113,10 +127,7 @@ internal static class Program
             .ConfigureOptions<ConfigureJwtBearerOptions>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
             .AddHealthChecks();
-        builder.WebHost.UseKestrel(options =>
-        {
-            options.AddServerHeader = false;
-        }).UseUrls($"https://*:{port}");
+        builder.WebHost.UseKestrel(options => { options.AddServerHeader = false; }).UseUrls($"https://*:{port}");
         var app = builder.Build();
         app.UseHttpsRedirection()
             .UseCors(c => c.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(_ => true).AllowCredentials())

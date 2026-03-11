@@ -75,6 +75,6 @@ public partial class StoreBase
         newContent.Version = DateTime.UtcNow.Ticks;
     }
 
-    [GeneratedRegex(@"[\w\d_-]+", RegexOptions.Compiled)]
+    [GeneratedRegex(@"^[\w\d_-]+$", RegexOptions.Compiled)]
     protected static partial Regex IdentifierRegex();
 }

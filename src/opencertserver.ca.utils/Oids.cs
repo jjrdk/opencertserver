@@ -18,8 +18,8 @@ public static class Oids
     public const string Rsa = "1.2.840.113549.1.1.1";
     public const string RsaOaep = "1.2.840.113549.1.1.7";
     public const string RsaPss = "1.2.840.113549.1.1.10";
-    public const string RsaPkcs1Md5 = "1.2.840.113549.1.1.4";
-    public const string RsaPkcs1Sha1 = "1.2.840.113549.1.1.5";
+//    public const string RsaPkcs1Md5 = "1.2.840.113549.1.1.4";
+//    public const string RsaPkcs1Sha1 = "1.2.840.113549.1.1.5";
     public const string RsaPkcs1Sha256 = "1.2.840.113549.1.1.11";
     public const string RsaPkcs1Sha384 = "1.2.840.113549.1.1.12";
     public const string RsaPkcs1Sha512 = "1.2.840.113549.1.1.13";
@@ -92,7 +92,7 @@ public static class Oids
     public const string EcChar2TrinomialBasis = "1.2.840.10045.1.2.3.2";
     public const string EcChar2PentanomialBasis = "1.2.840.10045.1.2.3.3";
     public const string EcPublicKey = "1.2.840.10045.2.1";
-    public const string ECDsaWithSha1 = "1.2.840.10045.4.1";
+//    public const string ECDsaWithSha1 = "1.2.840.10045.4.1";
     public const string ECDsaWithSha256 = "1.2.840.10045.4.3.2";
     public const string ECDsaWithSha384 = "1.2.840.10045.4.3.3";
     public const string ECDsaWithSha512 = "1.2.840.10045.4.3.4";

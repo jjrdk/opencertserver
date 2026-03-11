@@ -15,7 +15,7 @@ public sealed class CertificateValidatorTests
     public void IsCertificateValid_OnNullCert_ShouldReturnFalse()
     {
         var certificateValidator = new CertificateValidator(
-            new LetsEncryptOptions { CertificateSigningRequest = new CsrInfo() },
+            new LetsEncryptOptions { CertificateSigningRequest = new CsrInfo(), AccountPassword = "test" },
             new NullLogger<CertificateValidator>());
 
         Assert.False(certificateValidator.IsCertificateValid(null));
@@ -30,7 +30,8 @@ public sealed class CertificateValidatorTests
             {
                 CertificateSigningRequest = new CsrInfo(),
                 TimeUntilExpiryBeforeRenewal = vs.TimeUntilExpiryBeforeRenewal,
-                TimeAfterIssueDateBeforeRenewal = vs.TimeAfterIssueDateBeforeRenewal
+                TimeAfterIssueDateBeforeRenewal = vs.TimeAfterIssueDateBeforeRenewal,
+                AccountPassword = "test"
             },
             new NullLogger<CertificateValidator>());
 

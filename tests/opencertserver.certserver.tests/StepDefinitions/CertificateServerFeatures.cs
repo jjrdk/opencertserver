@@ -64,7 +64,7 @@ public partial class CertificateServerFeatures
                 .AddInMemoryCertificateStore()
                 .AddSelfSignedCertificateAuthority(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"])
                 .AddEstServer<TestCsrAttributesHandler>()
-                .AddSingleton(sp=>sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates())
+                .AddSingleton(sp => sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates())
                 .AddAcmeServer(ctx.Configuration, _ => _server.CreateClient(),
                     new AcmeServerOptions
                         { HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false } })
@@ -122,7 +122,8 @@ public partial class CertificateServerFeatures
                 Email = "test@test.com",
                 Domains = ["localhost"],
                 KeyAlgorithm = keyAlgorithm,
-                CertificateSigningRequest = new CsrInfo { CommonName = "test", CountryName = "DK" }
+                CertificateSigningRequest = new CsrInfo { CommonName = "test", CountryName = "DK" },
+                AccountPassword = "test"
             },
             _server.CreateClient(),
             NullLoggerFactory.Instance);

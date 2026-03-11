@@ -32,7 +32,8 @@ public sealed class ResolutionTests
                                 Organization = "OrganizationStuff",
                                 OrganizationUnit = "OrganizationUnitStuff",
                                 State = "StateStuff"
-                            }
+                            },
+                            AccountPassword = "test"
                         });
                         services.AddTransient<HttpClient>();
                         services.AddAcmeFileCertificatePersistence();

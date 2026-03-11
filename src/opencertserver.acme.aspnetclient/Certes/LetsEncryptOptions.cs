@@ -8,6 +8,14 @@ using global::CertesSlim.Acme;
 
 public abstract class AcmeOptions
 {
+    /// <summary>
+    /// Gets the password used to encrypt the private key of the certificate. This is required to be able to export the certificate with the private key, which is necessary for most use cases. If you do not want to encrypt the private key, set this to an empty string.
+    /// </summary>
+    public required string AccountPassword { get; init; }
+
+    /// <summary>
+    /// Gets the domains to request certificates for.
+    /// </summary>
     public string[] Domains { get; init; } = [];
 
     /// <summary>

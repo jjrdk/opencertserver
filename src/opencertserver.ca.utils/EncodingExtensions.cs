@@ -395,11 +395,12 @@ public static class EncodingExtensions
         {
             return hashAlgorithmName.Name switch
             {
-                "MD5" => MD5.Create(),
-                "SHA1" => SHA1.Create(),
                 "SHA256" => SHA256.Create(),
+                "SHA3-256" => SHA3_256.Create(),
                 "SHA384" => SHA384.Create(),
+                "SHA3-384" => SHA3_384.Create(),
                 "SHA512" => SHA512.Create(),
+                "SHA3-512" => SHA3_512.Create(),
                 _ => throw new CryptographicException($"Unsupported hash algorithm: {hashAlgorithmName.Name}")
             };
         }
@@ -411,8 +412,11 @@ public static class EncodingExtensions
                 "MD5" => Oids.Md5.InitializeOid(),
                 "SHA1" => Oids.Sha1.InitializeOid(),
                 "SHA256" => Oids.Sha256.InitializeOid(),
+                "SHA3-256" => Oids.Sha3_256.InitializeOid(),
                 "SHA384" => Oids.Sha384.InitializeOid(),
+                "SHA3-384" => Oids.Sha3_384.InitializeOid(),
                 "SHA512" => Oids.Sha512.InitializeOid(),
+                "SHA3-512" => Oids.Sha3_512.InitializeOid(),
                 _ => throw new CryptographicException($"Unsupported hash algorithm: {hashAlgorithmName.Name}")
             };
         }

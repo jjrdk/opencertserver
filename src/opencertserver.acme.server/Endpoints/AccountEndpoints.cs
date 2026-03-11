@@ -29,10 +29,14 @@ public static class AccountEndpoints
             if (payload.OnlyReturnExisting)
             {
                 var account = await accountService.FindAccount(header.Jwk!, cancellationToken);
+                if (account == null)
+                {
+                    return Results.NotFound();
+                }
                 var routeDic =
-                    new RouteValueDictionary([KeyValuePair.Create<string, string?>("accountId", account?.AccountId)]);
+                    new RouteValueDictionary([KeyValuePair.Create<string, string?>("accountId", account.AccountId)]);
                 var ordersUrl = links.GetPathByName("OrderList", routeDic) ?? string.Empty;
-                var accountResponse = new Account(account!, ordersUrl);
+                var accountResponse = new Account(account, ordersUrl);
                 return Results.Ok(accountResponse);
             }
             else

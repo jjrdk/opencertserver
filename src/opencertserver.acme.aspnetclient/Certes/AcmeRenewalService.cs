@@ -1,4 +1,3 @@
-
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using System;
@@ -59,7 +58,8 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
             await lifecycleHook.OnStart();
         }
 
-        _timer = new Timer(_ => RunOnceWithErrorHandling().GetAwaiter().GetResult(), null, Timeout.InfiniteTimeSpan, TimeSpan.FromHours(1));
+        _timer = new Timer(_ => RunOnceWithErrorHandling().GetAwaiter().GetResult(), null, Timeout.InfiniteTimeSpan,
+            TimeSpan.FromHours(1));
 
         _lifetime.ApplicationStarted.Register(OnApplicationStarted);
     }
@@ -75,7 +75,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         }
     }
 
-    public async Task RunOnce()
+    public async Task RunOnce(string password)
     {
         if (_semaphoreSlim.CurrentCount == 0)
         {
@@ -86,8 +86,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
 
         try
         {
-            // TODO: set password
-            var result = await _certificateProvider.RenewCertificateIfNeeded("TODO",Certificate);
+            var result = await _certificateProvider.RenewCertificateIfNeeded(password, Certificate);
 
             if (result.Status != Unchanged)
             {
@@ -138,7 +137,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         try
         {
             LogAcmerenewalserviceTimerCallbackStarting();
-            await RunOnce();
+            await RunOnce(_options.AccountPassword);
             _timer?.Change(TimeSpan.FromHours(1), TimeSpan.FromHours(1));
         }
         catch (Exception e) when (_options.RenewalFailMode != RenewalFailMode.Unhandled)
@@ -156,7 +155,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         LogAcmerenewalserviceApplicationStarted();
         _timer?.Change(_options.RenewalServiceStartupDelay, TimeSpan.FromHours(1));
     }
-    
+
     ~AcmeRenewalService()
     {
         Dispose();

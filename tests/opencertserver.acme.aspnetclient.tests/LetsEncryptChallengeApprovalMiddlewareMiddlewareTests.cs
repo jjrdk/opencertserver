@@ -54,7 +54,8 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
                                     Organization = "OrganizationStuff",
                                     OrganizationUnit = "OrganizationUnitStuff",
                                     State = "StateStuff"
-                                }
+                                },
+                                AccountPassword = "test"
                             })
                         .AddAcmeInMemoryCertificatesPersistence()
                         .AddAcmeMemoryChallengePersistence();
