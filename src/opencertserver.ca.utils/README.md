@@ -1,6 +1,8 @@
 # opencertserver.ca.utils
 
-This project contains utility classes and helpers for X.509 certificate and PKI operations used throughout the OpenCertServer ecosystem. It provides reusable code for encoding, parsing, and handling certificates and related data structures.
+This project contains utility classes and helpers for X.509 certificate and PKI operations used throughout the 
+OpenCertServer ecosystem. It provides reusable code for encoding, parsing, and handling certificates and related data 
+structures.
 
 ## Functionality
 - X.509 certificate utilities
