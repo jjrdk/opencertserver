@@ -8,6 +8,7 @@
   - `src/opencertserver.certserver`: Main web app, hosts ACME, CA, and EST endpoints.
   - `src/opencertserver.acme.server`: ACME server implementation (certificate issuance, challenge handling).
   - `src/opencertserver.ca`: Core CA logic (issuance, validation, revocation).
+  - `src/opencertserver.ca.server`: ASP.NET Core web server for CA endpoints (certificate issuance, management, authentication).
   - `src/opencertserver.est.server`: EST server implementation (secure certificate enrollment).
   - `src/CertesSlim`: Lightweight ACME client library.
   - `src/web`: Angular web UI for certificate management.
@@ -23,13 +24,11 @@
 ### Developer Workflows
 - **Build:** Use `build.sh` (Mac/Linux) or `build.ps1` (Windows) in project root to compile and package all components.
 - **Test:** Tests are located in `tests/` directories; run with standard .NET test tools.
-- **Web UI:**
-  - Install dependencies: `npm install` in `web/`
-  - Start dev server: `npm start` (Angular, port 4200)
-  - Configure OIDC and API endpoints in `web/src/config.json`
-- **Deployment:**
-  - Main server: Deploy `certserver` web app
-  - Lambda: Use `lambda2` for AWS serverless
+  - **Web UI:**
+    - See `web/README.md` for full setup, OIDC configuration, and build instructions.
+  - **Deployment:**
+    - Main server: Deploy `certserver` web app
+    - Lambda: Use `lambda2` for AWS serverless (preferred) or `lambda` for legacy/alternative scenarios
 
 ### Project-Specific Conventions
 - **Environment Variables:** Use double underscores (`__`) for hierarchical config (e.g., `RSA_PEM`, `WEB_KEY`).
@@ -46,11 +45,13 @@
 - **External:** DnsClient, Amazon.Lambda.AspNetCoreServer, Angular Material
 
 ### Key Files & Directories
-- `README.md` (root): High-level overview, build instructions
-- `src/opencertserver.certserver/`: Main entry point
-- `src/web/`: Angular UI, OIDC/API config
-- `build/`: Build scripts and context
-- `tests/`: Test suites for all major components
+  - `README.md` (root): High-level overview, build instructions
+  - `src/opencertserver.certserver/`: Main entry point
+  - `src/opencertserver.ca.server/`: CA web server endpoints
+  - `src/web/`: Angular UI, OIDC/API config
+  - `build/`: Build scripts and context
+  - `build/opencertserver.build/`: Build automation and context
+  - `tests/`: Test suites for all major components
 
 ---
 For further details, consult component-specific README files and configuration examples. Follow established patterns for authentication, middleware, and persistence. Use build scripts for packaging and deployment.
