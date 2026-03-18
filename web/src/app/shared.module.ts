@@ -33,6 +33,7 @@ import { RevokeComponent } from './pages/revoke/revoke.component';
 import { CaCertificatesComponent } from './pages/ca-certificates/ca-certificates.component';
 import { CertificatePolicyComponent } from './pages/certificate-policy/certificate-policy.component';
 import { CertificationPracticeStatementComponent } from './pages/certification-practice-statement/certification-practice-statement.component';
+import { DataUseComponent } from './pages/data-use/data-use.component';
 import { CsrAttributesComponent } from './pages/csr-attributes/csr-attributes.component';
 import { EnrollComponent } from './pages/enroll/enroll.component';
 import { ServerKeygenComponent } from './pages/server-keygen/server-keygen.component';
@@ -44,6 +45,7 @@ import { ServerKeygenComponent } from './pages/server-keygen/server-keygen.compo
     RevokeComponent,
     CaCertificatesComponent,
     CertificatePolicyComponent,
+    DataUseComponent,
     CertificationPracticeStatementComponent,
     CsrAttributesComponent,
     EnrollComponent,
@@ -78,6 +80,7 @@ import { ServerKeygenComponent } from './pages/server-keygen/server-keygen.compo
     RevokeComponent,
     CaCertificatesComponent,
     CertificatePolicyComponent,
+    DataUseComponent,
     CertificationPracticeStatementComponent,
     CsrAttributesComponent,
     EnrollComponent,

@@ -15,4 +15,8 @@ export class DocumentService {
   getCertificationPracticeStatement(): Observable<string> {
     return this.http.get('/assets/docs/opencertserver_cps.md', { responseType: 'text' });
   }
+
+  getDataUse(): Observable<string> {
+    return this.http.get('/assets/docs/opencertserver_data_use.md', { responseType: 'text' });
+  }
 }

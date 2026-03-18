@@ -6,6 +6,7 @@ import { RevokeComponent } from './pages/revoke/revoke.component';
 import { CaCertificatesComponent } from './pages/ca-certificates/ca-certificates.component';
 import { CertificatePolicyComponent } from './pages/certificate-policy/certificate-policy.component';
 import { CertificationPracticeStatementComponent } from './pages/certification-practice-statement/certification-practice-statement.component';
+import { DataUseComponent } from './pages/data-use/data-use.component';
 import { authGuard } from './guards/auth.guard';
 import { CsrAttributesComponent } from './pages/csr-attributes/csr-attributes.component';
 import { EnrollComponent } from './pages/enroll/enroll.component';
@@ -18,6 +19,7 @@ export const routes: Routes = [
   { path: 'ca-certificates', component: CaCertificatesComponent },
   { path: 'revoke', component: RevokeComponent, canActivate: [authGuard] },
   { path: 'certificate-policy', component: CertificatePolicyComponent },
+  { path: 'data-use', component: DataUseComponent },
   { path: 'certification-practice-statement', component: CertificationPracticeStatementComponent },
   { path: 'csr-attributes', component: CsrAttributesComponent, canActivate: [authGuard] },
   { path: 'enroll', component: EnrollComponent, canActivate: [authGuard] },
