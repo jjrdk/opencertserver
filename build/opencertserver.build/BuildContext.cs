@@ -16,6 +16,6 @@ public sealed class BuildContext : FrostingContext
         : base(context)
     {
         Environment.WorkingDirectory = Environment.WorkingDirectory.Combine("..").Combine("..").Collapse();
-        BuildConfiguration = context.Arguments.GetArguments("configuration").FirstOrDefault() ?? "Debug";
+        BuildConfiguration = context.Arguments.GetArguments("configuration").FirstOrDefault() ?? "Release";
     }
 }
