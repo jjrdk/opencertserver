@@ -19,7 +19,7 @@ public sealed class LinuxDockerBuildTask : FrostingTask<BuildContext>
             SelfContained = true,
             Framework = "net10.0",
             Configuration = context.BuildConfiguration,
-            OutputDirectory = "./artifacts/publish/linux-musl-x64/"
+            OutputDirectory = "./artifacts/publish/server/linux-musl-x64/"
         };
 
         context.DotNetPublish("./src/opencertserver.certserver/opencertserver.certserver.csproj", publishSettings);
