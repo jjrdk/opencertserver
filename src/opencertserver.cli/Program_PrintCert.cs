@@ -21,6 +21,11 @@ internal static partial class Program
 
     private static Task PrintCert(string? certPath)
     {
+        if (certPath == null)
+        {
+            Console.WriteLine("No certificate specified.");
+            return Task.CompletedTask;
+        }
         try
         {
             var p = Path.GetFullPath(certPath);
