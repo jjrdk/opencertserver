@@ -1,10 +1,7 @@
 using System;
 using System.CommandLine;
 using System.IO;
-using System.Linq;
-using System.Net;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using OpenCertServer.Ca.Utils;
 
