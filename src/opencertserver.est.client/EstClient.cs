@@ -82,7 +82,8 @@ public sealed class EstClient : IDisposable
         var certRequest = CreateCertificateRequest(
             certificate.SubjectName,
             key,
-            certificate.Extensions.OfType<X509KeyUsageExtension>().First().KeyUsages);
+            certificate.Extensions.OfType<X509KeyUsageExtension>()
+                .Aggregate(X509KeyUsageFlags.None, (flags, ext) => flags | ext.KeyUsages));
 
         var content = new StringContent(certRequest.ToPkcs10(), Encoding.UTF8, "application/pkcs10-mime");
         var requestUriBuilder = new UriBuilder(

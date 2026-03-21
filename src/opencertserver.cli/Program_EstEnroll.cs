@@ -1,7 +1,6 @@
 using System;
 using System.CommandLine;
 using System.IO;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
@@ -109,7 +108,7 @@ internal static partial class Program
                 var csrInput = CollectCsrInput(parse, csrOptions, Console.Out, Console.In);
                 var request = BuildCertificateRequest(key, csrInput, Console.Out);
 
-                using var estClient = new EstClient(baseUri);
+                using var estClient = new EstClient(baseUri, MessageHandlerFactory());
                 var (error, certCollection) = await estClient.Enroll(
                     request.SubjectName,
                     key,
