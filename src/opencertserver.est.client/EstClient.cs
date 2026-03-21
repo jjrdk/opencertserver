@@ -66,7 +66,7 @@ public sealed class EstClient : IDisposable
     }
 
     /// <summary>
-    /// Re-enrolls, i.e. renews, a certificate from the EST server.
+    /// Re-enrolls, i.e., renews, a certificate from the EST server.
     /// </summary>
     /// <param name="key">The <see cref="AsymmetricAlgorithm"/> key to sign the request.</param>
     /// <param name="certificate">The <see cref="X509Certificate2"/> to re-enroll.</param>

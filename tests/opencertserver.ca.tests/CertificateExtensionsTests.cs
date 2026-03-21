@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -72,6 +73,33 @@ namespace OpenCertServer.Ca.Tests
             Assert.Contains("X509v3 Extended Key Usage", text);
             // EKU mapped friendly name for serverAuth
             Assert.Contains("TLS Web Server Authentication", text);
+        }
+
+        [Fact]
+        public void PrintCertificate_SerialNumberUsesColonSeparatedHex()
+        {
+            using var key = RSA.Create(2048);
+            var name = new X500DistinguishedName("CN=serial.example.com,O=SerialTest");
+            var request = new CertificateRequest(name, (RSA)key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            var notBefore = DateTimeOffset.UtcNow.AddMinutes(-5).DateTime;
+            var notAfter = DateTimeOffset.UtcNow.AddYears(1).DateTime;
+            using var cert = request.CreateSelfSigned(notBefore, notAfter);
+
+            var text = cert.PrintCertificate();
+
+            Assert.Contains("Serial Number:", text);
+            var serial = cert.SerialNumber;
+            if (serial.Length % 2 != 0)
+            {
+                serial = "0" + serial;
+            }
+
+            var colonSerial = string.Join(
+                ":",
+                Enumerable.Range(0, serial.Length / 2)
+                    .Select(i => serial.Substring(i * 2, 2).ToLowerInvariant()));
+
+            Assert.Contains(colonSerial, text);
         }
     }
 }

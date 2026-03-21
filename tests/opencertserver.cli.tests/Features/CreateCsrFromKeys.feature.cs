@@ -17,7 +17,7 @@ namespace opencertserver.cli.tests.Features
     
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Reqnroll", "3.0.0.0")]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    public partial class OpenCertServerCLIFeature : object, Xunit.IClassFixture<OpenCertServerCLIFeature.FixtureData>, Xunit.IAsyncLifetime
+    public partial class CreateCSRFromKeyPairFeature : object, Xunit.IClassFixture<CreateCSRFromKeyPairFeature.FixtureData>, Xunit.IAsyncLifetime
     {
         
         private global::Reqnroll.ITestRunner testRunner;
@@ -26,13 +26,14 @@ namespace opencertserver.cli.tests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "OpenCertServer CLI", "  As a user of the OpenCertServer CLI\n  I want to run certificate commands from t" +
-                "he command line\n  So that I can automate certificate operations", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "Create CSR from key pair", "  As an automation user\n  I want to create a CSR using existing public/private ke" +
+                "y files\n  So that pre-generated key pairs can be re-used without interactive pro" +
+                "mpts", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
-#line 1 "OpenCertServerCli.feature"
+#line 1 "CreateCsrFromKeys.feature"
 #line hidden
         
-        public OpenCertServerCLIFeature(OpenCertServerCLIFeature.FixtureData fixtureData, Xunit.ITestOutputHelper testOutputHelper)
+        public CreateCSRFromKeyPairFeature(CreateCSRFromKeyPairFeature.FixtureData fixtureData, Xunit.ITestOutputHelper testOutputHelper)
         {
             this._testOutputHelper = testOutputHelper;
         }
@@ -106,7 +107,7 @@ namespace opencertserver.cli.tests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/OpenCertServerCli.feature.ndjson", 4);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CreateCsrFromKeys.feature.ndjson", 3);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -134,15 +135,15 @@ namespace opencertserver.cli.tests.Features
             await this.TestTearDownAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="Print certificate details")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "OpenCertServer CLI")]
-        [global::Xunit.TraitAttribute("Description", "Print certificate details")]
-        public async global::System.Threading.Tasks.Task PrintCertificateDetails()
+        [global::Xunit.FactAttribute(DisplayName="Create CSR from matching key files")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Create CSR from key pair")]
+        [global::Xunit.TraitAttribute("Description", "Create CSR from matching key files")]
+        public async global::System.Threading.Tasks.Task CreateCSRFromMatchingKeyFiles()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "0";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Print certificate details", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Create CSR from matching key files", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 6
@@ -156,42 +157,10 @@ namespace opencertserver.cli.tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 7
-    await testRunner.WhenAsync("I run the CLI with \"print-cert --cert test.crt\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync(@"I run the CLI with ""create-csr-from-keys --private-key ca.key --public-key ca.crt --out <TEMP_OUT> --C US --ST WA --L Redmond --O OpenCertServer --OU CLI --CN cli.example.com --E admin@example.com --san cli.example.com,127.0.0.1 --key-usage digitalSignature --eku serverAuth""", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 8
-    await testRunner.ThenAsync("the output should contain \"Certificate:\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="Sign a CSR")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "OpenCertServer CLI")]
-        [global::Xunit.TraitAttribute("Description", "Sign a CSR")]
-        public async global::System.Threading.Tasks.Task SignACSR()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "1";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sign a CSR", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 10
-  this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 11
-    await testRunner.WhenAsync("I run the CLI with \"sign-csr --csr test.csr --ca-key ca.key --ca-cert ca.crt --ou" +
-                        "t signed.crt\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 12
-    await testRunner.ThenAsync("the certificate \"signed.crt\" should exist", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the file \"<TEMP_OUT>\" should exist and contain CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -204,12 +173,12 @@ namespace opencertserver.cli.tests.Features
             
             async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
             {
-                await OpenCertServerCLIFeature.FeatureSetupAsync();
+                await CreateCSRFromKeyPairFeature.FeatureSetupAsync();
             }
             
             async System.Threading.Tasks.ValueTask System.IAsyncDisposable.DisposeAsync()
             {
-                await OpenCertServerCLIFeature.FeatureTearDownAsync();
+                await CreateCSRFromKeyPairFeature.FeatureTearDownAsync();
             }
         }
     }
