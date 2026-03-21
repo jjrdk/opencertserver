@@ -4,7 +4,6 @@ using System;
 using System.CommandLine;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
 // for ToPkcs10 extension
 using System.Threading.Tasks;
 
@@ -24,6 +23,7 @@ namespace opencertserver.cli
             CreateSignCsrCommand(rootCommand);
             CreateEstEnrollCommand(rootCommand);
             CreateEstReEnrollCommand(rootCommand);
+            CreateEstServerCertificatesCommand(rootCommand);
 
             // Add more commands as needed
 

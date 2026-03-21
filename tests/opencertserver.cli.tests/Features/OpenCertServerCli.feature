@@ -22,3 +22,8 @@ Feature: OpenCertServer CLI
     When I run the CLI with "est-reenroll --url https://test --private-key <GENERATE_KEY> --cert <TEMP_OUT> --out <TEMP_REENROLL_OUT>"
     Then the certificate "<TEMP_REENROLL_OUT>" should exist
 
+  Scenario: Fetch EST server certificates
+    Given an EST server
+    When I run the CLI with "est-server-certificates --url https://test"
+    Then the output should contain "-----BEGIN CERTIFICATE-----"
+
