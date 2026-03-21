@@ -13,6 +13,7 @@
   - `src/CertesSlim`: Lightweight ACME client library.
   - `src/web`: Angular web UI for certificate management.
   - `src/opencertserver.lambda2`: AWS Lambda entry point for serverless deployment.
+  - `src/opencertserver.cli`: Cross-platform CLI for issuing certificate commands (print, CSR generation/signing, EST enroll).
 - Utility and abstraction projects (`ca.utils`, `acme.abstractions`, etc.) provide shared models and helpers.
 
 ### Service Boundaries & Data Flows
@@ -22,6 +23,14 @@
 - Lambda entry points adapt the server for AWS API Gateway/ALB.
 
 ### Developer Workflows
+- **Implement:** Follow established patterns for adding new endpoints or features:
+  - Define models in `ca.utils` or relevant abstraction projects.
+  - Implement core logic in `ca.server` or `acme.server`.
+  - Expose via middleware in `certserver` and configure authentication as needed.
+  - Implement features using the least amount of changes to existing code, favoring composition and extension over modification.
+  - Where possible, use functional patterns and dependency injection to keep components decoupled and testable.
+  - Add tests in the appropriate `tests/` project, using existing fixtures and patterns.
+  - All tests must be in BDD style with Reqnroll `.feature` files and step definitions. Make sure the defined steps match the required test scenarios and that the fixtures used are relevant to the tests being implemented.
 - **Build:** Use `build.sh` (Mac/Linux) or `build.ps1` (Windows) in project root to compile and package all components.
 - **Test:** Tests are located in `tests/` directories; run with standard .NET test tools.
   - **Web UI:**
@@ -29,6 +38,7 @@
   - **Deployment:**
     - Main server: Deploy `certserver` web app
     - Lambda: Use `lambda2` for AWS serverless (preferred) or `lambda` for legacy/alternative scenarios
+  - **CLI BDD:** `tests/opencertserver.cli.tests` drives Reqnroll `.feature` files (under `tests/opencertserver.cli.tests/Features`) to exercise the CLI in-process, reusing prepared PEM fixtures such as `test.crt`, `test.csr`, `ca.key`, and `ca.crt`.
 
 ### Project-Specific Conventions
 - **Environment Variables:** Use double underscores (`__`) for hierarchical config (e.g., `RSA_PEM`, `WEB_KEY`).
@@ -43,6 +53,8 @@
 - **CertesSlim**: Used for ACME protocol operations
 - **CA Utilities**: Shared X.509/PKI helpers in `ca.utils`
 - **External:** DnsClient, Amazon.Lambda.AspNetCoreServer, Angular Material
+  - **EST client & CLI:** `opencertserver.cli` uses `src/opencertserver.est.client/EstClient` for EST enrollment and relies on `ca.utils` helpers for CSR formatting.
+  - **Certificate formatting:** `src/opencertserver.ca.utils/CertificateExtensions` exposes `PrintCertificate()` which now returns formatted strings consumed by the CLI and referenced in the new CA tests.
 
 ### Key Files & Directories
   - `README.md` (root): High-level overview, build instructions
@@ -52,6 +64,8 @@
   - `build/`: Build scripts and context
   - `build/opencertserver.build/`: Build automation and context
   - `tests/`: Test suites for all major components
+      - `src/opencertserver.cli/`: CLI entry that wires commands (`print-cert`, `create-csr`, `create-csr-from-keys`, `sign-csr`, `est-enroll`) through `System.CommandLine` to the shared CA helpers.
+      - `tests/opencertserver.cli.tests/`: Reqnroll-powered BDD suite with `.feature` files (under `Features/`), generated code, and step definitions that exercise the CLI commands; includes PEM fixtures such as `ca.key`, `ca.crt`, `test.crt`, and `test.csr`.
 
 ---
 For further details, consult component-specific README files and configuration examples. Follow established patterns for authentication, middleware, and persistence. Use build scripts for packaging and deployment.
