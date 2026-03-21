@@ -33,6 +33,5 @@
   <Project Path="src\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
   <Project Path="src\opencertserver.ca\opencertserver.ca.csproj" />
   <Project Path="src\opencertserver.est.client\opencertserver.est.client.csproj" />
-  <Project Path="src\opencertserver.est.tool\opencertserver.est.tool.csproj" />
   <Project Path="src\opencertserver.lambda\opencertserver.lambda.csproj" />
 </Solution>
