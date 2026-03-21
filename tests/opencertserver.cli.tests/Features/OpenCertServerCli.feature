@@ -9,4 +9,5 @@ Feature: OpenCertServer CLI
 
   Scenario: Sign a CSR
     When I run the CLI with "sign-csr --csr test.csr --ca-key ca.key --ca-cert ca.crt --out signed.crt"
-    Then the output should contain "Signing CSR: test.csr with CA key: ca.key and CA cert: ca.crt. Output: signed.crt"
+    Then the certificate "signed.crt" should exist
+

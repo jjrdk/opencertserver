@@ -79,8 +79,8 @@ public static class CertificateExtensions
                         string expStr;
                         if (exponent.Length <= 8)
                         {
-                            long dec = 0;
-                            for (int i = 0; i < exponent.Length; i++) dec = (dec << 8) + exponent[i];
+                            var dec = exponent.Aggregate<byte, long>(0, (current, t) => (current << 8) + t);
+
                             expStr = $"{dec} ({expHex})";
                         }
                         else
@@ -205,7 +205,7 @@ public static class CertificateExtensions
         if (data.Length == 0) return indent + "<none>\n";
         var hexPairs = data.Select(b => b.ToString("x2")).ToArray();
         var sb = new StringBuilder();
-        for (int i = 0; i < hexPairs.Length; i += bytesPerLine)
+        for (var i = 0; i < hexPairs.Length; i += bytesPerLine)
         {
             var slice = hexPairs.Skip(i).Take(bytesPerLine);
             sb.AppendLine($"{indent}{string.Join(sep, slice)}");
@@ -216,12 +216,12 @@ public static class CertificateExtensions
 
     private static int LeadingZeroCount(byte[] data)
     {
-        int i = 0;
+        var i = 0;
         while (i < data.Length && data[i] == 0) i++;
         return i;
     }
 
-    private static IEnumerable<string> KeyUsageNames(X509KeyUsageFlags flags)
+    private static List<string> KeyUsageNames(X509KeyUsageFlags flags)
     {
         var list = new List<string>();
         if (flags.HasFlag(X509KeyUsageFlags.DigitalSignature)) list.Add("Digital Signature");
@@ -269,7 +269,7 @@ public static class CertificateExtensions
         if (data.Length == 0) return indent + "<none>\n";
 
         var sb = new StringBuilder();
-        int offset = 0;
+        var offset = 0;
         while (offset < data.Length)
         {
             var line = data.Skip(offset).Take(16).ToArray();

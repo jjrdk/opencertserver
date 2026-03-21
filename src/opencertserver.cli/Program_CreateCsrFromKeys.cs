@@ -1,10 +1,7 @@
 using System;
 using System.CommandLine;
 using System.IO;
-using System.Linq;
-using System.Net;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using OpenCertServer.Ca.Utils;
 
@@ -12,22 +9,27 @@ namespace opencertserver.cli;
 
 internal static partial class Program
 {
-    private static void CreateCreateCsrCommand(RootCommand rootCommand)
+    private static void CreateCsrFromKeysCommand(RootCommand rootCommand)
     {
         var privateKeyOption = new Option<string>("--private-key")
         {
             Description = "Path to the private key file (PEM)"
         };
+        var publicKeyOption = new Option<string>("--public-key")
+        {
+            Description = "Path to the public key or certificate file (PEM or DER)"
+        };
         var outOption = new Option<string>("--out")
         {
-            DefaultValueFactory = _ => "csr.pem",
+            DefaultValueFactory = _ => "csr-from-keys.pem",
             Description = "Output path for the CSR (PEM)"
         };
 
         var csrOptions = CreateCsrOptions();
-        var cmd = new Command("create-csr", "Create a CSR from a private key (interactive)")
+        var cmd = new Command("create-csr-from-keys", "Create a CSR from a public/private key pair")
         {
             privateKeyOption,
+            publicKeyOption,
             outOption,
             csrOptions.Country,
             csrOptions.State,
@@ -44,18 +46,25 @@ internal static partial class Program
             csrOptions.Subject,
             csrOptions.RsaPadding
         };
-        cmd.SetAction(CreateCsr);
+        cmd.SetAction(CreateCsrFromKeys);
 
         rootCommand.Add(cmd);
 
-        async Task CreateCsr(ParseResult parse)
+        async Task CreateCsrFromKeys(ParseResult parse)
         {
             var privateKey = parse.GetValue(privateKeyOption);
+            var publicKey = parse.GetValue(publicKeyOption);
             var outPath = parse.GetValue(outOption);
 
             if (string.IsNullOrWhiteSpace(privateKey) || !File.Exists(privateKey))
             {
                 Console.WriteLine("Private key file is required and must exist (--private-key path).");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(publicKey) || !File.Exists(publicKey))
+            {
+                Console.WriteLine("Public key file is required and must exist (--public-key path).");
                 return;
             }
 
@@ -67,10 +76,17 @@ internal static partial class Program
 
             try
             {
-                using var key = LoadPrivateKeyFromPem(privateKey);
-                EnsureHasPrivateKey(key);
+                using var privateKeyAlg = LoadPrivateKeyFromPem(privateKey);
+                EnsureHasPrivateKey(privateKeyAlg);
+                using var publicKeyAlg = LoadPublicKeyFromPem(publicKey);
+                if (!KeysMatch(privateKeyAlg, publicKeyAlg))
+                {
+                    Console.WriteLine("Private key does not match the provided public key.");
+                    return;
+                }
+
                 var csrInput = CollectCsrInput(parse, csrOptions, Console.Out, Console.In);
-                var request = BuildCertificateRequest(key, csrInput, Console.Out);
+                var request = BuildCertificateRequest(privateKeyAlg, csrInput, Console.Out);
                 var pem = request.ToPkcs10();
 
                 var directoryName = string.IsNullOrWhiteSpace(outPath) ? null : Path.GetDirectoryName(outPath);
@@ -80,7 +96,7 @@ internal static partial class Program
                 }
 
                 await File.WriteAllTextAsync(outPath!, pem);
-                Console.WriteLine($"CSR written to {outPath}");
+                Console.WriteLine($"CSR written to {outPath} using public key from {publicKey}");
             }
             catch (Exception ex)
             {
@@ -88,56 +104,9 @@ internal static partial class Program
             }
         }
     }
-
-    internal static AsymmetricAlgorithm LoadPrivateKeyFromPem(string privateKeyPath)
-    {
-        var pem = File.ReadAllText(privateKeyPath);
-        // Prefer RSA, then EC
-        if (pem.Contains("RSA PRIVATE KEY", StringComparison.Ordinal) ||
-            pem.Contains("BEGIN PRIVATE KEY", StringComparison.Ordinal) ||
-            pem.Contains("BEGIN ENCRYPTED PRIVATE KEY", StringComparison.Ordinal))
-        {
-            var rsa = RSA.Create();
-            try
-            {
-                rsa.ImportFromPem(pem);
-                return rsa;
-            }
-            catch
-            {
-                rsa.Dispose();
-                throw;
-            }
-        }
-
-        if (pem.Contains("EC PRIVATE KEY", StringComparison.Ordinal) ||
-            pem.Contains("BEGIN EC PRIVATE KEY", StringComparison.Ordinal))
-        {
-            var ecdsa = ECDsa.Create();
-            try
-            {
-                ecdsa.ImportFromPem(pem);
-                return ecdsa;
-            }
-            catch
-            {
-                ecdsa.Dispose();
-                throw;
-            }
-        }
-
-        // Fall back: try to parse as RSA/PKCS#8
-        try
-        {
-            var rsa2 = RSA.Create();
-            rsa2.ImportFromPem(pem);
-            return rsa2;
-        }
-        catch
-        {
-            var ecdsa2 = ECDsa.Create();
-            ecdsa2.ImportFromPem(pem);
-            return ecdsa2;
-        }
-    }
 }
+
+
+
+
+

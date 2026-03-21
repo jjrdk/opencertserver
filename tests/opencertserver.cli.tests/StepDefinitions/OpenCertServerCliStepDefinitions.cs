@@ -147,5 +147,17 @@ namespace opencertserver.cli.tests.StepDefinitions
             Assert.True(File.Exists(path), $"expected CSR file to exist at {path}");
             Assert.StartsWith("-----BEGIN CERTIFICATE REQUEST-----", File.ReadAllText(path).Trim());
         }
+
+        [Then("the certificate \"(.*)\" should exist")]
+        public void ThenTheCertificateShouldExist(string path)
+        {
+            if (path == "<TEMP_OUT>")
+            {
+                path = _tempOutPath ?? path;
+            }
+
+            Assert.True(File.Exists(path), $"expected certificate to exist at {path}");
+            Assert.StartsWith("-----BEGIN CERTIFICATE-----", File.ReadAllText(path).Trim());
+        }
     }
 }
