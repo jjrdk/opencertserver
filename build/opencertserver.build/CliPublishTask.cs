@@ -14,7 +14,7 @@ public sealed class CliPublishTask : FrostingTask<BuildContext>
     {
         var runtimes = new[]
         {
-            "linux-musl-x64", "linux-x64", "linux-arm64", "linux-arm64", "osx-arm64", "win-x64", "win-x86", "win-arm64"
+            "linux-musl-x64", "linux-x64", "linux-arm64", "osx-arm64", "win-x64", "win-x86", "win-arm64"
         };
         foreach (var runtime in runtimes)
         {
