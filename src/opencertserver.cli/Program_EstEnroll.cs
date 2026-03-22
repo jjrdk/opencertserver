@@ -84,6 +84,7 @@ internal static partial class Program
                 Console.WriteLine("Output path is required (--out path).");
                 return;
             }
+
             var resolvedOutPath = outPath!;
             var clientCertPath = parse.GetValue(clientCertOption);
             var authHeader = ParseAuthenticationHeader(parse.GetValue(authOption));
@@ -104,7 +105,7 @@ internal static partial class Program
                         extension.Equals(".p12", StringComparison.OrdinalIgnoreCase))
                     {
                         // Load PKCS#12/PFX file including private key for mTLS authentication.
-                        clientCert = new X509Certificate2(clientCertPath);
+                        clientCert = X509CertificateLoader.LoadCertificateFromFile(clientCertPath);
                     }
                     else
                     {
@@ -112,9 +113,10 @@ internal static partial class Program
                         clientCert = X509CertificateLoader.LoadCertificate(clientBytes);
                     }
 
-                    if (clientCert == null || !clientCert.HasPrivateKey)
+                    if (!clientCert.HasPrivateKey)
                     {
-                        Console.WriteLine("Client certificate does not contain a private key. Provide a client certificate (e.g., PFX/PKCS#12) that includes the private key for mTLS authentication (--client-cert path).");
+                        Console.WriteLine(
+                            "Client certificate does not contain a private key. Provide a client certificate (e.g., PFX/PKCS#12) that includes the private key for mTLS authentication (--client-cert path).");
                         return;
                     }
                 }
@@ -150,7 +152,9 @@ internal static partial class Program
                     builder.AppendLine(cert.ExportCertificatePem());
                 }
 
-                var directoryName = string.IsNullOrWhiteSpace(resolvedOutPath) ? null : Path.GetDirectoryName(resolvedOutPath);
+                var directoryName = string.IsNullOrWhiteSpace(resolvedOutPath)
+                    ? null
+                    : Path.GetDirectoryName(resolvedOutPath);
                 if (!string.IsNullOrWhiteSpace(directoryName))
                 {
                     Directory.CreateDirectory(directoryName!);
@@ -170,12 +174,3 @@ internal static partial class Program
         }
     }
 }
-
-
-
-
-
-
-
-
-

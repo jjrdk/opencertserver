@@ -18,6 +18,7 @@ namespace opencertserver.cli
             var rootCommand = new RootCommand("OpenCertServer CLI - Certificate Authority Tools");
 
             CreatePrintCertificateCommand(rootCommand);
+            CreateGenerateKeysCommand(rootCommand);
             CreateCreateCsrCommand(rootCommand);
             CreateCsrFromKeysCommand(rootCommand);
             CreateSignCsrCommand(rootCommand);
