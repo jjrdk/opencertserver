@@ -1,5 +1,6 @@
+namespace opencertserver.cli.tests.StepDefinitions;
+
 using System;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -15,18 +16,13 @@ using OpenCertServer.Ca.Utils.Ocsp;
 using OpenCertServer.Est.Server;
 using Reqnroll;
 
-namespace opencertserver.cli.tests.StepDefinitions;
-
 public partial class OpenCertServerCliStepDefinitions
 {
-    private TestServer _server = null!;
-    private X509Certificate2? _estRootCertificate;
+    private TestServer? _server;
 
     [Given("an EST server")]
     public async Task GivenAnEstServer()
     {
-        _estRootCertificate = CreateServerCertificate();
-
         var host = new HostBuilder().ConfigureWebHost(builder =>
         {
             builder
@@ -36,7 +32,7 @@ public partial class OpenCertServerCliStepDefinitions
                 .ConfigureServices(ConfigureEstServices)
                 .Configure(ConfigureEstApp);
         }).Build();
-        host.Start();
+        await host.StartAsync();
         _server = host.GetTestServer();
     }
 
@@ -61,21 +57,9 @@ public partial class OpenCertServerCliStepDefinitions
             .AddCertificate();
     }
 
-    private static X509Certificate2 CreateServerCertificate()
-    {
-        using var rsa = RSA.Create(4096);
-        var request = new CertificateRequest("CN=localhost", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-        request.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
-        request.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
-        var cert = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
-        return cert; //.CopyWithPrivateKey(rsa);
-    }
-
     public void Dispose()
     {
         _server?.Dispose();
-        _estRootCertificate?.Dispose();
-
         GC.SuppressFinalize(this);
     }
 }

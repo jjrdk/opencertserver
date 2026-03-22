@@ -52,7 +52,10 @@ namespace opencertserver.cli.tests.StepDefinitions
             // are preserved even if quoting was lost by the test runner.
             var rawTokens = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var args = RecombineOptionValues(rawTokens);
-            Program.MessageHandlerFactory = () => _server.CreateHandler();
+            if (_server != null)
+            {
+                Program.MessageHandlerFactory = () => _server.CreateHandler();
+            }
             await Program.Main(args);
             var swOut = new StringWriter();
             var swErr = new StringWriter();
