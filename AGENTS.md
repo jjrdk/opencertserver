@@ -13,7 +13,7 @@
   - `src/CertesSlim`: Lightweight ACME client library.
   - `src/web`: Angular web UI for certificate management.
   - `src/opencertserver.lambda2`: AWS Lambda entry point for serverless deployment.
-  - `src/opencertserver.cli`: Cross-platform CLI for issuing certificate commands (print, CSR generation/signing, EST enroll).
+  - `src/opencertserver.cli`: Cross-platform CLI for certificate inspection, certificate command execution (print), CSR generation/signing, and EST enrollment/re-enrollment.
 - Utility and abstraction projects (`ca.utils`, `acme.abstractions`, etc.) provide shared models and helpers.
 
 ### Service Boundaries & Data Flows
@@ -54,6 +54,7 @@
 - **CA Utilities**: Shared X.509/PKI helpers in `ca.utils`
 - **External:** DnsClient, Amazon.Lambda.AspNetCoreServer, Angular Material
   - **EST client & CLI:** `opencertserver.cli` uses `src/opencertserver.est.client/EstClient` for EST enrollment and relies on `ca.utils` helpers for CSR formatting.
+    - **EST re-enroll:** `est-reenroll` reuses an existing certificate/private key pair and calls `EstClient.ReEnroll`, so capture the file paths and matching keys when automating.
   - **Certificate formatting:** `src/opencertserver.ca.utils/CertificateExtensions` exposes `PrintCertificate()` which now returns formatted strings consumed by the CLI and referenced in the new CA tests.
 
 ### Key Files & Directories

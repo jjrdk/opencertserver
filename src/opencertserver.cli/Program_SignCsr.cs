@@ -88,7 +88,22 @@ internal static partial class Program
                 return Task.CompletedTask;
             }
 
+            if (request.SubjectName == null || string.IsNullOrWhiteSpace(request.SubjectName.Name))
+            {
+                Console.WriteLine("CSR does not contain a valid subject.");
+                return Task.CompletedTask;
+            }
+
             using var caKey = LoadPrivateKeyFromPem(caKeyPath);
+            try
+            {
+                EnsureHasPrivateKey(caKey);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("CA private key must contain private key material.");
+                return Task.CompletedTask;
+            }
             using var caCert = LoadCertificate(caCertPath);
             using var issuer = AttachPrivateKeyToCertificate(caCert, caKey);
 
@@ -150,13 +165,8 @@ internal static partial class Program
 
         static X509Certificate2 LoadCertificate(string path)
         {
-            var text = File.ReadAllText(path);
-            if (text.Contains("-----BEGIN CERTIFICATE-----", StringComparison.Ordinal))
-            {
-                return X509Certificate2.CreateFromPem(text);
-            }
-
-            return X509Certificate2.CreateFromPemFile(path);
+            var bytes = File.ReadAllBytes(path);
+            return X509CertificateLoader.LoadCertificate(bytes);
         }
 
         static X509Certificate2 AttachPrivateKeyToCertificate(X509Certificate2 certificate, AsymmetricAlgorithm privateKey)

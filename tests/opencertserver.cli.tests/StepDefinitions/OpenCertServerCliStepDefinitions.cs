@@ -10,11 +10,12 @@ namespace opencertserver.cli.tests.StepDefinitions
     using Reqnroll;
 
     [Binding]
-    public class OpenCertServerCliStepDefinitions
+    public partial class OpenCertServerCliStepDefinitions : IDisposable
     {
         private string? _output;
         private string? _tempKeyPath;
         private string? _tempOutPath;
+        private string? _tempReenrollOutPath;
 
         [When("I run the CLI with \"(.*)\"")]
         public async Task WhenIRunTheCliWith(string arguments)
@@ -22,26 +23,40 @@ namespace opencertserver.cli.tests.StepDefinitions
             // support placeholders
             if (arguments.Contains("<GENERATE_KEY>"))
             {
-                using var rsa = RSA.Create(2048);
-                var pkcs8 = rsa.ExportPkcs8PrivateKey();
-                var pem = PemEncoding.WriteString("PRIVATE KEY", pkcs8);
-                _tempKeyPath = Path.Combine(Path.GetTempPath(), $"opencert_key_{Guid.NewGuid():N}.pem");
-                await File.WriteAllTextAsync(_tempKeyPath, pem);
+                if (_tempKeyPath == null)
+                {
+                    using var rsa = RSA.Create(2048);
+                    var pkcs8 = rsa.ExportPkcs8PrivateKey();
+                    var pem = PemEncoding.WriteString("PRIVATE KEY", pkcs8);
+                    _tempKeyPath = Path.Combine(Path.GetTempPath(), $"opencert_key_{Guid.NewGuid():N}.pem");
+                    await File.WriteAllTextAsync(_tempKeyPath, pem);
+                }
+
                 arguments = arguments.Replace("<GENERATE_KEY>", _tempKeyPath);
             }
 
             if (arguments.Contains("<TEMP_OUT>"))
             {
-                _tempOutPath = Path.Combine(Path.GetTempPath(), $"opencert_csr_{Guid.NewGuid():N}.pem");
+                _tempOutPath ??= Path.Combine(Path.GetTempPath(), $"opencert_csr_{Guid.NewGuid():N}.pem");
                 arguments = arguments.Replace("<TEMP_OUT>", _tempOutPath);
             }
 
+            if (arguments.Contains("<TEMP_REENROLL_OUT>"))
+            {
+                _tempReenrollOutPath = Path.Combine(Path.GetTempPath(), $"opencert_reenroll_{Guid.NewGuid():N}.pem");
+                arguments = arguments.Replace("<TEMP_REENROLL_OUT>", _tempReenrollOutPath);
+            }
+
             // Call Program.Main in-process to avoid subprocess/environment differences.
-            // Split on whitespace then recombine values for options so multi-word values (e.g. San Francisco)
+            // Split on whitespace then recombine values for options so multi-word values (e.g., San Francisco)
             // are preserved even if quoting was lost by the test runner.
             var rawTokens = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var args = RecombineOptionValues(rawTokens);
-
+            if (_server != null)
+            {
+                Program.MessageHandlerFactory = () => _server.CreateHandler();
+            }
+            await Program.Main(args);
             var swOut = new StringWriter();
             var swErr = new StringWriter();
             var origOut = Console.Out;
@@ -146,6 +161,23 @@ namespace opencertserver.cli.tests.StepDefinitions
 
             Assert.True(File.Exists(path), $"expected CSR file to exist at {path}");
             Assert.StartsWith("-----BEGIN CERTIFICATE REQUEST-----", File.ReadAllText(path).Trim());
+        }
+
+        [Then("the certificate \"(.*)\" should exist")]
+        public void ThenTheCertificateShouldExist(string path)
+        {
+            if (path == "<TEMP_OUT>")
+            {
+                path = _tempOutPath ?? path;
+            }
+
+            if (path == "<TEMP_REENROLL_OUT>")
+            {
+                path = _tempReenrollOutPath ?? path;
+            }
+
+            Assert.True(File.Exists(path), $"expected certificate to exist at {path}");
+            Assert.StartsWith("-----BEGIN CERTIFICATE-----", File.ReadAllText(path).Trim());
         }
     }
 }

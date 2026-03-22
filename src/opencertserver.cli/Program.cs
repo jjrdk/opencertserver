@@ -2,14 +2,9 @@
 
 using System;
 using System.CommandLine;
-using System.CommandLine.Invocation;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Ca.Utils; // for ToPkcs10 extension
+// for ToPkcs10 extension
 using System.Threading.Tasks;
 
 [assembly: InternalsVisibleTo("opencertserver.cli.tests")]
@@ -22,13 +17,19 @@ namespace opencertserver.cli
         {
             var rootCommand = new RootCommand("OpenCertServer CLI - Certificate Authority Tools");
 
-            CreateSignCsrCommand(rootCommand);
             CreatePrintCertificateCommand(rootCommand);
             CreateCreateCsrCommand(rootCommand);
+            CreateCsrFromKeysCommand(rootCommand);
+            CreateSignCsrCommand(rootCommand);
+            CreateEstEnrollCommand(rootCommand);
+            CreateEstReEnrollCommand(rootCommand);
+            CreateEstServerCertificatesCommand(rootCommand);
 
             // Add more commands as needed
 
             return await rootCommand.Parse(args).InvokeAsync();
         }
+
+        internal static Func<HttpMessageHandler> MessageHandlerFactory { get; set; } = () => new HttpClientHandler();
     }
 }

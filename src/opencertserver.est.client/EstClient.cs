@@ -66,7 +66,7 @@ public sealed class EstClient : IDisposable
     }
 
     /// <summary>
-    /// Re-enrolls, i.e. renews, a certificate from the EST server.
+    /// Re-enrolls, i.e., renews, a certificate from the EST server.
     /// </summary>
     /// <param name="key">The <see cref="AsymmetricAlgorithm"/> key to sign the request.</param>
     /// <param name="certificate">The <see cref="X509Certificate2"/> to re-enroll.</param>
@@ -82,7 +82,8 @@ public sealed class EstClient : IDisposable
         var certRequest = CreateCertificateRequest(
             certificate.SubjectName,
             key,
-            certificate.Extensions.OfType<X509KeyUsageExtension>().First().KeyUsages);
+            certificate.Extensions.OfType<X509KeyUsageExtension>()
+                .Aggregate(X509KeyUsageFlags.None, (flags, ext) => flags | ext.KeyUsages));
 
         var content = new StringContent(certRequest.ToPkcs10(), Encoding.UTF8, "application/pkcs10-mime");
         var requestUriBuilder = new UriBuilder(
