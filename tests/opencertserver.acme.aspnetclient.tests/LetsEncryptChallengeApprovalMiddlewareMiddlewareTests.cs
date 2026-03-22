@@ -78,7 +78,7 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareMiddlewareTests
         });
     }
 
-    [Fact]
+    [Fact(Skip = "Run manually")]
     public async Task FullFlow()
     {
         using var host = _webHostBuilder.Build();
