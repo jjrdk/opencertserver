@@ -13,8 +13,7 @@
   - `src/CertesSlim`: Lightweight ACME client library.
   - `src/web`: Angular web UI for certificate management.
   - `src/opencertserver.lambda2`: AWS Lambda entry point for serverless deployment.
-  - `src/opencertserver.cli`: Cross-platform CLI for certificate inspection, CSR generation, CSR signing, EST enrollment, and EST re-enrollment.
-  - `src/opencertserver.cli`: Cross-platform CLI for issuing certificate commands (print, CSR generation/signing, EST enroll).
+  - `src/opencertserver.cli`: Cross-platform CLI for certificate inspection, certificate command execution (print), CSR generation/signing, and EST enrollment/re-enrollment.
 - Utility and abstraction projects (`ca.utils`, `acme.abstractions`, etc.) provide shared models and helpers.
 
 ### Service Boundaries & Data Flows
