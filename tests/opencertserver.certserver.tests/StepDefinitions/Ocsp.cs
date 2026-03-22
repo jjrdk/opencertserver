@@ -16,7 +16,7 @@ public partial class CertificateServerFeatures
         using var client = _server.CreateClient();
         var tbsRequest = new TbsRequest(requestList:
         [
-            new Request(new CertId(new AlgorithmIdentifier(Oids.Rsa.InitializeOid()),
+            new Request(new CertId(new AlgorithmIdentifier(Oids.Rsa.InitializeOid(Oids.RsaFriendlyName)),
                 "abc"u8.ToArray(),
                 "abc"u8.ToArray(),
                 "123"u8.ToArray()))
@@ -50,7 +50,6 @@ public partial class CertificateServerFeatures
     [Then("the certificate should be revoked in OCSP")]
     public async Task ThenTheCertificateShouldBeRevokedInOcsp()
     {
-        var serialNumberString = _certCollection[0].SerialNumberBytes;
         var tbsRequest = new TbsRequest(requestList:
         [
             new Request(CertId.Create(_certCollection[0], HashAlgorithmName.SHA256))

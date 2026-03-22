@@ -54,8 +54,8 @@ public sealed class CertificateAuthorityTests : IDisposable
         var req = CreateCertificateRequest(rsa);
         var bytes = req.CreateSigningRequest();
         var cert =
-            _authority.SignCertificateRequestPem(PemEncoding.WriteString("CERTIFICATE REQUEST", bytes)) as
-                SignCertificateResponse.Success;
+            _authority.SignCertificateRequestPem(
+                    PemEncoding.WriteString("CERTIFICATE REQUEST", bytes)) as SignCertificateResponse.Success;
 
         static IEnumerable<string> GetParts(X500DistinguishedName name)
         {

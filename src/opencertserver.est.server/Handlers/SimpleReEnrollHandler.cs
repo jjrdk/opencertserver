@@ -1,4 +1,5 @@
-﻿using OpenCertServer.Ca.Utils.Ca;
+﻿using System.Security.Claims;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.X509Extensions;
 
 namespace OpenCertServer.Est.Server.Handlers;
@@ -54,7 +55,10 @@ internal sealed class SimpleReEnrollHandler
             request.CertificateExtensions.Add(extension);
         }
 
-        var newCert = _certificateAuthority.SignCertificateRequest(request, cert);
+        var newCert = _certificateAuthority.SignCertificateRequest(
+            request,
+            ctx.User.Identity as ClaimsIdentity,
+            cert);
         if (newCert is not SignCertificateResponse.Success success)
         {
             ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;

@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using System.Security.Claims;
 using System.Text;
 using OpenCertServer.Ca.Utils.Ca;
 
@@ -193,11 +194,12 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
 
     public SignCertificateResponse SignCertificateRequest(
         CertificateRequest request,
+        ClaimsIdentity? requestor = null,
         X509Certificate2? reenrollingFrom = null)
     {
         var validationResult = _validators.Aggregate(new List<string>(), (b, v) =>
         {
-            var reason = v.Validate(request);
+            var reason = v.Validate(request, requestor, reenrollingFrom);
             if (reason != null)
             {
                 b.Add(reason);
@@ -289,7 +291,10 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         return new SignCertificateResponse.Error(errors);
     }
 
-    public SignCertificateResponse SignCertificateRequestPem(string request)
+    public SignCertificateResponse SignCertificateRequestPem(
+        string request,
+        ClaimsIdentity? requestor = null,
+        X509Certificate2? reenrollingFrom = null)
     {
         var hasPem = PemEncoding.TryFind(request, out var fields);
         byte[] csr;
@@ -303,10 +308,13 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             csr = Convert.FromBase64CharArray(r.ToArray(), 0, r.Length);
         }
 
-        return SignCertificateRequest(csr);
+        return SignCertificateRequest(csr, requestor, reenrollingFrom);
     }
 
-    private SignCertificateResponse SignCertificateRequest(byte[] request, X509Certificate2? reenrollingFrom = null)
+    private SignCertificateResponse SignCertificateRequest(
+        byte[] request,
+        ClaimsIdentity? requestor = null,
+        X509Certificate2? reenrollingFrom = null)
     {
         var csr = CertificateRequest.LoadSigningRequest(
             request,
@@ -314,7 +322,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
             RSASignaturePadding.Pss);
 
-        return SignCertificateRequest(csr, reenrollingFrom);
+        return SignCertificateRequest(csr, requestor, reenrollingFrom);
     }
 
     /// <inheritdoc />
@@ -407,7 +415,10 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     private sealed partial class OwnCertificateValidation(X509Certificate2Collection serverCertificates, ILogger logger)
         : IValidateCertificateRequests
     {
-        public string? Validate(CertificateRequest request, X509Certificate2? reenrollingFrom = null)
+        public string? Validate(
+            CertificateRequest request,
+            ClaimsIdentity? requestor,
+            X509Certificate2? reenrollingFrom = null)
         {
             var result = reenrollingFrom == null
              || serverCertificates
@@ -434,7 +445,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             _logger = logger;
         }
 
-        public string? Validate(CertificateRequest request, X509Certificate2? reenrollingFrom = null)
+        public string? Validate(CertificateRequest request, ClaimsIdentity? requestor, X509Certificate2? reenrollingFrom = null)
         {
             if (request.SubjectName.Format(true)
                 .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)

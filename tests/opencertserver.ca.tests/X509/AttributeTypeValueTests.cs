@@ -16,7 +16,7 @@ public class AttributeTypeValueTests
         atv.Encode(writer);
         var encoded = writer.Encode();
         var reloaded = new AttributeTypeValue(new AsnReader(encoded, AsnEncodingRules.DER));
-        Assert.Equal(Oids.CommonName.InitializeOid(), reloaded.Oid, OidComparer.Instance);
+        Assert.Equal(Oids.CommonName.InitializeOid(Oids.CommonNameFriendlyName), reloaded.Oid, OidComparer.Instance);
         Assert.Equal("TestValue", reloaded.Value);
     }
 }
