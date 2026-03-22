@@ -110,9 +110,9 @@ public static class EncodingExtensions
             };
         }
 
-        public Oid InitializeOid()
+        public Oid InitializeOid(string? friendlyName = null)
         {
-            var oid = new Oid(value, null);
+            var oid = new Oid(value, friendlyName);
 
             // Do not remove - the FriendlyName property get has side effects.
             // On read, it initializes the friendly name based on the value and
@@ -202,14 +202,15 @@ public static class EncodingExtensions
 
             var ret = contentBytes switch
             {
-                [0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x09, 0x01] => Oids.EmailAddress.InitializeOid(),
-                [0x55, 0x04, 0x03] => Oids.CommonName.InitializeOid(),
-                [0x55, 0x04, 0x06] => Oids.CountryOrRegionName.InitializeOid(),
-                [0x55, 0x04, 0x07] => Oids.LocalityName.InitializeOid(),
-                [0x55, 0x04, 0x08] => Oids.StateOrProvinceName.InitializeOid(),
-                [0x55, 0x04, 0x0A] => Oids.Organization.InitializeOid(),
-                [0x55, 0x04, 0x0B] => Oids.OrganizationalUnit.InitializeOid(),
-                [0x55, 0x1D, 0x14] => Oids.CrlNumber.InitializeOid(),
+                [0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x09, 0x01] => Oids.EmailAddress.InitializeOid(
+                    Oids.EmailAddressFriendlyName),
+                [0x55, 0x04, 0x03] => Oids.CommonName.InitializeOid(Oids.CommonNameFriendlyName),
+                [0x55, 0x04, 0x06] => Oids.CountryOrRegionName.InitializeOid(Oids.CountryOrRegionNameFriendlyName),
+                [0x55, 0x04, 0x07] => Oids.LocalityName.InitializeOid(Oids.LocalityNameFriendlyName),
+                [0x55, 0x04, 0x08] => Oids.StateOrProvinceName.InitializeOid(Oids.StateOrProvinceNameFriendlyName),
+                [0x55, 0x04, 0x0A] => Oids.Organization.InitializeOid(Oids.OrganizationFriendlyName),
+                [0x55, 0x04, 0x0B] => Oids.OrganizationalUnit.InitializeOid(Oids.OrganizationalUnitFriendlyName),
+                [0x55, 0x1D, 0x14] => Oids.CrlNumber.InitializeOid(Oids.CrlNumberFriendlyName),
                 _ => null,
             };
 
@@ -409,14 +410,14 @@ public static class EncodingExtensions
         {
             return hashAlgorithmName.Name switch
             {
-                "MD5" => Oids.Md5.InitializeOid(),
-                "SHA1" => Oids.Sha1.InitializeOid(),
-                "SHA256" => Oids.Sha256.InitializeOid(),
-                "SHA3-256" => Oids.Sha3_256.InitializeOid(),
-                "SHA384" => Oids.Sha384.InitializeOid(),
-                "SHA3-384" => Oids.Sha3_384.InitializeOid(),
-                "SHA512" => Oids.Sha512.InitializeOid(),
-                "SHA3-512" => Oids.Sha3_512.InitializeOid(),
+                "MD5" => Oids.Md5.InitializeOid(Oids.Md5FriendlyName),
+                "SHA1" => Oids.Sha1.InitializeOid(Oids.Sha1FriendlyName),
+                "SHA256" => Oids.Sha256.InitializeOid(Oids.Sha256FriendlyName),
+                "SHA3-256" => Oids.Sha3_256.InitializeOid(Oids.Sha3_256FriendlyName),
+                "SHA384" => Oids.Sha384.InitializeOid(Oids.Sha384FriendlyName),
+                "SHA3-384" => Oids.Sha3_384.InitializeOid(Oids.Sha3_384FriendlyName),
+                "SHA512" => Oids.Sha512.InitializeOid(Oids.Sha512FriendlyName),
+                "SHA3-512" => Oids.Sha3_512.InitializeOid(Oids.Sha3_512FriendlyName),
                 _ => throw new CryptographicException($"Unsupported hash algorithm: {hashAlgorithmName.Name}")
             };
         }

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using OpenCertServer.Acme.Abstractions.IssuanceServices;
 using OpenCertServer.Acme.Abstractions.Model;
@@ -23,7 +24,8 @@ internal sealed class DefaultIssuer : IIssueCertificates
     {
         await Task.Yield();
 
-        var cert = _ca.SignCertificateRequestPem(csr);
+        var cert = _ca.SignCertificateRequestPem(csr,
+            new ClaimsIdentity(identifiers.Select(i => new Claim(i.Type, i.Value)), "acme"));
         return cert switch
         {
             SignCertificateResponse.Success success => (

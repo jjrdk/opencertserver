@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using OpenCertServer.Ca.Utils.Ca;
 
 namespace OpenCertServer.Est.Server.Handlers;
@@ -37,7 +38,8 @@ internal class ServerKeyGenHandler
                     RSASignaturePadding.Pss);
             using var ecdsa = ECDsa.Create();
             signingRequest = new CertificateRequest(signingRequest.SubjectName, ecdsa, HashAlgorithmName.SHA256);
-            var newCert = _certificateAuthority.SignCertificateRequest(signingRequest);
+            var newCert =
+                _certificateAuthority.SignCertificateRequest(signingRequest, ctx.User.Identity as ClaimsIdentity);
             if (newCert is SignCertificateResponse.Success success)
             {
                 var mpr = new MultipartContent();

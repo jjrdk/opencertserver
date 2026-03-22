@@ -1,12 +1,20 @@
-﻿namespace OpenCertServer.Ca.Utils.Ca;
+﻿using System.Security.Claims;
+
+namespace OpenCertServer.Ca.Utils.Ca;
 
 using System.Security.Cryptography.X509Certificates;
 
 public interface ICertificateAuthority
 {
-    SignCertificateResponse SignCertificateRequest(CertificateRequest request, X509Certificate2? reenrollingFrom = null);
+    SignCertificateResponse SignCertificateRequest(
+        CertificateRequest request,
+        ClaimsIdentity? requestor = null,
+        X509Certificate2? reenrollingFrom = null);
 
-    SignCertificateResponse SignCertificateRequestPem(string request);
+    SignCertificateResponse SignCertificateRequestPem(
+        string request,
+        ClaimsIdentity? requestor = null,
+        X509Certificate2? reenrollingFrom = null);
 
     X509Certificate2Collection GetRootCertificates();
 

@@ -199,9 +199,9 @@ public sealed class EstClient : IDisposable
         req.CertificateExtensions.Add(
             new X509EnhancedKeyUsageExtension(
                 [
-                    Oids.TimeStampingPurpose.InitializeOid(),
-                    Oids.ClientAuthenticationPurpose.InitializeOid(),
-                    Oids.ServerAuthenticationPurpose.InitializeOid()
+                    Oids.TimeStampingPurpose.InitializeOid(Oids.TimeStampingPurposeFriendlyName),
+                    Oids.ClientAuthenticationPurpose.InitializeOid(Oids.ClientAuthenticationPurposeFriendlyName),
+                    Oids.ServerAuthenticationPurpose.InitializeOid(Oids.ServerAuthenticationPurposeFriendlyName)
                 ],
                 true));
         req.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(req.PublicKey, false));

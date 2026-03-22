@@ -292,30 +292,30 @@ internal static partial class Program
                 case "server-auth":
                 case "tlsserver":
                 case "tls-server":
-                    oids.Add(Oids.ServerAuthenticationPurpose.InitializeOid());
+                    oids.Add(Oids.ServerAuthenticationPurpose.InitializeOid(Oids.ServerAuthenticationPurposeFriendlyName));
                     break;
                 case "clientauth":
                 case "client-auth":
                 case "tlsclient":
                 case "tls-client":
-                    oids.Add(Oids.ClientAuthenticationPurpose.InitializeOid());
+                    oids.Add(Oids.ClientAuthenticationPurpose.InitializeOid(Oids.ClientAuthenticationPurposeFriendlyName));
                     break;
                 case "emailprotection":
                 case "email-protection":
                 case "email":
                 case "smime":
                 case "s/mime":
-                    oids.Add(Oids.EmailProtectionPurpose.InitializeOid());
+                    oids.Add(Oids.EmailProtectionPurpose.InitializeOid(Oids.EmailProtectionPurposeFriendlyName));
                     break;
                 case "codesigning":
                 case "code-signing":
                 case "code_signing":
-                    oids.Add(Oids.CodeSigningPurpose.InitializeOid());
+                    oids.Add(Oids.CodeSigningPurpose.InitializeOid(Oids.CodeSigningPurposeFriendlyName));
                     break;
                 case "time-stamping":
                 case "timestamping":
                 case "timestamp":
-                    oids.Add(Oids.TimeStampingPurpose.InitializeOid());
+                    oids.Add(Oids.TimeStampingPurpose.InitializeOid(Oids.TimeStampingPurposeFriendlyName));
                     break;
                 default:
                     writer.WriteLine($"Unknown EKU: {part}, ignoring.");

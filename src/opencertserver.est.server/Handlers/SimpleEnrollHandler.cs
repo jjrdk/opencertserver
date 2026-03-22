@@ -1,4 +1,5 @@
-﻿using OpenCertServer.Ca.Utils.Ca;
+﻿using System.Security.Claims;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.X509Extensions;
 
 namespace OpenCertServer.Est.Server.Handlers;
@@ -22,7 +23,9 @@ internal sealed class SimpleEnrollHandler
     {
         using var reader = new StreamReader(ctx.Request.Body, Encoding.UTF8);
         var request = await reader.ReadToEndAsync().ConfigureAwait(false);
-        var newCert = _certificateAuthority.SignCertificateRequestPem(request);
+        var newCert =
+            _certificateAuthority.SignCertificateRequestPem(request,
+                ctx.User.Identity as ClaimsIdentity);
         if (newCert is SignCertificateResponse.Success success)
         {
             ctx.Response.StatusCode = (int)HttpStatusCode.OK;
@@ -34,6 +37,7 @@ internal sealed class SimpleEnrollHandler
             {
                 issuer.Dispose();
             }
+
             await writer.WriteLineAsync(pem).ConfigureAwait(false);
             await writer.FlushAsync().ConfigureAwait(false);
         }

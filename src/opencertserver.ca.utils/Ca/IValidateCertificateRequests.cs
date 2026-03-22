@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Ca.Utils.Ca;
+﻿using System.Security.Claims;
+
+namespace OpenCertServer.Ca.Utils.Ca;
 
 using System.Security.Cryptography.X509Certificates;
 
@@ -11,7 +13,8 @@ public interface IValidateCertificateRequests
     /// Validates the given <see cref="CertificateRequest"/>.
     /// </summary>
     /// <param name="request">The request to validate.</param>
+    /// <param name="requestor">The user requesting the certificate.</param>
     /// <param name="reenrollingFrom">The optional <see cref="X509Certificate2"/> if re-enrolling.</param>
     /// <returns>A <see cref="string"/> with error descriptions, or <c>null</c></returns>
-    string? Validate(CertificateRequest request, X509Certificate2? reenrollingFrom = null);
+    string? Validate(CertificateRequest request, ClaimsIdentity? requestor, X509Certificate2? reenrollingFrom = null);
 }

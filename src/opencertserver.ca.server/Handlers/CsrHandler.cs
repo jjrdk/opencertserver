@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 namespace OpenCertServer.Ca.Server.Handlers;
 
 using System.Net;
@@ -13,7 +15,7 @@ public static class CsrHandler
         var ca = ctx.RequestServices.GetRequiredService<ICertificateAuthority>();
         using var reader = new StreamReader(ctx.Request.Body);
         var csrPem = await reader.ReadToEndAsync();
-        var certResponse = ca.SignCertificateRequestPem(csrPem);
+        var certResponse = ca.SignCertificateRequestPem(csrPem, ctx.User.Identity as ClaimsIdentity);
         if (certResponse is SignCertificateResponse.Success success)
         {
             ctx.Response.StatusCode = (int)HttpStatusCode.OK;
