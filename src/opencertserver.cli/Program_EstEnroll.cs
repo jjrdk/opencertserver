@@ -99,8 +99,24 @@ internal static partial class Program
                         return;
                     }
 
-                    var clientBytes = File.ReadAllBytes(clientCertPath);
-                    clientCert = X509CertificateLoader.LoadCertificate(clientBytes);
+                    var extension = Path.GetExtension(clientCertPath);
+                    if (extension.Equals(".pfx", StringComparison.OrdinalIgnoreCase) ||
+                        extension.Equals(".p12", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Load PKCS#12/PFX file including private key for mTLS authentication.
+                        clientCert = new X509Certificate2(clientCertPath);
+                    }
+                    else
+                    {
+                        var clientBytes = File.ReadAllBytes(clientCertPath);
+                        clientCert = X509CertificateLoader.LoadCertificate(clientBytes);
+                    }
+
+                    if (clientCert == null || !clientCert.HasPrivateKey)
+                    {
+                        Console.WriteLine("Client certificate does not contain a private key. Provide a client certificate (e.g., PFX/PKCS#12) that includes the private key for mTLS authentication (--client-cert path).");
+                        return;
+                    }
                 }
 
                 using var key = LoadPrivateKeyFromPem(privateKey);
