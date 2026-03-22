@@ -77,7 +77,7 @@ internal static partial class Program
             {
                 using var privateKeyAlg = LoadPrivateKeyFromPem(privateKey);
                 EnsureHasPrivateKey(privateKeyAlg);
-                using var publicKeyAlg = LoadPublicKeyFromPem(publicKey);
+                using var publicKeyAlg = LoadPublicKey(publicKey);
                 if (!KeysMatch(privateKeyAlg, publicKeyAlg))
                 {
                     Console.WriteLine("Private key does not match the provided public key.");

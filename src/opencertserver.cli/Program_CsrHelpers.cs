@@ -119,7 +119,8 @@ internal static partial class Program
 
         var providedAny = new object?[]
         {
-            cVal, stVal, lVal, oVal, ouVal, cnVal, eVal, sansVal, keyUsageVal, ekuVal, basicCaVal, basicPathLenVal, subjectVal
+            cVal, stVal, lVal, oVal, ouVal, cnVal, eVal, sansVal, keyUsageVal, ekuVal, basicCaVal, basicPathLenVal,
+            subjectVal
         }.Any(x => x != null);
 
         if (!providedAny)
@@ -131,7 +132,8 @@ internal static partial class Program
             ouVal = PromptForInput(writer, reader, "Organizational Unit (OU): ");
             cnVal = PromptForInput(writer, reader, "Common Name (CN): ");
             eVal = PromptForInput(writer, reader, "Email (E): ");
-            sansVal = PromptForInput(writer, reader, "Subject Alternative Names (comma separated, leave empty to skip): ");
+            sansVal = PromptForInput(writer, reader,
+                "Subject Alternative Names (comma separated, leave empty to skip): ");
             keyUsageVal = PromptForInput(
                 writer,
                 reader,
@@ -179,7 +181,10 @@ internal static partial class Program
             rsaPaddingVal);
     }
 
-    private static CertificateRequest BuildCertificateRequest(AsymmetricAlgorithm key, CsrInput input, TextWriter writer)
+    private static CertificateRequest BuildCertificateRequest(
+        AsymmetricAlgorithm key,
+        CsrInput input,
+        TextWriter writer)
     {
         var name = BuildDistinguishedName(input);
         var padding = GetPadding(input.RsaPadding);
@@ -404,12 +409,11 @@ internal static partial class Program
         return new AuthenticationHeaderValue(scheme, parameter);
     }
 
-    internal static AsymmetricAlgorithm LoadPublicKeyFromPem(string path)
+    internal static AsymmetricAlgorithm LoadPublicKey(string path)
     {
-        var pem = File.ReadAllText(path);
-        if (pem.Contains("-----BEGIN CERTIFICATE-----", StringComparison.Ordinal))
+        try
         {
-            using var certificate = X509Certificate2.CreateFromPem(pem);
+            using var certificate = X509CertificateLoader.LoadCertificateFromFile(path);
             var rsa = certificate.GetRSAPublicKey();
             if (rsa != null)
             {
@@ -421,15 +425,6 @@ internal static partial class Program
             {
                 return ecdsa;
             }
-
-            throw new InvalidOperationException("Certificate does not contain an RSA or ECDSA public key.");
-        }
-
-        try
-        {
-            var rsa = RSA.Create();
-            rsa.ImportFromPem(pem);
-            return rsa;
         }
         catch
         {
@@ -437,9 +432,19 @@ internal static partial class Program
 
         try
         {
-            var ecdsa = ECDsa.Create();
-            ecdsa.ImportFromPem(pem);
-            return ecdsa;
+            var rsaKey = RSA.Create();
+            rsaKey.ImportFromPem(File.ReadAllText(path));
+            return rsaKey;
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            var ecdsaKey = ECDsa.Create();
+            ecdsaKey.ImportFromPem(File.ReadAllText(path));
+            return ecdsaKey;
         }
         catch
         {
@@ -461,7 +466,7 @@ internal static partial class Program
             var privParams = priv.ExportParameters(false);
             var pubParams = pub.ExportParameters(false);
             return privParams.Modulus.SequenceEqual(pubParams.Modulus) &&
-                   privParams.Exponent.SequenceEqual(pubParams.Exponent);
+                privParams.Exponent.SequenceEqual(pubParams.Exponent);
         }
 
         static bool EcdsaKeysMatch(ECDsa priv, ECDsa pub)
@@ -469,8 +474,9 @@ internal static partial class Program
             var privParams = priv.ExportParameters(false);
             var pubParams = pub.ExportParameters(false);
             return privParams.Q.X.SequenceEqual(pubParams.Q.X) &&
-                   privParams.Q.Y.SequenceEqual(pubParams.Q.Y) &&
-                   string.Equals(privParams.Curve.Oid.Value, pubParams.Curve.Oid.Value, StringComparison.OrdinalIgnoreCase);
+                privParams.Q.Y.SequenceEqual(pubParams.Q.Y) &&
+                string.Equals(privParams.Curve.Oid.Value, pubParams.Curve.Oid.Value,
+                    StringComparison.OrdinalIgnoreCase);
         }
     }
 
@@ -496,8 +502,3 @@ internal static partial class Program
         }
     }
 }
-
-
-
-
-
