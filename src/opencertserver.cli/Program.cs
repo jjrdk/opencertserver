@@ -30,6 +30,6 @@ namespace opencertserver.cli
             return await rootCommand.Parse(args).InvokeAsync();
         }
 
-        internal static Func<HttpMessageHandler> MessageHandlerFactory { get; set; } = () => new SocketsHttpHandler();
+        internal static Func<HttpMessageHandler> MessageHandlerFactory { get; set; } = () => new HttpClientHandler();
     }
 }
