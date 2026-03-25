@@ -94,7 +94,7 @@ internal static partial class Program
                     Directory.CreateDirectory(directoryName!);
                 }
 
-                await File.WriteAllTextAsync(outPath!, pem);
+                await File.WriteAllTextAsync(outPath!, pem).ConfigureAwait(false);
                 Console.WriteLine($"CSR written to {outPath} using public key from {publicKey}");
             }
             catch (Exception ex)

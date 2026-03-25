@@ -18,6 +18,7 @@ namespace opencertserver.cli
             var rootCommand = new RootCommand("OpenCertServer CLI - Certificate Authority Tools");
 
             CreatePrintCertificateCommand(rootCommand);
+            CreateGenerateKeysCommand(rootCommand);
             CreateCreateCsrCommand(rootCommand);
             CreateCsrFromKeysCommand(rootCommand);
             CreateSignCsrCommand(rootCommand);
@@ -27,7 +28,7 @@ namespace opencertserver.cli
 
             // Add more commands as needed
 
-            return await rootCommand.Parse(args).InvokeAsync();
+            return await rootCommand.Parse(args).InvokeAsync().ConfigureAwait(false);
         }
 
         internal static Func<HttpMessageHandler> MessageHandlerFactory { get; set; } = () => new HttpClientHandler();
