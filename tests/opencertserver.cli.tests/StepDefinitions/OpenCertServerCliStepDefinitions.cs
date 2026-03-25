@@ -214,7 +214,8 @@ namespace opencertserver.cli.tests.StepDefinitions
             var privatePem = File.ReadAllText(privatePath).Trim();
             var publicPem = File.ReadAllText(publicPath).Trim();
 
-            Assert.StartsWith("-----BEGIN PRIVATE KEY-----", privatePem);
+            Assert.StartsWith(algorithm == "rsa" ? "-----BEGIN PRIVATE KEY-----" : "-----BEGIN EC PRIVATE KEY-----",
+                privatePem);
             Assert.StartsWith("-----BEGIN PUBLIC KEY-----", publicPem);
 
             switch (algorithm.Trim().ToLowerInvariant())
