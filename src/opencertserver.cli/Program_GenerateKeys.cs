@@ -106,7 +106,7 @@ internal static partial class Program
             "rsa" => GenerateRsaKeyPair(rsaKeySize),
             "ecdsa" => GenerateEcdsaKeyPair(ecdsaCurve),
             _ => throw new InvalidOperationException(
-                "Unsupported algorithm. Supported values are rsa, ecdsa, and mldsa.")
+                "Unsupported algorithm. Supported values are rsa and ecdsa.")
         };
     }
 
