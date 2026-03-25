@@ -240,16 +240,6 @@ namespace opencertserver.cli.tests.StepDefinitions
                     }
 
                     break;
-                case "mldsa":
-                {
-#pragma warning disable SYSLIB5006
-                    var privateKey = MLDsa.ImportFromPem(privatePem);
-                    var publicKey = MLDsa.ImportFromPem(publicPem);
-
-                    Assert.Equal(privateKey.ExportSubjectPublicKeyInfo(), publicKey.ExportSubjectPublicKeyInfo());
-#pragma warning restore SYSLIB5006
-                }
-                    break;
                 default:
                     throw new InvalidOperationException($"Unsupported algorithm '{algorithm}' in test assertion.");
             }
