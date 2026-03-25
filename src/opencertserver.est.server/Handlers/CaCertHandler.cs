@@ -2,7 +2,6 @@
 
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 
@@ -21,9 +20,8 @@ internal sealed class CaCertHandler
 
         ctx.Response.StatusCode = (int)HttpStatusCode.OK;
         ctx.Response.ContentType = Constants.PemMimeType;
-        var bodyWriter = ctx.Response.BodyWriter;
-        await bodyWriter.WriteAsync(Encoding.UTF8.GetBytes(export)).ConfigureAwait(false);
+        var bodyWriter = new StreamWriter(ctx.Response.Body);
+        await bodyWriter.WriteAsync(export).ConfigureAwait(false);
         await bodyWriter.FlushAsync().ConfigureAwait(false);
-        await bodyWriter.CompleteAsync().ConfigureAwait(false);
     }
 }
