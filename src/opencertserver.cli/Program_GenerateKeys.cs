@@ -18,7 +18,7 @@ internal static partial class Program
     {
         var algorithmOption = new Option<string>("--algorithm")
         {
-            Description = "Key algorithm to generate: rsa, ecdsa, or mldsa (default: rsa)",
+            Description = "Key algorithm to generate: rsa or ecdsa (default: rsa)",
             DefaultValueFactory = _ => "rsa"
         };
         var privateKeyOutOption = new Option<string>("--private-key-out")
@@ -131,7 +131,7 @@ internal static partial class Program
         using var ecdsa = ECDsa.Create(curve);
         return new GeneratedKeyPair(
             $"ECDSA-{ToEcdsaDisplayName(normalizedCurveName)}",
-            ecdsa.ExportPkcs8PrivateKeyPem(),
+            ecdsa.ExportECPrivateKeyPem(),
             ecdsa.ExportSubjectPublicKeyInfoPem());
     }
 
