@@ -81,8 +81,8 @@ internal static partial class Program
             try
             {
                 var keyPair = GenerateKeyPair(algorithm, rsaKeySize, ecdsaCurve);
-                await WritePemAsync(outputPaths.PrivateKeyPath, keyPair.PrivateKeyPem);
-                await WritePemAsync(outputPaths.PublicKeyPath, keyPair.PublicKeyPem);
+                await WritePemAsync(outputPaths.PrivateKeyPath, keyPair.PrivateKeyPem).ConfigureAwait(false);
+                await WritePemAsync(outputPaths.PublicKeyPath, keyPair.PublicKeyPem).ConfigureAwait(false);
 
                 Console.WriteLine($"Generated {keyPair.Description} key pair.");
                 Console.WriteLine($"Private key written to {outputPaths.PrivateKeyPath}");
@@ -232,7 +232,7 @@ internal static partial class Program
             Directory.CreateDirectory(directory);
         }
 
-        await File.WriteAllTextAsync(path, pem);
+        await File.WriteAllTextAsync(path, pem).ConfigureAwait(false);
     }
 }
 
