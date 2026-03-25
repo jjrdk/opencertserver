@@ -20,8 +20,6 @@ internal sealed class CaCertHandler
 
         ctx.Response.StatusCode = (int)HttpStatusCode.OK;
         ctx.Response.ContentType = Constants.PemMimeType;
-        var bodyWriter = new StreamWriter(ctx.Response.Body);
-        await bodyWriter.WriteAsync(export).ConfigureAwait(false);
-        await bodyWriter.FlushAsync().ConfigureAwait(false);
+        await ctx.Response.WriteAsync(export, ctx.RequestAborted).ConfigureAwait(false);
     }
 }
