@@ -40,7 +40,7 @@ public sealed class CertificateAuthorityTests : IDisposable
             DateTimeOffset.UtcNow.Date,
             DateTimeOffset.UtcNow.Date.AddYears(1));
         _authority = new CertificateAuthority(
-            new CaConfiguration(rsaCert, ecdsaCert, BigInteger.Zero, TimeSpan.FromDays(90), ["test"], []),
+            new CaConfiguration(rsaCert, ecdsaCert, BigInteger.Zero, TimeSpan.FromDays(90), ["test"], [], []),
             new InMemoryCertificateStore(),
             _ => true,
             new NullLogger<CertificateAuthority>());
@@ -94,6 +94,7 @@ public sealed class CertificateAuthorityTests : IDisposable
             TimeSpan.FromDays(1),
             [],
             [],
+            [],
             NullLogger<CertificateAuthority>.Instance,
             BigInteger.Zero,
             null,
@@ -119,6 +120,7 @@ public sealed class CertificateAuthorityTests : IDisposable
                 new X500DistinguishedName("CN=reimers.io,DC=reimers.io,O=OpenCertServer,C=Switzerland"),
                 new InMemoryCertificateStore(),
                 TimeSpan.FromDays(2 * 365),
+                [],
                 [],
                 ["https://ca.reimers.io"],
                 NullLogger<CertificateAuthority>.Instance,

@@ -90,6 +90,7 @@ public class EstServer
                                 BigInteger.Zero,
                                 TimeSpan.FromDays(90),
                                 ["test"],
+                                [],
                                 []))
                         .AddEstServer<TestCsrAttributesHandler>()
                         .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()

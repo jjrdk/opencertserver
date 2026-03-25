@@ -25,6 +25,7 @@ public sealed class X509CertificateTests : IDisposable
             TimeSpan.FromHours(1),
             ["test"],
             [],
+            [],
             new NullLogger<CertificateAuthority>());
     }
 
