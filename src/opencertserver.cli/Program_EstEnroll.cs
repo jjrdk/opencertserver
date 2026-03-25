@@ -85,7 +85,7 @@ internal static partial class Program
                 return;
             }
 
-            var resolvedOutPath = outPath!;
+            var resolvedOutPath = outPath;
             var clientCertPath = parse.GetValue(clientCertOption);
             var authHeader = ParseAuthenticationHeader(parse.GetValue(authOption));
             X509Certificate2? clientCert = null;
@@ -105,11 +105,11 @@ internal static partial class Program
                         extension.Equals(".p12", StringComparison.OrdinalIgnoreCase))
                     {
                         // Load PKCS#12/PFX file including private key for mTLS authentication.
-                        clientCert = X509CertificateLoader.LoadPkcs12FromFile(clientCertPath);
+                        clientCert = X509CertificateLoader.LoadPkcs12FromFile(clientCertPath, "");
                     }
                     else
                     {
-                        var clientBytes = File.ReadAllBytes(clientCertPath);
+                        var clientBytes = await File.ReadAllBytesAsync(clientCertPath).ConfigureAwait(false);
                         clientCert = X509CertificateLoader.LoadCertificate(clientBytes);
                     }
 
@@ -157,10 +157,10 @@ internal static partial class Program
                     : Path.GetDirectoryName(resolvedOutPath);
                 if (!string.IsNullOrWhiteSpace(directoryName))
                 {
-                    Directory.CreateDirectory(directoryName!);
+                    Directory.CreateDirectory(directoryName);
                 }
 
-                await File.WriteAllTextAsync(resolvedOutPath, builder.ToString());
+                await File.WriteAllTextAsync(resolvedOutPath, builder.ToString()).ConfigureAwait(false);
                 Console.WriteLine($"EST enrollment succeeded, output saved to {outPath}");
             }
             catch (Exception ex)

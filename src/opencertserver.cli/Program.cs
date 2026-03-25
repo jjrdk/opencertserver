@@ -28,7 +28,7 @@ namespace opencertserver.cli
 
             // Add more commands as needed
 
-            return await rootCommand.Parse(args).InvokeAsync();
+            return await rootCommand.Parse(args).InvokeAsync().ConfigureAwait(false);
         }
 
         internal static Func<HttpMessageHandler> MessageHandlerFactory { get; set; } = () => new HttpClientHandler();

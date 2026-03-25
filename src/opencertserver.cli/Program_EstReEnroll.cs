@@ -78,7 +78,7 @@ internal static partial class Program
                 using var key = LoadPrivateKeyFromPem(privateKeyPath);
                 EnsureHasPrivateKey(key);
 
-                var certBytes = await File.ReadAllBytesAsync(certificatePath);
+                var certBytes = await File.ReadAllBytesAsync(certificatePath).ConfigureAwait(false);
                 using var currentCert = X509CertificateLoader.LoadCertificate(certBytes);
                 using var publicKey = currentCert.GetRSAPublicKey() ?? (AsymmetricAlgorithm?)currentCert.GetECDsaPublicKey();
                 if (publicKey == null)
@@ -117,7 +117,7 @@ internal static partial class Program
                     Directory.CreateDirectory(directoryName);
                 }
 
-                await File.WriteAllTextAsync(outPath, builder.ToString());
+                await File.WriteAllTextAsync(outPath, builder.ToString()).ConfigureAwait(false);
                 Console.WriteLine($"EST re-enrollment succeeded, output saved to {outPath}");
             }
             catch (Exception ex)
