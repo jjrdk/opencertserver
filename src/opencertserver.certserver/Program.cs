@@ -83,6 +83,7 @@ internal static class Program
                     new X500DistinguishedName(
                         dn.Value.StartsWith("CN=") ? dn.Value : $"CN={dn.Value}"),
                     ocspUrls.ToArray(),
+                    [],
                     caIssuerUrls.ToArray(),
                     TimeSpan.FromDays(90))
                 .AddEstServer<CsrAttributesHandler>();
@@ -101,6 +102,7 @@ internal static class Program
                         BigInteger.Zero,
                         TimeSpan.FromDays(90),
                         ocspUrls.ToArray(),
+                        [],
                         caIssuerUrls.ToArray()))
                 .AddEstServer<CsrAttributesHandler>();
         }

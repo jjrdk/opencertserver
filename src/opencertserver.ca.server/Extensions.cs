@@ -65,6 +65,7 @@ public static class Extensions
         /// </summary>
         /// <param name="distinguishedName">The <see cref="X500DistinguishedName"/> of the server.</param>
         /// <param name="ocspUrls">The known OCSP responder URLs.</param>
+        /// <param name="crlUrls">The known CRL distribution point URLs.</param>
         /// <param name="caIssuersUrls">The known CA issuer URLs.</param>
         /// <param name="certificateValidity">The duration of the issued certificates.</param>
         /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
@@ -72,6 +73,7 @@ public static class Extensions
         public IServiceCollection AddSelfSignedCertificateAuthority(
             X500DistinguishedName distinguishedName,
             string[]? ocspUrls = null,
+            string[]? crlUrls = null,
             string[]? caIssuersUrls = null,
             TimeSpan certificateValidity = default,
             Func<X509Chain, bool>? chainValidation = null)
@@ -83,6 +85,7 @@ public static class Extensions
                     sp.GetRequiredService<IStoreCertificates>(),
                     certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
                     ocspUrls ?? [],
+                    crlUrls ?? [],
                     caIssuersUrls ?? [],
                     sp.GetRequiredService<ILogger<CertificateAuthority>>(),
                     chainValidation: chainValidation,

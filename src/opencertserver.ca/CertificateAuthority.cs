@@ -12,17 +12,31 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using Utils;
 
+/// <summary>
+/// Defines the configuration for the Certificate Authority.
+/// </summary>
 public record CaConfiguration
 {
     private readonly byte[] _rsaBytes;
     private readonly byte[] _ecdsaBytes;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CaConfiguration"/> class.
+    /// </summary>
+    /// <param name="rsaCertificate">The RSA certificate used by the CA, including the private key.</param>
+    /// <param name="ecdsaCertificate">The ECDSA certificate used by the CA, including the private key.</param>
+    /// <param name="crlNumber">The current CRL number.</param>
+    /// <param name="certificateValidity">The validity period for certificates issued by the CA.</param>
+    /// <param name="ocspUrls">The URLs for OCSP responders.</param>
+    /// <param name="crlUrls">The URLs for CRL distribution points.</param>
+    /// <param name="caIssuersUrls">The URLs for CA issuer information.</param>
     public CaConfiguration(
         X509Certificate2 rsaCertificate,
         X509Certificate2 ecdsaCertificate,
         BigInteger crlNumber,
         TimeSpan certificateValidity,
         string[] ocspUrls,
+        string[] crlUrls,
         string[] caIssuersUrls)
     {
         _rsaBytes = rsaCertificate.ExportPkcs12(Pkcs12ExportPbeParameters.Pbes2Aes256Sha256, null);
@@ -30,6 +44,7 @@ public record CaConfiguration
         CrlNumber = crlNumber;
         CertificateValidity = certificateValidity;
         OcspUrls = ocspUrls;
+        CrlUrls = crlUrls;
         CaIssuersUrls = caIssuersUrls;
     }
 
@@ -54,6 +69,7 @@ public record CaConfiguration
     public BigInteger CrlNumber { get; }
     public TimeSpan CertificateValidity { get; }
     public string[] OcspUrls { get; }
+    public string[] CrlUrls { get; }
     public string[] CaIssuersUrls { get; }
 
     internal X509Certificate2 GetExportableRsaCertificate()
@@ -159,6 +175,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         IStoreCertificates certificateStore,
         TimeSpan certificateValidity,
         string[] ocspUrls,
+        string[] crlUrls,
         string[] caIssuersUrls,
         ILogger<CertificateAuthority> logger,
         BigInteger? crlNumber = null,
@@ -180,6 +197,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             crlNumber ?? BigInteger.Zero,
             certificateValidity,
             ocspUrls,
+            crlUrls,
             caIssuersUrls);
         var ca = new CertificateAuthority(
             config,
@@ -216,15 +234,27 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         LogCreatingCertificateForSubjectName(request.SubjectName.Name);
 
         var toRemove = request.CertificateExtensions
-            .Where(ext => ext is X509AuthorityInformationAccessExtension or X509AuthorityKeyIdentifierExtension)
+            .Where(ext => ext is X509AuthorityInformationAccessExtension
+             or X509AuthorityKeyIdentifierExtension)
+            .Concat(request.CertificateExtensions.Where(ext => ext.Oid?.Value == Oids.CrlDistributionPoints))
             .ToArray();
         foreach (var ext in toRemove)
         {
             request.CertificateExtensions.Remove(ext);
         }
 
-        request.CertificateExtensions.Add(
-            new X509AuthorityInformationAccessExtension(_config.OcspUrls, _config.CaIssuersUrls));
+        if (_config.CrlUrls.Length > 0)
+        {
+            request.CertificateExtensions.Add(
+                CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(_config.CrlUrls));
+        }
+
+        if (_config.OcspUrls.Length > 0 || _config.CaIssuersUrls.Length > 0)
+        {
+            request.CertificateExtensions.Add(
+                new X509AuthorityInformationAccessExtension(_config.OcspUrls, _config.CaIssuersUrls));
+        }
+
         request.CertificateExtensions.Add(
             X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(request.PublicKey
                 .ExportSubjectPublicKeyInfo()));
@@ -445,7 +475,10 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             _logger = logger;
         }
 
-        public string? Validate(CertificateRequest request, ClaimsIdentity? requestor, X509Certificate2? reenrollingFrom = null)
+        public string? Validate(
+            CertificateRequest request,
+            ClaimsIdentity? requestor,
+            X509Certificate2? reenrollingFrom = null)
         {
             if (request.SubjectName.Format(true)
                 .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
