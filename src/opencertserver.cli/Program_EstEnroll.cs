@@ -105,7 +105,7 @@ internal static partial class Program
                         extension.Equals(".p12", StringComparison.OrdinalIgnoreCase))
                     {
                         // Load PKCS#12/PFX file including private key for mTLS authentication.
-                        clientCert = X509CertificateLoader.LoadCertificateFromFile(clientCertPath);
+                        clientCert = X509CertificateLoader.LoadPkcs12FromFile(clientCertPath);
                     }
                     else
                     {
