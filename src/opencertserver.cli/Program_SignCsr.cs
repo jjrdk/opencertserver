@@ -88,7 +88,7 @@ internal static partial class Program
                 return Task.CompletedTask;
             }
 
-            if (request.SubjectName == null || string.IsNullOrWhiteSpace(request.SubjectName.Name))
+            if (string.IsNullOrWhiteSpace(request.SubjectName.Name))
             {
                 Console.WriteLine("CSR does not contain a valid subject.");
                 return Task.CompletedTask;
