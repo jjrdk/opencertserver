@@ -19,9 +19,9 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
         KeyValuePair.Create("C", ClaimTypes.Country)
     ]);
 
-    private readonly X509Certificate2Collection _certificates;
+    private readonly Func<string?, X509Certificate2Collection> _certificates;
 
-    public ConfigureCertificateAuthenticationOptions(X509Certificate2Collection certificates)
+    public ConfigureCertificateAuthenticationOptions(Func<string?, X509Certificate2Collection> certificates)
     {
         _certificates = certificates;
     }
@@ -29,8 +29,8 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
     public void PostConfigure(string? name, CertificateAuthenticationOptions options)
     {
         options.AllowedCertificateTypes = CertificateTypes.All;
-        options.AdditionalChainCertificates = _certificates;
-        options.CustomTrustStore = _certificates;
+        options.AdditionalChainCertificates = _certificates(null);
+        options.CustomTrustStore = _certificates(null);
         options.ChainTrustValidationMode = X509ChainTrustMode.CustomRootTrust;
         options.Events = new CertificateAuthenticationEvents
         {

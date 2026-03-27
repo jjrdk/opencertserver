@@ -30,27 +30,23 @@ public static class EstServerExtensions
     extension(IServiceCollection services)
     {
         public IServiceCollection AddEstServer<
-                [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
-                TCsrAttrs>()
-            where TCsrAttrs : CsrAttributesHandler
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+            TCsrTemplateLoader>()
+            where TCsrTemplateLoader : class, ICsrTemplateLoader
         {
             return services
-                .InnerAddEstServer<TCsrAttrs>();
+                .InnerAddEstServer<TCsrTemplateLoader>();
         }
 
         private IServiceCollection InnerAddEstServer<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
-            TCsrAttrs>()
-            where TCsrAttrs : CsrAttributesHandler
+            TCsrTemplateLoader>()
+            where TCsrTemplateLoader : class, ICsrTemplateLoader
         {
             return services
-                .AddScoped<CsrAttributesHandler, TCsrAttrs>()
-                .AddTransient<ServerKeyGenHandler>()
-                .AddTransient<CaCertHandler>()
-                .AddTransient<SimpleEnrollHandler>()
-                .AddTransient<SimpleReEnrollHandler>()
-                .AddTransient<X509Certificate2Collection>(sp =>
-                    sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates());
+                .AddTransient<ICsrTemplateLoader, TCsrTemplateLoader>()
+                .AddTransient<Func<string?, X509Certificate2Collection>>(sp =>
+                    sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates);
         }
     }
 
@@ -99,42 +95,45 @@ public static class EstServerExtensions
         {
             const string? wellKnownEst = "/.well-known/est";
             var groupBuilder = endpoints.MapGroup(wellKnownEst);
-            groupBuilder.MapPost("/serverkeygen", async ctx =>
-            {
-                var handler = ctx.RequestServices.GetRequiredService<ServerKeyGenHandler>();
-                await handler.Handle(ctx);
-            }).RequireAuthorization(serverKeyGenPolicy ?? ConfigurePolicy());
+
+            // Server KeyGen
+            groupBuilder.MapPost("/serverkeygen", ServerKeyGenHandler.Handle)
+                .RequireAuthorization(serverKeyGenPolicy ?? ConfigurePolicy());
+            groupBuilder.MapPost("/{profileName}/serverkeygen", ServerKeyGenHandler.HandleProfile)
+                .RequireAuthorization(serverKeyGenPolicy ?? ConfigurePolicy());
+
+            // CSR Attributes
             groupBuilder.MapGet(
                 "/csrattrs",
-                async ctx =>
-                {
-                    var handler = ctx.RequestServices.GetRequiredService<CsrAttributesHandler>();
-                    await handler.Handle(ctx).ConfigureAwait(false);
-                }).RequireAuthorization(csrAttrsPolicy ?? ConfigurePolicy());
+                CsrAttributesHandler.Handle).RequireAuthorization(csrAttrsPolicy ?? ConfigurePolicy());
             groupBuilder.MapGet(
-                    "/cacert",
-                    async ctx =>
-                    {
-                        var handler = ctx.RequestServices.GetRequiredService<CaCertHandler>();
-                        await handler.Handle(ctx).ConfigureAwait(false);
-                    })
+                "/{profileName}/csrattrs",
+                CsrAttributesHandler.HandleProfile).RequireAuthorization(csrAttrsPolicy ?? ConfigurePolicy());
+
+            // CA Cert
+            groupBuilder.MapGet(
+                    "/cacert", CaCertHandler.Handle)
                 .CacheOutput(b => b.Cache().Expire(TimeSpan.FromDays(30)))
                 .AllowAnonymous();
-            groupBuilder.MapPost(
-                "/simpleenroll",
-                async ctx =>
-                {
-                    var handler = ctx.RequestServices.GetRequiredService<SimpleEnrollHandler>();
-                    await handler.Handle(ctx).ConfigureAwait(false);
-                }).RequireAuthorization(enrollPolicy ?? ConfigurePolicy());
+            groupBuilder.MapGet(
+                    "/{profileName}/cacert", CaCertHandler.HandleProfile)
+                .CacheOutput(b => b.Cache().Expire(TimeSpan.FromDays(30)))
+                .AllowAnonymous();
 
+            // Enroll
+            groupBuilder.MapPost(
+                "/simpleenroll", SimpleEnrollHandler.Handle).RequireAuthorization(enrollPolicy ?? ConfigurePolicy());
+            groupBuilder.MapPost(
+                    "/{profileName}/simpleenroll", SimpleEnrollHandler.HandleProfile)
+                .RequireAuthorization(enrollPolicy ?? ConfigurePolicy());
+
+            // Re-enroll
             groupBuilder.MapPost(
                 "/simplereenroll",
-                async ctx =>
-                {
-                    var handler = ctx.RequestServices.GetRequiredService<SimpleReEnrollHandler>();
-                    await handler.Handle(ctx).ConfigureAwait(false);
-                }).RequireAuthorization(reEnrollPolicy ?? ConfigurePolicy());
+                SimpleReEnrollHandler.Handle).RequireAuthorization(reEnrollPolicy ?? ConfigurePolicy());
+            groupBuilder.MapPost(
+                "/{profileName}/simplereenroll",
+                SimpleReEnrollHandler.HandleProfile).RequireAuthorization(reEnrollPolicy ?? ConfigurePolicy());
 
             return endpoints;
         }

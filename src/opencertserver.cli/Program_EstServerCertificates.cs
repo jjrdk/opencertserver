@@ -35,7 +35,7 @@ internal static partial class Program
 
             try
             {
-                using var estClient = new EstClient(baseUri, MessageHandlerFactory());
+                using var estClient = new EstClient(baseUri, messageHandler: MessageHandlerFactory());
                 var collection = await estClient.ServerCertificates().ConfigureAwait(false);
                 if (collection.Count == 0)
                 {

@@ -34,6 +34,7 @@ public sealed class DefaultOrderService : IOrderService
     }
 
     public async Task<Order> CreateOrder(
+        string? profile,
         Account account,
         IEnumerable<Identifier> identifiers,
         DateTimeOffset? notBefore,
@@ -42,7 +43,7 @@ public sealed class DefaultOrderService : IOrderService
     {
         ValidateAccount(account);
 
-        var order = new Order(account, identifiers) { NotBefore = notBefore, NotAfter = notAfter };
+        var order = new Order(account, identifiers, profile) { NotBefore = notBefore, NotAfter = notAfter };
 
         _authorizationFactory.CreateAuthorizations(order);
 
@@ -126,7 +127,7 @@ public sealed class DefaultOrderService : IOrderService
             order.SetStatus(OrderStatus.Processing);
             order.CertificateSigningRequest = csr;
             var (certificate, acmeError) =
-                await _issuer.IssueCertificate(csr, order.Identifiers, cancellationToken);
+                await _issuer.IssueCertificate(order.Profile, csr, order.Identifiers, cancellationToken);
             if (certificate != null)
             {
                 order.Certificate = certificate;

@@ -1,25 +1,21 @@
-﻿namespace OpenCertServer.Est.Server.Handlers;
+﻿using System.Text;
+
+namespace OpenCertServer.Est.Server.Handlers;
 
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 
-internal sealed class CaCertHandler
+internal static class CaCertHandler
 {
-    private readonly X509Certificate2Collection _certificateStore;
-
-    public CaCertHandler(X509Certificate2Collection certificateStore)
+    public static IResult Handle(Func<string?, X509Certificate2Collection> certificates)
     {
-        _certificateStore = certificateStore;
+        return HandleProfile("", certificates);
     }
 
-    public async Task Handle(HttpContext ctx)
+    public static IResult HandleProfile(string profileName, Func<string?, X509Certificate2Collection> certificates)
     {
-        var export = _certificateStore.ExportCertificatePems();
-
-        ctx.Response.StatusCode = (int)HttpStatusCode.OK;
-        ctx.Response.ContentType = Constants.PemMimeType;
-        await ctx.Response.WriteAsync(export, ctx.RequestAborted).ConfigureAwait(false);
+        var export = certificates(profileName).ExportCertificatePems();
+        return Results.Text(export, Constants.PemMimeType, Encoding.UTF8, (int)HttpStatusCode.OK);
     }
 }

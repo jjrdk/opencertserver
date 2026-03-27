@@ -49,7 +49,7 @@ public partial class OpenCertServerCliStepDefinitions
             .AddInMemoryCertificateStore()
             .AddSelfSignedCertificateAuthority(new X500DistinguishedName("CN=OpenCertServer CLI EST"),
                 ocspUrls: ["test"])
-            .AddEstServer<TestCsrAttributesHandler>()
+            .AddEstServer<TestCsrAttributesLoader>()
             .AddSingleton(sp => sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates())
             .AddRouting()
             .AddAuthorization()

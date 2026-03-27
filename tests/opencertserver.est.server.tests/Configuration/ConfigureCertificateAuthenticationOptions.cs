@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
 using System.Security.Claims;
+using Microsoft.Extensions.DependencyInjection;
+using OpenCertServer.Ca.Utils;
 
 namespace OpenCertServer.Est.Tests.Configuration;
 
@@ -11,19 +13,19 @@ using Microsoft.Extensions.Options;
 public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<CertificateAuthenticationOptions>
 {
     private static readonly ImmutableDictionary<string, string> KnownPrefixes = ImmutableDictionary.CreateRange([
-        KeyValuePair.Create("CN", ClaimTypes.Name),
-        KeyValuePair.Create("E", ClaimTypes.Email),
-        KeyValuePair.Create("OU", ClaimTypes.System),
-        KeyValuePair.Create("O", "org"),
-        KeyValuePair.Create("L", ClaimTypes.Locality),
-        KeyValuePair.Create("SN", ClaimTypes.Surname),
-        KeyValuePair.Create("GN", ClaimTypes.GivenName),
-        KeyValuePair.Create("C", ClaimTypes.Country)
+        KeyValuePair.Create(Oids.CommonName, ClaimTypes.Name),
+        KeyValuePair.Create(Oids.EmailAddress, ClaimTypes.Email),
+        KeyValuePair.Create(Oids.OrganizationalUnit, ClaimTypes.System),
+        KeyValuePair.Create(Oids.Organization, "org"),
+        KeyValuePair.Create(Oids.LocalityName, ClaimTypes.Locality),
+        KeyValuePair.Create(Oids.Surname, ClaimTypes.Surname),
+        KeyValuePair.Create(Oids.GivenName, ClaimTypes.GivenName),
+        KeyValuePair.Create(Oids.CountryOrRegionName, ClaimTypes.Country)
     ]);
 
-    private readonly X509Certificate2Collection _certificates;
+    private readonly Func<string?, X509Certificate2Collection> _certificates;
 
-    public ConfigureCertificateAuthenticationOptions(X509Certificate2Collection certificates)
+    public ConfigureCertificateAuthenticationOptions(Func<string?, X509Certificate2Collection> certificates)
     {
         _certificates = certificates;
     }
@@ -31,18 +33,15 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
     public void PostConfigure(string? name, CertificateAuthenticationOptions options)
     {
         options.AllowedCertificateTypes = CertificateTypes.All;
-        options.AdditionalChainCertificates = _certificates;
-        options.CustomTrustStore = _certificates;
         options.ChainTrustValidationMode = X509ChainTrustMode.CustomRootTrust;
         options.Events = new CertificateAuthenticationEvents
         {
             OnCertificateValidated = context =>
             {
-                var claims = context.ClientCertificate.SubjectName.Name
-                    .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                    .Select(x => (x[..x.IndexOf('=')], x[(x.IndexOf('=') + 1)..]))
-                    .Where(x => KnownPrefixes.ContainsKey(x.Item1))
-                    .Select(x => new Claim(x.Item1, x.Item2));
+                var claims = context.HttpContext.Connection.ClientCertificate!.SubjectName
+                    .EnumerateRelativeDistinguishedNames()
+                    .Where(x => KnownPrefixes.ContainsKey(x.GetSingleElementType().Value!))
+                    .Select(x => new Claim(KnownPrefixes[x.GetSingleElementType().Value!], x.GetSingleElementValue()!));
                 context.Principal =
                     new ClaimsPrincipal(new ClaimsIdentity(claims,
                         CertificateAuthenticationDefaults.AuthenticationScheme));
@@ -51,11 +50,29 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
             },
             OnAuthenticationFailed = context =>
             {
-                var claims = context.HttpContext.Connection.ClientCertificate!.SubjectName.Name
-                    .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                    .Select(x => (x[..x.IndexOf('=')], x[(x.IndexOf('=') + 1)..]))
-                    .Where(x => KnownPrefixes.ContainsKey(x.Item1))
-                    .Select(x => new Claim(x.Item1, x.Item2));
+//                var profileName = context.HttpContext.Request.RouteValues["profileName"];
+//                var certChain = context.HttpContext.RequestServices
+//                    .GetRequiredService<Func<string?, X509Certificate2Collection>>();
+//                var chainPolicy = new X509ChainPolicy
+//                {
+//                    TrustMode = X509ChainTrustMode.CustomRootTrust, VerificationTimeIgnored = true
+//                };
+//                chainPolicy.CustomTrustStore.AddRange(certChain(profileName as string));
+//                chainPolicy.ExtraStore.AddRange(certChain(profileName as string));
+//                var chain = new X509Chain { ChainPolicy = chainPolicy };
+                var clientCertificate = context.HttpContext.Connection.ClientCertificate!;
+//                var built = chain.Build(clientCertificate);
+//                if (!built)
+//                {
+//                    context.Fail("Certificate chain validation failed: " +
+//                        string.Join(", ", chain.ChainStatus.Select(x => x.StatusInformation)));
+//                    return Task.CompletedTask;
+//                }
+
+                var claims = clientCertificate.SubjectName
+                    .EnumerateRelativeDistinguishedNames()
+                    .Where(x => KnownPrefixes.ContainsKey(x.GetSingleElementType().Value!))
+                    .Select(x => new Claim(KnownPrefixes[x.GetSingleElementType().Value!], x.GetSingleElementValue()!));
                 context.Principal =
                     new ClaimsPrincipal(new ClaimsIdentity(claims,
                         CertificateAuthenticationDefaults.AuthenticationScheme));

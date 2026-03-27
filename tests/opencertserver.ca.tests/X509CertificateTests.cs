@@ -19,13 +19,18 @@ public sealed class X509CertificateTests : IDisposable
 
     public X509CertificateTests()
     {
-        _ca = CertificateAuthority.CreateSelfSigned(
+        var profile = CertificateAuthority.CreateSelfSignedRsa(
+            "default",
             new X500DistinguishedName("CN=Test"),
+            TimeSpan.FromHours(1));
+        _ca = new CertificateAuthority(
+            new CaConfiguration(
+                new CaProfileSet("default", profile),
+                ["test"],
+                [],
+                []),
             new InMemoryCertificateStore(),
-            TimeSpan.FromHours(1),
-            ["test"],
-            [],
-            [],
+            _ => true,
             new NullLogger<CertificateAuthority>());
     }
 

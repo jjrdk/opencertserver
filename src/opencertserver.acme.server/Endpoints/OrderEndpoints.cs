@@ -36,7 +36,8 @@ public static class OrderEndpoints
                 throw new MalformedRequestException($"Malformed identifier: (Type: {i.Type}, Value: {i.Value})");
             var identifiers = orderRequest.Identifiers!.Select(x =>
                 new OpenCertServer.Acme.Abstractions.Model.Identifier(x.Type!, x.Value!));
-            var order = await orderService.CreateOrder(account, identifiers, orderRequest.NotBefore,
+            var order = await orderService.CreateOrder(orderRequest.Profile, account, identifiers,
+                orderRequest.NotBefore,
                 orderRequest.NotAfter, cancellationToken);
             GetOrderUrls(context, links, order, out var authorizationUrls, out var finalizeUrl, out var certificateUrl);
             var orderResponse =

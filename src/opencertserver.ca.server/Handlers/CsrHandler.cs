@@ -1,47 +1,35 @@
 using System.Security.Claims;
+using System.Text;
+using Microsoft.AspNetCore.Mvc;
 
 namespace OpenCertServer.Ca.Server.Handlers;
 
 using System.Net;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.X509Extensions;
 
 public static class CsrHandler
 {
-    public static async Task Handle(HttpContext ctx)
+    public static async Task<IResult> Handle(
+        [FromRoute] string? profileName,
+        ClaimsPrincipal user,
+        ICertificateAuthority ca,
+        [FromBody] Stream body)
     {
-        var ca = ctx.RequestServices.GetRequiredService<ICertificateAuthority>();
-        using var reader = new StreamReader(ctx.Request.Body);
+        using var reader = new StreamReader(body);
         var csrPem = await reader.ReadToEndAsync();
-        var certResponse = ca.SignCertificateRequestPem(csrPem, ctx.User.Identity as ClaimsIdentity);
+        var certResponse = ca.SignCertificateRequestPem(csrPem, profileName, user.Identity as ClaimsIdentity);
         if (certResponse is SignCertificateResponse.Success success)
         {
-            ctx.Response.StatusCode = (int)HttpStatusCode.OK;
-            ctx.Response.ContentType = Constants.PemMimeType;
-            await using var writer = new StreamWriter(ctx.Response.Body);
-            var pem = success.Certificate.ToPemChain(success.Issuers);
-            success.Certificate.Dispose();
-            foreach (var issuer in success.Issuers)
-            {
-                issuer.Dispose();
-            }
-            await writer.WriteLineAsync(pem).ConfigureAwait(false);
-            await writer.FlushAsync().ConfigureAwait(false);
+            return Results.Text(success.Certificate.ToPemChain(success.Issuers), Constants.PemMimeType);
         }
-        else
-        {
-            var error = (SignCertificateResponse.Error)certResponse;
-            ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-            ctx.Response.ContentType = Constants.TextPlainMimeType;
-            await using var writer = new StreamWriter(ctx.Response.Body);
-            foreach (var line in error.Errors)
-            {
-                await writer.WriteLineAsync(line).ConfigureAwait(false);
-            }
 
-            await writer.FlushAsync().ConfigureAwait(false);
-        }
+        var error = (SignCertificateResponse.Error)certResponse;
+        return Results.Text(
+            string.Join(Environment.NewLine, error.Errors),
+            Constants.TextPlainMimeType,
+            Encoding.UTF8,
+            (int)HttpStatusCode.BadRequest);
     }
 }
