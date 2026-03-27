@@ -63,7 +63,7 @@ public partial class CertificateServerFeatures
                 .AddSingleton<IResponderId>(new ResponderIdByKey("test"u8.ToArray()))
                 .AddInMemoryCertificateStore()
                 .AddSelfSignedCertificateAuthority(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"])
-                .AddEstServer<TestCsrAttributesHandler>()
+                .AddEstServer<TestCsrAttributesLoader>()
                 .AddSingleton(sp => sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates())
                 .AddAcmeServer(ctx.Configuration, _ => _server.CreateClient(),
                     new AcmeServerOptions
@@ -119,6 +119,7 @@ public partial class CertificateServerFeatures
                 NullLogger<PersistenceService>.Instance),
             new TestAcmeOptions
             {
+                Profile = keyAlgorithm.StartsWith("RS") ? "rsa" : "ecdsa",
                 Email = "test@test.com",
                 Domains = ["localhost"],
                 KeyAlgorithm = keyAlgorithm,
@@ -134,7 +135,7 @@ public partial class CertificateServerFeatures
     [When(@"the client requests a certificate")]
     public async Task WhenTheClientRequestsACertificate()
     {
-        var placedOrder = await _acmeClient.PlaceOrder("localhost");
+        var placedOrder = await _acmeClient.PlaceOrder( ["localhost"]);
 
         Assert.NotNull(placedOrder);
 

@@ -5,13 +5,13 @@ using OpenCertServer.Ca.Utils.X509.Templates;
 
 namespace opencertserver.cli.tests.StepDefinitions;
 
-internal class TestCsrAttributesHandler : CsrAttributesHandler
+internal class TestCsrAttributesLoader : ICsrTemplateLoader
 {
-    public override async Task<CertificateSigningRequestTemplate> GetTemplate(ClaimsPrincipal user)
+    public async Task<CertificateSigningRequestTemplate> GetTemplate(
+        string? profileName,
+        ClaimsPrincipal? user)
     {
         await Task.Yield();
         return new CertificateSigningRequestTemplate(subject: null, subjectPkInfo: null);
     }
 }
-
-

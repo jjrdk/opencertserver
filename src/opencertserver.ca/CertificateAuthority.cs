@@ -12,78 +12,108 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using Utils;
 
+public record CaProfile : IDisposable
+{
+    private BigInteger _crlNumber;
+    public required string Name { get; init; }
+    public required Func<AsymmetricAlgorithm> PrivateKey { get; init; }
+    public required X509Certificate2Collection CertificateChain { get; init; }
+    public TimeSpan CertificateValidity { get; init; }
+
+    public BigInteger CrlNumber
+    {
+        get { return _crlNumber; }
+        init { _crlNumber = value; }
+    }
+
+    public BigInteger GetNextCrlNumber()
+    {
+        _crlNumber += BigInteger.One;
+        return CrlNumber;
+    }
+
+    public void Dispose()
+    {
+        foreach (var cert in CertificateChain)
+        {
+            cert.Dispose();
+        }
+    }
+}
+
+public class CaProfileSet : IDisposable
+{
+    private readonly string _defaultProfile;
+    private readonly IDictionary<string, CaProfile> _profiles;
+
+    public CaProfileSet(string defaultProfile, params CaProfile[] profiles)
+    {
+        _defaultProfile = defaultProfile;
+        _profiles = profiles.ToDictionary(p => p.Name, p => p);
+        if (!_profiles.ContainsKey(defaultProfile))
+        {
+            throw new ArgumentException($"Default profile {defaultProfile} not found in profiles");
+        }
+    }
+
+    public CaProfile GetProfile(string? name)
+    {
+        if (name == null)
+        {
+            return _profiles[_defaultProfile];
+        }
+
+        if (_profiles.TryGetValue(name, out var profile))
+        {
+            return profile;
+        }
+
+        return _profiles[_defaultProfile];
+    }
+
+    public void Dispose()
+    {
+        foreach (var profile in _profiles.Values)
+        {
+            profile.Dispose();
+        }
+    }
+}
+
 /// <summary>
 /// Defines the configuration for the Certificate Authority.
 /// </summary>
-public record CaConfiguration
+public record CaConfiguration : IDisposable
 {
-    private readonly byte[] _rsaBytes;
-    private readonly byte[] _ecdsaBytes;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="CaConfiguration"/> class.
     /// </summary>
-    /// <param name="rsaCertificate">The RSA certificate used by the CA, including the private key.</param>
-    /// <param name="ecdsaCertificate">The ECDSA certificate used by the CA, including the private key.</param>
-    /// <param name="crlNumber">The current CRL number.</param>
-    /// <param name="certificateValidity">The validity period for certificates issued by the CA.</param>
+    /// <param name="profiles">The profiles for the CA.</param>
     /// <param name="ocspUrls">The URLs for OCSP responders.</param>
     /// <param name="crlUrls">The URLs for CRL distribution points.</param>
     /// <param name="caIssuersUrls">The URLs for CA issuer information.</param>
     public CaConfiguration(
-        X509Certificate2 rsaCertificate,
-        X509Certificate2 ecdsaCertificate,
-        BigInteger crlNumber,
-        TimeSpan certificateValidity,
+        CaProfileSet profiles,
         string[] ocspUrls,
         string[] crlUrls,
         string[] caIssuersUrls)
     {
-        _rsaBytes = rsaCertificate.ExportPkcs12(Pkcs12ExportPbeParameters.Pbes2Aes256Sha256, null);
-        _ecdsaBytes = ecdsaCertificate.ExportPkcs12(Pkcs12ExportPbeParameters.Pbes2Aes256Sha256, null);
-        CrlNumber = crlNumber;
-        CertificateValidity = certificateValidity;
+        Profiles = profiles;
         OcspUrls = ocspUrls;
         CrlUrls = crlUrls;
         CaIssuersUrls = caIssuersUrls;
     }
 
-    public X509Certificate2 RsaCertificate
-    {
-        get
-        {
-            return X509CertificateLoader.LoadPkcs12(_rsaBytes, null,
-                loaderLimits: Pkcs12LoaderLimits.Defaults);
-        }
-    }
+    public CaProfileSet Profiles { get; }
 
-    public X509Certificate2 EcdsaCertificate
-    {
-        get
-        {
-            return X509CertificateLoader.LoadPkcs12(_ecdsaBytes, null,
-                loaderLimits: Pkcs12LoaderLimits.Defaults);
-        }
-    }
-
-    public BigInteger CrlNumber { get; }
-    public TimeSpan CertificateValidity { get; }
     public string[] OcspUrls { get; }
     public string[] CrlUrls { get; }
     public string[] CaIssuersUrls { get; }
 
-    internal X509Certificate2 GetExportableRsaCertificate()
+    public void Dispose()
     {
-        return X509CertificateLoader.LoadPkcs12(_rsaBytes, null,
-            keyStorageFlags: X509KeyStorageFlags.Exportable,
-            loaderLimits: Pkcs12LoaderLimits.Defaults);
-    }
-
-    internal X509Certificate2 GetExportableEcdsaCertificate()
-    {
-        return X509CertificateLoader.LoadPkcs12(_ecdsaBytes, null,
-            keyStorageFlags: X509KeyStorageFlags.Exportable,
-            loaderLimits: Pkcs12LoaderLimits.Defaults);
+        Profiles.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
 
@@ -107,26 +137,6 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     private readonly IStoreCertificates _certificateStore;
     private readonly Func<X509Chain, bool> _x509ChainValidation;
     private readonly IValidateCertificateRequests[] _validators;
-    private readonly bool _standAlone;
-
-    private CertificateAuthority(
-        CaConfiguration config,
-        IStoreCertificates certificateStore,
-        Func<X509Chain, bool> x509ChainValidation,
-        ILogger<CertificateAuthority> logger,
-        Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
-        bool standAlone = true,
-        params IValidateCertificateRequests[] validators)
-        : this(
-            config,
-            certificateStore,
-            x509ChainValidation,
-            logger,
-            certificateBackup,
-            validators)
-    {
-        _standAlone = standAlone;
-    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CertificateAuthority"/> class.
@@ -135,7 +145,6 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     /// <param name="certificateStore"></param>
     /// <param name="x509ChainValidation"></param>
     /// <param name="logger"></param>
-    /// <param name="certificateBackup"></param>
     /// <param name="validators"></param>
     /// <exception cref="ArgumentException"></exception>
     public CertificateAuthority(
@@ -143,19 +152,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         IStoreCertificates certificateStore,
         Func<X509Chain, bool> x509ChainValidation,
         ILogger<CertificateAuthority> logger,
-        Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
         params IValidateCertificateRequests[] validators)
     {
-        if (!config.RsaCertificate.HasPrivateKey)
-        {
-            throw new ArgumentException("RSA certificate must have private key", nameof(config));
-        }
-
-        if (!config.EcdsaCertificate.HasPrivateKey)
-        {
-            throw new ArgumentException("ECDSA certificate must have private key", nameof(config));
-        }
-
         _config = config;
         _logger = logger;
         _certificateStore = certificateStore;
@@ -163,61 +161,66 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         _validators =
         [
             ..validators,
-            new OwnCertificateValidation([_config.RsaCertificate, _config.EcdsaCertificate], _logger),
+            new OwnCertificateValidation(_config.Profiles, _logger),
             new DistinguishedNameValidation(_logger)
         ];
-
-        certificateBackup?.Invoke(_config.GetExportableRsaCertificate(), _config.GetExportableEcdsaCertificate());
     }
 
-    public static CertificateAuthority CreateSelfSigned(
+    public static CaProfile CreateSelfSignedRsa(
+        string profileName,
         X500DistinguishedName distinguishedName,
-        IStoreCertificates certificateStore,
         TimeSpan certificateValidity,
-        string[] ocspUrls,
-        string[] crlUrls,
-        string[] caIssuersUrls,
-        ILogger<CertificateAuthority> logger,
-        BigInteger? crlNumber = null,
-        Func<X509Chain, bool>? chainValidation = null,
-        Action<X509Certificate2, X509Certificate2>? certificateBackup = null,
-        params IValidateCertificateRequests[] validators)
+        BigInteger? crlNumber = null)
     {
-        var rsaCert = CreateSelfSignedRsaCert(
+        var (key, cert) = CreateSelfSignedRsaCert(
             distinguishedName,
             UsageFlags,
             certificateValidity);
-        var ecdsaCert = CreateSelfSignedEcDsaCert(
+        return new CaProfile
+        {
+            Name = profileName,
+            PrivateKey = () => key,
+            CertificateChain = [cert],
+            CertificateValidity = certificateValidity,
+            CrlNumber = crlNumber ?? BigInteger.Zero
+        };
+    }
+
+    public static CaProfile CreateSelfSignedEcdsa(
+        string profileName,
+        X500DistinguishedName distinguishedName,
+        TimeSpan certificateValidity,
+        BigInteger? crlNumber = null)
+    {
+        var (key, cert) = CreateSelfSignedEcDsaCert(
             distinguishedName,
             UsageFlags,
             certificateValidity);
-        var config = new CaConfiguration(
-            rsaCert,
-            ecdsaCert,
-            crlNumber ?? BigInteger.Zero,
-            certificateValidity,
-            ocspUrls,
-            crlUrls,
-            caIssuersUrls);
-        var ca = new CertificateAuthority(
-            config,
-            certificateStore,
-            chainValidation ?? (_ => true),
-            logger,
-            certificateBackup,
-            standAlone: true,
-            validators);
-        return ca;
+        return new CaProfile
+        {
+            Name = profileName,
+            PrivateKey = () => key,
+            CertificateChain = [cert],
+            CertificateValidity = certificateValidity,
+            CrlNumber = crlNumber ?? BigInteger.Zero
+        };
     }
 
     public SignCertificateResponse SignCertificateRequest(
         CertificateRequest request,
+        string? profileName = null,
         ClaimsIdentity? requestor = null,
         X509Certificate2? reenrollingFrom = null)
     {
+        var profile = _config.Profiles.GetProfile(profileName);
+        if (request.PublicKey.Oid.Value != profile.CertificateChain[0].PublicKey.Oid.Value)
+        {
+            return new SignCertificateResponse.Error("Public key algorithm does not match CA certificate");
+        }
+
         var validationResult = _validators.Aggregate(new List<string>(), (b, v) =>
         {
-            var reason = v.Validate(request, requestor, reenrollingFrom);
+            var reason = v.Validate(request, profileName, requestor, reenrollingFrom);
             if (reason != null)
             {
                 b.Add(reason);
@@ -259,25 +262,19 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(request.PublicKey
                 .ExportSubjectPublicKeyInfo()));
 
-        var cert = request.PublicKey.Oid.Value switch
+        var profilePrivateKey = profile.PrivateKey();
+        var x509SignatureGenerator = profilePrivateKey switch
         {
-            Oids.Rsa => request.Create(
-                _config.RsaCertificate,
-                DateTimeOffset.UtcNow.Date,
-                DateTimeOffset.UtcNow.Date.Add(_config.CertificateValidity),
-                BitConverter.GetBytes(DateTimeOffset.UtcNow.Ticks)),
-            Oids.EcPublicKey => request.Create(
-                _config.EcdsaCertificate,
-                DateTimeOffset.UtcNow.Date,
-                DateTimeOffset.UtcNow.Date.Add(_config.CertificateValidity),
-                BitConverter.GetBytes(DateTimeOffset.UtcNow.Ticks)),
-            _ => null
+            RSA rsa => X509SignatureGenerator.CreateForRSA(rsa, RSASignaturePadding.Pss),
+            ECDsa ecdsa => X509SignatureGenerator.CreateForECDsa(ecdsa),
+            _ => throw new NotSupportedException()
         };
-
-        if (cert == null)
-        {
-            return new SignCertificateResponse.Error("Unsupported key algorithm");
-        }
+        var cert = request.Create(
+            profile.CertificateChain[0].SubjectName,
+            x509SignatureGenerator,
+            DateTimeOffset.UtcNow.Date,
+            DateTimeOffset.UtcNow.Date.Add(profile.CertificateValidity),
+            BitConverter.GetBytes(DateTimeOffset.UtcNow.Ticks));
 
         using var chain = new X509Chain();
         chain.ChainPolicy = new X509ChainPolicy
@@ -288,10 +285,9 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             RevocationFlag = X509RevocationFlag.ExcludeRoot
         };
 
-        chain.ChainPolicy.ExtraStore.Add(_config.RsaCertificate);
-        chain.ChainPolicy.ExtraStore.Add(_config.EcdsaCertificate);
+        chain.ChainPolicy.ExtraStore.AddRange(profile.CertificateChain);
 
-        var chainBuilt = _standAlone || chain.Build(cert);
+        var chainBuilt = chain.Build(cert);
 
         if (chainBuilt || _x509ChainValidation(chain))
         {
@@ -303,14 +299,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
 
             return new SignCertificateResponse.Success(
                 cert,
-                [
-                    request.PublicKey.Oid.Value switch
-                    {
-                        Oids.Rsa => _config.RsaCertificate,
-                        Oids.EcPublicKey => _config.EcdsaCertificate,
-                        _ => throw new InvalidOperationException($"Invalid Oid: {request.PublicKey.Oid.Value}")
-                    }
-                ]);
+                profile.CertificateChain);
         }
 
         var errors = chain.ChainStatus.Select(chainStatus =>
@@ -323,6 +312,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
 
     public SignCertificateResponse SignCertificateRequestPem(
         string request,
+        string? profileName = null,
         ClaimsIdentity? requestor = null,
         X509Certificate2? reenrollingFrom = null)
     {
@@ -338,11 +328,12 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             csr = Convert.FromBase64CharArray(r.ToArray(), 0, r.Length);
         }
 
-        return SignCertificateRequest(csr, requestor, reenrollingFrom);
+        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom);
     }
 
     private SignCertificateResponse SignCertificateRequest(
         byte[] request,
+        string? profileName = null,
         ClaimsIdentity? requestor = null,
         X509Certificate2? reenrollingFrom = null)
     {
@@ -352,17 +343,14 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
             RSASignaturePadding.Pss);
 
-        return SignCertificateRequest(csr, requestor, reenrollingFrom);
+        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom);
     }
 
     /// <inheritdoc />
-    public X509Certificate2Collection GetRootCertificates()
+    public X509Certificate2Collection GetRootCertificates(string? profileName = null)
     {
-        return
-        [
-            X509Certificate2.CreateFromPem(_config.RsaCertificate.ExportCertificatePem()),
-            X509Certificate2.CreateFromPem(_config.EcdsaCertificate.ExportCertificatePem())
-        ];
+        var profile = _config.Profiles.GetProfile(profileName);
+        return profile.CertificateChain;
     }
 
     public Task<bool> RevokeCertificate(string serialNumber, X509RevocationReason reason)
@@ -370,8 +358,9 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         return _certificateStore.RemoveCertificate(serialNumber, reason);
     }
 
-    public async Task<byte[]> GetRevocationList()
+    public async Task<byte[]> GetRevocationList(string? profileName = null)
     {
+        var profile = _config.Profiles.GetProfile(profileName);
         var list = _certificateStore.GetRevocationList();
         var builder = new CertificateRevocationListBuilder();
         await foreach (var revoked in list)
@@ -383,41 +372,41 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         }
 
         var crl = builder.Build(
-            _config.EcdsaCertificate,
-            _config.CrlNumber + 1,
+            profile.CertificateChain[0],
+            profile.CrlNumber + 1,
             DateTimeOffset.UtcNow.AddDays(7),
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pss, thisUpdate: DateTimeOffset.UtcNow);
         return crl;
     }
 
-    private static X509Certificate2 CreateSelfSignedRsaCert(
+    private static (RSA, X509Certificate2) CreateSelfSignedRsaCert(
         X500DistinguishedName distinguishedName,
         X509KeyUsageFlags usageFlags,
         TimeSpan certificateValidity)
     {
-        using var parent = RSA.Create(3072);
+        var parent = RSA.Create(3072);
         var parentReq = new CertificateRequest(
             distinguishedName,
             parent,
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pss);
 
-        return SelfSignCert(usageFlags, certificateValidity, parentReq);
+        return (parent, SelfSignCert(usageFlags, certificateValidity, parentReq));
     }
 
-    private static X509Certificate2 CreateSelfSignedEcDsaCert(
+    private static (ECDsa, X509Certificate2) CreateSelfSignedEcDsaCert(
         X500DistinguishedName distinguishedName,
         X509KeyUsageFlags usageFlags,
         TimeSpan certificateValidity)
     {
-        using var parent = ECDsa.Create();
+        var parent = ECDsa.Create();
         var parentReq = new CertificateRequest(
             distinguishedName,
             parent,
             HashAlgorithmName.SHA256);
 
-        return SelfSignCert(usageFlags, certificateValidity, parentReq);
+        return (parent, SelfSignCert(usageFlags, certificateValidity, parentReq));
     }
 
     private static X509Certificate2 SelfSignCert(
@@ -438,20 +427,23 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
 
     public void Dispose()
     {
-        _config.RsaCertificate.Dispose();
-        _config.EcdsaCertificate.Dispose();
+        _config.Dispose();
     }
 
-    private sealed partial class OwnCertificateValidation(X509Certificate2Collection serverCertificates, ILogger logger)
+    private sealed partial class OwnCertificateValidation(CaProfileSet caProfiles, ILogger logger)
         : IValidateCertificateRequests
     {
+        private readonly CaProfileSet _caProfiles = caProfiles;
+
         public string? Validate(
             CertificateRequest request,
-            ClaimsIdentity? requestor,
+            string? profile = null,
+            ClaimsIdentity? requestor = null,
             X509Certificate2? reenrollingFrom = null)
         {
+            CaProfile caProfile = _caProfiles.GetProfile(profile);
             var result = reenrollingFrom == null
-             || serverCertificates
+             || caProfile.CertificateChain
                     .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);
             if (result)
             {
@@ -477,6 +469,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
 
         public string? Validate(
             CertificateRequest request,
+            string? profile,
             ClaimsIdentity? requestor,
             X509Certificate2? reenrollingFrom = null)
         {

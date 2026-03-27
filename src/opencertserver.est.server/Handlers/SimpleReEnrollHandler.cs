@@ -1,34 +1,38 @@
-﻿using System.Security.Claims;
-using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.X509Extensions;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace OpenCertServer.Est.Server.Handlers;
 
-using System.IO;
-using System.Net;
+using System.Security.Claims;
+using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Ca.Utils.X509Extensions;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Ca.Utils;
 using Microsoft.AspNetCore.Http;
 
-internal sealed class SimpleReEnrollHandler
+internal static class SimpleReEnrollHandler
 {
-    private readonly ICertificateAuthority _certificateAuthority;
-
-    public SimpleReEnrollHandler(ICertificateAuthority certificateAuthority)
+    public static Task<IResult> Handle(
+        HttpContext context,
+        ClaimsPrincipal user,
+        ICertificateAuthority certificateAuthority)
     {
-        _certificateAuthority = certificateAuthority;
+        return HandleProfile(context, user, certificateAuthority, "");
     }
 
-    public async Task Handle(HttpContext ctx)
+    public static async Task<IResult> HandleProfile(
+        HttpContext context,
+        ClaimsPrincipal user,
+        ICertificateAuthority certificateAuthority,
+        [FromRoute] string profileName)
     {
-        var cert = await ctx.Request.HttpContext.Connection.GetClientCertificateAsync();
+        var connection = context.Connection;
+        var cert = await connection.GetClientCertificateAsync();
 
         if (cert == null)
         {
-            ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-            return;
+            return Results.BadRequest();
         }
 
         var request = cert.PublicKey.Oid.Value switch
@@ -46,8 +50,7 @@ internal sealed class SimpleReEnrollHandler
         };
         if (request == null)
         {
-            ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-            return;
+            return Results.BadRequest();
         }
 
         foreach (var extension in cert.Extensions)
@@ -55,24 +58,18 @@ internal sealed class SimpleReEnrollHandler
             request.CertificateExtensions.Add(extension);
         }
 
-        var newCert = _certificateAuthority.SignCertificateRequest(
+        var newCert = certificateAuthority.SignCertificateRequest(
             request,
-            ctx.User.Identity as ClaimsIdentity,
+            profileName,
+            user.Identity as ClaimsIdentity,
             cert);
         if (newCert is not SignCertificateResponse.Success success)
         {
-            ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-            return;
+            return Results.BadRequest();
         }
 
         var pem = success.Certificate.ToPemChain(success.Issuers);
-
-        ctx.Response.StatusCode = (int)HttpStatusCode.OK;
-        ctx.Response.ContentType = Constants.PemMimeType;
-        await using var writer = new StreamWriter(ctx.Response.Body);
-
-        await writer.WriteLineAsync(pem).ConfigureAwait(false);
-        await writer.FlushAsync().ConfigureAwait(false);
-        await _certificateAuthority.RevokeCertificate(cert.GetSerialNumberString(), X509RevocationReason.Superseded);
+        await certificateAuthority.RevokeCertificate(cert.GetSerialNumberString(), X509RevocationReason.Superseded);
+        return Results.Text(pem, Constants.PemMimeType);
     }
 }

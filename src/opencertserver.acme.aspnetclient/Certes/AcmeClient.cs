@@ -26,10 +26,10 @@ public sealed partial class AcmeClient : IAcmeClient
         _options = options;
     }
 
-    public async Task<PlacedOrder> PlaceOrder(params string[] domains)
+    public async Task<PlacedOrder> PlaceOrder(string[] domains)
     {
         LogOrderingLetsEncryptCertificateForDomainsDomains(string.Join(", ", domains));
-        var order = await _acme.NewOrder(domains);
+        var order = await _acme.NewOrder(_options.Profile, domains);
 
         var allAuthorizations = await order.Authorizations();
 
@@ -37,7 +37,7 @@ public sealed partial class AcmeClient : IAcmeClient
             allAuthorizations.Select(x => x.Http()))).Where(x => x != null).Select(x => x!).ToArray();
 
         var dtos = challengeContexts.Select(x => new ChallengeDto(
-                x.Type == ChallengeTypes.Dns01 ? _acme.AccountKey.DnsTxt(x.Token) ?? "" : x.Token,
+                x.Type == ChallengeTypes.Dns01 ? _acme.AccountKey.DnsTxt(x.Token) : x.Token,
                 x.KeyAuthz,
                 domains))
             .ToArray();

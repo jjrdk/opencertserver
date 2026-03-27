@@ -18,13 +18,16 @@ internal sealed class DefaultIssuer : IIssueCertificates
 
     /// <inheritdoc />
     public async Task<(byte[]? certificate, AcmeError? error)> IssueCertificate(
+        string? profile,
         string csr,
         IEnumerable<Identifier> identifiers,
         CancellationToken cancellationToken)
     {
         await Task.Yield();
 
-        var cert = _ca.SignCertificateRequestPem(csr,
+        var cert = _ca.SignCertificateRequestPem(
+            csr,
+            profile,
             new ClaimsIdentity(identifiers.Select(i => new Claim(i.Type, i.Value)), "acme"));
         return cert switch
         {

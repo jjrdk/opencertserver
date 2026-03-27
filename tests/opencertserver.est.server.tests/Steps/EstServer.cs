@@ -85,14 +85,31 @@ public class EstServer
                     sc.AddInMemoryCertificateStore()
                         .AddCertificateAuthority(
                             new CaConfiguration(
-                                rsaPrivate,
-                                ecdsaPrivate,
-                                BigInteger.Zero,
-                                TimeSpan.FromDays(90),
+                                new CaProfileSet(
+                                    "rsa",
+                                    new CaProfile
+                                    {
+                                        CertificateChain =
+                                            [X509Certificate2.CreateFromPem(rsaPrivate.ExportCertificatePem())],
+                                        Name = "rsa",
+                                        CertificateValidity = TimeSpan.FromDays(90),
+                                        CrlNumber = BigInteger.Zero,
+                                        PrivateKey = () => rsaPrivate.GetRSAPrivateKey()!
+                                    },
+                                    new CaProfile
+                                    {
+                                        CertificateChain =
+                                            [X509Certificate2.CreateFromPem(ecdsaPrivate.ExportCertificatePem())],
+                                        Name = "ecdsa",
+                                        CertificateValidity = TimeSpan.FromDays(90),
+                                        CrlNumber = BigInteger.Zero,
+                                        PrivateKey = () => ecdsaPrivate.GetECDsaPrivateKey()!
+                                    }
+                                ),
                                 ["test"],
                                 [],
                                 []))
-                        .AddEstServer<TestCsrAttributesHandler>()
+                        .AddEstServer<TestCsrAttributesLoader>()
                         .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
                         .ConfigureOptions<ConfigureOauthOptions>();
                 })
@@ -124,7 +141,7 @@ public class EstServer
         _context["publicKey"] = rsa.ExportRSAPublicKey();
         var client = new EstClient(
             new Uri("https://localhost/"),
-            new TestMessageHandler(_server,
+            messageHandler: new TestMessageHandler(_server,
                 X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
             ));
         var (_, cert) = await client.Enroll(
@@ -139,17 +156,18 @@ public class EstServer
     [When(@"a client submits a valid ECDsa certificate signing request \(CSR\)")]
     public async Task WhenAClientSubmitsAValidEcDsaCertificateSigningRequestCsr()
     {
-        using var rsa = ECDsa.Create();
-        _context["privateKey"] = rsa.ExportECPrivateKey();
-        _context["publicKey"] = rsa.ExportSubjectPublicKeyInfo();
+        using var ecDsa = ECDsa.Create();
+        _context["privateKey"] = ecDsa.ExportECPrivateKey();
+        _context["publicKey"] = ecDsa.ExportSubjectPublicKeyInfo();
         var client = new EstClient(
             new Uri("https://localhost/"),
-            new TestMessageHandler(_server,
+            profileName: "ecdsa",
+            messageHandler: new TestMessageHandler(_server,
                 X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
             ));
         var (_, cert) = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
-            rsa,
+            ecDsa,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
             certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
         );
@@ -162,7 +180,7 @@ public class EstServer
         using var rsa = RSA.Create();
         var client = new EstClient(
             new Uri("https://localhost/"),
-            _server.CreateHandler());
+            messageHandler: _server.CreateHandler());
         var (error, cert) = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
             rsa,
@@ -179,7 +197,7 @@ public class EstServer
         using var rsa = ECDsa.Create();
         var client = new EstClient(
             new Uri("https://localhost/"),
-            _server.CreateHandler());
+            messageHandler: _server.CreateHandler());
         var (error, cert) = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
             rsa,
@@ -197,7 +215,7 @@ public class EstServer
         using var rsa = ECDsa.Create();
         var client = new EstClient(
             new Uri("https://localhost/"),
-            new TestMessageHandler(_server,
+            messageHandler: new TestMessageHandler(_server,
                 X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
             ));
         var (error, cert) = await client.Enroll(
@@ -213,7 +231,7 @@ public class EstServer
     [When("an authenticated client requests the server attributes")]
     public async Task WhenAnAuthenticatedClientRequestsTheServerAttributes()
     {
-        var client = new EstClient(new Uri("https://localhost/"), _server.CreateHandler());
+        var client = new EstClient(new Uri("https://localhost/"), messageHandler: _server.CreateHandler());
         var attributes = await client.GetCsrAttributes(
             new AuthenticationHeaderValue("Bearer", "valid-jwt"));
 
@@ -234,7 +252,8 @@ public class EstServer
         var cert = (X509Certificate2Collection)_context["enrolledCertificate"]!;
         var client = new EstClient(
             new Uri("https://localhost/"),
-            new TestMessageHandler(_server,
+            profileName: keytype.ToLower(),
+            messageHandler: new TestMessageHandler(_server,
                 X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
             ));
         var privateKey = (byte[])_context["privateKey"]!;
@@ -274,7 +293,7 @@ public class EstServer
     [When("a client requests the CA certificates")]
     public async Task WhenAClientRequestsTheCaCertificates()
     {
-        var client = new EstClient(new Uri("https://localhost/"), _server.CreateHandler());
+        var client = new EstClient(new Uri("https://localhost/"), messageHandler: _server.CreateHandler());
         var certs = await client.ServerCertificates();
         _context["certificates"] = certs;
     }
@@ -283,7 +302,7 @@ public class EstServer
     public void ThenTheServerShouldReturnTheCaCertificatesInTheCorrectFormat()
     {
         Assert.IsType<X509Certificate2Collection>(_context["certificates"]);
-        Assert.Equal(2, ((X509Certificate2Collection)_context["certificates"]).Count);
+        Assert.Single((X509Certificate2Collection)_context["certificates"]);
     }
 
     [Then("the server should return the server attributes in the correct format")]

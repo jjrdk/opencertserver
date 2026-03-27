@@ -18,23 +18,26 @@ using Ca.Utils;
 /// </summary>
 public sealed class EstClient : IDisposable
 {
-    private readonly Uri _estUri;
+    private readonly Uri _estHost;
+    private readonly string? _profileName;
     private readonly HttpMessageHandler _messageHandler;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EstClient"/> class.
     /// </summary>
-    /// <param name="estUri">The <see cref="Uri"/> of the EST server.</param>
+    /// <param name="estHost">The <see cref="Uri"/> of the EST server.</param>
+    /// <param name="profileName">The optional profile name to use for the EST server.</param>
     /// <param name="messageHandler">The optional <see cref="HttpMessageHandler"/> for handling server requests.</param>
     /// <exception cref="ArgumentException">Thrown if the <see cref="Uri"/> scheme of the server is not HTTPS.</exception>
-    public EstClient(Uri estUri, HttpMessageHandler? messageHandler = null)
+    public EstClient(Uri estHost, string? profileName = null, HttpMessageHandler? messageHandler = null)
     {
-        if (estUri.Scheme != Uri.UriSchemeHttps)
+        if (estHost.Scheme != Uri.UriSchemeHttps)
         {
-            throw new ArgumentException("Must use HTTPS", nameof(estUri));
+            throw new ArgumentException("Must use HTTPS", nameof(estHost));
         }
 
-        _estUri = estUri;
+        _estHost = estHost;
+        _profileName = profileName;
         _messageHandler = messageHandler ?? new SocketsHttpHandler();
     }
 
@@ -58,7 +61,7 @@ public sealed class EstClient : IDisposable
         CancellationToken cancellationToken = default) where TAlgorithm : AsymmetricAlgorithm
     {
         var request = CreateCertificateRequest(distinguishedName, key, usageFlags);
-        var bytes = await RequestCertBytes(request, authenticationHeader, certificate, cancellationToken)
+        var bytes = await RequestCertBytes(_profileName, request, authenticationHeader, certificate, cancellationToken)
             .ConfigureAwait(false);
         var collection = new X509Certificate2Collection();
         collection.ImportFromPem(bytes);
@@ -86,11 +89,14 @@ public sealed class EstClient : IDisposable
                 .Aggregate(X509KeyUsageFlags.None, (flags, ext) => flags | ext.KeyUsages));
 
         var content = new StringContent(certRequest.ToPkcs10(), Encoding.UTF8, "application/pkcs10-mime");
+        var pathValue = _profileName == null
+            ? "/.well-known/est/simplereenroll"
+            : $"/.well-known/est/{_profileName}/simplereenroll";
         var requestUriBuilder = new UriBuilder(
             Uri.UriSchemeHttps,
-            _estUri.Host,
-            _estUri.Port,
-            "/.well-known/est/simplereenroll");
+            _estHost.Host,
+            _estHost.Port,
+            pathValue);
         var request = new HttpRequestMessage
         {
             Method = HttpMethod.Post,
@@ -123,11 +129,12 @@ public sealed class EstClient : IDisposable
 
     public async Task<X509Certificate2Collection> ServerCertificates(CancellationToken cancellationToken = default)
     {
+        var pathValue = _profileName == null ? "/.well-known/est/cacert" : $"/.well-known/est/{_profileName}/cacert";
         var requestUriBuilder = new UriBuilder(
             Uri.UriSchemeHttps,
-            _estUri.Host,
-            _estUri.Port,
-            "/.well-known/est/cacert");
+            _estHost.Host,
+            _estHost.Port,
+            pathValue);
 
         var client = new HttpClient(_messageHandler);
         var response = await client
@@ -140,16 +147,20 @@ public sealed class EstClient : IDisposable
     }
 
     private async Task<string> RequestCertBytes(
+        string? profileName,
         CertificateRequest request,
         AuthenticationHeaderValue? authenticationHeader = null,
         X509Certificate2? certificate = null,
         CancellationToken cancellationToken = default)
     {
+        var pathValue = profileName == null
+            ? "/.well-known/est/simpleenroll"
+            : $"/.well-known/est/{profileName}/simpleenroll";
         var requestUriBuilder = new UriBuilder(
             Uri.UriSchemeHttps,
-            _estUri.Host,
-            _estUri.Port,
-            "/.well-known/est/simpleenroll");
+            _estHost.Host,
+            _estHost.Port,
+            pathValue);
         var requestMessage = new HttpRequestMessage
         {
             Content = new StringContent(request.ToPkcs10(), Encoding.UTF8, "application/pkcs10-mime"),
@@ -217,11 +228,14 @@ public sealed class EstClient : IDisposable
     public async Task<CertificateSigningRequestTemplate> GetCsrAttributes(
         AuthenticationHeaderValue? authenticationHeader)
     {
+        var pathValue = _profileName == null
+            ? "/.well-known/est/csrattrs"
+            : $"/.well-known/est/{_profileName}/csrattrs";
         var requestUriBuilder = new UriBuilder(
             Uri.UriSchemeHttps,
-            _estUri.Host,
-            _estUri.Port,
-            "/.well-known/est/csrattrs");
+            _estHost.Host,
+            _estHost.Port,
+            pathValue);
 
         var client = new HttpClient(_messageHandler);
         var request = new HttpRequestMessage

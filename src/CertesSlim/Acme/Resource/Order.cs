@@ -9,6 +9,11 @@ namespace CertesSlim.Acme.Resource;
 public class Order
 {
     /// <summary>
+    /// Gets or sets the profile.
+    /// </summary>
+    public string? Profile { get; set; }
+
+    /// <summary>
     /// Gets or sets the status.
     /// </summary>
     /// <value>

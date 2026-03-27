@@ -1,8 +1,8 @@
 ﻿namespace OpenCertServer.Ca.Server;
 
+using System.Numerics;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
-using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Ocsp;
 using System.Text.Json.Serialization;
@@ -39,16 +39,6 @@ public static class Extensions
             CaConfiguration configuration,
             Func<X509Chain, bool>? chainValidation = null)
         {
-            if (configuration.RsaCertificate.PublicKey.Oid.Value != Oids.Rsa)
-            {
-                throw new ArgumentException("Must be an RSA key certificate");
-            }
-
-            if (configuration.EcdsaCertificate.PublicKey.Oid.Value != Oids.EcPublicKey)
-            {
-                throw new ArgumentException("Must be an ECDSA key certificate");
-            }
-
             return services.AddSingleton<ICertificateAuthority>(sp =>
             {
                 return new CertificateAuthority(
@@ -80,15 +70,28 @@ public static class Extensions
         {
             return services.AddSingleton<ICertificateAuthority>(sp =>
             {
-                var certificateAuthority = CertificateAuthority.CreateSelfSigned(
-                    distinguishedName,
-                    sp.GetRequiredService<IStoreCertificates>(),
-                    certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
+                var config = new CaConfiguration(
+                    new CaProfileSet(
+                        "default",
+                        CertificateAuthority.CreateSelfSignedRsa(
+                            "default",
+                            distinguishedName,
+                            certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
+                            BigInteger.Zero),
+                        CertificateAuthority.CreateSelfSignedEcdsa(
+                            "ecdsa",
+                            distinguishedName,
+                            certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
+                            BigInteger.Zero)
+                    ),
                     ocspUrls ?? [],
                     crlUrls ?? [],
-                    caIssuersUrls ?? [],
+                    caIssuersUrls ?? []);
+                var certificateAuthority = new CertificateAuthority(
+                    config,
+                    sp.GetRequiredService<IStoreCertificates>(),
+                    chainValidation ?? (_ => true),
                     sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                    chainValidation: chainValidation,
                     validators: sp.GetServices<IValidateCertificateRequests>().ToArray());
                 return certificateAuthority;
             });
@@ -130,6 +133,8 @@ public static class Extensions
                     policy.RequireAuthenticatedUser();
                 });
             groupBuilder.MapGet("/crl", CrlHandler.Handle)
+                .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
+            groupBuilder.MapGet("/{profileName}/crl", CrlHandler.HandleProfile)
                 .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
             groupBuilder.MapPost("/ocsp", OcspHandler.Handle).WithName("ocsp").AllowAnonymous();
             groupBuilder.MapGet("/certificate", CertificateRetrievalHandler.HandleGet)

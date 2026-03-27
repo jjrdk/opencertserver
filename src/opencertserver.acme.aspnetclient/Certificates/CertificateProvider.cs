@@ -42,7 +42,8 @@ public sealed partial class CertificateProvider : IProvideCertificates
         var persistedSiteCertificate = await _persistenceService.GetPersistedSiteCertificate(cancellationToken);
         if (_certificateValidator.IsCertificateValid(persistedSiteCertificate))
         {
-            LogAPersistedNonExpiredLetsEncryptCertificateWasFoundAndWillBeUsedThumbprint(persistedSiteCertificate?.Thumbprint);
+            LogAPersistedNonExpiredLetsEncryptCertificateWasFoundAndWillBeUsedThumbprint(persistedSiteCertificate
+                ?.Thumbprint);
             return new CertificateRenewalResult(persistedSiteCertificate, CertificateRenewalStatus.LoadedFromStore);
         }
 
@@ -57,7 +58,7 @@ public sealed partial class CertificateProvider : IProvideCertificates
     {
         var client = await _clientFactory.GetClient();
 
-        var placedOrder = await client.PlaceOrder();
+        var placedOrder = await client.PlaceOrder([]);
 
         await _persistenceService.PersistChallenges(placedOrder.Challenges);
 
@@ -67,7 +68,7 @@ public sealed partial class CertificateProvider : IProvideCertificates
 
             await _persistenceService.PersistSiteCertificate(pfxCertificateBytes, cancellationToken);
 
-            return  X509CertificateLoader.LoadCertificate(pfxCertificateBytes.RawData);
+            return X509CertificateLoader.LoadCertificate(pfxCertificateBytes.RawData);
         }
         catch (TaskCanceledException canceled)
         {
@@ -86,10 +87,12 @@ public sealed partial class CertificateProvider : IProvideCertificates
     [LoggerMessage(LogLevel.Information, "Current in-memory LetsEncrypt certificate is valid")]
     partial void LogCurrentInMemoryLetsencryptCertificateIsValid();
 
-    [LoggerMessage(LogLevel.Information, "Checking to see if existing LetsEncrypt certificate has been persisted and is valid")]
+    [LoggerMessage(LogLevel.Information,
+        "Checking to see if existing LetsEncrypt certificate has been persisted and is valid")]
     partial void LogCheckingToSeeIfExistingLetsencryptCertificateHasBeenPersistedAndIsValid();
 
-    [LoggerMessage(LogLevel.Information, "A persisted non-expired LetsEncrypt certificate was found and will be used: {Thumbprint}")]
+    [LoggerMessage(LogLevel.Information,
+        "A persisted non-expired LetsEncrypt certificate was found and will be used: {Thumbprint}")]
     partial void LogAPersistedNonExpiredLetsEncryptCertificateWasFoundAndWillBeUsedThumbprint(string? thumbprint);
 
     [LoggerMessage(LogLevel.Information, "No valid certificate was found. Requesting new certificate from LetsEncrypt")]

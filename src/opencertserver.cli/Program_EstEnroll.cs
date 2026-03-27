@@ -126,7 +126,7 @@ internal static partial class Program
                 var csrInput = CollectCsrInput(parse, csrOptions, Console.Out, Console.In);
                 var request = BuildCertificateRequest(key, csrInput, Console.Out);
 
-                using var estClient = new EstClient(baseUri, MessageHandlerFactory());
+                using var estClient = new EstClient(baseUri, messageHandler: MessageHandlerFactory());
                 var (error, certCollection) = await estClient.Enroll(
                     request.SubjectName,
                     key,

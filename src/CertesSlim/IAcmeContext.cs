@@ -91,15 +91,16 @@ public interface IAcmeContext
     Task<Account> ChangeKey(IKey? key = null);
 
     /// <summary>
-    /// Creates a new the order.
+    /// Creates a new order.
     /// </summary>
+    /// <param name="profile">The optional order profile.</param>
     /// <param name="identifiers">The identifiers.</param>
     /// <param name="notBefore">Th value of not before field for the certificate.</param>
     /// <param name="notAfter">The value of not after field for the certificate.</param>
     /// <returns>
     /// The order context created.
     /// </returns>
-    Task<IOrderContext> NewOrder(IList<string> identifiers, DateTimeOffset? notBefore = null, DateTimeOffset? notAfter = null);
+    Task<IOrderContext> NewOrder(string? profile, IList<string> identifiers, DateTimeOffset? notBefore = null, DateTimeOffset? notAfter = null);
 
     /// <summary>
     /// Signs the data with account key.

@@ -6,7 +6,7 @@ using System.Collections.Generic;
 public sealed class CreateOrderRequest
 {
     public List<Identifier>? Identifiers { get; set; }
-
+    public string? Profile { get; set; }
     public DateTimeOffset? NotBefore { get; set; }
     public DateTimeOffset? NotAfter { get; set; }
 }

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 public interface IAcmeClient
 {
-    Task<PlacedOrder> PlaceOrder(params string[] domains);
+    Task<PlacedOrder> PlaceOrder(string[] domains);
 
     Task<X509Certificate2> FinalizeOrder(PlacedOrder placedOrder, string password = "");
 }

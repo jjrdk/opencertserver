@@ -7,6 +7,7 @@ using Model;
 public interface IIssueCertificates
 {
     Task<(byte[]? certificate, AcmeError? error)> IssueCertificate(
+        string? profile,
         string csr,
         IEnumerable<Identifier> identifiers,
         CancellationToken cancellationToken);

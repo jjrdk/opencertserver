@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.X509Extensions;
 
@@ -10,49 +11,36 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 
-internal sealed class SimpleEnrollHandler
+internal static class SimpleEnrollHandler
 {
-    private readonly ICertificateAuthority _certificateAuthority;
-
-    public SimpleEnrollHandler(ICertificateAuthority certificateAuthority)
+    public static Task<IResult> Handle(
+        ClaimsPrincipal? user,
+        Stream body,
+        ICertificateAuthority certificateAuthority)
     {
-        _certificateAuthority = certificateAuthority;
+        return HandleProfile("", user, body, certificateAuthority);
     }
 
-    public async Task Handle(HttpContext ctx)
+    public static async Task<IResult> HandleProfile(
+        [FromRoute] string profileName,
+        ClaimsPrincipal? user,
+        Stream body,
+        ICertificateAuthority certificateAuthority)
     {
-        using var reader = new StreamReader(ctx.Request.Body, Encoding.UTF8);
+        using var reader = new StreamReader(body, Encoding.UTF8);
         var request = await reader.ReadToEndAsync().ConfigureAwait(false);
         var newCert =
-            _certificateAuthority.SignCertificateRequestPem(request,
-                ctx.User.Identity as ClaimsIdentity);
+            certificateAuthority.SignCertificateRequestPem(
+                request,
+                profileName,
+                user?.Identity as ClaimsIdentity);
         if (newCert is SignCertificateResponse.Success success)
         {
-            ctx.Response.StatusCode = (int)HttpStatusCode.OK;
-            ctx.Response.ContentType = Constants.PemMimeType;
-            await using var writer = new StreamWriter(ctx.Response.Body);
-            var pem = success.Certificate.ToPemChain(success.Issuers);
-            success.Certificate.Dispose();
-            foreach (var issuer in success.Issuers)
-            {
-                issuer.Dispose();
-            }
-
-            await writer.WriteLineAsync(pem).ConfigureAwait(false);
-            await writer.FlushAsync().ConfigureAwait(false);
+            return Results.Text(success.Certificate.ToPemChain(success.Issuers), Constants.PemMimeType);
         }
-        else
-        {
-            var error = (SignCertificateResponse.Error)newCert;
-            ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-            ctx.Response.ContentType = Constants.TextPlainMimeType;
-            await using var writer = new StreamWriter(ctx.Response.Body);
-            foreach (var line in error.Errors)
-            {
-                await writer.WriteLineAsync(line).ConfigureAwait(false);
-            }
 
-            await writer.FlushAsync().ConfigureAwait(false);
-        }
+        var error = (SignCertificateResponse.Error)newCert;
+        return Results.Text(string.Join(Environment.NewLine, error.Errors), Constants.PemMimeType, Encoding.UTF8,
+            (int)HttpStatusCode.BadRequest);
     }
 }

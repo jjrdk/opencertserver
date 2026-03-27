@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using OpenCertServer.Est.Server.Handlers;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
@@ -86,25 +87,37 @@ internal static class Program
                     [],
                     caIssuerUrls.ToArray(),
                     TimeSpan.FromDays(90))
-                .AddEstServer<CsrAttributesHandler>();
+                .AddEstServer<CsrTemplateLoader>();
         }
         else
         {
             var certs = await Task.WhenAll(
                 CreateCert(args, "--rsa", "--rsa-key"),
                 CreateCert(args, "--ec", "--ec-key"));
-
+            var rsaProfile = new CaProfile
+            {
+                Name = "rsa",
+                CertificateChain = [X509Certificate2.CreateFromPem(certs[0].ExportCertificatePem())],
+                CertificateValidity = TimeSpan.FromDays(90),
+                CrlNumber = BigInteger.Zero,
+                PrivateKey = () => certs[0].GetRSAPrivateKey()!
+            };
+            var ecdsaProfile = new CaProfile
+            {
+                Name = "ecdsa",
+                CertificateChain = [X509Certificate2.CreateFromPem(certs[1].ExportCertificatePem())],
+                CertificateValidity = TimeSpan.FromDays(90),
+                CrlNumber = BigInteger.Zero,
+                PrivateKey = () => certs[1].GetRSAPrivateKey()!
+            };
             services = services
                 .AddCertificateAuthority(
                     new CaConfiguration(
-                        certs[0],
-                        certs[1],
-                        BigInteger.Zero,
-                        TimeSpan.FromDays(90),
+                        new CaProfileSet("rsa", rsaProfile, ecdsaProfile),
                         ocspUrls.ToArray(),
                         [],
                         caIssuerUrls.ToArray()))
-                .AddEstServer<CsrAttributesHandler>();
+                .AddEstServer<CsrTemplateLoader>();
         }
 
         var a = Array.IndexOf(args, "--authority");

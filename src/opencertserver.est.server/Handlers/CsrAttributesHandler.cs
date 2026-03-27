@@ -1,27 +1,35 @@
+using OpenCertServer.Ca.Utils.X509.Templates;
+
 namespace OpenCertServer.Est.Server.Handlers;
 
-using OpenCertServer.Ca.Utils.X509.Templates;
-using System.Formats.Asn1;
-using System.Net;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Net.Http.Headers;
 
-public abstract class CsrAttributesHandler
+public static class CsrAttributesHandler
 {
-    public async Task Handle(HttpContext ctx)
+    public static Task<IResult> Handle(
+        ClaimsPrincipal? user,
+        ICsrTemplateLoader loader)
     {
-        var template = await GetTemplate(ctx.User).ConfigureAwait(false);
-        var writer = new AsnWriter(AsnEncodingRules.DER);
-        template.Encode(writer);
-        var encoded = writer.Encode();
-        ctx.Response.ContentType = "application/csrattrs";
-        ctx.Response.StatusCode = (int)HttpStatusCode.OK;
-        ctx.Response.Headers[HeaderNames.TransferEncoding] = "base64";
-        ctx.Response.Headers["Content-Transfer-Encoding"] = "base64";
-        await ctx.Response.Body.WriteAsync(encoded).ConfigureAwait(false);
-        await ctx.Response.CompleteAsync().ConfigureAwait(false);
+        return HandleProfile("", user, loader);
     }
 
-    public abstract Task<CertificateSigningRequestTemplate> GetTemplate(ClaimsPrincipal user);
+    public static async Task<IResult> HandleProfile(
+        string? profileName,
+        ClaimsPrincipal? user,
+        ICsrTemplateLoader loader)
+    {
+        var template = await loader.GetTemplate(profileName, user).ConfigureAwait(false);
+        return new CertificateSigningRequestTemplateResult(template);
+    }
+}
+
+public class CsrTemplateLoader : ICsrTemplateLoader
+{
+    public Task<CertificateSigningRequestTemplate> GetTemplate(
+        string? profileName = null,
+        ClaimsPrincipal? user = null)
+    {
+        return Task.FromResult(new CertificateSigningRequestTemplate(subject: null, subjectPkInfo: null));
+    }
 }

@@ -96,7 +96,7 @@ internal static partial class Program
                     }
                 }
 
-                using var estClient = new EstClient(baseUri, MessageHandlerFactory());
+                using var estClient = new EstClient(baseUri, messageHandler: MessageHandlerFactory());
                 var collection = await estClient.ReEnroll(key, currentCert).ConfigureAwait(false);
 
                 if (collection.Count == 0)

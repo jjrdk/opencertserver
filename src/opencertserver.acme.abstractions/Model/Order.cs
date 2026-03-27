@@ -16,7 +16,7 @@ public sealed class Order : IVersioned
             { OrderStatus.Processing, [OrderStatus.Valid, OrderStatus.Invalid] }
         };
 
-    public Order(Account account, IEnumerable<Identifier> identifiers)
+    public Order(Account account, IEnumerable<Identifier> identifiers, string? profile)
     {
         OrderId = GuidString.NewValue();
         Status = OrderStatus.Pending;
@@ -25,25 +25,21 @@ public sealed class Order : IVersioned
 
         Identifiers = [..identifiers];
         Authorizations = [];
+        Profile = profile;
     }
 
     public string OrderId { get; }
     public string AccountId { get; }
-
     public OrderStatus Status { get; private set; }
-
     public List<Identifier> Identifiers { get; private set; }
     public List<Authorization> Authorizations { get; private set; }
-
     public DateTimeOffset? NotBefore { get; set; }
     public DateTimeOffset? NotAfter { get; set; }
     public DateTimeOffset? Expires { get; set; }
-
     public AcmeError? Error { get; set; }
-
     public string? CertificateSigningRequest { get; set; }
     public byte[]? Certificate { get; set; }
-
+    public string? Profile { get; set; }
 
     /// <summary>
     /// Concurrency Token

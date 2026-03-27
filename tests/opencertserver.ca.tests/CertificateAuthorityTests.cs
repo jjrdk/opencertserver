@@ -1,7 +1,3 @@
-using System.Numerics;
-using System.Text;
-using OpenCertServer.Ca.Utils.Ca;
-
 namespace OpenCertServer.Ca.Tests;
 
 using System;
@@ -10,6 +6,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging.Abstractions;
+using OpenCertServer.Ca.Utils.Ca;
 using Utils;
 using Xunit;
 
@@ -19,7 +16,7 @@ public sealed class CertificateAuthorityTests : IDisposable
 
     public CertificateAuthorityTests()
     {
-        using var ecdsa = ECDsa.Create();
+        var ecdsa = ECDsa.Create();
         var ecdsaReq = new CertificateRequest("CN=Test Server", ecdsa, HashAlgorithmName.SHA256);
         ecdsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
         ecdsaReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(new PublicKey(ecdsa),
@@ -27,7 +24,7 @@ public sealed class CertificateAuthorityTests : IDisposable
         var ecdsaCert = ecdsaReq.CreateSelfSigned(
             DateTimeOffset.UtcNow.Date,
             DateTimeOffset.UtcNow.Date.AddYears(1));
-        using var rsa = RSA.Create(4096);
+        var rsa = RSA.Create(4096);
         var rsaReq = new CertificateRequest(
             "CN=Test Server",
             rsa,
@@ -40,7 +37,27 @@ public sealed class CertificateAuthorityTests : IDisposable
             DateTimeOffset.UtcNow.Date,
             DateTimeOffset.UtcNow.Date.AddYears(1));
         _authority = new CertificateAuthority(
-            new CaConfiguration(rsaCert, ecdsaCert, BigInteger.Zero, TimeSpan.FromDays(90), ["test"], [], []),
+            new CaConfiguration(
+                new CaProfileSet(
+                    "rsa",
+                    new CaProfile
+                    {
+                        CertificateChain = [X509Certificate2.CreateFromPem(rsaCert.ExportCertificatePem())],
+                        Name = "rsa",
+                        CertificateValidity = TimeSpan.FromDays(90),
+                        PrivateKey = () => rsa
+                    },
+                    new CaProfile
+                    {
+                        CertificateChain = [X509Certificate2.CreateFromPem(ecdsaCert.ExportCertificatePem())],
+                        Name = "ecdsa",
+                        CertificateValidity = TimeSpan.FromDays(90),
+                        PrivateKey = () => ecdsa
+                    }
+                ),
+                ["test"],
+                [],
+                []),
             new InMemoryCertificateStore(),
             _ => true,
             new NullLogger<CertificateAuthority>());
@@ -55,7 +72,7 @@ public sealed class CertificateAuthorityTests : IDisposable
         var bytes = req.CreateSigningRequest();
         var cert =
             _authority.SignCertificateRequestPem(
-                    PemEncoding.WriteString("CERTIFICATE REQUEST", bytes)) as SignCertificateResponse.Success;
+                PemEncoding.WriteString("CERTIFICATE REQUEST", bytes)) as SignCertificateResponse.Success;
 
         static IEnumerable<string> GetParts(X500DistinguishedName name)
         {
@@ -81,65 +98,6 @@ public sealed class CertificateAuthorityTests : IDisposable
             string.Join("",
                 cert!.Certificate.SubjectName.Format(true)
                     .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)));
-    }
-
-    [Fact]
-    public void WhenCreatingWithBackupActionThenBacksUpCerts()
-    {
-        X509Certificate2 rsa = null!;
-        X509Certificate2 ecdsa = null!;
-        _ = CertificateAuthority.CreateSelfSigned(
-            new X500DistinguishedName("CN=test"),
-            new InMemoryCertificateStore(),
-            TimeSpan.FromDays(1),
-            [],
-            [],
-            [],
-            NullLogger<CertificateAuthority>.Instance,
-            BigInteger.Zero,
-            null,
-            (c1, c2) =>
-            {
-                rsa = c1;
-                ecdsa = c2;
-            });
-
-        Assert.NotNull(rsa);
-        Assert.NotNull(ecdsa);
-    }
-
-    [Fact]
-    public void WhenCreatingWithBackupActionThenBacksUpCerts2()
-    {
-        using (var rsa = new FileStream("ca_rsa.pem", FileMode.Create))
-        {
-            using var rsaKey = new FileStream("ca_rsa_key.pem", FileMode.Create);
-            using var ecdsa = new FileStream("ca_ecdsa.pem", FileMode.Create);
-            using var ecdsaKey = new FileStream("ca_ecdsa_key.pem", FileMode.Create);
-            _ = CertificateAuthority.CreateSelfSigned(
-                new X500DistinguishedName("CN=reimers.io,DC=reimers.io,O=OpenCertServer,C=Switzerland"),
-                new InMemoryCertificateStore(),
-                TimeSpan.FromDays(2 * 365),
-                [],
-                [],
-                ["https://ca.reimers.io"],
-                NullLogger<CertificateAuthority>.Instance,
-                BigInteger.Zero,
-                _ => true,
-                (c1, c2) =>
-                {
-                    rsa.Write(Encoding.UTF8.GetBytes(c1.ExportCertificatePem()));
-                    rsaKey.Write(Encoding.UTF8.GetBytes(c1.GetRSAPrivateKey()!.ExportRSAPrivateKeyPem()));
-
-                    ecdsa.Write(Encoding.UTF8.GetBytes(c2.ExportCertificatePem()));
-                    ecdsaKey.Write(Encoding.UTF8.GetBytes(c2.GetECDsaPrivateKey()!.ExportECPrivateKeyPem()));
-                });
-        }
-
-        var ecdsaCert = X509Certificate2.CreateFromPemFile("ca_ecdsa.pem", "ca_ecdsa_key.pem");
-        Assert.True(ecdsaCert.HasPrivateKey);
-        var rsaCert = X509Certificate2.CreateFromPemFile("ca_rsa.pem", "ca_rsa_key.pem");
-        Assert.True(rsaCert.HasPrivateKey);
     }
 
     private static CertificateRequest CreateCertificateRequest(RSA rsa)

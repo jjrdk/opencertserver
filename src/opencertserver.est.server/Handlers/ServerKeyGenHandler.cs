@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using OpenCertServer.Ca.Utils.Ca;
 
 namespace OpenCertServer.Est.Server.Handlers;
@@ -12,20 +13,25 @@ using Microsoft.Net.Http.Headers;
 using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.X509Extensions;
 
-internal class ServerKeyGenHandler
+internal static class ServerKeyGenHandler
 {
-    private readonly ICertificateAuthority _certificateAuthority;
-
-    public ServerKeyGenHandler(ICertificateAuthority certificateAuthority)
+    public static Task<IResult> Handle(
+        ClaimsPrincipal user,
+        ICertificateAuthority certificateAuthority,
+        Stream body)
     {
-        _certificateAuthority = certificateAuthority;
+        return HandleProfile("", user, certificateAuthority, body);
     }
 
-    public async Task Handle(HttpContext ctx)
+    public static async Task<IResult> HandleProfile(
+        [FromRoute] string profileName,
+        ClaimsPrincipal user,
+        ICertificateAuthority certificateAuthority,
+        Stream body)
     {
         try
         {
-            using var reader = new StreamReader(ctx.Request.Body, Encoding.UTF8);
+            using var reader = new StreamReader(body, Encoding.UTF8);
             var request = await reader.ReadToEndAsync().ConfigureAwait(false);
             var signingRequest = request.StartsWith("-----BEGIN CERTIFICATE REQUEST-----")
                 ? CertificateRequest.LoadSigningRequestPem(
@@ -39,7 +45,8 @@ internal class ServerKeyGenHandler
             using var ecdsa = ECDsa.Create();
             signingRequest = new CertificateRequest(signingRequest.SubjectName, ecdsa, HashAlgorithmName.SHA256);
             var newCert =
-                _certificateAuthority.SignCertificateRequest(signingRequest, ctx.User.Identity as ClaimsIdentity);
+                certificateAuthority.SignCertificateRequest(signingRequest, profileName,
+                    user.Identity as ClaimsIdentity);
             if (newCert is SignCertificateResponse.Success success)
             {
                 var mpr = new MultipartContent();
@@ -58,37 +65,45 @@ internal class ServerKeyGenHandler
                         { HeaderNames.ContentType, Constants.PemMimeType }
                     }
                 });
-                ctx.Response.StatusCode = (int)HttpStatusCode.OK;
-                ctx.Response.ContentType = Constants.MultiPartMixed;
-                await mpr.CopyToAsync(ctx.Response.Body);
-                await ctx.Response.Body.FlushAsync().ConfigureAwait(false);
-                success.Certificate.Dispose();
-                foreach (var issuer in success.Issuers)
-                {
-                    issuer.Dispose();
-                }
+                return new MultipartContentResult(mpr);
             }
-            else
-            {
-                var error = (SignCertificateResponse.Error)newCert;
-                ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                ctx.Response.ContentType = Constants.TextPlainMimeType;
-                await using var writer = new StreamWriter(ctx.Response.Body);
-                foreach (var line in error.Errors)
-                {
-                    await writer.WriteLineAsync(line).ConfigureAwait(false);
-                }
 
-                await writer.FlushAsync().ConfigureAwait(false);
-            }
+            var error = (SignCertificateResponse.Error)newCert;
+            return Results.Text(
+                string.Join(Environment.NewLine, error.Errors), Constants.TextPlainMimeType,
+                Encoding.UTF8,
+                (int)HttpStatusCode.BadRequest);
         }
         catch (Exception)
         {
-            ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-            ctx.Response.ContentType = Constants.TextPlainMimeType;
-            await using var writer = new StreamWriter(ctx.Response.Body);
-            await writer.WriteLineAsync("An error occurred while processing the request.").ConfigureAwait(false);
-            await writer.FlushAsync().ConfigureAwait(false);
+            return Results.Text(
+                "An error occurred while processing the request.", Constants.TextPlainMimeType, Encoding.UTF8,
+                (int)HttpStatusCode.BadRequest);
         }
+    }
+}
+
+internal class MultipartContentResult : IResult
+{
+    private readonly MultipartContent _content;
+    private readonly string _contentType;
+    private readonly HttpStatusCode _statusCode;
+
+    public MultipartContentResult(
+        MultipartContent content,
+        string contentType = Constants.MultiPartMixed,
+        HttpStatusCode statusCode = HttpStatusCode.OK)
+    {
+        _content = content;
+        _contentType = contentType;
+        _statusCode = statusCode;
+    }
+
+    public async Task ExecuteAsync(HttpContext ctx)
+    {
+        ctx.Response.StatusCode = (int)_statusCode;
+        ctx.Response.ContentType = _contentType;
+        await _content.CopyToAsync(ctx.Response.Body);
+        await ctx.Response.Body.FlushAsync().ConfigureAwait(false);
     }
 }

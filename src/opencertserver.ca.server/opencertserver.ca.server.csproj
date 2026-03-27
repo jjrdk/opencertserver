@@ -5,6 +5,7 @@
         <RootNamespace>OpenCertServer.Ca.Server</RootNamespace>
         <AssemblyName>opencertserver.ca.server</AssemblyName>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="10.0.5" />
