@@ -1,72 +1,7 @@
-using CertesSlim.Extensions;
-using Microsoft.IdentityModel.Tokens;
-
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using System;
 using global::CertesSlim.Acme;
-
-public abstract class AcmeOptions
-{
-    public string? Profile { get; init; }
-
-    /// <summary>
-    /// Gets the password used to encrypt the private key of the certificate. This is required to be able to export the certificate with the private key, which is necessary for most use cases. If you do not want to encrypt the private key, set this to an empty string.
-    /// </summary>
-    public required string AccountPassword { get; init; }
-
-    /// <summary>
-    /// Gets the domains to request certificates for.
-    /// </summary>
-    public string[] Domains { get; init; } = [];
-
-    /// <summary>
-    /// Used only for LetsEncrypt to contact you when the domain is about to expire - not actually validated.
-    /// </summary>
-    public string Email { get; init; } = null!;
-
-    /// <summary>
-    /// The amount of time before the expiry date of the certificate that a new one is created. Defaults to 30 days.
-    /// </summary>
-    public TimeSpan? TimeUntilExpiryBeforeRenewal { get; init; } = TimeSpan.FromDays(30);
-
-    /// <summary>
-    /// The amount of time after the last renewal date that a new one is created. Defaults to null.
-    /// </summary>
-    public TimeSpan? TimeAfterIssueDateBeforeRenewal { get; init; }
-
-    /// <summary>
-    /// Recommended while testing - increases your rate limit towards LetsEncrypt. Defaults to false.
-    /// </summary>
-    public bool UseStaging { get; init; }
-
-    /// <summary>
-    /// Gets the uri which will be used to talk to LetsEncrypt servers.
-    /// </summary>
-    public abstract Uri AcmeServerUri { get; }
-
-    /// <summary>
-    /// Required. Sent to LetsEncrypt to let them know what details you want in your certificate. Some of the properties are optional.
-    /// </summary>
-    public required CsrInfo CertificateSigningRequest { get; init; }
-
-    /// <summary>
-    /// Gets or sets the renewal fail mode - i.e. what happens if an exception is thrown in the certificate renewal process.
-    /// </summary>
-    public RenewalFailMode RenewalFailMode { get; set; } = RenewalFailMode.LogAndContinue;
-
-    /// <summary>
-    /// Gets or sets the <see cref="KeyAlgorithm"/> used to request a new LetsEncrypt certificate.
-    /// </summary>
-    public string KeyAlgorithm { get; init; } = SecurityAlgorithms.EcdsaSha256;
-
-    /// <summary>
-    /// Get or set a delay before the initial run of the renewal service (subsequent runs will be at 1hr intervals)
-    /// On some platform/deployment systems (e.g Azure Slot Swap) we do not want the renewal service to start immediately, because we may not
-    /// yet have incoming requests (e.g. for challenges) directed to us.
-    /// </summary>
-    public TimeSpan RenewalServiceStartupDelay { get; set; } = TimeSpan.Zero;
-}
 
 public sealed class LetsEncryptOptions : AcmeOptions
 {
