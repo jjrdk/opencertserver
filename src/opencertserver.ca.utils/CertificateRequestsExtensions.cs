@@ -9,6 +9,9 @@ using System.Security.Cryptography.X509Certificates;
 /// </summary>
 public static class CertificateRequestsExtensions
 {
+    /// <summary>
+    /// Represents the member.
+    /// </summary>
     private const string CertificateRequestHeader = "CERTIFICATE REQUEST";
 
     /// <summary>

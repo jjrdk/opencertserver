@@ -23,6 +23,9 @@ public class DistributionPointName : IAsnValue
         NameRelativeToCrlIssuer = 1
     }
 
+    /// <summary>
+    /// Represents the _value.
+    /// </summary>
     private readonly IAsnValue _value;
 
     /// <summary>
@@ -116,6 +119,9 @@ public class DistributionPointName : IAsnValue
         _value.Encode(writer, new Asn1Tag(TagClass.ContextSpecific, (int)Type));
     }
 
+    /// <summary>
+    /// Executes the AppendObject operation.
+    /// </summary>
     private static void AppendObject(StringBuilder buf, string name, string val)
     {
         const string indent = "    ";

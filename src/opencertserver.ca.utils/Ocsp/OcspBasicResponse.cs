@@ -36,6 +36,9 @@ public class OcspBasicResponse : IAsnValue
         Certs = certs == null ? [] : certs.ToArray().AsReadOnly();
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OcspBasicResponse"/> class.
+    /// </summary>
     public OcspBasicResponse(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
@@ -57,14 +60,29 @@ public class OcspBasicResponse : IAsnValue
         }
     }
 
+    /// <summary>
+    /// Gets the to-be-signed response data.
+    /// </summary>
     public ResponseData TbsResponseData { get; }
 
+    /// <summary>
+    /// Gets the signature algorithm used for this OCSP basic response.
+    /// </summary>
     public AlgorithmIdentifier SignatureAlgorithm { get; }
 
+    /// <summary>
+    /// Gets the response signature bytes.
+    /// </summary>
     public byte[] Signature { get; }
 
+    /// <summary>
+    /// Gets the optional certificates included with the response.
+    /// </summary>
     public IReadOnlyCollection<X509Certificate2>? Certs { get; }
 
+    /// <summary>
+    /// Executes the Encode operation.
+    /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         writer.PushSequence(tag);

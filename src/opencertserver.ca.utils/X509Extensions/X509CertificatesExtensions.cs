@@ -9,6 +9,9 @@ using System.Text.RegularExpressions;
 /// </summary>
 public static partial class X509CertificatesExtensions
 {
+    /// <summary>
+    /// Represents the member.
+    /// </summary>
     private const string SubjectAlternateNameOid = "2.5.29.17";
 
     extension(X509Certificate2 cert)
@@ -57,5 +60,8 @@ public static partial class X509CertificatesExtensions
     }
 
     [GeneratedRegex(@"^DNS Name=(.+)", RegexOptions.Compiled | RegexOptions.CultureInvariant)]
+    /// <summary>
+    /// Executes the DnsNameRegex operation.
+    /// </summary>
     private static partial Regex DnsNameRegex();
 }

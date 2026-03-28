@@ -18,6 +18,9 @@ using OpenCertServer.Ca.Utils.X509;
 /// </code>
 public class SingleResponse : IAsnValue
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SingleResponse"/> class.
+    /// </summary>
     public SingleResponse(
         CertId certId,
         (CertificateStatus, RevokedInfo?) certStatus,
@@ -31,6 +34,9 @@ public class SingleResponse : IAsnValue
         NextUpdate = nextUpdate;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SingleResponse"/> class.
+    /// </summary>
     public SingleResponse(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
@@ -59,16 +65,34 @@ public class SingleResponse : IAsnValue
         }
     }
 
+    /// <summary>
+    /// Gets the certificate identifier this response applies to.
+    /// </summary>
     public CertId CertId { get; }
 
+    /// <summary>
+    /// Gets the certificate status in this single response.
+    /// </summary>
     public CertificateStatus CertStatus { get; }
 
+    /// <summary>
+    /// Gets revocation details when the certificate status is revoked.
+    /// </summary>
     public RevokedInfo? RevokedInfo { get; }
 
+    /// <summary>
+    /// Gets the timestamp when this status was known to be correct.
+    /// </summary>
     public DateTimeOffset ThisUpdate { get; }
 
+    /// <summary>
+    /// Gets the optional next update timestamp for this status.
+    /// </summary>
     public DateTimeOffset? NextUpdate { get; }
 
+    /// <summary>
+    /// Executes the Encode operation.
+    /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         writer.PushSequence(tag);

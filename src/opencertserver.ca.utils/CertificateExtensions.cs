@@ -7,6 +7,9 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
+/// <summary>
+/// Provides extension helpers for working with <see cref="X509Certificate2"/> instances.
+/// </summary>
 public static class CertificateExtensions
 {
     extension(X509Certificate2 cert)
@@ -164,6 +167,9 @@ public static class CertificateExtensions
         }
     }
 
+    /// <summary>
+    /// Executes the FormatName operation.
+    /// </summary>
     private static string FormatName(X500DistinguishedName name, string indent)
     {
         var raw = name.Name;
@@ -200,6 +206,9 @@ public static class CertificateExtensions
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Executes the FormatHexLines operation.
+    /// </summary>
     private static string FormatHexLines(byte[] data, int bytesPerLine, string indent, string sep)
     {
         if (data.Length == 0) return indent + "<none>\n";
@@ -214,6 +223,9 @@ public static class CertificateExtensions
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Executes the LeadingZeroCount operation.
+    /// </summary>
     private static int LeadingZeroCount(byte[] data)
     {
         var i = 0;
@@ -221,6 +233,9 @@ public static class CertificateExtensions
         return i;
     }
 
+    /// <summary>
+    /// Executes the KeyUsageNames operation.
+    /// </summary>
     private static List<string> KeyUsageNames(X509KeyUsageFlags flags)
     {
         var list = new List<string>();
@@ -237,6 +252,9 @@ public static class CertificateExtensions
         return list;
     }
 
+    /// <summary>
+    /// Executes the OidFriendlyName operation.
+    /// </summary>
     private static string OidFriendlyName(Oid? o)
     {
         if (o == null) return "<unknown>";
@@ -256,6 +274,9 @@ public static class CertificateExtensions
         return "<unknown>";
     }
 
+    /// <summary>
+    /// Executes the FormatMultiline operation.
+    /// </summary>
     private static string FormatMultiline(string s, string indent)
     {
         var lines = s.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
@@ -264,6 +285,9 @@ public static class CertificateExtensions
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Executes the FormatHexDumpWithOffsets operation.
+    /// </summary>
     private static string FormatHexDumpWithOffsets(byte[] data, string indent)
     {
         if (data.Length == 0) return indent + "<none>\n";
@@ -289,6 +313,9 @@ public static class CertificateExtensions
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Executes the GetSignature operation.
+    /// </summary>
     private static byte[] GetSignature(X509Certificate2 cert)
     {
         try

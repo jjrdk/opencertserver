@@ -16,6 +16,9 @@ using OpenCertServer.Ca.Utils.X509;
 /// </code>
 public class Signature : IAsnValue
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Signature"/> class.
+    /// </summary>
     public Signature(AlgorithmIdentifier algorithmIdentifier, byte[] signature, IList<X509Certificate2>? certs = null)
     {
         AlgorithmIdentifier = algorithmIdentifier;
@@ -23,6 +26,9 @@ public class Signature : IAsnValue
         Certs = certs;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Signature"/> class.
+    /// </summary>
     public Signature(AsnReader reader, Asn1Tag? expectedTag = null)
     {
         var sequenceReader = reader.ReadSequence(expectedTag);
@@ -44,12 +50,24 @@ public class Signature : IAsnValue
         sequenceReader.ThrowIfNotEmpty();
     }
 
+    /// <summary>
+    /// Gets the signature algorithm identifier.
+    /// </summary>
     public AlgorithmIdentifier AlgorithmIdentifier { get; }
 
+    /// <summary>
+    /// Gets the signature bytes.
+    /// </summary>
     public byte[] SignatureBytes { get; }
 
+    /// <summary>
+    /// Gets the optional certificate chain used to verify the signature.
+    /// </summary>
     public IList<X509Certificate2>? Certs { get; }
 
+    /// <summary>
+    /// Executes the Encode operation.
+    /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         writer.PushSequence(tag);

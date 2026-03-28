@@ -3,6 +3,12 @@ namespace OpenCertServer.Ca.Utils.Ca;
 using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils.Ocsp;
 
+/// <summary>
+/// Defines the IStoreCertificates interface.
+/// </summary>
+/// <summary>
+/// Represents the IStoreCertificates.
+/// </summary>
 public interface IStoreCertificates
 {
     Task AddCertificate(X509Certificate2 certificate);

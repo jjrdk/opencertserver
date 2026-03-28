@@ -95,8 +95,14 @@ public class CertificateRevocationList
     /// </summary>
     public DateTimeOffset? NextUpdate { get; }
 
+    /// <summary>
+    /// Gets the CRL extensions.
+    /// </summary>
     public IReadOnlyCollection<X509Extension> Extensions { get; }
 
+    /// <summary>
+    /// Executes the LoadPem operation.
+    /// </summary>
     public static CertificateRevocationList LoadPem(
         ReadOnlySpan<char> pemCrl,
         AsymmetricAlgorithm? issuerPublicKey = null)
@@ -106,6 +112,9 @@ public class CertificateRevocationList
         return Load(pemBytes, issuerPublicKey);
     }
 
+    /// <summary>
+    /// Executes the Build operation.
+    /// </summary>
     public byte[] Build(HashAlgorithmName hashAlgorithmName, AsymmetricAlgorithm signingKey)
     {
         var tbsCertList = WriteTbsCertList();
@@ -133,6 +142,9 @@ public class CertificateRevocationList
         return writer.Encode();
     }
 
+    /// <summary>
+    /// Executes the WriteTbsCertList operation.
+    /// </summary>
     private byte[] WriteTbsCertList()
     {
         var tbsCertSequenceWriter = new AsnWriter(AsnEncodingRules.DER);
@@ -293,6 +305,9 @@ public class CertificateRevocationList
         return issuerPublicKey.VerifySignature(tbsSpan, signature, hashAlgorithm);
     }
 
+    /// <summary>
+    /// Executes the ReadSignedContent operation.
+    /// </summary>
     private static ReadOnlySpan<byte> ReadSignedContent(ReadOnlyMemory<byte> crlDer)
     {
         // Read outer SEQUENCE, get content span (tbs + alg + sig)

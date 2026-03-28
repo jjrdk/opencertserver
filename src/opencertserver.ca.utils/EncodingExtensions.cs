@@ -80,6 +80,9 @@ public static class EncodingExtensions
             }
         }
 
+        /// <summary>
+        /// Executes the GetHashAlgorithmNameFromOid operation.
+        /// </summary>
         public HashAlgorithmName GetHashAlgorithmNameFromOid()
         {
             return value switch
@@ -97,6 +100,9 @@ public static class EncodingExtensions
             };
         }
 
+        /// <summary>
+        /// Executes the GetHashAlgorithmFromOid operation.
+        /// </summary>
         public HashAlgorithm GetHashAlgorithmFromOid()
         {
             return value switch
@@ -110,6 +116,9 @@ public static class EncodingExtensions
             };
         }
 
+        /// <summary>
+        /// Executes the InitializeOid operation.
+        /// </summary>
         public Oid InitializeOid(string? friendlyName = null)
         {
             var oid = new Oid(value, friendlyName);
@@ -125,6 +134,9 @@ public static class EncodingExtensions
 
     extension(X500DistinguishedName distinguishedName)
     {
+        /// <summary>
+        /// Executes the Encode operation.
+        /// </summary>
         public void Encode(AsnWriter writer)
         {
             using (writer.PushSequence())
@@ -150,6 +162,9 @@ public static class EncodingExtensions
 
     extension(X509Extension extension)
     {
+        /// <summary>
+        /// Executes the Encode operation.
+        /// </summary>
         public void Encode(AsnWriter writer, Asn1Tag? tag = null)
         {
             using (writer.PushSequence(tag))
@@ -167,6 +182,9 @@ public static class EncodingExtensions
 
     extension(AsnReader reader)
     {
+        /// <summary>
+        /// Executes the GetSharedOrNewOid operation.
+        /// </summary>
         public Oid GetSharedOrNewOid()
         {
             var ret = reader.GetSharedOrNullOid();
@@ -180,6 +198,9 @@ public static class EncodingExtensions
             return oidValue.InitializeOid();
         }
 
+        /// <summary>
+        /// Executes the GetSharedOrNullOid operation.
+        /// </summary>
         public Oid? GetSharedOrNullOid(Asn1Tag? expectedTag = null)
         {
             var tag = reader.PeekTag();
@@ -223,6 +244,9 @@ public static class EncodingExtensions
             return ret;
         }
 
+        /// <summary>
+        /// Executes the ReadVersion operation.
+        /// </summary>
         public int ReadVersion()
         {
             var version = 0;
@@ -243,6 +267,9 @@ public static class EncodingExtensions
             return version;
         }
 
+        /// <summary>
+        /// Executes the ReadRevokedCertificates operation.
+        /// </summary>
         public List<RevokedCertificate> ReadRevokedCertificates(int version)
         {
             List<RevokedCertificate> list = [];
@@ -280,6 +307,9 @@ public static class EncodingExtensions
             return list;
         }
 
+        /// <summary>
+        /// Executes the ReadCertificateExtensions operation.
+        /// </summary>
         public IEnumerable<CertificateExtension> ReadCertificateExtensions()
         {
             var extensions = reader.ReadSequence();
@@ -289,6 +319,9 @@ public static class EncodingExtensions
             }
         }
 
+        /// <summary>
+        /// Executes the ReadDistinguishedName operation.
+        /// </summary>
         public X500DistinguishedName ReadDistinguishedName()
         {
             // X500DN
@@ -306,6 +339,9 @@ public static class EncodingExtensions
             return distinguishedName.Build();
         }
 
+        /// <summary>
+        /// Executes the ReadX509Time operation.
+        /// </summary>
         public DateTimeOffset ReadX509Time()
         {
             return reader.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime)
@@ -313,6 +349,9 @@ public static class EncodingExtensions
                 : reader.ReadGeneralizedTime();
         }
 
+        /// <summary>
+        /// Executes the ReadOptionalX509Time operation.
+        /// </summary>
         public DateTimeOffset? ReadOptionalX509Time()
         {
             if (reader.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime))
@@ -328,6 +367,9 @@ public static class EncodingExtensions
             return null;
         }
 
+        /// <summary>
+        /// Executes the ReadCrlExtensions operation.
+        /// </summary>
         public IEnumerable<X509Extension> ReadCrlExtensions()
         {
             while (reader.HasData)
@@ -336,6 +378,9 @@ public static class EncodingExtensions
             }
         }
 
+        /// <summary>
+        /// Executes the DecodeExtension operation.
+        /// </summary>
         public X509Extension DecodeExtension()
         {
             var extensionSeq = reader.ReadSequence();
@@ -392,6 +437,9 @@ public static class EncodingExtensions
 
     extension(HashAlgorithmName hashAlgorithmName)
     {
+        /// <summary>
+        /// Executes the CreateHashAlgorithm operation.
+        /// </summary>
         public HashAlgorithm CreateHashAlgorithm()
         {
             return hashAlgorithmName.Name switch
@@ -406,6 +454,9 @@ public static class EncodingExtensions
             };
         }
 
+        /// <summary>
+        /// Executes the GetHashAlgorithmOid operation.
+        /// </summary>
         public Oid GetHashAlgorithmOid()
         {
             return hashAlgorithmName.Name switch

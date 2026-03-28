@@ -14,12 +14,18 @@ using OpenCertServer.Ca.Utils.X509;
 /// </code>
 public class OcspRequest : IAsnValue
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OcspRequest"/> class.
+    /// </summary>
     public OcspRequest(TbsRequest tbsRequest, Signature? signature = null)
     {
         TbsRequest = tbsRequest;
         Signature = signature;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OcspRequest"/> class.
+    /// </summary>
     public OcspRequest(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
@@ -34,10 +40,19 @@ public class OcspRequest : IAsnValue
         sequenceReader.ThrowIfNotEmpty();
     }
 
+    /// <summary>
+    /// Gets the to-be-signed request payload.
+    /// </summary>
     public TbsRequest TbsRequest { get; }
 
+    /// <summary>
+    /// Gets the optional signature block for signed OCSP requests.
+    /// </summary>
     public Signature? Signature { get; }
 
+    /// <summary>
+    /// Executes the Encode operation.
+    /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         writer.PushSequence(tag);

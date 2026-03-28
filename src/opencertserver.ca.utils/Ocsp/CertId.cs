@@ -18,6 +18,9 @@ using OpenCertServer.Ca.Utils.X509;
 /// </code>
 public class CertId : IAsnValue
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CertId"/> class.
+    /// </summary>
     public CertId(AlgorithmIdentifier algorithm, byte[] issuerNameHash, byte[] issuerKeyHash, byte[] serialNumber)
     {
         Algorithm = algorithm;
@@ -26,6 +29,9 @@ public class CertId : IAsnValue
         SerialNumber = serialNumber;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CertId"/> class.
+    /// </summary>
     public CertId(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
@@ -36,6 +42,9 @@ public class CertId : IAsnValue
         sequenceReader.ThrowIfNotEmpty();
     }
 
+    /// <summary>
+    /// Executes the Create operation.
+    /// </summary>
     public static CertId Create(X509Certificate2 certificate, HashAlgorithmName hashAlgorithm)
     {
         var hasher = hashAlgorithm.CreateHashAlgorithm();
@@ -46,14 +55,29 @@ public class CertId : IAsnValue
             certificate.SerialNumberBytes.ToArray());
     }
 
+    /// <summary>
+    /// Gets the hash algorithm identifier used in this certificate identifier.
+    /// </summary>
     public AlgorithmIdentifier Algorithm { get; }
 
+    /// <summary>
+    /// Gets the hash of the issuer distinguished name.
+    /// </summary>
     public byte[] IssuerNameHash { get; }
 
+    /// <summary>
+    /// Gets the hash of the issuer public key.
+    /// </summary>
     public byte[] IssuerKeyHash { get; }
 
+    /// <summary>
+    /// Gets the certificate serial number bytes.
+    /// </summary>
     public byte[] SerialNumber { get; }
 
+    /// <summary>
+    /// Executes the Encode operation.
+    /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         writer.PushSequence(tag);

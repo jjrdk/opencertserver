@@ -16,6 +16,9 @@ using System.Text;
 /// </code>
 public class AttributeTypeValue : IAsnValue
 {
+    /// <summary>
+    /// Represents the _tag.
+    /// </summary>
     private readonly Asn1Tag _tag;
 
     /// <summary>

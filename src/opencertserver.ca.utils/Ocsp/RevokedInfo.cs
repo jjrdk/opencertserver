@@ -15,12 +15,18 @@ using OpenCertServer.Ca.Utils.X509;
 /// </code>
 public class RevokedInfo : IAsnValue
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RevokedInfo"/> class.
+    /// </summary>
     public RevokedInfo(DateTimeOffset revocationTime, X509RevocationReason? revocationReason = null)
     {
         RevocationTime = revocationTime;
         RevocationReason = revocationReason;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RevokedInfo"/> class.
+    /// </summary>
     public RevokedInfo(AsnReader reader, Asn1Tag expectedTag)
     {
         var sequenceReader = reader.ReadSequence(expectedTag);
@@ -34,10 +40,19 @@ public class RevokedInfo : IAsnValue
         }
     }
 
+    /// <summary>
+    /// Gets the revocation timestamp for the certificate.
+    /// </summary>
     public DateTimeOffset RevocationTime { get; }
 
+    /// <summary>
+    /// Gets the optional revocation reason code.
+    /// </summary>
     public X509RevocationReason? RevocationReason { get; }
 
+    /// <summary>
+    /// Executes the Encode operation.
+    /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         using (writer.PushSequence(tag))

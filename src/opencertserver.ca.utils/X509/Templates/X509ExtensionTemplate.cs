@@ -3,12 +3,27 @@ namespace OpenCertServer.Ca.Utils.X509.Templates;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 
+/// <summary>
+/// Represents a template for an X.509 extension, including OID, criticality, and encoded value.
+/// </summary>
 public class X509ExtensionTemplate : IAsnValue
 {
+    /// <summary>
+    /// Gets the extension object identifier.
+    /// </summary>
     public Oid Oid { get; }
+    /// <summary>
+    /// Gets the extension value payload.
+    /// </summary>
     public IAsnValue? Value { get; }
+    /// <summary>
+    /// Gets a value indicating whether the extension is marked critical.
+    /// </summary>
     public bool Critical { get; }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="X509ExtensionTemplate"/> class.
+    /// </summary>
     public X509ExtensionTemplate(Oid oid, IAsnValue? value, bool critical = false)
     {
         Oid = oid;
@@ -16,6 +31,9 @@ public class X509ExtensionTemplate : IAsnValue
         Critical = critical;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="X509ExtensionTemplate"/> class.
+    /// </summary>
     public X509ExtensionTemplate(AsnReader reader)
     {
         var seqReader = reader.ReadSequence();
@@ -35,6 +53,9 @@ public class X509ExtensionTemplate : IAsnValue
         Value = new AsnString(Asn1Tag.Null, valueReader.ReadCharacterString(UniversalTagNumber.UTF8String));
     }
 
+    /// <summary>
+    /// Executes the Encode operation.
+    /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         using (writer.PushSequence())
