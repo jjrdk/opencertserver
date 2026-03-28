@@ -16,6 +16,11 @@ internal static partial class Program
             Description = "HTTPS base URL for the EST server"
         };
 
+        var profileOption = new Option<string>("--profile")
+        {
+            Description = "The name of the est-server profile"
+        };
+
         var cmd = new Command("est-server-certificates", "Fetch the EST server's CA certificates")
         {
             urlOption
@@ -33,9 +38,12 @@ internal static partial class Program
                 return;
             }
 
+            var profile = parse.GetValue(profileOption);
+
             try
             {
-                using var estClient = new EstClient(baseUri, messageHandler: MessageHandlerFactory());
+                using var estClient =
+                    new EstClient(baseUri, messageHandler: MessageHandlerFactory(), profileName: profile);
                 var collection = await estClient.ServerCertificates().ConfigureAwait(false);
                 if (collection.Count == 0)
                 {
@@ -44,7 +52,7 @@ internal static partial class Program
                 }
 
                 var builder = new StringBuilder();
-                foreach (X509Certificate2 cert in collection)
+                foreach (var cert in collection)
                 {
                     builder.AppendLine(cert.ExportCertificatePem());
                 }
@@ -58,4 +66,3 @@ internal static partial class Program
         }
     }
 }
-

@@ -20,6 +20,10 @@ internal static partial class Program
         {
             Description = "Path to the private key file to sign the CSR (PEM)"
         };
+        var profileOption = new Option<string>("--profile")
+        {
+            Description = "Name of the profile for the est-server"
+        };
         var outOption = new Option<string>("--out")
         {
             DefaultValueFactory = _ => "est-cert.pem",
@@ -39,6 +43,7 @@ internal static partial class Program
         {
             urlOption,
             privateKeyOption,
+            profileOption,
             outOption,
             clientCertOption,
             authOption,
@@ -77,6 +82,8 @@ internal static partial class Program
                 Console.WriteLine("Private key file is required and must exist (--private-key path).");
                 return;
             }
+
+            var profile = parse.GetValue(profileOption);
 
             var outPath = parse.GetValue(outOption);
             if (string.IsNullOrWhiteSpace(outPath))
@@ -126,7 +133,8 @@ internal static partial class Program
                 var csrInput = CollectCsrInput(parse, csrOptions, Console.Out, Console.In);
                 var request = BuildCertificateRequest(key, csrInput, Console.Out);
 
-                using var estClient = new EstClient(baseUri, messageHandler: MessageHandlerFactory());
+                using var estClient =
+                    new EstClient(baseUri, messageHandler: MessageHandlerFactory(), profileName: profile);
                 var (error, certCollection) = await estClient.Enroll(
                     request.SubjectName,
                     key,
@@ -147,7 +155,7 @@ internal static partial class Program
                 }
 
                 var builder = new StringBuilder();
-                foreach (X509Certificate2 cert in certCollection)
+                foreach (var cert in certCollection)
                 {
                     builder.AppendLine(cert.ExportCertificatePem());
                 }

@@ -21,6 +21,10 @@ internal static partial class Program
         {
             Description = "Path to the private key used to sign the re-enrollment request (PEM)"
         };
+        var profileOption = new Option<string>("--profile")
+        {
+            Description = "Profile name to use for the EST request"
+        };
         var certificateOption = new Option<string>("--cert")
         {
             Description = "Existing certificate to re-enroll (PEM or DER)"
@@ -35,6 +39,7 @@ internal static partial class Program
         {
             urlOption,
             privateKeyOption,
+            profileOption,
             certificateOption,
             outOption
         };
@@ -59,6 +64,8 @@ internal static partial class Program
                 return;
             }
 
+            var profile = parse.GetValue(profileOption);
+
             var certificatePath = parse.GetValue(certificateOption);
             if (string.IsNullOrWhiteSpace(certificatePath) || !File.Exists(certificatePath))
             {
@@ -80,7 +87,8 @@ internal static partial class Program
 
                 var certBytes = await File.ReadAllBytesAsync(certificatePath).ConfigureAwait(false);
                 using var currentCert = X509CertificateLoader.LoadCertificate(certBytes);
-                using var publicKey = currentCert.GetRSAPublicKey() ?? (AsymmetricAlgorithm?)currentCert.GetECDsaPublicKey();
+                using var publicKey = currentCert.GetRSAPublicKey() ??
+                    (AsymmetricAlgorithm?)currentCert.GetECDsaPublicKey();
                 if (publicKey == null)
                 {
                     Console.WriteLine("Certificate does not contain a supported public key.");
@@ -96,7 +104,8 @@ internal static partial class Program
                     }
                 }
 
-                using var estClient = new EstClient(baseUri, messageHandler: MessageHandlerFactory());
+                using var estClient =
+                    new EstClient(baseUri, messageHandler: MessageHandlerFactory(), profileName: profile);
                 var collection = await estClient.ReEnroll(key, currentCert).ConfigureAwait(false);
 
                 if (collection.Count == 0)
@@ -106,7 +115,7 @@ internal static partial class Program
                 }
 
                 var builder = new StringBuilder();
-                foreach (X509Certificate2 cert in collection)
+                foreach (var cert in collection)
                 {
                     builder.AppendLine(cert.ExportCertificatePem());
                 }
@@ -127,4 +136,3 @@ internal static partial class Program
         }
     }
 }
-
