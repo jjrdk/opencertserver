@@ -133,71 +133,52 @@ public class EstServer
         return webBuilder;
     }
 
-    [When(@"a client submits a valid RSA certificate signing request \(CSR\)")]
-    public async Task WhenAClientSubmitsAValidRsaCertificateSigningRequestCsr()
+    [When(
+        """^a client submits a valid (.+?) certificate signing request \(CSR\) using the "(.+?)" certificate profile$""")]
+    public async Task WhenAClientSubmitsAValidCertificateSigningRequestCsrUsingTheCertificateProfile(
+        string profile,
+        string profileName)
     {
-        using var rsa = RSA.Create();
-        _context["privateKey"] = rsa.ExportRSAPrivateKey();
-        _context["publicKey"] = rsa.ExportRSAPublicKey();
+        AsymmetricAlgorithm key = null!;
+        switch (profile.ToLowerInvariant())
+        {
+            case "rsa":
+                var rsa = RSA.Create();
+                key = rsa;
+                _context["privateKey"] = rsa.ExportRSAPrivateKey();
+                _context["publicKey"] = key.ExportSubjectPublicKeyInfo();
+                break;
+            case "ecdsa":
+                var ecDsa = ECDsa.Create();
+                key = ecDsa;
+                _context["privateKey"] = ecDsa.ExportECPrivateKey();
+                _context["publicKey"] = key.ExportSubjectPublicKeyInfo();
+                break;
+        }
+
         var client = new EstClient(
             new Uri("https://localhost/"),
+            profileName: profile.ToLowerInvariant(),
             messageHandler: new TestMessageHandler(_server,
                 X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
             ));
         var (_, cert) = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
-            rsa,
+            key,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
             certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
         );
         _context["enrolledCertificate"] = cert;
     }
 
-    [When(@"a client submits a valid ECDsa certificate signing request \(CSR\)")]
-    public async Task WhenAClientSubmitsAValidEcDsaCertificateSigningRequestCsr()
-    {
-        using var ecDsa = ECDsa.Create();
-        _context["privateKey"] = ecDsa.ExportECPrivateKey();
-        _context["publicKey"] = ecDsa.ExportSubjectPublicKeyInfo();
-        var client = new EstClient(
-            new Uri("https://localhost/"),
-            profileName: "ecdsa",
-            messageHandler: new TestMessageHandler(_server,
-                X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
-            ));
-        var (_, cert) = await client.Enroll(
-            new X500DistinguishedName("CN=Test, OU=Test Department"),
-            ecDsa,
-            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-            certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
-        );
-        _context["enrolledCertificate"] = cert;
-    }
-
-    [When(@"an unauthenticated client submits a valid RSA certificate signing request \(CSR\)")]
-    public async Task WhenAnUnauthenticatedClientSubmitsAValidRsaCertificateSigningRequestCsr()
+    [When(@"^an unauthenticated client submits a valid (.+?) certificate signing request \(CSR\)$")]
+    public async Task WhenAnUnauthenticatedClientSubmitsAValidRsaCertificateSigningRequestCsr(string profile)
     {
         using var rsa = RSA.Create();
         var client = new EstClient(
             new Uri("https://localhost/"),
-            messageHandler: _server.CreateHandler());
-        var (error, cert) = await client.Enroll(
-            new X500DistinguishedName("CN=Test, OU=Test Department"),
-            rsa,
-            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-            certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
-        );
-        _context["errorMessage"] = error;
-        _context["enrolledCertificate"] = cert;
-    }
-
-    [When(@"an unauthenticated client submits a valid ECDsa certificate signing request \(CSR\)")]
-    public async Task WhenAnUnauthenticatedClientSubmitsAValidEcDsaCertificateSigningRequestCsr()
-    {
-        using var rsa = ECDsa.Create();
-        var client = new EstClient(
-            new Uri("https://localhost/"),
-            messageHandler: _server.CreateHandler());
+            messageHandler: _server.CreateHandler(),
+            profileName: profile);
         var (error, cert) = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
             rsa,
@@ -228,10 +209,11 @@ public class EstServer
         _context["enrolledCertificate"] = cert;
     }
 
-    [When("an authenticated client requests the server attributes")]
-    public async Task WhenAnAuthenticatedClientRequestsTheServerAttributes()
+    [When("^an authenticated client requests the server attributes for the (.+?) certificate profile$")]
+    public async Task WhenAnAuthenticatedClientRequestsTheServerAttributes(string profile)
     {
-        var client = new EstClient(new Uri("https://localhost/"), messageHandler: _server.CreateHandler());
+        var client = new EstClient(new Uri("https://localhost/"), messageHandler: _server.CreateHandler(),
+            profileName: profile);
         var attributes = await client.GetCsrAttributes(
             new AuthenticationHeaderValue("Bearer", "valid-jwt"));
 
@@ -246,13 +228,13 @@ public class EstServer
         Assert.NotNull(_context["enrolledCertificate"]);
     }
 
-    [When("the (.+) client uses the previously issued certificate for re-enrollment")]
+    [When("^the (.+) client uses the previously issued certificate for re-enrollment$")]
     public async Task WhenTheClientUsesThePreviouslyIssuedCertificateForReEnrollment(string keytype)
     {
         var cert = (X509Certificate2Collection)_context["enrolledCertificate"]!;
         var client = new EstClient(
             new Uri("https://localhost/"),
-            profileName: keytype.ToLower(),
+            profileName: keytype.ToLowerInvariant(),
             messageHandler: new TestMessageHandler(_server,
                 X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
             ));
@@ -263,7 +245,7 @@ public class EstServer
             case "RSA":
             {
                 using var rsa = RSA.Create();
-                rsa.ImportRSAPublicKey(publicKey, out _);
+                rsa.ImportSubjectPublicKeyInfo(publicKey, out _);
                 rsa.ImportRSAPrivateKey(privateKey, out _);
                 cert = await client.ReEnroll(rsa, cert[0]);
                 break;
@@ -290,10 +272,11 @@ public class EstServer
         Assert.Null(_context["enrolledCertificate"]);
     }
 
-    [When("a client requests the CA certificates")]
-    public async Task WhenAClientRequestsTheCaCertificates()
+    [When("^a client requests the CA certificates for the \"(.+?)\" certificate profile$")]
+    public async Task WhenAClientRequestsTheCaCertificates(string profileName)
     {
-        var client = new EstClient(new Uri("https://localhost/"), messageHandler: _server.CreateHandler());
+        var client = new EstClient(new Uri("https://localhost/"), messageHandler: _server.CreateHandler(),
+            profileName: profileName);
         var certs = await client.ServerCertificates();
         _context["certificates"] = certs;
     }
