@@ -16,7 +16,13 @@ using System.Formats.Asn1;
 /// </code>
 public class DirectoryString : IAsnValue
 {
+    /// <summary>
+    /// Represents the _value.
+    /// </summary>
     private readonly string _value;
+    /// <summary>
+    /// Represents the _type.
+    /// </summary>
     private readonly Asn1Tag _type;
 
     /// <summary>

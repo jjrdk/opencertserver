@@ -15,12 +15,18 @@ using OpenCertServer.Ca.Utils.X509;
 /// </code>
 public class Request : IAsnValue
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Request"/> class.
+    /// </summary>
     public Request(CertId certId, X509ExtensionCollection? singleRequestExtensions = null)
     {
         CertIdentifier = certId;
         SingleRequestExtensions = singleRequestExtensions;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Request"/> class.
+    /// </summary>
     public Request(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
@@ -42,10 +48,19 @@ public class Request : IAsnValue
         sequenceReader.ThrowIfNotEmpty();
     }
 
+    /// <summary>
+    /// Gets the certificate identifier requested for status checking.
+    /// </summary>
     public CertId CertIdentifier { get; }
 
+    /// <summary>
+    /// Gets the optional per-request extensions.
+    /// </summary>
     public X509ExtensionCollection? SingleRequestExtensions { get; }
 
+    /// <summary>
+    /// Executes the Encode operation.
+    /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         writer.PushSequence(tag);

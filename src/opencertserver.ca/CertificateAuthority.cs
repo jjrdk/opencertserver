@@ -206,6 +206,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         };
     }
 
+    /// <inheritdoc/>
     public SignCertificateResponse SignCertificateRequest(
         CertificateRequest request,
         string? profileName = null,
@@ -310,6 +311,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         return new SignCertificateResponse.Error(errors);
     }
 
+    /// <inheritdoc/>
     public SignCertificateResponse SignCertificateRequestPem(
         string request,
         string? profileName = null,
@@ -353,11 +355,13 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         return profile.CertificateChain;
     }
 
+    /// <inheritdoc/>
     public Task<bool> RevokeCertificate(string serialNumber, X509RevocationReason reason)
     {
         return _certificateStore.RemoveCertificate(serialNumber, reason);
     }
 
+    /// <inheritdoc/>
     public async Task<byte[]> GetRevocationList(string? profileName = null)
     {
         var profile = _config.Profiles.GetProfile(profileName);
@@ -425,6 +429,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         return parentCert;
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         _config.Dispose();

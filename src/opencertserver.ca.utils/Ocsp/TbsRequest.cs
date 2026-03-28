@@ -18,6 +18,9 @@ using OpenCertServer.Ca.Utils.X509;
 /// </code>
 public class TbsRequest : IAsnValue
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TbsRequest"/> class.
+    /// </summary>
     public TbsRequest(
         TypeVersion version = TypeVersion.V1,
         GeneralName? requestorName = null,
@@ -30,6 +33,9 @@ public class TbsRequest : IAsnValue
         RequestExtensions = requestExtensions;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TbsRequest"/> class.
+    /// </summary>
     public TbsRequest(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
@@ -73,14 +79,29 @@ public class TbsRequest : IAsnValue
         RequestList ??= [];
     }
 
+    /// <summary>
+    /// Gets the OCSP request version.
+    /// </summary>
     public TypeVersion Version { get; }
 
+    /// <summary>
+    /// Gets the optional requestor name.
+    /// </summary>
     public GeneralName? RequestorName { get; }
 
+    /// <summary>
+    /// Gets the list of certificate status requests.
+    /// </summary>
     public IList<Request> RequestList { get; }
 
+    /// <summary>
+    /// Gets the optional request extensions.
+    /// </summary>
     public X509ExtensionCollection? RequestExtensions { get; }
 
+    /// <summary>
+    /// Executes the Encode operation.
+    /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         writer.PushSequence(tag);
@@ -123,6 +144,9 @@ public class TbsRequest : IAsnValue
         writer.PopSequence(tag);
     }
 
+    /// <summary>
+    /// Executes the Sign operation.
+    /// </summary>
     public Signature Sign(AsymmetricAlgorithm key)
     {
         var signatureGenerator = key switch

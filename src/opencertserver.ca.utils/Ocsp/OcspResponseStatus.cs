@@ -1,5 +1,11 @@
 namespace OpenCertServer.Ca.Utils.Ocsp;
 
+/// <summary>
+/// Defines the OcspResponseStatus enumeration.
+/// </summary>
+/// <summary>
+/// Represents the OcspResponseStatus.
+/// </summary>
 public enum OcspResponseStatus
 {
     Successful = 0,

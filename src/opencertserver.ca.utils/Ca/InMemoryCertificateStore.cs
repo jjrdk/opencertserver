@@ -3,16 +3,28 @@ namespace OpenCertServer.Ca.Utils.Ca;
 using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils.Ocsp;
 
+/// <summary>
+/// Provides an in-memory implementation of <see cref="IStoreCertificates"/> for certificate inventory and revocation tracking.
+/// </summary>
 public class InMemoryCertificateStore : IStoreCertificates
 {
+    /// <summary>
+    /// Executes the new operation.
+    /// </summary>
     private readonly Dictionary<string, CertificateItem> _certificates = new();
 
+    /// <summary>
+    /// Executes the AddCertificate operation.
+    /// </summary>
     public Task AddCertificate(X509Certificate2 certificate)
     {
         _certificates.Add(certificate.GetSerialNumberString(), CertificateItem.FromX509Certificate2(certificate));
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Executes the RemoveCertificate operation.
+    /// </summary>
     public Task<bool> RemoveCertificate(string serialNumber, X509RevocationReason reason)
     {
         if (!_certificates.TryGetValue(serialNumber, out var certificateItem))
@@ -25,6 +37,9 @@ public class InMemoryCertificateStore : IStoreCertificates
         return Task.FromResult(true);
     }
 
+    /// <summary>
+    /// Executes the GetRevocationList operation.
+    /// </summary>
     public IAsyncEnumerable<CertificateItemInfo> GetRevocationList(int page = 0, int pageSize = 100)
     {
         return _certificates
@@ -36,6 +51,9 @@ public class InMemoryCertificateStore : IStoreCertificates
             .ToAsyncEnumerable();
     }
 
+    /// <summary>
+    /// Executes the Task< operation.
+    /// </summary>
     public async Task<(CertId, CertificateStatus, RevokedInfo?)> GetCertificateStatus(CertId certId)
     {
         await Task.Yield();
@@ -51,6 +69,9 @@ public class InMemoryCertificateStore : IStoreCertificates
             : (certId, CertificateStatus.Good, null);
     }
 
+    /// <summary>
+    /// Executes the GetInventory operation.
+    /// </summary>
     public IAsyncEnumerable<CertificateItemInfo> GetInventory(int page = 0, int pageSize = 100)
     {
         return _certificates
@@ -61,6 +82,9 @@ public class InMemoryCertificateStore : IStoreCertificates
             .ToAsyncEnumerable();
     }
 
+    /// <summary>
+    /// Executes the GetCertificatesById operation.
+    /// </summary>
     public IAsyncEnumerable<X509Certificate2> GetCertificatesById(params IEnumerable<ReadOnlyMemory<byte>> ids)
     {
         var idStrings = ids.Select(i => Convert.ToHexString(i.Span));
@@ -71,6 +95,9 @@ public class InMemoryCertificateStore : IStoreCertificates
             .ToAsyncEnumerable();
     }
 
+    /// <summary>
+    /// Executes the GetCertificatesByThumbprint operation.
+    /// </summary>
     public IAsyncEnumerable<X509Certificate2> GetCertificatesByThumbprint(IEnumerable<ReadOnlyMemory<char>> thumbprint)
     {
         var thumbprintStrings = thumbprint.ToArray();

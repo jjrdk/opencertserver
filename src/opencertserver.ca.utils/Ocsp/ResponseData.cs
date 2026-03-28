@@ -17,6 +17,9 @@ using OpenCertServer.Ca.Utils.X509;
 /// </code>
 public class ResponseData : IAsnValue
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ResponseData"/> class.
+    /// </summary>
     public ResponseData(
         TypeVersion version,
         IResponderId responderId,
@@ -29,6 +32,9 @@ public class ResponseData : IAsnValue
         Responses = responses.ToArray().AsReadOnly();
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ResponseData"/> class.
+    /// </summary>
     public ResponseData(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
@@ -57,14 +63,29 @@ public class ResponseData : IAsnValue
         Responses = responses.AsReadOnly();
     }
 
+    /// <summary>
+    /// Gets the response data version.
+    /// </summary>
     public TypeVersion Version { get; }
 
+    /// <summary>
+    /// Gets the responder identifier.
+    /// </summary>
     public IResponderId ResponderId { get; }
 
+    /// <summary>
+    /// Gets the production timestamp for this response data.
+    /// </summary>
     public DateTimeOffset ProducedAt { get; }
 
+    /// <summary>
+    /// Gets the collection of single responses contained in this response.
+    /// </summary>
     public IReadOnlyCollection<SingleResponse> Responses { get; }
 
+    /// <summary>
+    /// Executes the Encode operation.
+    /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         writer.PushSequence(tag);

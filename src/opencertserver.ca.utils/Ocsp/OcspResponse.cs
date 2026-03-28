@@ -14,6 +14,9 @@ using OpenCertServer.Ca.Utils.X509;
 ///  </code>
 public class OcspResponse : IAsnValue
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OcspResponse"/> class.
+    /// </summary>
     public OcspResponse(OcspResponseStatus status, OcspBasicResponse response)
     {
         ResponseStatus = status;
@@ -23,12 +26,18 @@ public class OcspResponse : IAsnValue
         ResponseBytes = new ResponseBytes(Oids.OcspBasicResponse.InitializeOid(Oids.OcspBasicResponseFriendlyName), responseBytes);
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OcspResponse"/> class.
+    /// </summary>
     public OcspResponse(OcspResponseStatus status, ResponseBytes? responseBytes = null)
     {
         ResponseStatus = status;
         ResponseBytes = responseBytes;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OcspResponse"/> class.
+    /// </summary>
     public OcspResponse(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
@@ -42,10 +51,19 @@ public class OcspResponse : IAsnValue
         sequenceReader.ThrowIfNotEmpty();
     }
 
+    /// <summary>
+    /// Gets the OCSP response status value.
+    /// </summary>
     public OcspResponseStatus ResponseStatus { get; }
 
+    /// <summary>
+    /// Gets the optional OCSP response bytes payload.
+    /// </summary>
     public ResponseBytes? ResponseBytes { get; }
 
+    /// <summary>
+    /// Executes the Encode operation.
+    /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
         using (writer.PushSequence(tag))

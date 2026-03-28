@@ -3,6 +3,12 @@
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 
+/// <summary>
+/// Defines the ICertificateAuthority interface.
+/// </summary>
+/// <summary>
+/// Represents the ICertificateAuthority.
+/// </summary>
 public interface ICertificateAuthority
 {
     SignCertificateResponse SignCertificateRequest(

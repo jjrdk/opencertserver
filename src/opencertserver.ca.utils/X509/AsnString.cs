@@ -7,6 +7,9 @@ using System.Formats.Asn1;
 /// </summary>
 public class AsnString : IAsnValue
 {
+    /// <summary>
+    /// Represents the _tag.
+    /// </summary>
     private readonly Asn1Tag _tag;
 
     /// <summary>
