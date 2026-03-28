@@ -24,13 +24,13 @@ public sealed class CustomCertificatePersistenceStrategy : ICertificatePersisten
 
     public async Task<byte[]?> RetrieveAccountCertificate()
     {
-        var bytes = await _retrieve(CertificateType.Account);
+        var bytes = await _retrieve(CertificateType.Account).ConfigureAwait(false);
         return bytes;
     }
 
     public async Task<X509Certificate2?> RetrieveSiteCertificate()
     {
-        var bytes = await _retrieve(CertificateType.Account);
+        var bytes = await _retrieve(CertificateType.Account).ConfigureAwait(false);
         return bytes == null ? null :  X509CertificateLoader.LoadCertificate(bytes);
     }
 }

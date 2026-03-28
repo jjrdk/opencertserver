@@ -30,7 +30,7 @@ internal class OrderListContext : EntityContext<OrderList>, IOrderListContext
         var next = Location;
         while (next != null)
         {
-            var resp = await Context.HttpClient.Get<OrderList>(next);
+            var resp = await Context.HttpClient.Get<OrderList>(next).ConfigureAwait(false);
 
             orderList.AddRange(
                 resp.Resource.Orders.Select(o => new OrderContext(Context, o)));

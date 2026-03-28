@@ -20,7 +20,7 @@ public sealed class ValidateAcmeRequestFilter : IEndpointFilter
     {
         if (context.HttpContext.Request.Method != HttpMethods.Post)
         {
-            return await next(context);
+            return await next(context).ConfigureAwait(false);
         }
 
         var payload = context.Arguments.OfType<JwsPayload>().FirstOrDefault();
@@ -31,7 +31,7 @@ public sealed class ValidateAcmeRequestFilter : IEndpointFilter
 
         var acmeHeader = payload.ToAcmeHeader();
         await _validationService.ValidateRequestAsync(payload, acmeHeader, context.HttpContext.Request.GetDisplayUrl(),
-            context.HttpContext.RequestAborted);
-        return await next(context);
+            context.HttpContext.RequestAborted).ConfigureAwait(false);
+        return await next(context).ConfigureAwait(false);
     }
 }

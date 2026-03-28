@@ -30,7 +30,7 @@ public sealed class AcmeLocationFilter : IEndpointFilter
         var locationAttribute =context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<AcmeLocationAttribute>();
         if (locationAttribute == null)
         {
-            return await next(context);
+            return await next(context).ConfigureAwait(false);
         }
         var locationHeaderUrl = _linkGenerator.GetUriByRouteValues(context.HttpContext,
             locationAttribute.RouteName,
@@ -38,6 +38,6 @@ public sealed class AcmeLocationFilter : IEndpointFilter
         var locationHeader = $"{locationHeaderUrl}";
 
         context.HttpContext.Response.GetTypedHeaders().Set(HeaderNames.Location, locationHeader);
-        return await next(context);
+        return await next(context).ConfigureAwait(false);
     }
 }

@@ -33,26 +33,26 @@ public sealed partial class PersistenceService : IPersistenceService
         await PersistCertificate(
             CertificateType.Account,
             Encoding.UTF8.GetBytes(certificate.ToPem()),
-            _certificatePersistenceStrategies);
+            _certificatePersistenceStrategies).ConfigureAwait(false);
     }
 
     public async Task PersistSiteCertificate(
         X509Certificate2 certificate,
         CancellationToken cancellationToken = default)
     {
-        await PersistCertificate(CertificateType.Site, certificate.RawData, _certificatePersistenceStrategies);
+        await PersistCertificate(CertificateType.Site, certificate.RawData, _certificatePersistenceStrategies).ConfigureAwait(false);
         LogCertificatePersistedForLaterUse();
     }
 
     public async Task PersistChallenges(ChallengeDto[] challenges)
     {
         LogUsingStrategiesForPersistingChallenge(string.Join(", ", _challengePersistenceStrategies));
-        await PersistChallenges(challenges, _challengePersistenceStrategies);
+        await PersistChallenges(challenges, _challengePersistenceStrategies).ConfigureAwait(false);
     }
 
     public async Task DeleteChallenges(ChallengeDto[] challenges)
     {
-        await DeleteChallengesAsync(challenges, _challengePersistenceStrategies);
+        await DeleteChallengesAsync(challenges, _challengePersistenceStrategies).ConfigureAwait(false);
     }
 
     //private string GetChallengeDnsName(string domain)
@@ -71,7 +71,7 @@ public sealed partial class PersistenceService : IPersistenceService
         LogPersistingTypeCertificateThroughStrategies(persistenceType);
 
         var tasks = strategies.Select(x => x.Persist(persistenceType, certificate));
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     private async Task PersistChallenges(
@@ -87,14 +87,14 @@ public sealed partial class PersistenceService : IPersistenceService
 
         var tasks = strategies.Select(x => x.Persist(challenges));
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     public async Task<X509Certificate2?> GetPersistedSiteCertificate(CancellationToken cancellationToken = default)
     {
         foreach (var strategy in _certificatePersistenceStrategies)
         {
-            var certificate = await strategy.RetrieveSiteCertificate();
+            var certificate = await strategy.RetrieveSiteCertificate().ConfigureAwait(false);
             if (certificate != null)
             {
                 return certificate;
@@ -109,7 +109,7 @@ public sealed partial class PersistenceService : IPersistenceService
     {
         foreach (var strategy in _certificatePersistenceStrategies)
         {
-            var certificate = await strategy.RetrieveAccountCertificate();
+            var certificate = await strategy.RetrieveAccountCertificate().ConfigureAwait(false);
             if (certificate != null)
             {
                 return KeyFactory.FromPem(Encoding.UTF8.GetString(certificate));
@@ -122,7 +122,7 @@ public sealed partial class PersistenceService : IPersistenceService
 
     public async Task<ChallengeDto[]> GetPersistedChallenges()
     {
-        var challenges = await GetPersistedChallengesAsync(_challengePersistenceStrategies);
+        var challenges = await GetPersistedChallengesAsync(_challengePersistenceStrategies).ConfigureAwait(false);
         return challenges.ToArray();
     }
 
@@ -132,7 +132,7 @@ public sealed partial class PersistenceService : IPersistenceService
         var result = new List<ChallengeDto>();
         foreach (var strategy in strategies)
         {
-            result.AddRange(await strategy.Retrieve());
+            result.AddRange(await strategy.Retrieve().ConfigureAwait(false));
         }
 
         if (result.Count == 0)
@@ -155,7 +155,7 @@ public sealed partial class PersistenceService : IPersistenceService
 
         var tasks = strategies.Select(x => x.Delete(challenges));
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     [LoggerMessage(LogLevel.Information, "Certificate persisted for later use")]

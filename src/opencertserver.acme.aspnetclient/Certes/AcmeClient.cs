@@ -29,12 +29,12 @@ public sealed partial class AcmeClient : IAcmeClient
     public async Task<PlacedOrder> PlaceOrder(string[] domains)
     {
         LogOrderingLetsEncryptCertificateForDomainsDomains(string.Join(", ", domains));
-        var order = await _acme.NewOrder(_options.Profile, domains);
+        var order = await _acme.NewOrder(_options.Profile, domains).ConfigureAwait(false);
 
-        var allAuthorizations = await order.Authorizations();
+        var allAuthorizations = await order.Authorizations().ConfigureAwait(false);
 
         var challengeContexts = (await Task.WhenAll(
-            allAuthorizations.Select(x => x.Http()))).Where(x => x != null).Select(x => x!).ToArray();
+            allAuthorizations.Select(x => x.Http())).ConfigureAwait(false)).Where(x => x != null).Select(x => x!).ToArray();
 
         var dtos = challengeContexts.Select(x => new ChallengeDto(
                 x.Type == ChallengeTypes.Dns01 ? _acme.AccountKey.DnsTxt(x.Token) : x.Token,
@@ -49,14 +49,14 @@ public sealed partial class AcmeClient : IAcmeClient
 
     public async Task<X509Certificate2> FinalizeOrder(PlacedOrder placedOrder, string password)
     {
-        await ValidateChallenges(placedOrder.ChallengeContexts);
+        await ValidateChallenges(placedOrder.ChallengeContexts).ConfigureAwait(false);
 
         LogAcquiringCertificateThroughSigningRequest();
 
         var keyPair = KeyFactory.NewKey(_options.KeyAlgorithm);
 
         var certificateChain =
-            await placedOrder.Order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10);
+            await placedOrder.Order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10).ConfigureAwait(false);
         var collection = new X509Certificate2Collection { certificateChain.Certificate };
         foreach (var cert in certificateChain.Issuers)
         {
@@ -74,7 +74,7 @@ public sealed partial class AcmeClient : IAcmeClient
     {
         LogValidatingAllPendingOrderAuthorizations();
 
-        var challengeValidationResponses = await InnerValidateChallenges(challengeContexts);
+        var challengeValidationResponses = await InnerValidateChallenges(challengeContexts).ConfigureAwait(false);
 
         var challengeExceptions = challengeValidationResponses.Where(x => x.Status == ChallengeStatus.Invalid)
             .Select(x => new Exception(
@@ -91,7 +91,7 @@ public sealed partial class AcmeClient : IAcmeClient
 
     private static async Task<Challenge[]> InnerValidateChallenges(IChallengeContext[] challengeContexts)
     {
-        var challenges = await Task.WhenAll(challengeContexts.Select(x => x.Validate()));
+        var challenges = await Task.WhenAll(challengeContexts.Select(x => x.Validate())).ConfigureAwait(false);
 
         while (true)
         {
@@ -103,8 +103,8 @@ public sealed partial class AcmeClient : IAcmeClient
                 break;
             }
 
-            await Task.Delay(1000);
-            challenges = await Task.WhenAll(challengeContexts.Select(x => x.Resource()));
+            await Task.Delay(1000).ConfigureAwait(false);
+            challenges = await Task.WhenAll(challengeContexts.Select(x => x.Resource())).ConfigureAwait(false);
         }
 
         return challenges;

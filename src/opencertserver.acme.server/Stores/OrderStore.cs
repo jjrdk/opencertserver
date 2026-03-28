@@ -34,7 +34,7 @@ public sealed class OrderStore : StoreBase, IStoreOrders
 
         var orderFilePath = GetOrderPath(orderId);
 
-        var order = await LoadFromPath<Order>(orderFilePath, cancellationToken);
+        var order = await LoadFromPath<Order>(orderFilePath, cancellationToken).ConfigureAwait(false);
         return order;
     }
 
@@ -48,15 +48,16 @@ public sealed class OrderStore : StoreBase, IStoreOrders
 
         Directory.CreateDirectory(Path.GetDirectoryName(orderFilePath)!);
 
-        await CreateOwnerFileAsync(setOrder, cancellationToken);
-        await WriteWorkFilesAsync(setOrder, cancellationToken);
+        await CreateOwnerFileAsync(setOrder, cancellationToken).ConfigureAwait(false);
+        await WriteWorkFilesAsync(setOrder, cancellationToken).ConfigureAwait(false);
 
-        await using var fileStream =
+        var fileStream =
             File.Open(orderFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
-        var existingOrder = await LoadFromStream<Order>(fileStream, cancellationToken);
+        await using var stream = fileStream.ConfigureAwait(false);
+        var existingOrder = await LoadFromStream<Order>(fileStream, cancellationToken).ConfigureAwait(false);
 
         HandleVersioning(existingOrder, setOrder);
-        await ReplaceFileStreamContent(fileStream, setOrder, cancellationToken);
+        await ReplaceFileStreamContent(fileStream, setOrder, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task CreateOwnerFileAsync(Order order, CancellationToken cancellationToken)
@@ -69,7 +70,7 @@ public sealed class OrderStore : StoreBase, IStoreOrders
         {
             await File.WriteAllTextAsync(ownerFilePath,
                 order.Expires?.ToString("o", CultureInfo.InvariantCulture),
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -85,7 +86,7 @@ public sealed class OrderStore : StoreBase, IStoreOrders
             {
                 await File.WriteAllTextAsync(validationFilePath,
                     order.Authorizations.Min(a => a.Expires).ToString("o", CultureInfo.InvariantCulture),
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
         }
         else if (File.Exists(validationFilePath))
@@ -103,7 +104,7 @@ public sealed class OrderStore : StoreBase, IStoreOrders
             {
                 await File.WriteAllTextAsync(processingFilePath,
                     order.Expires?.ToString("o", CultureInfo.InvariantCulture),
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
         }
         else if (File.Exists(processingFilePath))
@@ -128,7 +129,7 @@ public sealed class OrderStore : StoreBase, IStoreOrders
             try
             {
                 var orderId = Path.GetFileName(filePath);
-                var order = await LoadOrder(orderId, cancellationToken);
+                var order = await LoadOrder(orderId, cancellationToken).ConfigureAwait(false);
 
                 if (order != null)
                 {

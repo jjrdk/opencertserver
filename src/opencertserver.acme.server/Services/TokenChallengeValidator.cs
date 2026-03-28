@@ -44,7 +44,7 @@ public abstract class TokenChallengeValidator : IValidateChallenges
             return (false, new AcmeError("custom:orderExpired", "Order expired"));
         }
 
-        var (challengeContent, error) = await LoadChallengeResponse(challenge, cancellationToken);
+        var (challengeContent, error) = await LoadChallengeResponse(challenge, cancellationToken).ConfigureAwait(false);
         if (error != null)
         {
             return (false, error);

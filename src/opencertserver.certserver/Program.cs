@@ -93,7 +93,7 @@ internal static class Program
         {
             var certs = await Task.WhenAll(
                 CreateCert(args, "--rsa", "--rsa-key"),
-                CreateCert(args, "--ec", "--ec-key"));
+                CreateCert(args, "--ec", "--ec-key")).ConfigureAwait(false);
             var rsaProfile = new CaProfile
             {
                 Name = "rsa",
@@ -151,7 +151,7 @@ internal static class Program
             .UseAcmeServer()
             .UseEstServer()
             .UseCertificateAuthorityServer();
-        await app.RunAsync();
+        await app.RunAsync().ConfigureAwait(false);
     }
 
     private static ForwardedHeadersOptions CreateForwardedHeaderOptions()
@@ -175,8 +175,8 @@ internal static class Program
         var key = keyIndex >= 0 ? args[keyIndex + 1] : null;
         using var file = File.OpenText(certIndex);
         using var keyFile = key == null ? TextReader.Null : File.OpenText(key);
-        var pem = await file.ReadToEndAsync();
-        var keyPem = await keyFile.ReadToEndAsync();
+        var pem = await file.ReadToEndAsync().ConfigureAwait(false);
+        var keyPem = await keyFile.ReadToEndAsync().ConfigureAwait(false);
         var x509 = key == null
             ? X509Certificate2.CreateFromPem(pem)
             : X509Certificate2.CreateFromPem(pem, keyPem);

@@ -39,7 +39,7 @@ public static class IAuthorizationContextExtensions
         /// <returns>The challenge, <c>null</c> if no challenge found.</returns>
         public async Task<IChallengeContext?> Challenge(string type)
         {
-            var challenges = await authorizationContext.Challenges();
+            var challenges = await authorizationContext.Challenges().ConfigureAwait(false);
             return challenges.FirstOrDefault(c => c.Type == type);
         }
     }

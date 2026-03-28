@@ -21,7 +21,7 @@ public sealed class NonceStore : INonceStore
         ArgumentNullException.ThrowIfNull(nonce);
 
         var noncePath = Path.Combine(_options.Value.NoncePath, nonce.Token);
-        await File.WriteAllTextAsync(noncePath, DateTime.Now.ToString("o", CultureInfo.InvariantCulture), cancellationToken);
+        await File.WriteAllTextAsync(noncePath, DateTime.Now.ToString("o", CultureInfo.InvariantCulture), cancellationToken).ConfigureAwait(false);
     }
 
     public Task<bool> TryRemoveNonceAsync(Nonce nonce, CancellationToken cancellationToken)

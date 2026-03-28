@@ -28,7 +28,7 @@ public sealed class ValidationWorker : IValidationWorker
 
     public async Task Run(CancellationToken cancellationToken)
     {
-        var orders = await _orderStore.GetValidatableOrders(cancellationToken);
+        var orders = await _orderStore.GetValidatableOrders(cancellationToken).ConfigureAwait(false);
 
         var tasks = new Task[orders.Count];
         for (var i = 0; i < orders.Count; ++i)
@@ -41,12 +41,12 @@ public sealed class ValidationWorker : IValidationWorker
 
     private async Task ValidateOrder(Order order, CancellationToken cancellationToken)
     {
-        var account = await _accountStore.LoadAccount(order.AccountId, cancellationToken);
+        var account = await _accountStore.LoadAccount(order.AccountId, cancellationToken).ConfigureAwait(false);
         if (account == null)
         {
             order.SetStatus(OrderStatus.Invalid);
             order.Error = new AcmeError("TODO", "Account could not be located. Order will be marked invalid.");
-            await _orderStore.SaveOrder(order, cancellationToken);
+            await _orderStore.SaveOrder(order, cancellationToken).ConfigureAwait(false);
 
             return;
         }
@@ -66,7 +66,7 @@ public sealed class ValidationWorker : IValidationWorker
             var challenge = pendingAuthZ.Challenges[0];
 
             var validator = _challengeValidatorFactory.GetValidator(challenge);
-            var (isValid, error) = await validator.ValidateChallenge(challenge, account, cancellationToken);
+            var (isValid, error) = await validator.ValidateChallenge(challenge, account, cancellationToken).ConfigureAwait(false);
 
             if (isValid)
             {
@@ -82,6 +82,6 @@ public sealed class ValidationWorker : IValidationWorker
         }
 
         order.SetStatusFromAuthorizations();
-        await _orderStore.SaveOrder(order, cancellationToken);
+        await _orderStore.SaveOrder(order, cancellationToken).ConfigureAwait(false);
     }
 }

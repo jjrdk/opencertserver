@@ -27,7 +27,7 @@ public sealed class AccountStore : StoreBase, IStoreAccounts
 
         var accountPath = GetPath(accountId);
 
-        var account = await LoadFromPath<Account>(accountPath, cancellationToken);
+        var account = await LoadFromPath<Account>(accountPath, cancellationToken).ConfigureAwait(false);
         return account;
     }
 
@@ -40,10 +40,11 @@ public sealed class AccountStore : StoreBase, IStoreAccounts
         var accountPath = GetPath(setAccount.AccountId);
         Directory.CreateDirectory(Path.GetDirectoryName(accountPath)!);
 
-        await using var fileStream = File.Open(accountPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
-        var existingAccount = await LoadFromStream<Account>(fileStream, cancellationToken);
+        var fileStream = File.Open(accountPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
+        await using var stream = fileStream.ConfigureAwait(false);
+        var existingAccount = await LoadFromStream<Account>(fileStream, cancellationToken).ConfigureAwait(false);
         HandleVersioning(existingAccount, setAccount);
 
-        await ReplaceFileStreamContent(fileStream, setAccount, cancellationToken);
+        await ReplaceFileStreamContent(fileStream, setAccount, cancellationToken).ConfigureAwait(false);
     }
 }

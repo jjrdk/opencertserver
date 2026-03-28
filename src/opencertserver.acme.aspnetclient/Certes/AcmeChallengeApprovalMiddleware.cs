@@ -41,7 +41,7 @@ public sealed class AcmeChallengeApprovalMiddleware : ILetsEncryptChallengeAppro
             context.Connection.RemoteIpAddress);
 
         var requestedToken = path[$"{MagicPrefix}/".Length..];
-        var allChallenges = await _persistenceService.GetPersistedChallenges();
+        var allChallenges = await _persistenceService.GetPersistedChallenges().ConfigureAwait(false);
         var matchingChallenge = allChallenges.FirstOrDefault(x => x.Token == requestedToken);
         if (matchingChallenge == null)
         {
@@ -49,7 +49,7 @@ public sealed class AcmeChallengeApprovalMiddleware : ILetsEncryptChallengeAppro
                 "The given challenge did not match {challengePath} among {allChallenges}",
                 path,
                 allChallenges);
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
             return;
         }
 
@@ -58,6 +58,6 @@ public sealed class AcmeChallengeApprovalMiddleware : ILetsEncryptChallengeAppro
         context.Response.ContentType = "application/octet-stream";
         await context.Response.WriteAsync(
             text: matchingChallenge.Response,
-            cancellationToken: context.RequestAborted);
+            cancellationToken: context.RequestAborted).ConfigureAwait(false);
     }
 }

@@ -43,7 +43,7 @@ public sealed partial class ValidateDns01Challenges : TokenChallengeValidator, I
             var dnsRecordName = $"_acme-challenge.{dnsBaseUrl}";
             LogValidatingDnsRecord(dnsRecordName);
 
-            var dnsResponse = await _client.QueryAsync(dnsRecordName, QueryType.TXT, cancellationToken: cancellationToken);
+            var dnsResponse = await _client.QueryAsync(dnsRecordName, QueryType.TXT, cancellationToken: cancellationToken).ConfigureAwait(false);
             var contents = new List<string>(dnsResponse.Answers.TxtRecords().SelectMany(x => x.Text));
 
             return (contents, null);

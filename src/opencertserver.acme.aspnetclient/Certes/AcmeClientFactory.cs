@@ -32,7 +32,7 @@ public sealed class AcmeClientFactory : IAcmeClientFactory
 
     public async Task<IAcmeClient> GetClient()
     {
-        var context = await GetContext();
+        var context = await GetContext().ConfigureAwait(false);
         var logger = _loggerFactory.CreateLogger<AcmeClient>();
         return new AcmeClient(context, _options, logger);
     }
@@ -44,7 +44,7 @@ public sealed class AcmeClientFactory : IAcmeClientFactory
             return _acme;
         }
 
-        var existingAccountKey = await _persistenceService.GetPersistedAccountCertificate();
+        var existingAccountKey = await _persistenceService.GetPersistedAccountCertificate().ConfigureAwait(false);
         var acme = new AcmeContext(
             _options.AcmeServerUri,
             existingAccountKey,
@@ -53,14 +53,14 @@ public sealed class AcmeClientFactory : IAcmeClientFactory
         {
             _logger.LogDebug("Using existing ACME account");
 
-            await acme.Account();
+            await acme.Account().ConfigureAwait(false);
             return _acme = acme;
         }
 
         _logger.LogDebug("Creating ACME account with email {EmailAddress}", _options.Email);
 
-        await acme.NewAccount(_options.Email, true);
-        await _persistenceService.PersistAccountCertificate(acme.AccountKey);
+        await acme.NewAccount(_options.Email, true).ConfigureAwait(false);
+        await _persistenceService.PersistAccountCertificate(acme.AccountKey).ConfigureAwait(false);
         return _acme = acme;
     }
 }

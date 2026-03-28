@@ -32,6 +32,6 @@ public sealed class HostedValidationService : TimedHostedService
     protected override async Task DoWork(IServiceProvider services, CancellationToken cancellationToken)
     {
         var validationWorker = services.GetRequiredService<IValidationWorker>();
-        await validationWorker.Run(cancellationToken);
+        await validationWorker.Run(cancellationToken).ConfigureAwait(false);
     }
 }

@@ -23,7 +23,7 @@ public static class IOrderContextExtensions
         /// </returns>
         public async Task<Order> Finalize(CsrInfo csr, IKey key)
         {
-            var builder = await context.CreateCsr(key);
+            var builder = await context.CreateCsr(key).ConfigureAwait(false);
 
             foreach (var (name, value) in csr.Fields)
             {
@@ -35,7 +35,7 @@ public static class IOrderContextExtensions
                 builder.AddName("CN", builder.SubjectAlternativeNames[0]);
             }
 
-            return await context.Finalize(builder.Generate());
+            return await context.Finalize(builder.Generate()).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -46,7 +46,7 @@ public static class IOrderContextExtensions
         public async Task<CertificationRequestBuilder> CreateCsr(IKey key)
         {
             var builder = new CertificationRequestBuilder(key);
-            var order = await context.Resource();
+            var order = await context.Resource().ConfigureAwait(false);
             foreach (var identifier in order.Identifiers!)
             {
                 builder.SubjectAlternativeNames.Add(identifier.Value);
@@ -67,19 +67,19 @@ public static class IOrderContextExtensions
         /// </returns>
         public async Task<CertificateChain> Generate(CsrInfo csr, IKey key, string? preferredChain = null, int retryCount = 1)
         {
-            var order = await context.Resource();
+            var order = await context.Resource().ConfigureAwait(false);
             if (order.Status != OrderStatus.Ready && // draft-11
                 order.Status != OrderStatus.Pending) // pre draft-11
             {
                 throw new AcmeException(string.Format(Strings.ErrorInvalidOrderStatusForFinalize, order.Status));
             }
 
-            order = await context.Finalize(csr, key);
+            order = await context.Finalize(csr, key).ConfigureAwait(false);
 
             while (order.Status == OrderStatus.Processing && retryCount-- > 0)
             {
-                await Task.Delay(context.RetryAfter);
-                order = await context.Resource();
+                await Task.Delay(context.RetryAfter).ConfigureAwait(false);
+                order = await context.Resource().ConfigureAwait(false);
             }
 
             if (order.Status != OrderStatus.Valid)
@@ -87,7 +87,7 @@ public static class IOrderContextExtensions
                 throw new AcmeException(Strings.ErrorFinalizeFailed);
             }
 
-            return await context.Download(preferredChain);
+            return await context.Download(preferredChain).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -104,9 +104,9 @@ public static class IOrderContextExtensions
                 value = value[2..];
             }
 
-            foreach (var authzCtx in await context.Authorizations())
+            foreach (var authzCtx in await context.Authorizations().ConfigureAwait(false))
             {
-                var authz = await authzCtx.Resource();
+                var authz = await authzCtx.Resource().ConfigureAwait(false);
                 if (string.Equals(authz.Identifier?.Value, value, StringComparison.OrdinalIgnoreCase) &&
                     wildcard == authz.Wildcard.GetValueOrDefault() &&
                     authz.Identifier?.Type == type)

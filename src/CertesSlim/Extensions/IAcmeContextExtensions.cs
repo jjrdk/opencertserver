@@ -20,7 +20,7 @@ public static class IAcmeContextExtensions
         /// <exception cref="NotSupportedException">If the ACME operation not supported.</exception>
         internal async Task<Uri> GetResourceUri(Func<Directory, Uri> getter, bool optional = false)
         {
-            var dir = await context.GetDirectory();
+            var dir = await context.GetDirectory().ConfigureAwait(false);
             var uri = getter(dir);
             if (!optional && uri == null)
             {
@@ -50,7 +50,7 @@ public static class IAcmeContextExtensions
         /// <returns>The terms of service link.</returns>
         public async Task<Uri?> TermsOfService()
         {
-            var dir = await context.GetDirectory();
+            var dir = await context.GetDirectory().ConfigureAwait(false);
             return dir.Meta?.TermsOfService;
         }
     }

@@ -38,7 +38,7 @@ public abstract class TimedHostedService : IHostedService, IDisposable
 
     protected async void DoWorkCallback(object? state)
     {
-        if(! await _interlock.WaitAsync(TimerInterval / 2, _cancellationTokenSource.Token))
+        if(! await _interlock.WaitAsync(TimerInterval / 2, _cancellationTokenSource.Token).ConfigureAwait(false))
         {
             _logger.LogInformation("Waited half an execution time, but did not get execution lock");
             return;
@@ -47,7 +47,7 @@ public abstract class TimedHostedService : IHostedService, IDisposable
         try
         {
             using var scopedServices = _services.CreateScope();
-            await DoWork(scopedServices.ServiceProvider, _cancellationTokenSource.Token);
+            await DoWork(scopedServices.ServiceProvider, _cancellationTokenSource.Token).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

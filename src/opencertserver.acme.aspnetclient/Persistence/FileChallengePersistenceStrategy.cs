@@ -19,13 +19,13 @@ public sealed class FileChallengePersistenceStrategy : IChallengePersistenceStra
 
     public async Task Delete(IEnumerable<ChallengeDto> challenges)
     {
-        var persistedChallenges = await Retrieve();
+        var persistedChallenges = await Retrieve().ConfigureAwait(false);
         var challengesToPersist = persistedChallenges
             .Where(x =>
                 challenges.All(y => y.Token != x.Token))
             .ToList();
 
-        await Persist(challengesToPersist);
+        await Persist(challengesToPersist).ConfigureAwait(false);
     }
 
     public Task Persist(IEnumerable<ChallengeDto> challenges)
@@ -44,7 +44,7 @@ public sealed class FileChallengePersistenceStrategy : IChallengePersistenceStra
             return [];
         }
 
-        var bytes = await File.ReadAllBytesAsync(GetChallengesStorePath());
+        var bytes = await File.ReadAllBytesAsync(GetChallengesStorePath()).ConfigureAwait(false);
         var json = Encoding.UTF8.GetString(bytes);
         var challenges = JsonSerializer.Deserialize<ChallengeDto[]>(json, AcmeClientSerializerContext.Default.ChallengeDtoArray);
 

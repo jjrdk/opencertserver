@@ -55,7 +55,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
 
         foreach (var lifecycleHook in _lifecycleHooks)
         {
-            await lifecycleHook.OnStart();
+            await lifecycleHook.OnStart().ConfigureAwait(false);
         }
 
         _timer = new Timer(_ => RunOnceWithErrorHandling().GetAwaiter().GetResult(), null, Timeout.InfiniteTimeSpan,
@@ -71,7 +71,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
 
         foreach (var lifecycleHook in _lifecycleHooks)
         {
-            await lifecycleHook.OnStop();
+            await lifecycleHook.OnStop().ConfigureAwait(false);
         }
     }
 
@@ -82,11 +82,11 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
             return;
         }
 
-        await _semaphoreSlim.WaitAsync();
+        await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
 
         try
         {
-            var result = await _certificateProvider.RenewCertificateIfNeeded(password, Certificate);
+            var result = await _certificateProvider.RenewCertificateIfNeeded(password, Certificate).ConfigureAwait(false);
 
             if (result.Status != Unchanged)
             {
@@ -113,7 +113,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
             {
                 foreach (var lifecycleHook in _lifecycleHooks)
                 {
-                    await lifecycleHook.OnRenewalSucceeded();
+                    await lifecycleHook.OnRenewalSucceeded().ConfigureAwait(false);
                 }
             }
         }
@@ -121,7 +121,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         {
             foreach (var lifecycleHook in _lifecycleHooks)
             {
-                await lifecycleHook.OnException(ex);
+                await lifecycleHook.OnException(ex).ConfigureAwait(false);
             }
 
             throw;
@@ -137,7 +137,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         try
         {
             LogAcmerenewalserviceTimerCallbackStarting();
-            await RunOnce(_options.AccountPassword);
+            await RunOnce(_options.AccountPassword).ConfigureAwait(false);
             _timer?.Change(TimeSpan.FromHours(1), TimeSpan.FromHours(1));
         }
         catch (Exception e) when (_options.RenewalFailMode != RenewalFailMode.Unhandled)

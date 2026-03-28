@@ -18,7 +18,7 @@ public static class CsrHandler
         [FromBody] Stream body)
     {
         using var reader = new StreamReader(body);
-        var csrPem = await reader.ReadToEndAsync();
+        var csrPem = await reader.ReadToEndAsync().ConfigureAwait(false);
         var certResponse = ca.SignCertificateRequestPem(csrPem, profileName, user.Identity as ClaimsIdentity);
         if (certResponse is SignCertificateResponse.Success success)
         {

@@ -19,7 +19,7 @@ public sealed class DefaultNonceService : INonceService
     {
         var nonce = new Nonce(GuidString.NewValue());
 
-        await _nonceStore.SaveNonceAsync(nonce, cancellationToken);
+        await _nonceStore.SaveNonceAsync(nonce, cancellationToken).ConfigureAwait(false);
 
         return nonce;
     }

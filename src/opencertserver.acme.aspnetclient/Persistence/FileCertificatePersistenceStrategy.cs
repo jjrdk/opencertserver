@@ -20,13 +20,13 @@ public sealed class FileCertificatePersistenceStrategy : ICertificatePersistence
 
     public async Task<byte[]?> RetrieveAccountCertificate()
     {
-        var bytes = await ReadFile(CertificateType.Account);
+        var bytes = await ReadFile(CertificateType.Account).ConfigureAwait(false);
         return bytes;
     }
 
     public async Task<X509Certificate2?> RetrieveSiteCertificate()
     {
-        var bytes = await ReadFile(CertificateType.Site);
+        var bytes = await ReadFile(CertificateType.Site).ConfigureAwait(false);
         return bytes == null ? null :  X509CertificateLoader.LoadCertificate(bytes);
     }
 
@@ -34,7 +34,7 @@ public sealed class FileCertificatePersistenceStrategy : ICertificatePersistence
     {
         return !File.Exists(GetCertificatePath(persistenceType))
             ? null
-            : await File.ReadAllBytesAsync(GetCertificatePath(persistenceType));
+            : await File.ReadAllBytesAsync(GetCertificatePath(persistenceType)).ConfigureAwait(false);
     }
 
     private string GetCertificatePath(CertificateType persistenceType)

@@ -46,7 +46,7 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
         CancellationToken cancellationToken)
     {
         var resolvedIps = await Task.WhenAll(
-            Dns.GetHostAddressesAsync(challenge.Authorization.Identifier.Value, cancellationToken));
+            Dns.GetHostAddressesAsync(challenge.Authorization.Identifier.Value, cancellationToken)).ConfigureAwait(false);
         foreach (var ip in resolvedIps.SelectMany(i => i))
         {
             if (_prohibitedRanges.Any(r => r.Contains(ip)))
@@ -65,7 +65,7 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
 
         try
         {
-            var response = await _httpClient.GetAsync(new Uri(challengeUrl), cancellationToken);
+            var response = await _httpClient.GetAsync(new Uri(challengeUrl), cancellationToken).ConfigureAwait(false);
             if (response.StatusCode != System.Net.HttpStatusCode.OK)
             {
                 var error = new AcmeError("incorrectResponse", $"Got non 200 status code: {response.StatusCode}",
@@ -73,7 +73,7 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
                 return (null, error);
             }
 
-            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+            var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             return ([content], null);
         }
         catch (HttpRequestException ex)

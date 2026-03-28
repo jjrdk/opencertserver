@@ -22,14 +22,14 @@ public static class CertificateRetrievalHandler
 
         context.Response.ContentType = "application/x-pem-file";
         var bodyWriter = context.Response.BodyWriter;
-        await foreach (var cert in thumbCerts.Concat(idCerts))
+        await foreach (var cert in thumbCerts.Concat(idCerts).ConfigureAwait(false))
         {
             var pem = PemEncoding.WriteUtf8("CERTIFICATE"u8, cert.RawData);
-            await bodyWriter.WriteAsync(pem);
-            await bodyWriter.WriteAsync(NewLine);
+            await bodyWriter.WriteAsync(pem).ConfigureAwait(false);
+            await bodyWriter.WriteAsync(NewLine).ConfigureAwait(false);
         }
 
-        await bodyWriter.FlushAsync();
-        await bodyWriter.CompleteAsync();
+        await bodyWriter.FlushAsync().ConfigureAwait(false);
+        await bodyWriter.CompleteAsync().ConfigureAwait(false);
     }
 }

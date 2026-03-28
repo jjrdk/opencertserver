@@ -13,10 +13,10 @@ public static class InventoryHandler
         var page = context.Request.Query.ContainsKey("page")
             ? int.TryParse(context.Request.Query["page"], out var p) ? p : 0
             : 0;
-        var inventory = await store.GetInventory(page).ToArrayAsync();
+        var inventory = await store.GetInventory(page).ToArrayAsync().ConfigureAwait(false);
         context.Response.ContentType = "application/json";
         await JsonSerializer.SerializeAsync(context.Response.Body, inventory,
-            CaServerSerializerContext.Default.CertificateItemInfoArray);
-        await context.Response.Body.FlushAsync();
+            CaServerSerializerContext.Default.CertificateItemInfoArray).ConfigureAwait(false);
+        await context.Response.Body.FlushAsync().ConfigureAwait(false);
     }
 }

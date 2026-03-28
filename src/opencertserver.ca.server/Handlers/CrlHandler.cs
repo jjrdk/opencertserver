@@ -14,7 +14,7 @@ public static class CrlHandler
 
     public static async Task<IResult> HandleProfile([FromRoute] string profileName, ICertificateAuthority ca)
     {
-        var crl = await ca.GetRevocationList(profileName);
+        var crl = await ca.GetRevocationList(profileName).ConfigureAwait(false);
         return Results.Bytes(crl, "application/pkix-crl");
     }
 }

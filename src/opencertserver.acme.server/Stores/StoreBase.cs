@@ -27,8 +27,9 @@ public partial class StoreBase
             return null;
         }
 
-        await using var fileStream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-        return await LoadFromStream<T>(fileStream, cancellationToken);
+        var fileStream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        await using var stream = fileStream.ConfigureAwait(false);
+        return await LoadFromStream<T>(fileStream, cancellationToken).ConfigureAwait(false);
     }
 
     protected static async Task<T?> LoadFromStream<T>(FileStream fileStream, CancellationToken cancellationToken)
@@ -42,7 +43,7 @@ public partial class StoreBase
         fileStream.Seek(0, SeekOrigin.Begin);
 
         var utf8Bytes = new byte[fileStream.Length];
-        _ = await fileStream.ReadAsync(utf8Bytes, cancellationToken);
+        _ = await fileStream.ReadAsync(utf8Bytes, cancellationToken).ConfigureAwait(false);
         var result =
             JsonSerializer.Deserialize<T>(utf8Bytes.AsSpan(),
                 (JsonTypeInfo<T>)AcmeSerializerContext.Default.GetTypeInfo(typeof(T))!);
@@ -62,7 +63,7 @@ public partial class StoreBase
 
         var utf8Bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(content,
             (JsonTypeInfo<T>)AcmeSerializerContext.Default.GetTypeInfo(typeof(T))!));
-        await fileStream.WriteAsync(utf8Bytes, cancellationToken);
+        await fileStream.WriteAsync(utf8Bytes, cancellationToken).ConfigureAwait(false);
     }
 
     protected static void HandleVersioning(IVersioned? existingContent, IVersioned newContent)

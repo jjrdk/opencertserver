@@ -30,13 +30,13 @@ public sealed class DefaultAccountService : IAccountService
     {
         var newAccount = new Account(jwk, contacts, termsOfServiceAgreed ? DateTimeOffset.UtcNow : null);
 
-        await _accountStore.SaveAccount(newAccount, cancellationToken);
+        await _accountStore.SaveAccount(newAccount, cancellationToken).ConfigureAwait(false);
         return newAccount;
     }
 
     public async Task<Account?> FindAccount(JsonWebKey jwk, CancellationToken cancellationToken)
     {
-        var account = await CreateAccount(jwk, cancellationToken: cancellationToken);
+        var account = await CreateAccount(jwk, cancellationToken: cancellationToken).ConfigureAwait(false);
         return account;
     }
 
@@ -44,7 +44,7 @@ public sealed class DefaultAccountService : IAccountService
     {
         //TODO: Get accountId from Kid?
         var accountId = header.GetAccountId();
-        var account = await LoadAccount(accountId, cancellationToken);
+        var account = await LoadAccount(accountId, cancellationToken).ConfigureAwait(false);
         ValidateAccount(account);
 
         return account!;
@@ -52,7 +52,7 @@ public sealed class DefaultAccountService : IAccountService
 
     public async Task<Account?> LoadAccount(string accountId, CancellationToken cancellationToken)
     {
-        return await _accountStore.LoadAccount(accountId, cancellationToken);
+        return await _accountStore.LoadAccount(accountId, cancellationToken).ConfigureAwait(false);
     }
 
     private static void ValidateAccount(Account? account)

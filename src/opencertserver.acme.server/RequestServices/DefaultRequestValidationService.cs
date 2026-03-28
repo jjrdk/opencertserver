@@ -44,8 +44,8 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
         }
 
         ValidateRequestHeader(header, requestUrl);
-        await ValidateNonceAsync(header.Nonce, cancellationToken);
-        await ValidateSignatureAsync(request, header, cancellationToken);
+        await ValidateNonceAsync(header.Nonce, cancellationToken).ConfigureAwait(false);
+        await ValidateSignatureAsync(request, header, cancellationToken).ConfigureAwait(false);
     }
 
     private void ValidateRequestHeader(AcmeHeader header, string requestUrl)
@@ -91,7 +91,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
             throw new BadNonceException();
         }
 
-        if (!await _nonceStore.TryRemoveNonceAsync(new Nonce(nonce), cancellationToken))
+        if (!await _nonceStore.TryRemoveNonceAsync(new Nonce(nonce), cancellationToken).ConfigureAwait(false))
         {
             _logger.LogDebug($"Nonce was invalid.");
             throw new BadNonceException();
@@ -114,7 +114,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
             try
             {
                 var accountId = header.GetAccountId();
-                var account = await _accountService.LoadAccount(accountId, cancellationToken);
+                var account = await _accountService.LoadAccount(accountId, cancellationToken).ConfigureAwait(false);
                 jwk = account?.Jwk;
             }
             catch (InvalidOperationException)

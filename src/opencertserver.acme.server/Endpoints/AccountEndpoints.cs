@@ -28,7 +28,7 @@ public static class AccountEndpoints
                 Base64UrlEncoder.Decode(jwsPayload.Payload), AcmeSerializerContext.Default.CreateOrGetAccount)!;
             if (payload.OnlyReturnExisting)
             {
-                var account = await accountService.FindAccount(header.Jwk!, cancellationToken);
+                var account = await accountService.FindAccount(header.Jwk!, cancellationToken).ConfigureAwait(false);
                 if (account == null)
                 {
                     return Results.NotFound();
@@ -50,7 +50,7 @@ public static class AccountEndpoints
                     header.Jwk!,
                     payload.Contact,
                     payload.TermsOfServiceAgreed,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 var routeDic =
                     new RouteValueDictionary([KeyValuePair.Create<string, string?>("accountId", account.AccountId)]);
                 var ordersUrl = links.GetPathByName("OrderList", routeDic) ?? string.Empty;

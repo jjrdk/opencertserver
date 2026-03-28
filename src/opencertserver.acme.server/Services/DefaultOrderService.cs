@@ -47,7 +47,7 @@ public sealed class DefaultOrderService : IOrderService
 
         _authorizationFactory.CreateAuthorizations(order);
 
-        await _orderStore.SaveOrder(order, cancellationToken);
+        await _orderStore.SaveOrder(order, cancellationToken).ConfigureAwait(false);
 
         return order;
     }
@@ -55,7 +55,7 @@ public sealed class DefaultOrderService : IOrderService
     public async Task<byte[]> GetCertificate(Account account, string orderId, CancellationToken cancellationToken)
     {
         ValidateAccount(account);
-        var order = await HandleLoadOrder(account, orderId, OrderStatus.Valid, cancellationToken);
+        var order = await HandleLoadOrder(account, orderId, OrderStatus.Valid, cancellationToken).ConfigureAwait(false);
         var chain = new CertificateChain(Encoding.UTF8.GetString(order.Certificate!)).Certificate.ExportCertificatePem();
         return Encoding.UTF8.GetBytes(chain);
     }
@@ -63,7 +63,7 @@ public sealed class DefaultOrderService : IOrderService
     public async Task<Order?> GetOrderAsync(Account account, string orderId, CancellationToken cancellationToken)
     {
         ValidateAccount(account);
-        var order = await HandleLoadOrder(account, orderId, null, cancellationToken);
+        var order = await HandleLoadOrder(account, orderId, null, cancellationToken).ConfigureAwait(false);
 
         return order;
     }
@@ -79,7 +79,7 @@ public sealed class DefaultOrderService : IOrderService
 
         var order = await _orderStore.LoadOrder(
             orderId,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         if (order == null)
         {
             throw new NotFoundException();
@@ -101,7 +101,7 @@ public sealed class DefaultOrderService : IOrderService
         challenge.SetStatus(ChallengeStatus.Processing);
         authZ.SelectChallenge(challenge);
         order.SetStatusFromAuthorizations();
-        await _orderStore.SaveOrder(order, cancellationToken);
+        await _orderStore.SaveOrder(order, cancellationToken).ConfigureAwait(false);
 
         return challenge;
     }
@@ -113,21 +113,21 @@ public sealed class DefaultOrderService : IOrderService
         CancellationToken cancellationToken)
     {
         ValidateAccount(account);
-        var order = await HandleLoadOrder(account, orderId, OrderStatus.Ready, cancellationToken);
+        var order = await HandleLoadOrder(account, orderId, OrderStatus.Ready, cancellationToken).ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(csr))
         {
             throw new MalformedRequestException("CSR may not be empty.");
         }
 
-        var (isValid, error) = await _csrValidator.ValidateCsr(order, csr, cancellationToken);
+        var (isValid, error) = await _csrValidator.ValidateCsr(order, csr, cancellationToken).ConfigureAwait(false);
 
         if (isValid)
         {
             order.SetStatus(OrderStatus.Processing);
             order.CertificateSigningRequest = csr;
             var (certificate, acmeError) =
-                await _issuer.IssueCertificate(order.Profile, csr, order.Identifiers, cancellationToken);
+                await _issuer.IssueCertificate(order.Profile, csr, order.Identifiers, cancellationToken).ConfigureAwait(false);
             if (certificate != null)
             {
                 order.Certificate = certificate;
@@ -144,7 +144,7 @@ public sealed class DefaultOrderService : IOrderService
             order.SetStatus(OrderStatus.Invalid);
         }
 
-        await _orderStore.SaveOrder(order, cancellationToken);
+        await _orderStore.SaveOrder(order, cancellationToken).ConfigureAwait(false);
         return order;
     }
 
@@ -167,7 +167,7 @@ public sealed class DefaultOrderService : IOrderService
         OrderStatus? expectedStatus,
         CancellationToken cancellationToken)
     {
-        var order = await _orderStore.LoadOrder(orderId, cancellationToken);
+        var order = await _orderStore.LoadOrder(orderId, cancellationToken).ConfigureAwait(false);
         if (order == null)
         {
             throw new NotFoundException();

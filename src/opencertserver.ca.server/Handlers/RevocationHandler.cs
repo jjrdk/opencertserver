@@ -13,11 +13,11 @@ public static class RevocationHandler
 {
     public static async Task Handle(HttpContext context)
     {
-        var clientCert = await context.Connection.GetClientCertificateAsync();
+        var clientCert = await context.Connection.GetClientCertificateAsync().ConfigureAwait(false);
         if (clientCert == null)
         {
             context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            await context.Response.CompleteAsync();
+            await context.Response.CompleteAsync().ConfigureAwait(false);
             return;
         }
         var signature = context.Request.Query["signature"].ToString().Base64DecodeBytes();
@@ -31,7 +31,7 @@ public static class RevocationHandler
                 HashAlgorithmName.SHA256))
         {
             context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            await context.Response.CompleteAsync();
+            await context.Response.CompleteAsync().ConfigureAwait(false);
             return;
         }
 
@@ -40,13 +40,13 @@ public static class RevocationHandler
                 out X509RevocationReason reason))
         {
             context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-            await context.Response.CompleteAsync();
+            await context.Response.CompleteAsync().ConfigureAwait(false);
             return;
         }
 
         var ca = context.RequestServices.GetRequiredService<ICertificateAuthority>();
-        var result = await ca.RevokeCertificate(serialNumberHex, reason);
+        var result = await ca.RevokeCertificate(serialNumberHex, reason).ConfigureAwait(false);
         context.Response.StatusCode = result ? (int)HttpStatusCode.OK : (int)HttpStatusCode.NotFound;
-        await context.Response.CompleteAsync();
+        await context.Response.CompleteAsync().ConfigureAwait(false);
     }
 }

@@ -39,7 +39,7 @@ public sealed partial class CertificateProvider : IProvideCertificates
         }
 
         LogCheckingToSeeIfExistingLetsencryptCertificateHasBeenPersistedAndIsValid();
-        var persistedSiteCertificate = await _persistenceService.GetPersistedSiteCertificate(cancellationToken);
+        var persistedSiteCertificate = await _persistenceService.GetPersistedSiteCertificate(cancellationToken).ConfigureAwait(false);
         if (_certificateValidator.IsCertificateValid(persistedSiteCertificate))
         {
             LogAPersistedNonExpiredLetsEncryptCertificateWasFoundAndWillBeUsedThumbprint(persistedSiteCertificate
@@ -48,7 +48,7 @@ public sealed partial class CertificateProvider : IProvideCertificates
         }
 
         LogNoValidCertificateWasFoundRequestingNewCertificateFromLetsEncrypt();
-        var newCertificate = await RequestNewLetsEncryptCertificate(password, cancellationToken);
+        var newCertificate = await RequestNewLetsEncryptCertificate(password, cancellationToken).ConfigureAwait(false);
         return new CertificateRenewalResult(newCertificate, CertificateRenewalStatus.Renewed);
     }
 
@@ -56,17 +56,17 @@ public sealed partial class CertificateProvider : IProvideCertificates
         string password,
         CancellationToken cancellationToken)
     {
-        var client = await _clientFactory.GetClient();
+        var client = await _clientFactory.GetClient().ConfigureAwait(false);
 
-        var placedOrder = await client.PlaceOrder([]);
+        var placedOrder = await client.PlaceOrder([]).ConfigureAwait(false);
 
-        await _persistenceService.PersistChallenges(placedOrder.Challenges);
+        await _persistenceService.PersistChallenges(placedOrder.Challenges).ConfigureAwait(false);
 
         try
         {
-            var pfxCertificateBytes = await client.FinalizeOrder(placedOrder, password);
+            var pfxCertificateBytes = await client.FinalizeOrder(placedOrder, password).ConfigureAwait(false);
 
-            await _persistenceService.PersistSiteCertificate(pfxCertificateBytes, cancellationToken);
+            await _persistenceService.PersistSiteCertificate(pfxCertificateBytes, cancellationToken).ConfigureAwait(false);
 
             return X509CertificateLoader.LoadCertificate(pfxCertificateBytes.RawData);
         }
@@ -77,7 +77,7 @@ public sealed partial class CertificateProvider : IProvideCertificates
         }
         finally
         {
-            await _persistenceService.DeleteChallenges(placedOrder.Challenges);
+            await _persistenceService.DeleteChallenges(placedOrder.Challenges).ConfigureAwait(false);
         }
     }
 

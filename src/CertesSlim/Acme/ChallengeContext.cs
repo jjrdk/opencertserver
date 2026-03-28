@@ -58,7 +58,7 @@ internal class ChallengeContext : EntityContext<Challenge>, IChallengeContext
     /// </returns>
     public async Task<Challenge> Validate()
     {
-        var resp = await Context.HttpClient.Post<Challenge, object>(Context, Location, new EmptyObject());
+        var resp = await Context.HttpClient.Post<Challenge, object>(Context, Location, new EmptyObject()).ConfigureAwait(false);
         return resp.Resource;
     }
 }

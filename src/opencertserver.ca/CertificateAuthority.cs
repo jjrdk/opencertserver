@@ -367,7 +367,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         var profile = _config.Profiles.GetProfile(profileName);
         var list = _certificateStore.GetRevocationList();
         var builder = new CertificateRevocationListBuilder();
-        await foreach (var revoked in list)
+        await foreach (var revoked in list.ConfigureAwait(false))
         {
             builder.AddEntry(
                 Encoding.UTF8.GetBytes(revoked.SerialNumber),

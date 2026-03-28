@@ -13,7 +13,7 @@ public static partial class NonceEndpoints
         // HEAD /new-nonce
         endpoints.MapMethods("/new-nonce", ["HEAD"], async (HttpContext context, INonceService nonceService, ILogger<INonceService> logger) =>
         {
-            await AddNonceHeader(context, nonceService, logger);
+            await AddNonceHeader(context, nonceService, logger).ConfigureAwait(false);
             context.Response.StatusCode = StatusCodes.Status200OK;
         })
         .WithName("NewNonce");
@@ -21,7 +21,7 @@ public static partial class NonceEndpoints
         // GET /new-nonce
         endpoints.MapGet("/new-nonce", async (HttpContext context, INonceService nonceService, ILogger<INonceService> logger) =>
         {
-            await AddNonceHeader(context, nonceService, logger);
+            await AddNonceHeader(context, nonceService, logger).ConfigureAwait(false);
             context.Response.StatusCode = StatusCodes.Status204NoContent;
         });
 //        .WithName("NewNonce");
@@ -36,7 +36,7 @@ public static partial class NonceEndpoints
             return;
         }
 
-        var newNonce = await nonceService.CreateNonceAsync(httpContext.RequestAborted);
+        var newNonce = await nonceService.CreateNonceAsync(httpContext.RequestAborted).ConfigureAwait(false);
         httpContext.Response.Headers["Replay-Nonce"] = newNonce.Token;
         logger.LogAddedReplayNonceNonceToken(newNonce.Token);
     }

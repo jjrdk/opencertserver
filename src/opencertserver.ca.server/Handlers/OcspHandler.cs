@@ -20,10 +20,10 @@ public static class OcspHandler
         try
         {
             var buffer = new MemoryStream();
-            await context.Request.Body.CopyToAsync(buffer, cancellationToken);
+            await context.Request.Body.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
             buffer.Seek(0, SeekOrigin.Begin);
             var request = new OcspRequest(new AsnReader(buffer.ToArray(), AsnEncodingRules.DER));
-            var results = await Task.WhenAll(validators.Select(v => v.Validate(request)));
+            var results = await Task.WhenAll(validators.Select(v => v.Validate(request))).ConfigureAwait(false);
             var error = string.Join("\n", results.Where(x => !string.IsNullOrEmpty(x)));
             if (!string.IsNullOrEmpty(error))
             {
@@ -33,7 +33,7 @@ public static class OcspHandler
             {
                 var searchResults = await Task.WhenAll(
                     request.TbsRequest.RequestList.Select(r =>
-                        storeCertificates.GetCertificateStatus(r.CertIdentifier)));
+                        storeCertificates.GetCertificateStatus(r.CertIdentifier))).ConfigureAwait(false);
                 ocspResponse = new OcspResponse(
                     OcspResponseStatus.Successful,
                     new OcspBasicResponse(
@@ -58,7 +58,7 @@ public static class OcspHandler
         var errorBytes = writer.Encode();
         var response = context.Response;
         response.ContentType = "application/ocsp-response";
-        await response.Body.WriteAsync(errorBytes, cancellationToken);
-        await response.CompleteAsync();
+        await response.Body.WriteAsync(errorBytes, cancellationToken).ConfigureAwait(false);
+        await response.CompleteAsync().ConfigureAwait(false);
     }
 }

@@ -28,7 +28,7 @@ internal class AuthorizationContext : EntityContext<Authorization>, IAuthorizati
     /// </returns>
     public async Task<IEnumerable<IChallengeContext>> Challenges()
     {
-        var authz = await Resource();
+        var authz = await Resource().ConfigureAwait(false);
         return authz
                 .Challenges?
                 .Select(c => new ChallengeContext(Context, c.Url!, c.Type!, c.Token!)) ??
@@ -44,7 +44,7 @@ internal class AuthorizationContext : EntityContext<Authorization>, IAuthorizati
     public async Task<Authorization> Deactivate()
     {
         var payload = new Authorization { Status = AuthorizationStatus.Deactivated };
-        var resp = await Context.HttpClient.Post<Authorization, Authorization>(Context, Location, payload);
+        var resp = await Context.HttpClient.Post<Authorization, Authorization>(Context, Location, payload).ConfigureAwait(false);
         return resp.Resource;
     }
 }

@@ -24,7 +24,7 @@ internal class OrderContext : EntityContext<Order>, IOrderContext
     /// </returns>
     public async Task<IEnumerable<IAuthorizationContext>> Authorizations()
     {
-        var order = await Resource();
+        var order = await Resource().ConfigureAwait(false);
         return order
                 .Authorizations?
                 .Select(a => new AuthorizationContext(Context, a)) ??
@@ -40,9 +40,9 @@ internal class OrderContext : EntityContext<Order>, IOrderContext
     /// </returns>
     public async Task<Order> Finalize(byte[]? csr)
     {
-        var order = await Resource();
+        var order = await Resource().ConfigureAwait(false);
         var payload = new Order.OrderPayload { Csr = csr.ToBase64String() };
-        var resp = await Context.HttpClient.Post<Order, Order.OrderPayload>(Context, order.Finalize!, payload);
+        var resp = await Context.HttpClient.Post<Order, Order.OrderPayload>(Context, order.Finalize!, payload).ConfigureAwait(false);
         return resp.Resource;
     }
 
@@ -53,8 +53,8 @@ internal class OrderContext : EntityContext<Order>, IOrderContext
     /// <returns>The certificate chain in PEM.</returns>
     public async Task<CertificateChain> Download(string? preferredChain = null)
     {
-        var order = await Resource();
-        var resp = await Context.HttpClient.Post<string, object>(Context, order.Certificate!, null, false);
+        var order = await Resource().ConfigureAwait(false);
+        var resp = await Context.HttpClient.Post<string, object>(Context, order.Certificate!, null, false).ConfigureAwait(false);
 
         var defaultChain = new CertificateChain(resp.Resource);
         if (defaultChain.MatchesPreferredChain(preferredChain) || !resp.Links?.Contains("alternate") == true)
@@ -65,7 +65,7 @@ internal class OrderContext : EntityContext<Order>, IOrderContext
         var alternateLinks = resp.Links?["alternate"].ToList() ?? [];
         foreach (var alternate in alternateLinks)
         {
-            resp = await Context.HttpClient.Post<string, object>(Context, alternate, null, false);
+            resp = await Context.HttpClient.Post<string, object>(Context, alternate, null, false).ConfigureAwait(false);
             var chain = new CertificateChain(resp.Resource);
 
             if (chain.MatchesPreferredChain(preferredChain))

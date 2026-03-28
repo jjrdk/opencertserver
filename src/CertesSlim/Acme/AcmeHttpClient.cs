@@ -85,8 +85,8 @@ public class AcmeHttpClient : IAcmeHttpClient
         };
 
         AddUserAgentHeader(msg);
-        using var response = await Http.SendAsync(msg);
-        return await ProcessResponse<T>(response, uri);
+        using var response = await Http.SendAsync(msg).ConfigureAwait(false);
+        return await ProcessResponse<T>(response, uri).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -113,8 +113,8 @@ public class AcmeHttpClient : IAcmeHttpClient
         };
 
         AddUserAgentHeader(msg);
-        using var response = await Http.SendAsync(msg);
-        return await ProcessResponse<T>(response, uri);
+        using var response = await Http.SendAsync(msg).ConfigureAwait(false);
+        return await ProcessResponse<T>(response, uri).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -128,7 +128,7 @@ public class AcmeHttpClient : IAcmeHttpClient
         var nonce = Interlocked.Exchange(ref _nonce, null);
         while (nonce == null)
         {
-            await FetchNonce();
+            await FetchNonce().ConfigureAwait(false);
             nonce = Interlocked.Exchange(ref _nonce, null);
         }
 
@@ -204,13 +204,13 @@ public class AcmeHttpClient : IAcmeHttpClient
         {
             if (IsJsonMedia(response.Content?.Headers.ContentType?.MediaType))
             {
-                var json = await response.Content!.ReadAsStringAsync();
+                var json = await response.Content!.ReadAsStringAsync().ConfigureAwait(false);
                 resource = JsonSerializer.Deserialize(json,
                     (JsonTypeInfo<T>)CertesSerializerContext.Default.GetTypeInfo(typeof(T))!);
             }
             else if (typeof(T) == typeof(string))
             {
-                object content = await response.Content!.ReadAsStringAsync();
+                object content = await response.Content!.ReadAsStringAsync().ConfigureAwait(false);
                 resource = (T)content;
             }
         }
@@ -218,7 +218,7 @@ public class AcmeHttpClient : IAcmeHttpClient
         {
             if (IsJsonMedia(response.Content?.Headers?.ContentType?.MediaType))
             {
-                var json = await response.Content!.ReadAsStringAsync();
+                var json = await response.Content!.ReadAsStringAsync().ConfigureAwait(false);
                 error = JsonSerializer.Deserialize<AcmeError>(json, CertesSerializerContext.Default.AcmeError);
             }
             else
@@ -240,7 +240,7 @@ public class AcmeHttpClient : IAcmeHttpClient
 
     private async Task FetchNonce()
     {
-        _newNonceUri = _newNonceUri ?? (await Get<Directory>(_directoryUri)).Resource.NewNonce;
+        _newNonceUri = _newNonceUri ?? (await Get<Directory>(_directoryUri).ConfigureAwait(false)).Resource.NewNonce;
 
         var msg = new HttpRequestMessage
         {
@@ -249,7 +249,7 @@ public class AcmeHttpClient : IAcmeHttpClient
         };
 
         AddUserAgentHeader(msg);
-        var response = await Http.SendAsync(msg);
+        var response = await Http.SendAsync(msg).ConfigureAwait(false);
 
         if (!response.Headers.TryGetValues("Replay-Nonce", out var values))
         {

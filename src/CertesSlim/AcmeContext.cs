@@ -87,7 +87,7 @@ public class AcmeContext : IAcmeContext
             return _accountContext;
         }
 
-        var resp = await AccountContext.NewAccount(this, new Account.Payload { OnlyReturnExisting = true });
+        var resp = await AccountContext.NewAccount(this, new Account.Payload { OnlyReturnExisting = true }).ConfigureAwait(false);
         return _accountContext = new AccountContext(this, resp.Location);
     }
 
@@ -98,8 +98,8 @@ public class AcmeContext : IAcmeContext
     /// <returns>The account resource.</returns>
     public async Task<Account> ChangeKey(IKey? key)
     {
-        var endpoint = await this.GetResourceUri(d => d.KeyChange);
-        var location = await Account().Location();
+        var endpoint = await this.GetResourceUri(d => d.KeyChange).ConfigureAwait(false);
+        var location = await Account().Location().ConfigureAwait(false);
 
         var newKey = key ?? KeyFactory.NewKey(DefaultKeyType);
         var keyChange = new KeyChange
@@ -111,7 +111,7 @@ public class AcmeContext : IAcmeContext
         var jws = new JwsSigner(newKey);
         var body = jws.Sign(keyChange, url: endpoint);
 
-        var resp = await HttpClient.Post<Account, JwsPayload>(this, endpoint, body);
+        var resp = await HttpClient.Post<Account, JwsPayload>(this, endpoint, body).ConfigureAwait(false);
 
         AccountKey = newKey;
         return resp.Resource;
@@ -136,7 +136,7 @@ public class AcmeContext : IAcmeContext
             TermsOfServiceAgreed = termsOfServiceAgreed
         };
 
-        var resp = await AccountContext.NewAccount(this, body, eabKeyId, eabKey, eabKeyAlg);
+        var resp = await AccountContext.NewAccount(this, body, eabKeyId, eabKey, eabKeyAlg).ConfigureAwait(false);
         return _accountContext = new AccountContext(this, resp.Location);
     }
 
@@ -150,7 +150,7 @@ public class AcmeContext : IAcmeContext
     {
         if (_directory == null)
         {
-            var resp = await HttpClient.Get<Resource_Directory>(DirectoryUri);
+            var resp = await HttpClient.Get<Resource_Directory>(DirectoryUri).ConfigureAwait(false);
             _directory = resp.Resource;
         }
 
@@ -171,7 +171,7 @@ public class AcmeContext : IAcmeContext
         RevocationReason reason,
         IKey? certificatePrivateKey)
     {
-        var endpoint = await this.GetResourceUri(d => d.RevokeCert);
+        var endpoint = await this.GetResourceUri(d => d.RevokeCert).ConfigureAwait(false);
 
         var body = new CertificateRevocation
         {
@@ -182,11 +182,11 @@ public class AcmeContext : IAcmeContext
         if (certificatePrivateKey != null)
         {
             var jws = new JwsSigner(certificatePrivateKey);
-            await HttpClient.Post<string, CertificateRevocation>(jws, endpoint, body);
+            await HttpClient.Post<string, CertificateRevocation>(jws, endpoint, body).ConfigureAwait(false);
         }
         else
         {
-            await HttpClient.Post<string, CertificateRevocation>(this, endpoint, body);
+            await HttpClient.Post<string, CertificateRevocation>(this, endpoint, body).ConfigureAwait(false);
         }
     }
 
@@ -206,7 +206,7 @@ public class AcmeContext : IAcmeContext
         DateTimeOffset? notBefore = null,
         DateTimeOffset? notAfter = null)
     {
-        var endpoint = await this.GetResourceUri(d => d.NewOrder);
+        var endpoint = await this.GetResourceUri(d => d.NewOrder).ConfigureAwait(false);
 
         var body = new Order
         {
@@ -218,7 +218,7 @@ public class AcmeContext : IAcmeContext
             NotAfter = notAfter
         };
 
-        var order = await HttpClient.Post<Order, Order>(this, endpoint, body);
+        var order = await HttpClient.Post<Order, Order>(this, endpoint, body).ConfigureAwait(false);
         return new OrderContext(this, order.Location);
     }
 
@@ -230,8 +230,8 @@ public class AcmeContext : IAcmeContext
     /// <returns>The JWS payload.</returns>
     public async Task<JwsPayload> Sign<T>(T? entity, Uri uri)
     {
-        var nonce = await HttpClient.ConsumeNonce();
-        var location = await Account().Location();
+        var nonce = await HttpClient.ConsumeNonce().ConfigureAwait(false);
+        var location = await Account().Location().ConfigureAwait(false);
         var jws = new JwsSigner(AccountKey);
         return jws.Sign(entity, location, uri, nonce);
     }

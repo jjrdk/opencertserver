@@ -22,6 +22,6 @@ public sealed class AcmeIndexLinkFilter : IEndpointFilter
         var linkHeader = $"<{linkHeaderUrl}>;rel=\"index\"";
 
         context.HttpContext.Response.GetTypedHeaders().Set("Link", linkHeader);
-        return await next(context);
+        return await next(context).ConfigureAwait(false);
     }
 }

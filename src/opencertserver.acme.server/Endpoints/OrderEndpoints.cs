@@ -24,7 +24,7 @@ public static class OrderEndpoints
             CancellationToken cancellationToken) =>
         {
             var header = payload.ToAcmeHeader();
-            var account = await accountService.FromRequest(header, cancellationToken);
+            var account = await accountService.FromRequest(header, cancellationToken).ConfigureAwait(false);
             var orderRequest = payload.ToPayload<CreateOrderRequest>();
             if (orderRequest?.Identifiers?.Count == 0)
             {
@@ -38,7 +38,7 @@ public static class OrderEndpoints
                 new OpenCertServer.Acme.Abstractions.Model.Identifier(x.Type!, x.Value!));
             var order = await orderService.CreateOrder(orderRequest.Profile, account, identifiers,
                 orderRequest.NotBefore,
-                orderRequest.NotAfter, cancellationToken);
+                orderRequest.NotAfter, cancellationToken).ConfigureAwait(false);
             GetOrderUrls(context, links, order, out var authorizationUrls, out var finalizeUrl, out var certificateUrl);
             var orderResponse =
                 new OpenCertServer.Acme.Abstractions.HttpModel.Order(order, authorizationUrls, finalizeUrl,
@@ -60,8 +60,8 @@ public static class OrderEndpoints
             LinkGenerator links,
             CancellationToken cancellationToken) =>
         {
-            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken);
-            var order = await orderService.GetOrderAsync(account, orderId, cancellationToken);
+            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
+            var order = await orderService.GetOrderAsync(account, orderId, cancellationToken).ConfigureAwait(false);
             if (order == null) return Results.NotFound();
             GetOrderUrls(context, links, order, out var authorizationUrls, out var finalizeUrl, out var certificateUrl);
             var orderResponse =
@@ -80,8 +80,8 @@ public static class OrderEndpoints
             LinkGenerator links,
             CancellationToken cancellationToken) =>
         {
-            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken);
-            var order = await orderService.GetOrderAsync(account, orderId, cancellationToken);
+            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
+            var order = await orderService.GetOrderAsync(account, orderId, cancellationToken).ConfigureAwait(false);
             if (order == null) return Results.NotFound();
             var authZ = order.GetAuthorization(authId);
             if (authZ == null) return Results.NotFound();
@@ -103,9 +103,9 @@ public static class OrderEndpoints
             LinkGenerator links,
             CancellationToken cancellationToken) =>
         {
-            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken);
+            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
             var challenge =
-                await orderService.ProcessChallenge(account, orderId, authId, challengeId, cancellationToken);
+                await orderService.ProcessChallenge(account, orderId, authId, challengeId, cancellationToken).ConfigureAwait(false);
             if (challenge == null) return Results.NotFound();
             var challengeResponse =
                 new OpenCertServer.Acme.Abstractions.HttpModel.Challenge(challenge,
@@ -122,14 +122,14 @@ public static class OrderEndpoints
             LinkGenerator links,
             CancellationToken cancellationToken) =>
         {
-            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken);
+            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
             var orderRequest = payload.ToPayload<FinalizeOrderRequest>();
             if (string.IsNullOrWhiteSpace(orderRequest?.Csr))
             {
                 throw new MalformedRequestException("CSR was empty or could not be read.");
             }
 
-            var order = await orderService.ProcessCsr(account, orderId, orderRequest.Csr, cancellationToken);
+            var order = await orderService.ProcessCsr(account, orderId, orderRequest.Csr, cancellationToken).ConfigureAwait(false);
             GetOrderUrls(context, links, order, out var authorizationUrls, out var finalizeUrl, out var certificateUrl);
             var orderResponse =
                 new OpenCertServer.Acme.Abstractions.HttpModel.Order(order, authorizationUrls, finalizeUrl,
@@ -144,8 +144,8 @@ public static class OrderEndpoints
             IAccountService accountService,
             CancellationToken cancellationToken) =>
         {
-            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken);
-            var certificateChainBytes = await orderService.GetCertificate(account, orderId, cancellationToken);
+            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
+            var certificateChainBytes = await orderService.GetCertificate(account, orderId, cancellationToken).ConfigureAwait(false);
             return Results.File(certificateChainBytes, "application/pem-certificate-chain");
         }).WithName("GetCertificate").AddEndpointFilter<AcmeLocationFilter>();
 

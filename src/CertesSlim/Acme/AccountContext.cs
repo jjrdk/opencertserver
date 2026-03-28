@@ -31,7 +31,7 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
     public async Task<Account> Deactivate()
     {
         var payload = new Account { Status = AccountStatus.Deactivated };
-        var resp = await Context.HttpClient.Post<Account, Account>(Context, Location, payload);
+        var resp = await Context.HttpClient.Post<Account, Account>(Context, Location, payload).ConfigureAwait(false);
         return resp.Resource;
     }
 
@@ -43,7 +43,7 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
     /// </returns>
     public async Task<IOrderListContext> Orders()
     {
-        var account = await Resource();
+        var account = await Resource().ConfigureAwait(false);
         return new OrderListContext(Context, account.Orders!);
     }
 
@@ -57,7 +57,7 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
     /// </returns>
     public async Task<Account> Update(IList<string>? contact = null, bool agreeTermsOfService = false)
     {
-        var location = await Context.Account().Location();
+        var location = await Context.Account().Location().ConfigureAwait(false);
         var account = new Account
         {
             Contact = contact
@@ -68,7 +68,7 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
             account.TermsOfServiceAgreed = true;
         }
 
-        var response = await Context.HttpClient.Post<Account, Account>(Context, location, account);
+        var response = await Context.HttpClient.Post<Account, Account>(Context, location, account).ConfigureAwait(false);
         return response.Resource;
     }
 
@@ -88,7 +88,7 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
         string? eabKey = null,
         string? eabKeyAlg = null)
     {
-        var endpoint = await context.GetResourceUri(d => d.NewAccount);
+        var endpoint = await context.GetResourceUri(d => d.NewAccount).ConfigureAwait(false);
         var jws = new JwsSigner(context.AccountKey);
 
         if (eabKeyId != null && eabKey != null)
@@ -138,6 +138,6 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
             };
         }
 
-        return await context.HttpClient.Post<Account, Account>(jws, endpoint, body);
+        return await context.HttpClient.Post<Account, Account>(jws, endpoint, body).ConfigureAwait(false);
     }
 }

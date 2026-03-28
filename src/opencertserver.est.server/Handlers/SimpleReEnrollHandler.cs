@@ -28,7 +28,7 @@ internal static class SimpleReEnrollHandler
         [FromRoute] string profileName)
     {
         var connection = context.Connection;
-        var cert = await connection.GetClientCertificateAsync();
+        var cert = await connection.GetClientCertificateAsync().ConfigureAwait(false);
 
         if (cert == null)
         {
@@ -69,7 +69,7 @@ internal static class SimpleReEnrollHandler
         }
 
         var pem = success.Certificate.ToPemChain(success.Issuers);
-        await certificateAuthority.RevokeCertificate(cert.GetSerialNumberString(), X509RevocationReason.Superseded);
+        await certificateAuthority.RevokeCertificate(cert.GetSerialNumberString(), X509RevocationReason.Superseded).ConfigureAwait(false);
         return Results.Text(pem, Constants.PemMimeType);
     }
 }

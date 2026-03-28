@@ -103,7 +103,7 @@ internal class MultipartContentResult : IResult
     {
         ctx.Response.StatusCode = (int)_statusCode;
         ctx.Response.ContentType = _contentType;
-        await _content.CopyToAsync(ctx.Response.Body);
+        await _content.CopyToAsync(ctx.Response.Body).ConfigureAwait(false);
         await ctx.Response.Body.FlushAsync().ConfigureAwait(false);
     }
 }
