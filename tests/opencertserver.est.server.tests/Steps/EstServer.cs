@@ -17,6 +17,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OpenCertServer.Ca;
 using OpenCertServer.Ca.Server;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.X509.Templates;
 using OpenCertServer.Est.Client;
 using OpenCertServer.Est.Server;
@@ -35,24 +36,47 @@ public class EstServer
         _context = context;
     }
 
+    private X509Certificate2 GetCertificate<TKey>(TKey key) where TKey : AsymmetricAlgorithm
+    {
+        var ca = _server.Services.GetRequiredService<ICertificateAuthority>();
+        var subjectName = new X500DistinguishedName("CN=test");
+        var profile = key is RSA ? "rsa" : "ecdsa";
+        var csr = key switch
+        {
+            RSA rsa => new CertificateRequest(subjectName, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss),
+            ECDsa ecdsa => new CertificateRequest(subjectName, ecdsa, HashAlgorithmName.SHA256),
+            _ => throw new ArgumentOutOfRangeException(nameof(key), key, null)
+        };
+        var response = ca.SignCertificateRequest(csr, profile);
+        return response switch
+        {
+            SignCertificateResponse.Success success => success.Certificate,
+            _ => throw new Exception($"Certificate error: {response}")
+        };
+    }
+
     [Given("a certificate server that complies with EST \\(RFC 7030\\)")]
-    public async Task GivenACertificateServerThatCompliesWithEstrfc()
+    public async Task GivenACertificateServerThatCompliesWithEstRfc()
     {
         using var ecdsa = ECDsa.Create();
-        var ecdsaReq = new CertificateRequest("CN=Test Server", ecdsa, HashAlgorithmName.SHA256);
-        ecdsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
+        var ecdsaReq = new CertificateRequest("CN=ECDsa Test Server", ecdsa, HashAlgorithmName.SHA256);
+        ecdsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 5, false));
         ecdsaReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(ecdsaReq.PublicKey, false));
+        ecdsaReq.CertificateExtensions.Add(new X509KeyUsageExtension(
+            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
         var ecdsaCert = ecdsaReq.CreateSelfSigned(
             DateTimeOffset.UtcNow.Date,
             DateTimeOffset.UtcNow.Date.AddYears(1));
-        using var rsa = RSA.Create(4096);
+        using var rsa = RSA.Create();
         var rsaReq = new CertificateRequest(
-            "CN=Test Server",
+            "CN=RSA Test Server",
             rsa,
             HashAlgorithmName.SHA256,
-            RSASignaturePadding.Pss);
-        rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, false));
+            RSASignaturePadding.Pkcs1);
+        rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
         rsaReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(rsaReq.PublicKey, false));
+        rsaReq.CertificateExtensions.Add(new X509KeyUsageExtension(
+            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, false));
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
 
         var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaCert).Build();
@@ -94,7 +118,7 @@ public class EstServer
                                         Name = "rsa",
                                         CertificateValidity = TimeSpan.FromDays(90),
                                         CrlNumber = BigInteger.Zero,
-                                        PrivateKey = () => rsaPrivate.GetRSAPrivateKey()!
+                                        PrivateKey = rsaPrivate.GetRSAPrivateKey()!
                                     },
                                     new CaProfile
                                     {
@@ -103,7 +127,7 @@ public class EstServer
                                         Name = "ecdsa",
                                         CertificateValidity = TimeSpan.FromDays(90),
                                         CrlNumber = BigInteger.Zero,
-                                        PrivateKey = () => ecdsaPrivate.GetECDsaPrivateKey()!
+                                        PrivateKey = ecdsaPrivate.GetECDsaPrivateKey()!
                                     }
                                 ),
                                 ["test"],
@@ -147,26 +171,26 @@ public class EstServer
                 key = rsa;
                 _context["privateKey"] = rsa.ExportRSAPrivateKey();
                 _context["publicKey"] = key.ExportSubjectPublicKeyInfo();
+                _context["certificate"] = GetCertificate(rsa);
                 break;
             case "ecdsa":
                 var ecDsa = ECDsa.Create();
                 key = ecDsa;
                 _context["privateKey"] = ecDsa.ExportECPrivateKey();
                 _context["publicKey"] = key.ExportSubjectPublicKeyInfo();
+                _context["certificate"] = GetCertificate(ecDsa);
                 break;
         }
 
         var client = new EstClient(
             new Uri("https://localhost/"),
             profileName: profile.ToLowerInvariant(),
-            messageHandler: new TestMessageHandler(_server,
-                X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
-            ));
+            messageHandler: new TestMessageHandler(_server, _context["certificate"] as X509Certificate2));
         var (_, cert) = await client.Enroll(
             new X500DistinguishedName("CN=Test, OU=Test Department"),
             key,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-            certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
+            certificate: _context["certificate"] as X509Certificate2
         );
         _context["enrolledCertificate"] = cert;
     }
@@ -175,6 +199,7 @@ public class EstServer
     public async Task WhenAnUnauthenticatedClientSubmitsAValidRsaCertificateSigningRequestCsr(string profile)
     {
         using var rsa = RSA.Create();
+        var c = GetCertificate(rsa);
         var client = new EstClient(
             new Uri("https://localhost/"),
             messageHandler: _server.CreateHandler(),
@@ -183,7 +208,7 @@ public class EstServer
             new X500DistinguishedName("CN=Test, OU=Test Department"),
             rsa,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-            certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
+            certificate: c
         );
         _context["errorMessage"] = error;
         _context["enrolledCertificate"] = cert;
@@ -194,16 +219,15 @@ public class EstServer
     {
         using var handler = _server.CreateHandler();
         using var rsa = ECDsa.Create();
+        var c = GetCertificate(rsa);
         var client = new EstClient(
             new Uri("https://localhost/"),
-            messageHandler: new TestMessageHandler(_server,
-                X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
-            ));
+            messageHandler: new TestMessageHandler(_server, c));
         var (error, cert) = await client.Enroll(
             new X500DistinguishedName(""),
             rsa,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
-            certificate: X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
+            certificate: c
         );
         _context["errorMessage"] = error;
         _context["enrolledCertificate"] = cert;
@@ -235,9 +259,7 @@ public class EstServer
         var client = new EstClient(
             new Uri("https://localhost/"),
             profileName: keytype.ToLowerInvariant(),
-            messageHandler: new TestMessageHandler(_server,
-                X509CertificateLoader.LoadPkcs12FromFile("test.pfx", null)
-            ));
+            messageHandler: new TestMessageHandler(_server));
         var privateKey = (byte[])_context["privateKey"]!;
         var publicKey = (byte[])_context["publicKey"]!;
         switch (keytype)

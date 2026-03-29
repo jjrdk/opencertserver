@@ -12,111 +12,6 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using Utils;
 
-public record CaProfile : IDisposable
-{
-    private BigInteger _crlNumber;
-    public required string Name { get; init; }
-    public required Func<AsymmetricAlgorithm> PrivateKey { get; init; }
-    public required X509Certificate2Collection CertificateChain { get; init; }
-    public TimeSpan CertificateValidity { get; init; }
-
-    public BigInteger CrlNumber
-    {
-        get { return _crlNumber; }
-        init { _crlNumber = value; }
-    }
-
-    public BigInteger GetNextCrlNumber()
-    {
-        _crlNumber += BigInteger.One;
-        return CrlNumber;
-    }
-
-    public void Dispose()
-    {
-        foreach (var cert in CertificateChain)
-        {
-            cert.Dispose();
-        }
-    }
-}
-
-public class CaProfileSet : IDisposable
-{
-    private readonly string _defaultProfile;
-    private readonly IDictionary<string, CaProfile> _profiles;
-
-    public CaProfileSet(string defaultProfile, params CaProfile[] profiles)
-    {
-        _defaultProfile = defaultProfile;
-        _profiles = profiles.ToDictionary(p => p.Name, p => p);
-        if (!_profiles.ContainsKey(defaultProfile))
-        {
-            throw new ArgumentException($"Default profile {defaultProfile} not found in profiles");
-        }
-    }
-
-    public CaProfile GetProfile(string? name)
-    {
-        if (name == null)
-        {
-            return _profiles[_defaultProfile];
-        }
-
-        if (_profiles.TryGetValue(name, out var profile))
-        {
-            return profile;
-        }
-
-        return _profiles[_defaultProfile];
-    }
-
-    public void Dispose()
-    {
-        foreach (var profile in _profiles.Values)
-        {
-            profile.Dispose();
-        }
-    }
-}
-
-/// <summary>
-/// Defines the configuration for the Certificate Authority.
-/// </summary>
-public record CaConfiguration : IDisposable
-{
-    /// <summary>
-    /// Initializes a new instance of the <see cref="CaConfiguration"/> class.
-    /// </summary>
-    /// <param name="profiles">The profiles for the CA.</param>
-    /// <param name="ocspUrls">The URLs for OCSP responders.</param>
-    /// <param name="crlUrls">The URLs for CRL distribution points.</param>
-    /// <param name="caIssuersUrls">The URLs for CA issuer information.</param>
-    public CaConfiguration(
-        CaProfileSet profiles,
-        string[] ocspUrls,
-        string[] crlUrls,
-        string[] caIssuersUrls)
-    {
-        Profiles = profiles;
-        OcspUrls = ocspUrls;
-        CrlUrls = crlUrls;
-        CaIssuersUrls = caIssuersUrls;
-    }
-
-    public CaProfileSet Profiles { get; }
-
-    public string[] OcspUrls { get; }
-    public string[] CrlUrls { get; }
-    public string[] CaIssuersUrls { get; }
-
-    public void Dispose()
-    {
-        Profiles.Dispose();
-        GC.SuppressFinalize(this);
-    }
-}
-
 /// <summary>
 /// Defines the certificate authority class.
 /// </summary>
@@ -179,7 +74,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         return new CaProfile
         {
             Name = profileName,
-            PrivateKey = () => key,
+            PrivateKey = key,
             CertificateChain = [cert],
             CertificateValidity = certificateValidity,
             CrlNumber = crlNumber ?? BigInteger.Zero
@@ -199,7 +94,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         return new CaProfile
         {
             Name = profileName,
-            PrivateKey = () => key,
+            PrivateKey = key,
             CertificateChain = [cert],
             CertificateValidity = certificateValidity,
             CrlNumber = crlNumber ?? BigInteger.Zero
@@ -263,7 +158,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(request.PublicKey
                 .ExportSubjectPublicKeyInfo()));
 
-        var profilePrivateKey = profile.PrivateKey();
+        var profilePrivateKey = profile.PrivateKey;
         var x509SignatureGenerator = profilePrivateKey switch
         {
             RSA rsa => X509SignatureGenerator.CreateForRSA(rsa, RSASignaturePadding.Pss),

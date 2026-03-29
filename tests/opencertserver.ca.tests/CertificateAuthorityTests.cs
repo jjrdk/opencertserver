@@ -45,14 +45,14 @@ public sealed class CertificateAuthorityTests : IDisposable
                         CertificateChain = [X509Certificate2.CreateFromPem(rsaCert.ExportCertificatePem())],
                         Name = "rsa",
                         CertificateValidity = TimeSpan.FromDays(90),
-                        PrivateKey = () => rsa
+                        PrivateKey = rsa
                     },
                     new CaProfile
                     {
                         CertificateChain = [X509Certificate2.CreateFromPem(ecdsaCert.ExportCertificatePem())],
                         Name = "ecdsa",
                         CertificateValidity = TimeSpan.FromDays(90),
-                        PrivateKey = () => ecdsa
+                        PrivateKey = ecdsa
                     }
                 ),
                 ["test"],

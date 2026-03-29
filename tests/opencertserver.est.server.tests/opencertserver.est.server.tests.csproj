@@ -24,10 +24,4 @@
         <ProjectReference Include="..\..\src\opencertserver.est.server\opencertserver.est.server.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-        <None Update="test.pfx">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
-    </ItemGroup>
-
 </Project>

@@ -100,7 +100,7 @@ internal static class Program
                 CertificateChain = [X509Certificate2.CreateFromPem(certs[0].ExportCertificatePem())],
                 CertificateValidity = TimeSpan.FromDays(90),
                 CrlNumber = BigInteger.Zero,
-                PrivateKey = () => certs[0].GetRSAPrivateKey()!
+                PrivateKey = certs[0].GetRSAPrivateKey()!
             };
             var ecdsaProfile = new CaProfile
             {
@@ -108,7 +108,7 @@ internal static class Program
                 CertificateChain = [X509Certificate2.CreateFromPem(certs[1].ExportCertificatePem())],
                 CertificateValidity = TimeSpan.FromDays(90),
                 CrlNumber = BigInteger.Zero,
-                PrivateKey = () => certs[1].GetRSAPrivateKey()!
+                PrivateKey = certs[1].GetRSAPrivateKey()!
             };
             services = services
                 .AddCertificateAuthority(

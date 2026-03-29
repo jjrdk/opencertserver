@@ -1,14 +1,13 @@
-using System.Collections.Immutable;
-using System.Security.Claims;
-using Microsoft.Extensions.DependencyInjection;
-using OpenCertServer.Ca.Utils;
-
 namespace OpenCertServer.Est.Tests.Configuration;
 
+using System.Collections.Immutable;
+using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication.Certificate;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using OpenCertServer.Ca.Utils;
 
 public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<CertificateAuthenticationOptions>
 {
@@ -22,13 +21,6 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
         KeyValuePair.Create(Oids.GivenName, ClaimTypes.GivenName),
         KeyValuePair.Create(Oids.CountryOrRegionName, ClaimTypes.Country)
     ]);
-
-    private readonly Func<string?, X509Certificate2Collection> _certificates;
-
-    public ConfigureCertificateAuthenticationOptions(Func<string?, X509Certificate2Collection> certificates)
-    {
-        _certificates = certificates;
-    }
 
     public void PostConfigure(string? name, CertificateAuthenticationOptions options)
     {
@@ -50,24 +42,26 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
             },
             OnAuthenticationFailed = context =>
             {
-//                var profileName = context.HttpContext.Request.RouteValues["profileName"];
-//                var certChain = context.HttpContext.RequestServices
-//                    .GetRequiredService<Func<string?, X509Certificate2Collection>>();
-//                var chainPolicy = new X509ChainPolicy
-//                {
-//                    TrustMode = X509ChainTrustMode.CustomRootTrust, VerificationTimeIgnored = true
-//                };
-//                chainPolicy.CustomTrustStore.AddRange(certChain(profileName as string));
-//                chainPolicy.ExtraStore.AddRange(certChain(profileName as string));
-//                var chain = new X509Chain { ChainPolicy = chainPolicy };
+                var profileName = context.HttpContext.Request.RouteValues["profileName"];
+                var certChain = context.HttpContext.RequestServices
+                    .GetRequiredService<Func<string?, X509Certificate2Collection>>();
+                var chainPolicy = new X509ChainPolicy
+                {
+                    TrustMode = X509ChainTrustMode.CustomRootTrust,
+                    RevocationMode = X509RevocationMode.NoCheck,
+                    VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority
+                };
+                chainPolicy.CustomTrustStore.AddRange(certChain(profileName as string));
+                chainPolicy.ExtraStore.AddRange(certChain(profileName as string));
+                var chain = new X509Chain { ChainPolicy = chainPolicy };
                 var clientCertificate = context.HttpContext.Connection.ClientCertificate!;
-//                var built = chain.Build(clientCertificate);
-//                if (!built)
-//                {
-//                    context.Fail("Certificate chain validation failed: " +
-//                        string.Join(", ", chain.ChainStatus.Select(x => x.StatusInformation)));
-//                    return Task.CompletedTask;
-//                }
+                var built = chain.Build(clientCertificate);
+                if (!built)
+                {
+                    context.Fail(
+                        $"Certificate chain validation failed: {string.Join(", ", chain.ChainStatus.Select(x => x.StatusInformation))}");
+                    return Task.CompletedTask;
+                }
 
                 var claims = clientCertificate.SubjectName
                     .EnumerateRelativeDistinguishedNames()
