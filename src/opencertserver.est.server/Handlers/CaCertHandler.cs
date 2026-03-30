@@ -20,7 +20,7 @@ internal static class CaCertHandler
         Func<string?, CancellationToken, Task<X509Certificate2Collection>> certificates,
         CancellationToken cancellationToken = default)
     {
-        var export = (await certificates(profileName, cancellationToken)).ExportCertificatePems();
+        var export = (await certificates(profileName, cancellationToken).ConfigureAwait(false)).ExportCertificatePems();
         return Results.Text(export, Constants.PemMimeType, Encoding.UTF8, (int)HttpStatusCode.OK);
     }
 }

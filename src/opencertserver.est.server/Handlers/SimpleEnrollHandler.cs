@@ -39,7 +39,7 @@ internal static class SimpleEnrollHandler
             await certificateAuthority.SignCertificateRequestPem(
                 request,
                 profileName,
-                user?.Identity as ClaimsIdentity, cancellationToken: cancellationToken);
+                user?.Identity as ClaimsIdentity, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (newCert is SignCertificateResponse.Success success)
         {
             // This is a deviation from the RFC but is easier to parse.

@@ -179,7 +179,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
 
         var chainBuilt = chain.Build(cert);
 
-        if (chainBuilt || _x509ChainValidation.Validate(chain))
+        if (chainBuilt || await _x509ChainValidation.Validate(chain, cancellationToken))
         {
             await _certificateStore.AddCertificate(cert, cancellationToken);
             if (reenrollingFrom != null)
@@ -221,14 +221,15 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             csr = Convert.FromBase64CharArray(r.ToArray(), 0, r.Length);
         }
 
-        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom);
+        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, cancellationToken);
     }
 
     private Task<SignCertificateResponse> SignCertificateRequest(
         byte[] request,
         string? profileName = null,
         ClaimsIdentity? requestor = null,
-        X509Certificate2? reenrollingFrom = null)
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default)
     {
         var csr = CertificateRequest.LoadSigningRequest(
             request,
@@ -236,7 +237,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
             RSASignaturePadding.Pss);
 
-        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom);
+        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -249,7 +250,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     }
 
     /// <inheritdoc/>
-    public Task<bool> RevokeCertificate(string serialNumber, X509RevocationReason reason)
+    public Task<bool> RevokeCertificate(string serialNumber, X509RevocationReason reason, CancellationToken cancellationToken = default)
     {
         return _certificateStore.RemoveCertificate(serialNumber, reason);
     }

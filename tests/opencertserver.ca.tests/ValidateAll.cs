@@ -4,8 +4,8 @@ namespace OpenCertServer.Ca.Tests;
 
 internal class ValidateAll : IValidateX509Chains
 {
-    public bool Validate(X509Chain chain)
+    public Task<bool> Validate(X509Chain chain,  CancellationToken cancellationToken = default)
     {
-        return true;
+        return Task.FromResult(true);
     }
 }
