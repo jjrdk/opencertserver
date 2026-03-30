@@ -15,11 +15,13 @@ public static class CsrHandler
         [FromRoute] string? profileName,
         ClaimsPrincipal user,
         ICertificateAuthority ca,
-        [FromBody] Stream body)
+        [FromBody] Stream body,
+        CancellationToken cancellationToken)
     {
         using var reader = new StreamReader(body);
-        var csrPem = await reader.ReadToEndAsync().ConfigureAwait(false);
-        var certResponse = ca.SignCertificateRequestPem(csrPem, profileName, user.Identity as ClaimsIdentity);
+        var csrPem = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var certResponse = await ca.SignCertificateRequestPem(csrPem, profileName, user.Identity as ClaimsIdentity,
+            cancellationToken: cancellationToken);
         if (certResponse is SignCertificateResponse.Success success)
         {
             return Results.Text(success.Certificate.ToPemChain(success.Issuers), Constants.PemMimeType);

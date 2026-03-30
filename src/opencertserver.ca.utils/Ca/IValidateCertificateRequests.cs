@@ -15,6 +15,12 @@ public interface IValidateCertificateRequests
     /// <param name="profile">The CA profile to validate for</param>
     /// <param name="requestor">The user requesting the certificate.</param>
     /// <param name="reenrollingFrom">The optional <see cref="X509Certificate2"/> if re-enrolling.</param>
+    /// <param name="cancellationToken">The cancellation token to use for asynchronous operations.</param>
     /// <returns>A <see cref="string"/> with error descriptions, or <c>null</c></returns>
-    string? Validate(CertificateRequest request, string? profile = null, ClaimsIdentity? requestor = null, X509Certificate2? reenrollingFrom = null);
+    Task<string?> Validate(
+        CertificateRequest request,
+        string? profile = null,
+        ClaimsIdentity? requestor = null,
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default);
 }

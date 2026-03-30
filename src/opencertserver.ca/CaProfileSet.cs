@@ -27,14 +27,14 @@ public class CaProfileSet : IStoreCaProfiles
     }
 
     /// <inheritdoc />
-    public CaProfile GetProfile(string? name)
+    public Task<CaProfile> GetProfile(string? name, CancellationToken cancellationToken = default)
     {
         if (name == null)
         {
-            return _profiles[_defaultProfile];
+            return Task.FromResult(_profiles[_defaultProfile]);
         }
 
-        return _profiles.TryGetValue(name, out var profile) ? profile : _profiles[_defaultProfile];
+        return Task.FromResult(_profiles.TryGetValue(name, out var profile) ? profile : _profiles[_defaultProfile]);
     }
 
     /// <inheritdoc />

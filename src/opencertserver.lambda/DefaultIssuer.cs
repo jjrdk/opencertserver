@@ -25,10 +25,10 @@ internal sealed class DefaultIssuer : IIssueCertificates
     {
         await Task.Yield();
 
-        var cert = _ca.SignCertificateRequestPem(
+        var cert = await _ca.SignCertificateRequestPem(
             csr,
             profile,
-            new ClaimsIdentity(identifiers.Select(i => new Claim(i.Type, i.Value)), "acme"));
+            new ClaimsIdentity(identifiers.Select(i => new Claim(i.Type, i.Value)), "acme"), cancellationToken: cancellationToken);
         return cert switch
         {
             SignCertificateResponse.Success success => (

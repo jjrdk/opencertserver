@@ -36,7 +36,7 @@ public class EstServer
         _context = context;
     }
 
-    private X509Certificate2 GetCertificate<TKey>(TKey key) where TKey : AsymmetricAlgorithm
+    private async Task<X509Certificate2> GetCertificate<TKey>(TKey key) where TKey : AsymmetricAlgorithm
     {
         var ca = _server.Services.GetRequiredService<ICertificateAuthority>();
         var subjectName = new X500DistinguishedName("CN=test");
@@ -47,7 +47,7 @@ public class EstServer
             ECDsa ecdsa => new CertificateRequest(subjectName, ecdsa, HashAlgorithmName.SHA256),
             _ => throw new ArgumentOutOfRangeException(nameof(key), key, null)
         };
-        var response = ca.SignCertificateRequest(csr, profile);
+        var response = await ca.SignCertificateRequest(csr, profile);
         return response switch
         {
             SignCertificateResponse.Success success => success.Certificate,
@@ -171,14 +171,14 @@ public class EstServer
                 key = rsa;
                 _context["privateKey"] = rsa.ExportRSAPrivateKey();
                 _context["publicKey"] = key.ExportSubjectPublicKeyInfo();
-                _context["certificate"] = GetCertificate(rsa);
+                _context["certificate"] = await GetCertificate(rsa);
                 break;
             case "ecdsa":
                 var ecDsa = ECDsa.Create();
                 key = ecDsa;
                 _context["privateKey"] = ecDsa.ExportECPrivateKey();
                 _context["publicKey"] = key.ExportSubjectPublicKeyInfo();
-                _context["certificate"] = GetCertificate(ecDsa);
+                _context["certificate"] = await GetCertificate(ecDsa);
                 break;
         }
 
@@ -199,7 +199,7 @@ public class EstServer
     public async Task WhenAnUnauthenticatedClientSubmitsAValidRsaCertificateSigningRequestCsr(string profile)
     {
         using var rsa = RSA.Create();
-        var c = GetCertificate(rsa);
+        var c = await GetCertificate(rsa);
         var client = new EstClient(
             new Uri("https://localhost/"),
             messageHandler: _server.CreateHandler(),
@@ -219,7 +219,7 @@ public class EstServer
     {
         using var handler = _server.CreateHandler();
         using var rsa = ECDsa.Create();
-        var c = GetCertificate(rsa);
+        var c = await GetCertificate(rsa);
         var client = new EstClient(
             new Uri("https://localhost/"),
             messageHandler: new TestMessageHandler(_server, c));
