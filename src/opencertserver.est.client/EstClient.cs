@@ -101,7 +101,8 @@ public sealed class EstClient : IDisposable
         {
             Method = HttpMethod.Post,
             RequestUri = requestUriBuilder.Uri,
-            Content = content
+            Content = content,
+            Headers = { Accept = { new MediaTypeWithQualityHeaderValue("application/x-pem-file") } }
         };
 
         request.Headers.Add("X-Client-Cert", Convert.ToBase64String(certificate.Export(X509ContentType.Cert)));
@@ -163,9 +164,14 @@ public sealed class EstClient : IDisposable
             pathValue);
         var requestMessage = new HttpRequestMessage
         {
-            Content = new StringContent(request.ToPkcs10(), Encoding.UTF8, "application/pkcs10-mime"),
+            Content = new StringContent(request.ToPkcs10(), Encoding.UTF8, "application/pkcs10"),
             Method = HttpMethod.Post,
-            RequestUri = requestUriBuilder.Uri
+            RequestUri = requestUriBuilder.Uri,
+            Headers =
+            {
+                TransferEncoding = { new TransferCodingHeaderValue("base64") },
+                Accept = { new MediaTypeWithQualityHeaderValue("application/x-pem-file") }
+            }
         };
         if (authenticationHeader != null)
         {
