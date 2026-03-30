@@ -37,14 +37,16 @@ public static class Extensions
         /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
         public IServiceCollection AddCertificateAuthority(
             CaConfiguration configuration,
-            Func<X509Chain, bool>? chainValidation = null)
+            IValidateX509Chains? chainValidation = null)
         {
+            services.AddSingleton(configuration);
+            services.AddSingleton(configuration.Profiles);
             return services.AddSingleton<ICertificateAuthority>(sp =>
             {
                 return new CertificateAuthority(
                     configuration,
                     sp.GetRequiredService<IStoreCertificates>(),
-                    chainValidation ?? (_ => true),
+                    chainValidation ?? new ValidateAll(),
                     sp.GetRequiredService<ILogger<CertificateAuthority>>());
             });
         }
@@ -66,31 +68,33 @@ public static class Extensions
             string[]? crlUrls = null,
             string[]? caIssuersUrls = null,
             TimeSpan certificateValidity = default,
-            Func<X509Chain, bool>? chainValidation = null)
+            IValidateX509Chains? chainValidation = null)
         {
+            var config = new CaConfiguration(
+                new CaProfileSet(
+                    "default",
+                    CertificateAuthority.CreateSelfSignedRsa(
+                        "default",
+                        distinguishedName,
+                        certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
+                        BigInteger.Zero),
+                    CertificateAuthority.CreateSelfSignedEcdsa(
+                        "ecdsa",
+                        distinguishedName,
+                        certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
+                        BigInteger.Zero)
+                ),
+                ocspUrls ?? [],
+                crlUrls ?? [],
+                caIssuersUrls ?? []);
+            services.AddSingleton(config);
+            services.AddSingleton(config.Profiles);
             return services.AddSingleton<ICertificateAuthority>(sp =>
             {
-                var config = new CaConfiguration(
-                    new CaProfileSet(
-                        "default",
-                        CertificateAuthority.CreateSelfSignedRsa(
-                            "default",
-                            distinguishedName,
-                            certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
-                            BigInteger.Zero),
-                        CertificateAuthority.CreateSelfSignedEcdsa(
-                            "ecdsa",
-                            distinguishedName,
-                            certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
-                            BigInteger.Zero)
-                    ),
-                    ocspUrls ?? [],
-                    crlUrls ?? [],
-                    caIssuersUrls ?? []);
                 var certificateAuthority = new CertificateAuthority(
                     config,
                     sp.GetRequiredService<IStoreCertificates>(),
-                    chainValidation ?? (_ => true),
+                    chainValidation ?? new ValidateAll(),
                     sp.GetRequiredService<ILogger<CertificateAuthority>>(),
                     validators: sp.GetServices<IValidateCertificateRequests>().ToArray());
                 return certificateAuthority;

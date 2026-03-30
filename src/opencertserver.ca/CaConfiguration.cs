@@ -1,3 +1,5 @@
+using OpenCertServer.Ca.Utils.Ca;
+
 namespace OpenCertServer.Ca;
 
 /// <summary>
@@ -13,7 +15,7 @@ public record CaConfiguration : IDisposable
     /// <param name="crlUrls">The URLs for CRL distribution points.</param>
     /// <param name="caIssuersUrls">The URLs for CA issuer information.</param>
     public CaConfiguration(
-        CaProfileSet profiles,
+        IStoreCaProfiles profiles,
         string[] ocspUrls,
         string[] crlUrls,
         string[] caIssuersUrls)
@@ -24,7 +26,7 @@ public record CaConfiguration : IDisposable
         CaIssuersUrls = caIssuersUrls;
     }
 
-    public CaProfileSet Profiles { get; }
+    public IStoreCaProfiles Profiles { get; }
 
     public string[] OcspUrls { get; }
     public string[] CrlUrls { get; }

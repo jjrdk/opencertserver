@@ -1,15 +1,16 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿namespace OpenCertServer.Est.Server.Handlers;
 
-namespace OpenCertServer.Est.Server.Handlers;
-
+using System.Formats.Asn1;
 using System.Security.Claims;
-using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.X509Extensions;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Ca.Utils;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Ca.Utils.Pkcs7;
+using OpenCertServer.Ca.Utils.X509Extensions;
 
 internal static class SimpleReEnrollHandler
 {
@@ -68,8 +69,20 @@ internal static class SimpleReEnrollHandler
             return Results.BadRequest();
         }
 
-        var pem = success.Certificate.ToPemChain(success.Issuers);
-        await certificateAuthority.RevokeCertificate(cert.GetSerialNumberString(), X509RevocationReason.Superseded).ConfigureAwait(false);
-        return Results.Text(pem, Constants.PemMimeType);
+        var responseType = context.Request.GetTypedHeaders().Accept;
+        // This is a deviation from the RFC but is easier to parse.
+        if (responseType.Any(x =>
+            x.MediaType.HasValue &&
+            x.MediaType.Value.Equals(Constants.PemFile, StringComparison.OrdinalIgnoreCase)))
+        {
+            return Results.Text(success.Certificate.ToPemChain(success.Issuers), Constants.PemFile);
+        }
+
+        X509Certificate2[] content = [success.Certificate];
+        var signedResponse = new SignedData(version: 4, certificates: content.Concat(success.Issuers).ToArray());
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        signedResponse.Encode(writer);
+        var derBytes = writer.Encode();
+        return Results.Bytes(derBytes, Constants.PemMimeType);
     }
 }

@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Est.Server.Handlers;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]

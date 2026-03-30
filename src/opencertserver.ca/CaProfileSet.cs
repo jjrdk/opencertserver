@@ -2,11 +2,20 @@ using OpenCertServer.Ca.Utils.Ca;
 
 namespace OpenCertServer.Ca;
 
+/// <summary>
+/// Defines the set of CA profiles available for use.
+/// </summary>
 public class CaProfileSet : IStoreCaProfiles
 {
     private readonly string _defaultProfile;
     private readonly IDictionary<string, CaProfile> _profiles;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CaProfileSet"/> class.
+    /// </summary>
+    /// <param name="defaultProfile">The name of the default CA profile.</param>
+    /// <param name="profiles">The collection of CA profiles to include in the set.</param>
+    /// <exception cref="ArgumentException">Thrown if the default profile is not found in the provided profiles.</exception>
     public CaProfileSet(string defaultProfile, params CaProfile[] profiles)
     {
         _defaultProfile = defaultProfile;
@@ -17,6 +26,7 @@ public class CaProfileSet : IStoreCaProfiles
         }
     }
 
+    /// <inheritdoc />
     public CaProfile GetProfile(string? name)
     {
         if (name == null)
@@ -24,20 +34,17 @@ public class CaProfileSet : IStoreCaProfiles
             return _profiles[_defaultProfile];
         }
 
-        if (_profiles.TryGetValue(name, out var profile))
-        {
-            return profile;
-        }
-
-        return _profiles[_defaultProfile];
+        return _profiles.TryGetValue(name, out var profile) ? profile : _profiles[_defaultProfile];
     }
 
+    /// <inheritdoc />
     public void Dispose()
     {
         foreach (var profile in _profiles.Values)
         {
             profile.Dispose();
         }
+
         GC.SuppressFinalize(this);
     }
 }
