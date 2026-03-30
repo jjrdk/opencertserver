@@ -45,7 +45,7 @@ internal static class ServerKeyGenHandler
             using var ecdsa = ECDsa.Create();
             signingRequest = new CertificateRequest(signingRequest.SubjectName, ecdsa, HashAlgorithmName.SHA256);
             var newCert =
-                certificateAuthority.SignCertificateRequest(signingRequest, profileName,
+                await certificateAuthority.SignCertificateRequest(signingRequest, profileName,
                     user.Identity as ClaimsIdentity);
             if (newCert is SignCertificateResponse.Success success)
             {

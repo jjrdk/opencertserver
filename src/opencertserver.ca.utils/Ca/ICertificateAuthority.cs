@@ -11,21 +11,23 @@ using System.Security.Cryptography.X509Certificates;
 /// </summary>
 public interface ICertificateAuthority
 {
-    SignCertificateResponse SignCertificateRequest(
+    Task<SignCertificateResponse> SignCertificateRequest(
         CertificateRequest request,
         string? profileName = null,
         ClaimsIdentity? requestor = null,
-        X509Certificate2? reenrollingFrom = null);
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default);
 
-    SignCertificateResponse SignCertificateRequestPem(
+    Task<SignCertificateResponse> SignCertificateRequestPem(
         string request,
         string? profileName = null,
         ClaimsIdentity? requestor = null,
-        X509Certificate2? reenrollingFrom = null);
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default);
 
-    X509Certificate2Collection GetRootCertificates(string? profileName = null);
+    Task<X509Certificate2Collection> GetRootCertificates(string? profileName = null, CancellationToken cancellationToken = default);
 
     Task<bool> RevokeCertificate(string serialNumber, X509RevocationReason reason);
 
-    Task<byte[]> GetRevocationList(string? profileName = null);
+    Task<byte[]> GetRevocationList(string? profileName = null, CancellationToken cancellationToken = default);
 }

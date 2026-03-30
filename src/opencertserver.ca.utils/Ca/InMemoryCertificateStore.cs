@@ -13,19 +13,18 @@ public class InMemoryCertificateStore : IStoreCertificates
     /// </summary>
     private readonly Dictionary<string, CertificateItem> _certificates = new();
 
-    /// <summary>
-    /// Executes the AddCertificate operation.
-    /// </summary>
-    public Task AddCertificate(X509Certificate2 certificate)
+    /// <inheritdoc />
+    public Task AddCertificate(X509Certificate2 certificate, CancellationToken cancellationToken = default)
     {
         _certificates.Add(certificate.GetSerialNumberString(), CertificateItem.FromX509Certificate2(certificate));
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Executes the RemoveCertificate operation.
-    /// </summary>
-    public Task<bool> RemoveCertificate(string serialNumber, X509RevocationReason reason)
+    /// <inheritdoc />
+    public Task<bool> RemoveCertificate(
+        string serialNumber,
+        X509RevocationReason reason,
+        CancellationToken cancellationToken = default)
     {
         if (!_certificates.TryGetValue(serialNumber, out var certificateItem))
         {
@@ -37,10 +36,11 @@ public class InMemoryCertificateStore : IStoreCertificates
         return Task.FromResult(true);
     }
 
-    /// <summary>
-    /// Executes the GetRevocationList operation.
-    /// </summary>
-    public IAsyncEnumerable<CertificateItemInfo> GetRevocationList(int page = 0, int pageSize = 100)
+    /// <inheritdoc />
+    public IAsyncEnumerable<CertificateItemInfo> GetRevocationList(
+        int page = 0,
+        int pageSize = 100,
+        CancellationToken cancellationToken = default)
     {
         return _certificates
             .OrderBy(x => x.Key)
@@ -51,10 +51,10 @@ public class InMemoryCertificateStore : IStoreCertificates
             .ToAsyncEnumerable();
     }
 
-    /// <summary>
-    /// Executes the Task< operation.
-    /// </summary>
-    public async Task<(CertId, CertificateStatus, RevokedInfo?)> GetCertificateStatus(CertId certId)
+    /// <inheritdoc />
+    public async Task<(CertId, CertificateStatus, RevokedInfo?)> GetCertificateStatus(
+        CertId certId,
+        CancellationToken cancellationToken = default)
     {
         await Task.Yield();
         var found = _certificates.TryGetValue(Convert.ToHexString(certId.SerialNumber), out var certificateItem);
@@ -69,10 +69,11 @@ public class InMemoryCertificateStore : IStoreCertificates
             : (certId, CertificateStatus.Good, null);
     }
 
-    /// <summary>
-    /// Executes the GetInventory operation.
-    /// </summary>
-    public IAsyncEnumerable<CertificateItemInfo> GetInventory(int page = 0, int pageSize = 100)
+    /// <inheritdoc />
+    public IAsyncEnumerable<CertificateItemInfo> GetInventory(
+        int page = 0,
+        int pageSize = 100,
+        CancellationToken cancellationToken = default)
     {
         return _certificates
             .OrderBy(x => x.Key)
@@ -82,10 +83,10 @@ public class InMemoryCertificateStore : IStoreCertificates
             .ToAsyncEnumerable();
     }
 
-    /// <summary>
-    /// Executes the GetCertificatesById operation.
-    /// </summary>
-    public IAsyncEnumerable<X509Certificate2> GetCertificatesById(params IEnumerable<ReadOnlyMemory<byte>> ids)
+    /// <inheritdoc />
+    public IAsyncEnumerable<X509Certificate2> GetCertificatesById(
+        CancellationToken cancellationToken,
+        params IEnumerable<ReadOnlyMemory<byte>> ids)
     {
         var idStrings = ids.Select(i => Convert.ToHexString(i.Span));
         return _certificates
@@ -95,10 +96,10 @@ public class InMemoryCertificateStore : IStoreCertificates
             .ToAsyncEnumerable();
     }
 
-    /// <summary>
-    /// Executes the GetCertificatesByThumbprint operation.
-    /// </summary>
-    public IAsyncEnumerable<X509Certificate2> GetCertificatesByThumbprint(IEnumerable<ReadOnlyMemory<char>> thumbprint)
+    /// <inheritdoc />
+    public IAsyncEnumerable<X509Certificate2> GetCertificatesByThumbprint(
+        IEnumerable<ReadOnlyMemory<char>> thumbprint,
+        CancellationToken cancellationToken = default)
     {
         var thumbprintStrings = thumbprint.ToArray();
         return _certificates

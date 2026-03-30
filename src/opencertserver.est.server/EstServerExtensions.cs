@@ -45,8 +45,11 @@ public static class EstServerExtensions
         {
             return services
                 .AddTransient<ICsrTemplateLoader, TCsrTemplateLoader>()
-                .AddTransient<Func<string?, X509Certificate2Collection>>(sp =>
-                    sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates);
+                .AddTransient<Func<string?, CancellationToken, Task<X509Certificate2Collection>>>(sp =>
+                {
+                    var ca = sp.GetRequiredService<ICertificateAuthority>();
+                    return ca.GetRootCertificates;
+                });
         }
     }
 

@@ -44,15 +44,16 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
             {
                 var profileName = context.HttpContext.Request.RouteValues["profileName"];
                 var certChain = context.HttpContext.RequestServices
-                    .GetRequiredService<Func<string?, X509Certificate2Collection>>();
+                    .GetRequiredService<Func<string?, CancellationToken, Task<X509Certificate2Collection>>>();
                 var chainPolicy = new X509ChainPolicy
                 {
                     TrustMode = X509ChainTrustMode.CustomRootTrust,
                     RevocationMode = X509RevocationMode.NoCheck,
                     VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority
                 };
-                chainPolicy.CustomTrustStore.AddRange(certChain(profileName as string));
-                chainPolicy.ExtraStore.AddRange(certChain(profileName as string));
+                var collection = certChain(profileName as string, CancellationToken.None).GetAwaiter().GetResult();
+                chainPolicy.CustomTrustStore.AddRange(collection);
+                chainPolicy.ExtraStore.AddRange(collection);
                 var chain = new X509Chain { ChainPolicy = chainPolicy };
                 var clientCertificate = context.HttpContext.Connection.ClientCertificate!;
                 var built = chain.Build(clientCertificate);
@@ -72,7 +73,7 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
                         CertificateAuthenticationDefaults.AuthenticationScheme));
                 context.Success();
                 return Task.CompletedTask;
-            }
+            }, OnChallenge = context => { return Task.CompletedTask; }
         };
     }
 }

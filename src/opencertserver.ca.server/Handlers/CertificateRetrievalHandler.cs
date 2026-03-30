@@ -17,7 +17,9 @@ public static class CertificateRetrievalHandler
         var thumbCerts = store.GetCertificatesByThumbprint(
             thumbprints.Where(s => s != null)
                 .Select(tp => tp.AsMemory()));
-        var idCerts = store.GetCertificatesById(ids.Where(s => s != null)
+        var idCerts = store.GetCertificatesById(
+            context.RequestAborted,
+            ids.Where(s => s != null)
             .Select(tp => new ReadOnlyMemory<byte>(Convert.FromHexString(tp!))));
 
         context.Response.ContentType = "application/x-pem-file";

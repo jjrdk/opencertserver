@@ -1,6 +1,3 @@
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-
 namespace OpenCertServer.CertServer;
 
 using OpenCertServer.Ca.Utils.Ca;
@@ -27,11 +24,11 @@ internal sealed class DefaultIssuer : IIssueCertificates
     {
         await Task.Yield();
         cancellationToken.ThrowIfCancellationRequested();
-        var cert = _ca.SignCertificateRequestPem(
+        var cert = await _ca.SignCertificateRequestPem(
             csr,
             profile,
             new System.Security.Claims.ClaimsIdentity(
-                identifiers.Select(i => new System.Security.Claims.Claim(i.Type, i.Value)), "acme"));
+                identifiers.Select(i => new System.Security.Claims.Claim(i.Type, i.Value)), "acme"), cancellationToken: cancellationToken);
         return cert switch
         {
             SignCertificateResponse.Success success => (

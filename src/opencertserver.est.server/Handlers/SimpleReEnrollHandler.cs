@@ -17,19 +17,21 @@ internal static class SimpleReEnrollHandler
     public static Task<IResult> Handle(
         HttpContext context,
         ClaimsPrincipal user,
-        ICertificateAuthority certificateAuthority)
+        ICertificateAuthority certificateAuthority,
+        CancellationToken cancellationToken)
     {
-        return HandleProfile(context, user, certificateAuthority, "");
+        return HandleProfile(context, user, certificateAuthority, "",  cancellationToken);
     }
 
     public static async Task<IResult> HandleProfile(
         HttpContext context,
         ClaimsPrincipal user,
         ICertificateAuthority certificateAuthority,
-        [FromRoute] string profileName)
+        [FromRoute] string profileName,
+        CancellationToken cancellationToken)
     {
         var connection = context.Connection;
-        var cert = await connection.GetClientCertificateAsync().ConfigureAwait(false);
+        var cert = await connection.GetClientCertificateAsync(cancellationToken).ConfigureAwait(false);
 
         if (cert == null)
         {
@@ -59,11 +61,11 @@ internal static class SimpleReEnrollHandler
             request.CertificateExtensions.Add(extension);
         }
 
-        var newCert = certificateAuthority.SignCertificateRequest(
+        var newCert = await certificateAuthority.SignCertificateRequest(
             request,
             profileName,
             user.Identity as ClaimsIdentity,
-            cert);
+            cert, cancellationToken);
         if (newCert is not SignCertificateResponse.Success success)
         {
             return Results.BadRequest();
