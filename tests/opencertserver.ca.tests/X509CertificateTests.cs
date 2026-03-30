@@ -1,5 +1,3 @@
-using OpenCertServer.Ca.Utils.Ca;
-
 namespace OpenCertServer.Ca.Tests;
 
 using System;
@@ -9,6 +7,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
+using OpenCertServer.Ca.Utils.Ca;
 using Utils.X509Extensions;
 using Xunit;
 
@@ -30,7 +29,7 @@ public sealed class X509CertificateTests : IDisposable
                 [],
                 []),
             new InMemoryCertificateStore(),
-            _ => true,
+            new ValidateAll(),
             new NullLogger<CertificateAuthority>());
     }
 

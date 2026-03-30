@@ -59,7 +59,7 @@ public sealed class CertificateAuthorityTests : IDisposable
                 [],
                 []),
             new InMemoryCertificateStore(),
-            _ => true,
+            new ValidateAll(),
             new NullLogger<CertificateAuthority>());
     }
 

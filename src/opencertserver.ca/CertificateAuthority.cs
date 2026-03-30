@@ -1,15 +1,14 @@
-﻿using System.Numerics;
-using System.Security.Claims;
-using System.Text;
-using OpenCertServer.Ca.Utils.Ca;
-
-namespace OpenCertServer.Ca;
+﻿namespace OpenCertServer.Ca;
 
 using System;
 using System.Linq;
+using System.Numerics;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using Microsoft.Extensions.Logging;
+using OpenCertServer.Ca.Utils.Ca;
 using Utils;
 
 /// <summary>
@@ -30,7 +29,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     private readonly CaConfiguration _config;
     private readonly ILogger<ICertificateAuthority> _logger;
     private readonly IStoreCertificates _certificateStore;
-    private readonly Func<X509Chain, bool> _x509ChainValidation;
+    private readonly IValidateX509Chains _x509ChainValidation;
     private readonly IValidateCertificateRequests[] _validators;
 
     /// <summary>
@@ -45,7 +44,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     public CertificateAuthority(
         CaConfiguration config,
         IStoreCertificates certificateStore,
-        Func<X509Chain, bool> x509ChainValidation,
+        IValidateX509Chains x509ChainValidation,
         ILogger<CertificateAuthority> logger,
         params IValidateCertificateRequests[] validators)
     {
@@ -185,7 +184,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
 
         var chainBuilt = chain.Build(cert);
 
-        if (chainBuilt || _x509ChainValidation(chain))
+        if (chainBuilt || _x509ChainValidation.Validate(chain))
         {
             _certificateStore.AddCertificate(cert);
             if (reenrollingFrom != null)
@@ -330,18 +329,16 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         _config.Dispose();
     }
 
-    private sealed partial class OwnCertificateValidation(CaProfileSet caProfiles, ILogger logger)
+    private sealed partial class OwnCertificateValidation(IStoreCaProfiles caProfiles, ILogger logger)
         : IValidateCertificateRequests
     {
-        private readonly CaProfileSet _caProfiles = caProfiles;
-
         public string? Validate(
             CertificateRequest request,
             string? profile = null,
             ClaimsIdentity? requestor = null,
             X509Certificate2? reenrollingFrom = null)
         {
-            CaProfile caProfile = _caProfiles.GetProfile(profile);
+            var caProfile = caProfiles.GetProfile(profile);
             var result = reenrollingFrom == null
              || caProfile.CertificateChain
                     .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);
