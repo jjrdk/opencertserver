@@ -65,7 +65,7 @@ internal static class SimpleReEnrollHandler
             request,
             profileName,
             user.Identity as ClaimsIdentity,
-            cert, cancellationToken);
+            cert, cancellationToken).ConfigureAwait(false);
         if (newCert is not SignCertificateResponse.Success success)
         {
             return Results.BadRequest();

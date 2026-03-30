@@ -11,6 +11,7 @@ public interface IValidateX509Chains
     /// Validates the given X.509 certificate chain.
     /// </summary>
     /// <param name="chain">The X.509 certificate chain to validate</param>
+    /// <param name="cancellationToken">The cancellation token to use for the validation operation.</param>
     /// <returns>True if the chain is valid, otherwise false</returns>
-    bool Validate(X509Chain chain);
+    Task<bool> Validate(X509Chain chain, CancellationToken cancellationToken = default);
 }
