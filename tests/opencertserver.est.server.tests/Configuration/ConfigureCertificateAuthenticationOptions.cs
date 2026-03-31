@@ -73,7 +73,7 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
                         CertificateAuthenticationDefaults.AuthenticationScheme));
                 context.Success();
                 return Task.CompletedTask;
-            }, OnChallenge = context => { return Task.CompletedTask; }
+            }
         };
     }
 }
