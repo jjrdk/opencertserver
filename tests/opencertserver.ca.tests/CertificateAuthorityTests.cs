@@ -76,7 +76,6 @@ public sealed class CertificateAuthorityTests : IDisposable
                 cancellationToken: CancellationToken.None)) as SignCertificateResponse.Success;
 
         Assert.Equal(GetParts(req.SubjectName), GetParts(cert!.Certificate.SubjectName));
-        return;
 
         static IEnumerable<string> GetParts(X500DistinguishedName name)
         {

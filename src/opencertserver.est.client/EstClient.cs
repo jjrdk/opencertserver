@@ -110,7 +110,9 @@ public sealed class EstClient : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        _messageClient.CancelPendingRequests();
         _messageHandler.Dispose();
+        _messageClient.Dispose();
     }
 
     public async Task<CertificateSigningRequestTemplate> GetCsrAttributes(
@@ -176,18 +178,15 @@ public sealed class EstClient : IDisposable
             ch.ClientCertificates.Clear();
         }
 
-        if (!response.IsSuccessStatusCode)
+        if (response is { IsSuccessStatusCode: false, Content.Headers.ContentType: not null })
         {
-            if (response.Headers.TryGetValues("Content-Type", out var values))
+            if (response.Content.Headers.ContentType.MediaType?.Equals("text/plain",
+                StringComparison.OrdinalIgnoreCase) == true)
             {
-                if (MediaTypeHeaderValue.TryParse(values.ToString() ?? "", out var media)
-                 && media.MediaType?.Equals("text/plain", StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    return (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false), null);
-                }
-
-                return ("Error retrieving certificate", null);
+                return (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false), null);
             }
+
+            return ("Error retrieving certificate", null);
         }
 
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
@@ -245,13 +244,8 @@ public sealed class EstClient : IDisposable
 
         if (!response.IsSuccessStatusCode)
         {
-            if (!response.Headers.TryGetValues("Content-Type", out var values))
-            {
-                return ("Error retrieving certificate", null);
-            }
-
-            if (MediaTypeHeaderValue.TryParse(values.ToString() ?? "", out var media)
-             && media.MediaType?.Equals("text/plain", StringComparison.OrdinalIgnoreCase) == true)
+            if (response.Content.Headers.ContentType?.MediaType?
+                .Equals("text/plain", StringComparison.OrdinalIgnoreCase) == true)
             {
                 return (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false), null);
             }

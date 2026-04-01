@@ -88,10 +88,10 @@ public class SignedData : IAsnValue
                 certificates.Add(cert);
             }
 
-//            certificates.Reverse();
             Certificates = certificates.ToArray();
         }
 
+        tag = sequenceReader.PeekTag();
         if (tag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1)))
         {
             var crlsReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 1));

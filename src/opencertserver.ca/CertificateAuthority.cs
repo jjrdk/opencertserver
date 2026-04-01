@@ -108,14 +108,14 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         X509Certificate2? reenrollingFrom = null,
         CancellationToken cancellationToken = default)
     {
-        var profile = await _config.Profiles.GetProfile(profileName, cancellationToken);
+        var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
         if (request.PublicKey.Oid.Value != profile.CertificateChain[0].PublicKey.Oid.Value)
         {
             return new SignCertificateResponse.Error("Public key algorithm does not match CA certificate");
         }
 
         var results = await Task.WhenAll(_validators.Select(v =>
-            v.Validate(request, profileName, requestor, reenrollingFrom, cancellationToken)));
+            v.Validate(request, profileName, requestor, reenrollingFrom, cancellationToken))).ConfigureAwait(false);
         var validationResult = results.Where(r => r != null).ToArray();
         if (validationResult.Length > 0)
         {
@@ -178,13 +178,13 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
 
         var chainBuilt = chain.Build(cert);
 
-        if (chainBuilt || await _x509ChainValidation.Validate(chain, cancellationToken))
+        if (chainBuilt || await _x509ChainValidation.Validate(chain, cancellationToken).ConfigureAwait(false))
         {
-            await _certificateStore.AddCertificate(cert, cancellationToken);
+            await _certificateStore.AddCertificate(cert, cancellationToken).ConfigureAwait(false);
             if (reenrollingFrom != null)
             {
                 await _certificateStore.RemoveCertificate(reenrollingFrom.SerialNumber, X509RevocationReason.Superseded,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
 
             return new SignCertificateResponse.Success(
@@ -220,14 +220,15 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             csr = Convert.FromBase64CharArray(r.ToArray(), 0, r.Length);
         }
 
-        return await SignCertificateRequest(csr, profileName, requestor, reenrollingFrom);
+        return await SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, cancellationToken).ConfigureAwait(false);
     }
 
     private Task<SignCertificateResponse> SignCertificateRequest(
         byte[] request,
         string? profileName = null,
         ClaimsIdentity? requestor = null,
-        X509Certificate2? reenrollingFrom = null)
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default)
     {
         var csr = CertificateRequest.LoadSigningRequest(
             request,
@@ -235,7 +236,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
             RSASignaturePadding.Pss);
 
-        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom);
+        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -243,7 +244,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         string? profileName = null,
         CancellationToken cancellationToken = default)
     {
-        var profile = await _config.Profiles.GetProfile(profileName, cancellationToken);
+        var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
         return profile.CertificateChain;
     }
 
@@ -261,7 +262,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         string? profileName = null,
         CancellationToken cancellationToken = default)
     {
-        var profile = await _config.Profiles.GetProfile(profileName, cancellationToken);
+        var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
         var list = _certificateStore.GetRevocationList(cancellationToken: cancellationToken);
         var builder = new CertificateRevocationListBuilder();
         await foreach (var revoked in list.ConfigureAwait(false))
@@ -342,7 +343,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             X509Certificate2? reenrollingFrom = null,
             CancellationToken cancellationToken = default)
         {
-            var caProfile = await caProfiles.GetProfile(profile, cancellationToken);
+            var caProfile = await caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
             var result = reenrollingFrom == null
              || caProfile.CertificateChain
                     .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);

@@ -19,7 +19,7 @@ public static class CsrAttributesHandler
         ICsrTemplateLoader loader,
         CancellationToken cancellationToken = default)
     {
-        var template = await loader.GetTemplate(profileName, user).ConfigureAwait(false);
+        var template = await loader.GetTemplate(profileName, user, cancellationToken).ConfigureAwait(false);
         return new CertificateSigningRequestTemplateResult(template);
     }
 }
