@@ -1,5 +1,3 @@
-using OpenCertServer.Ca.Utils.X509.Templates;
-
 namespace OpenCertServer.Est.Server.Handlers;
 
 using System.Security.Claims;
@@ -9,27 +7,19 @@ public static class CsrAttributesHandler
 {
     public static Task<IResult> Handle(
         ClaimsPrincipal? user,
-        ICsrTemplateLoader loader)
+        ICsrTemplateLoader loader,
+        CancellationToken cancellationToken = default)
     {
-        return HandleProfile("", user, loader);
+        return HandleProfile("", user, loader, cancellationToken);
     }
 
     public static async Task<IResult> HandleProfile(
         string? profileName,
         ClaimsPrincipal? user,
-        ICsrTemplateLoader loader)
+        ICsrTemplateLoader loader,
+        CancellationToken cancellationToken = default)
     {
-        var template = await loader.GetTemplate(profileName, user).ConfigureAwait(false);
+        var template = await loader.GetTemplate(profileName, user, cancellationToken).ConfigureAwait(false);
         return new CertificateSigningRequestTemplateResult(template);
-    }
-}
-
-public class CsrTemplateLoader : ICsrTemplateLoader
-{
-    public Task<CertificateSigningRequestTemplate> GetTemplate(
-        string? profileName = null,
-        ClaimsPrincipal? user = null)
-    {
-        return Task.FromResult(new CertificateSigningRequestTemplate(subject: null, subjectPkInfo: null));
     }
 }

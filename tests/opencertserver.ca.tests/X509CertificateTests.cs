@@ -34,10 +34,10 @@ public sealed class X509CertificateTests : IDisposable
     }
 
     [Fact]
-    public void CanWritePublicKey()
+    public async Task CanWritePublicKey()
     {
         using var rsa = RSA.Create();
-        var cert = _ca.SignCertificateRequest(
+        var cert = await _ca.SignCertificateRequest(
             new CertificateRequest(
                 new X500DistinguishedName("CN=Someone"),
                 rsa,
@@ -45,7 +45,8 @@ public sealed class X509CertificateTests : IDisposable
                 RSASignaturePadding.Pss)
             {
                 CertificateExtensions = { new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false) }
-            }) as SignCertificateResponse.Success;
+            },
+            cancellationToken: CancellationToken.None) as SignCertificateResponse.Success;
         using var ms = new MemoryStream();
         var key = cert!.Certificate.GetRSAPublicKey()!;
 
@@ -55,7 +56,7 @@ public sealed class X509CertificateTests : IDisposable
     [Fact]
     public async Task CanWritePfx()
     {
-        var cert = _ca.SignCertificateRequest(
+        var cert = await _ca.SignCertificateRequest(
             new CertificateRequest(
                 new X500DistinguishedName("CN=Someone"),
                 _rsa,
@@ -66,7 +67,8 @@ public sealed class X509CertificateTests : IDisposable
                 {
                     new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false)
                 }
-            }) as SignCertificateResponse.Success;
+            },
+            cancellationToken: CancellationToken.None) as SignCertificateResponse.Success;
         await using var ms = new MemoryStream();
         await cert!.Certificate.WritePfx(ms, TestContext.Current.CancellationToken);
 
@@ -79,7 +81,7 @@ public sealed class X509CertificateTests : IDisposable
     {
         var builder = new SubjectAlternativeNameBuilder();
         builder.AddDnsName("http://localhost");
-        var cert = _ca.SignCertificateRequest(
+        var cert = await _ca.SignCertificateRequest(
             new CertificateRequest(
                 new X500DistinguishedName("CN=Someone"),
                 _rsa,
@@ -90,7 +92,8 @@ public sealed class X509CertificateTests : IDisposable
                 {
                     new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false), builder.Build(true)
                 }
-            }) as SignCertificateResponse.Success;
+            },
+            cancellationToken: CancellationToken.None) as SignCertificateResponse.Success;
 
         await using var ms = new MemoryStream();
         var san = cert!.Certificate.Extensions

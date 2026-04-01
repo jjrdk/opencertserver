@@ -18,26 +18,29 @@ internal static class SimpleEnrollHandler
     public static Task<IResult> Handle(
         ClaimsPrincipal? user,
         HttpRequest httpRequest,
-        ICertificateAuthority certificateAuthority)
+        ICertificateAuthority certificateAuthority,
+        CancellationToken cancellationToken)
     {
-        return HandleProfile("", certificateAuthority, httpRequest, user);
+        return HandleProfile("", certificateAuthority, httpRequest, user,  cancellationToken);
     }
 
     public static async Task<IResult> HandleProfile(
         [FromRoute] string profileName,
         ICertificateAuthority certificateAuthority,
         HttpRequest httpRequest,
-        ClaimsPrincipal? user)
+        ClaimsPrincipal? user,
+        CancellationToken cancellationToken)
     {
         var body = httpRequest.Body;
         var responseType = httpRequest.GetTypedHeaders().Accept;
         using var reader = new StreamReader(body, Encoding.UTF8);
-        var request = await reader.ReadToEndAsync().ConfigureAwait(false);
+        var request = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
         var newCert =
-            certificateAuthority.SignCertificateRequestPem(
+            await certificateAuthority.SignCertificateRequestPem(
                 request,
                 profileName,
-                user?.Identity as ClaimsIdentity);
+                user?.Identity as ClaimsIdentity,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
         if (newCert is SignCertificateResponse.Success success)
         {
             // This is a deviation from the RFC but is easier to parse.
@@ -57,7 +60,7 @@ internal static class SimpleEnrollHandler
         }
 
         var error = (SignCertificateResponse.Error)newCert;
-        return Results.Text(string.Join(Environment.NewLine, error.Errors), Constants.PemMimeType, Encoding.UTF8,
+        return Results.Text(string.Join(Environment.NewLine, error.Errors), Constants.TextPlainMimeType, Encoding.UTF8,
             (int)HttpStatusCode.BadRequest);
     }
 }

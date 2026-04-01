@@ -8,14 +8,19 @@ using Microsoft.AspNetCore.Http;
 
 internal static class CaCertHandler
 {
-    public static IResult Handle(Func<string?, X509Certificate2Collection> certificates)
+    public static Task<IResult> Handle(
+        Func<string?, CancellationToken, Task<X509Certificate2Collection>> certificates,
+        CancellationToken cancellationToken = default)
     {
-        return HandleProfile("", certificates);
+        return HandleProfile("", certificates, cancellationToken);
     }
 
-    public static IResult HandleProfile(string profileName, Func<string?, X509Certificate2Collection> certificates)
+    public static async Task<IResult> HandleProfile(
+        string profileName,
+        Func<string?, CancellationToken, Task<X509Certificate2Collection>> certificates,
+        CancellationToken cancellationToken = default)
     {
-        var export = certificates(profileName).ExportCertificatePems();
+        var export = (await certificates(profileName, cancellationToken).ConfigureAwait(false)).ExportCertificatePems();
         return Results.Text(export, Constants.PemMimeType, Encoding.UTF8, (int)HttpStatusCode.OK);
     }
 }

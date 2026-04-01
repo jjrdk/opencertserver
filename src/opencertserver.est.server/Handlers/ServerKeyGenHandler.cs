@@ -18,21 +18,23 @@ internal static class ServerKeyGenHandler
     public static Task<IResult> Handle(
         ClaimsPrincipal user,
         ICertificateAuthority certificateAuthority,
-        Stream body)
+        Stream body,
+        CancellationToken cancellationToken)
     {
-        return HandleProfile("", user, certificateAuthority, body);
+        return HandleProfile("", user, certificateAuthority, body, cancellationToken);
     }
 
     public static async Task<IResult> HandleProfile(
         [FromRoute] string profileName,
         ClaimsPrincipal user,
         ICertificateAuthority certificateAuthority,
-        Stream body)
+        Stream body,
+        CancellationToken cancellationToken)
     {
         try
         {
             using var reader = new StreamReader(body, Encoding.UTF8);
-            var request = await reader.ReadToEndAsync().ConfigureAwait(false);
+            var request = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
             var signingRequest = request.StartsWith("-----BEGIN CERTIFICATE REQUEST-----")
                 ? CertificateRequest.LoadSigningRequestPem(
                     request,
@@ -45,8 +47,8 @@ internal static class ServerKeyGenHandler
             using var ecdsa = ECDsa.Create();
             signingRequest = new CertificateRequest(signingRequest.SubjectName, ecdsa, HashAlgorithmName.SHA256);
             var newCert =
-                certificateAuthority.SignCertificateRequest(signingRequest, profileName,
-                    user.Identity as ClaimsIdentity);
+                await certificateAuthority.SignCertificateRequest(signingRequest, profileName,
+                    user.Identity as ClaimsIdentity, cancellationToken: cancellationToken).ConfigureAwait(false);
             if (newCert is SignCertificateResponse.Success success)
             {
                 var mpr = new MultipartContent();
@@ -80,30 +82,5 @@ internal static class ServerKeyGenHandler
                 "An error occurred while processing the request.", Constants.TextPlainMimeType, Encoding.UTF8,
                 (int)HttpStatusCode.BadRequest);
         }
-    }
-}
-
-internal class MultipartContentResult : IResult
-{
-    private readonly MultipartContent _content;
-    private readonly string _contentType;
-    private readonly HttpStatusCode _statusCode;
-
-    public MultipartContentResult(
-        MultipartContent content,
-        string contentType = Constants.MultiPartMixed,
-        HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
-        _content = content;
-        _contentType = contentType;
-        _statusCode = statusCode;
-    }
-
-    public async Task ExecuteAsync(HttpContext ctx)
-    {
-        ctx.Response.StatusCode = (int)_statusCode;
-        ctx.Response.ContentType = _contentType;
-        await _content.CopyToAsync(ctx.Response.Body).ConfigureAwait(false);
-        await ctx.Response.Body.FlushAsync().ConfigureAwait(false);
     }
 }

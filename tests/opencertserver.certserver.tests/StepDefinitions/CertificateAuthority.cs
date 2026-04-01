@@ -1,11 +1,11 @@
+namespace OpenCertServer.CertServer.Tests.StepDefinitions;
+
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Reqnroll;
 using Xunit;
-
-namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 public partial class CertificateServerFeatures
 {
@@ -44,7 +44,7 @@ public partial class CertificateServerFeatures
     {
         using var client = _server.CreateClient();
         var serialNumberString = _certCollection[0].GetSerialNumberString();
-        var compromise = X509RevocationReason.KeyCompromise;
+        const X509RevocationReason compromise = X509RevocationReason.KeyCompromise;
         var signature = _key.SignData(
             Encoding.UTF8.GetBytes(
                 serialNumberString + compromise),

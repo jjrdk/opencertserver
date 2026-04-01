@@ -1,9 +1,7 @@
-﻿using System.Formats.Asn1;
-using OpenCertServer.Ca.Utils.X509.Templates;
-
-namespace OpenCertServer.Est.Client;
+﻿namespace OpenCertServer.Est.Client;
 
 using System;
+using System.Formats.Asn1;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -12,6 +10,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Ca.Utils;
+using OpenCertServer.Ca.Utils.Pkcs7;
+using OpenCertServer.Ca.Utils.X509.Templates;
 
 /// <summary>
 /// Defines an EST client for enrolling and re-enrolling certificates.
@@ -21,6 +21,7 @@ public sealed class EstClient : IDisposable
     private readonly Uri _estHost;
     private readonly string? _profileName;
     private readonly HttpMessageHandler _messageHandler;
+    private readonly HttpClient _messageClient;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EstClient"/> class.
@@ -39,6 +40,7 @@ public sealed class EstClient : IDisposable
         _estHost = estHost;
         _profileName = profileName;
         _messageHandler = messageHandler ?? new SocketsHttpHandler();
+        _messageClient = new HttpClient(_messageHandler);
     }
 
     /// <summary>
@@ -52,7 +54,7 @@ public sealed class EstClient : IDisposable
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use for the async operation.</param>
     /// <typeparam name="TAlgorithm">The <see cref="Type"/> of asymmetric key algorithm. The algorithm must be either <see cref="RSA"/> or <see cref="ECDsa"/>.</typeparam>
     /// <returns></returns>
-    public async Task<(string?, X509Certificate2Collection?)> Enroll<TAlgorithm>(
+    public Task<(string?, X509Certificate2Collection?)> Enroll<TAlgorithm>(
         X500DistinguishedName distinguishedName,
         TAlgorithm key,
         X509KeyUsageFlags usageFlags,
@@ -61,11 +63,7 @@ public sealed class EstClient : IDisposable
         CancellationToken cancellationToken = default) where TAlgorithm : AsymmetricAlgorithm
     {
         var request = CreateCertificateRequest(distinguishedName, key, usageFlags);
-        var bytes = await RequestCertBytes(_profileName, request, authenticationHeader, certificate, cancellationToken)
-            .ConfigureAwait(false);
-        var collection = new X509Certificate2Collection();
-        collection.ImportFromPem(bytes);
-        return collection.Count == 0 ? (bytes, null) : (null, collection);
+        return RequestEnrollCerts(_profileName, request, authenticationHeader, certificate, cancellationToken);
     }
 
     /// <summary>
@@ -77,7 +75,7 @@ public sealed class EstClient : IDisposable
     /// <typeparam name="TAlgorithm">The <see cref="Type"/> of asymmetric key algorithm. The algorithm must be either <see cref="RSA"/> or <see cref="ECDsa"/>.</typeparam>
     /// <returns>An updated <see cref="X509Certificate2Collection"/> with the renewed certificate and issuer chain.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the re-enroll request to the server fails.</exception>
-    public async Task<X509Certificate2Collection> ReEnroll<TAlgorithm>(
+    public Task<(string?, X509Certificate2Collection?)> ReEnroll<TAlgorithm>(
         TAlgorithm key,
         X509Certificate2 certificate,
         CancellationToken cancellationToken = default) where TAlgorithm : AsymmetricAlgorithm
@@ -88,6 +86,67 @@ public sealed class EstClient : IDisposable
             certificate.Extensions.OfType<X509KeyUsageExtension>()
                 .Aggregate(X509KeyUsageFlags.None, (flags, ext) => flags | ext.KeyUsages));
 
+        return RequestReEnrollCerts(certificate, certRequest, cancellationToken);
+    }
+
+    public async Task<X509Certificate2Collection> ServerCertificates(CancellationToken cancellationToken = default)
+    {
+        var pathValue = _profileName == null ? "/.well-known/est/cacert" : $"/.well-known/est/{_profileName}/cacert";
+        var requestUriBuilder = new UriBuilder(
+            Uri.UriSchemeHttps,
+            _estHost.Host,
+            _estHost.Port,
+            pathValue);
+
+        var response = await _messageClient
+            .GetAsync(requestUriBuilder.Uri, HttpCompletionOption.ResponseContentRead, cancellationToken)
+            .ConfigureAwait(false);
+        var bytes = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var coll = new X509Certificate2Collection();
+        coll.ImportFromPem(bytes);
+        return coll;
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _messageClient.CancelPendingRequests();
+        _messageHandler.Dispose();
+        _messageClient.Dispose();
+    }
+
+    public async Task<CertificateSigningRequestTemplate> GetCsrAttributes(
+        AuthenticationHeaderValue? authenticationHeader)
+    {
+        var pathValue = _profileName == null
+            ? "/.well-known/est/csrattrs"
+            : $"/.well-known/est/{_profileName}/csrattrs";
+        var requestUriBuilder = new UriBuilder(
+            Uri.UriSchemeHttps,
+            _estHost.Host,
+            _estHost.Port,
+            pathValue);
+
+        var request = new HttpRequestMessage
+        {
+            Method = HttpMethod.Get,
+            RequestUri = requestUriBuilder.Uri
+        };
+        request.Headers.Authorization = authenticationHeader;
+        var response = await _messageClient
+            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
+            .ConfigureAwait(false);
+        response = response.EnsureSuccessStatusCode();
+        var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        return new CertificateSigningRequestTemplate(new AsnReader(bytes, AsnEncodingRules.DER,
+            new AsnReaderOptions { SkipSetSortOrderVerification = true }));
+    }
+
+    private async Task<(string?, X509Certificate2Collection?)> RequestReEnrollCerts(
+        X509Certificate2 certificate,
+        CertificateRequest certRequest,
+        CancellationToken cancellationToken)
+    {
         var content = new StringContent(certRequest.ToPkcs10(), Encoding.UTF8, "application/pkcs10-mime");
         var pathValue = _profileName == null
             ? "/.well-known/est/simplereenroll"
@@ -101,8 +160,7 @@ public sealed class EstClient : IDisposable
         {
             Method = HttpMethod.Post,
             RequestUri = requestUriBuilder.Uri,
-            Content = content,
-            Headers = { Accept = { new MediaTypeWithQualityHeaderValue("application/x-pem-file") } }
+            Content = content
         };
 
         request.Headers.Add("X-Client-Cert", Convert.ToBase64String(certificate.Export(X509ContentType.Cert)));
@@ -112,42 +170,33 @@ public sealed class EstClient : IDisposable
             clientHandler.ClientCertificates.Add(certificate);
         }
 
-        var client = new HttpClient(_messageHandler);
-        var response = await client.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken)
+        var response = await _messageClient
+            .SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken)
             .ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
+        if (_messageHandler is HttpClientHandler ch)
         {
-            throw new InvalidOperationException(
-                $"Re-enroll failed with status code {response.StatusCode} and message: {await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)}");
+            ch.ClientCertificates.Clear();
         }
 
-        var bytes = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var s = new X509Certificate2Collection();
-        s.ImportFromPem(bytes);
+        if (response is { IsSuccessStatusCode: false, Content.Headers.ContentType: not null })
+        {
+            if (response.Content.Headers.ContentType.MediaType?.Equals("text/plain",
+                StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false), null);
+            }
 
-        return s;
+            return ("Error retrieving certificate", null);
+        }
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        var reader = new AsnReader(bytes, AsnEncodingRules.DER,
+            new AsnReaderOptions { SkipSetSortOrderVerification = true });
+        var signedData = new SignedData(reader);
+        return (null, new X509Certificate2Collection(signedData.Certificates ?? []));
     }
 
-    public async Task<X509Certificate2Collection> ServerCertificates(CancellationToken cancellationToken = default)
-    {
-        var pathValue = _profileName == null ? "/.well-known/est/cacert" : $"/.well-known/est/{_profileName}/cacert";
-        var requestUriBuilder = new UriBuilder(
-            Uri.UriSchemeHttps,
-            _estHost.Host,
-            _estHost.Port,
-            pathValue);
-
-        var client = new HttpClient(_messageHandler);
-        var response = await client
-            .GetAsync(requestUriBuilder.Uri, HttpCompletionOption.ResponseContentRead, cancellationToken)
-            .ConfigureAwait(false);
-        var bytes = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var coll = new X509Certificate2Collection();
-        coll.ImportFromPem(bytes);
-        return coll;
-    }
-
-    private async Task<string> RequestCertBytes(
+    private async Task<(string?, X509Certificate2Collection?)> RequestEnrollCerts(
         string? profileName,
         CertificateRequest request,
         AuthenticationHeaderValue? authenticationHeader = null,
@@ -169,8 +218,7 @@ public sealed class EstClient : IDisposable
             RequestUri = requestUriBuilder.Uri,
             Headers =
             {
-                TransferEncoding = { new TransferCodingHeaderValue("base64") },
-                Accept = { new MediaTypeWithQualityHeaderValue("application/x-pem-file") }
+                TransferEncoding = { new TransferCodingHeaderValue("base64") }
             }
         };
         if (authenticationHeader != null)
@@ -185,12 +233,30 @@ public sealed class EstClient : IDisposable
             clientHandler.ClientCertificates.Add(certificate);
         }
 
-        var client = new HttpClient(_messageHandler);
-        var response = await client
+        var response = await _messageClient
             .SendAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken)
             .ConfigureAwait(false);
-        var bytes = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return bytes;
+
+        if (_messageHandler is HttpClientHandler ch)
+        {
+            ch.ClientCertificates.Clear();
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            if (response.Content.Headers.ContentType?.MediaType?
+                .Equals("text/plain", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false), null);
+            }
+
+            return ("Error retrieving certificate", null);
+        }
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        var reader = new AsnReader(bytes, AsnEncodingRules.DER);
+        var signedData = new SignedData(reader);
+        return (null, new X509Certificate2Collection(signedData.Certificates ?? []));
     }
 
     private static CertificateRequest CreateCertificateRequest<TAlgorithm>(
@@ -223,39 +289,5 @@ public sealed class EstClient : IDisposable
                 true));
         req.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(req.PublicKey, false));
         return req;
-    }
-
-    /// <inheritdoc />
-    public void Dispose()
-    {
-        _messageHandler.Dispose();
-    }
-
-    public async Task<CertificateSigningRequestTemplate> GetCsrAttributes(
-        AuthenticationHeaderValue? authenticationHeader)
-    {
-        var pathValue = _profileName == null
-            ? "/.well-known/est/csrattrs"
-            : $"/.well-known/est/{_profileName}/csrattrs";
-        var requestUriBuilder = new UriBuilder(
-            Uri.UriSchemeHttps,
-            _estHost.Host,
-            _estHost.Port,
-            pathValue);
-
-        var client = new HttpClient(_messageHandler);
-        var request = new HttpRequestMessage
-        {
-            Method = HttpMethod.Get,
-            RequestUri = requestUriBuilder.Uri
-        };
-        request.Headers.Authorization = authenticationHeader;
-        var response = await client
-            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
-            .ConfigureAwait(false);
-        response = response.EnsureSuccessStatusCode();
-        var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-        return new CertificateSigningRequestTemplate(new AsnReader(bytes, AsnEncodingRules.DER,
-            new AsnReaderOptions { SkipSetSortOrderVerification = true }));
     }
 }

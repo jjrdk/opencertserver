@@ -64,32 +64,35 @@ public sealed class CertificateAuthorityTests : IDisposable
     }
 
     [Fact]
-    public void CanSerializeCertificateRequest()
+    public async Task CanSerializeCertificateRequest()
     {
         using var rsa = RSA.Create(2048);
 
         var req = CreateCertificateRequest(rsa);
         var bytes = req.CreateSigningRequest();
         var cert =
-            _authority.SignCertificateRequestPem(
-                PemEncoding.WriteString("CERTIFICATE REQUEST", bytes)) as SignCertificateResponse.Success;
+            (await _authority.SignCertificateRequestPem(
+                PemEncoding.WriteString("CERTIFICATE REQUEST", bytes),
+                cancellationToken: CancellationToken.None)) as SignCertificateResponse.Success;
+
+        Assert.Equal(GetParts(req.SubjectName), GetParts(cert!.Certificate.SubjectName));
 
         static IEnumerable<string> GetParts(X500DistinguishedName name)
         {
             return name.Name.Split(',').Select(x => x.Trim()).OrderBy(x => x);
         }
-
-        Assert.Equal(GetParts(req.SubjectName), GetParts(cert!.Certificate.SubjectName));
     }
 
     [Fact]
-    public void CanCreateStringCertificateRequest()
+    public async Task CanCreateStringCertificateRequest()
     {
         using var rsa = RSA.Create(2048);
 
         var req = CreateCertificateRequest(rsa);
         var b64 = req.ToPkcs10();
-        var cert = _authority.SignCertificateRequestPem(b64) as SignCertificateResponse.Success;
+        var cert =
+            await _authority.SignCertificateRequestPem(b64, cancellationToken: CancellationToken.None) as
+                SignCertificateResponse.Success;
 
         Assert.Equal(
             string.Join("",

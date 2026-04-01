@@ -106,16 +106,22 @@ internal static partial class Program
 
                 using var estClient =
                     new EstClient(baseUri, messageHandler: MessageHandlerFactory(), profileName: profile);
-                var collection = await estClient.ReEnroll(key, currentCert).ConfigureAwait(false);
+                var (errors, collection) = await estClient.ReEnroll(key, currentCert).ConfigureAwait(false);
 
-                if (collection.Count == 0)
+                if (errors != null)
                 {
                     Console.WriteLine("EST re-enrollment did not return a certificate.");
+                    foreach (var error in errors.Split('\n',
+                        StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                    {
+                        Console.WriteLine($"EST error: {error}");
+                    }
+
                     return;
                 }
 
                 var builder = new StringBuilder();
-                foreach (var cert in collection)
+                foreach (var cert in collection!)
                 {
                     builder.AppendLine(cert.ExportCertificatePem());
                 }

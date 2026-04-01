@@ -101,29 +101,23 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     }
 
     /// <inheritdoc/>
-    public SignCertificateResponse SignCertificateRequest(
+    public async Task<SignCertificateResponse> SignCertificateRequest(
         CertificateRequest request,
         string? profileName = null,
         ClaimsIdentity? requestor = null,
-        X509Certificate2? reenrollingFrom = null)
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default)
     {
-        var profile = _config.Profiles.GetProfile(profileName);
+        var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
         if (request.PublicKey.Oid.Value != profile.CertificateChain[0].PublicKey.Oid.Value)
         {
             return new SignCertificateResponse.Error("Public key algorithm does not match CA certificate");
         }
 
-        var validationResult = _validators.Aggregate(new List<string>(), (b, v) =>
-        {
-            var reason = v.Validate(request, profileName, requestor, reenrollingFrom);
-            if (reason != null)
-            {
-                b.Add(reason);
-            }
-
-            return b;
-        });
-        if (validationResult.Count > 0)
+        var results = await Task.WhenAll(_validators.Select(v =>
+            v.Validate(request, profileName, requestor, reenrollingFrom, cancellationToken))).ConfigureAwait(false);
+        var validationResult = results.Where(r => r != null).ToArray();
+        if (validationResult.Length > 0)
         {
             LogCouldNotValidateRequest();
             return new SignCertificateResponse.Error(string.Join("\n", validationResult));
@@ -184,12 +178,13 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
 
         var chainBuilt = chain.Build(cert);
 
-        if (chainBuilt || _x509ChainValidation.Validate(chain))
+        if (chainBuilt || await _x509ChainValidation.Validate(chain, cancellationToken).ConfigureAwait(false))
         {
-            _certificateStore.AddCertificate(cert);
+            await _certificateStore.AddCertificate(cert, cancellationToken).ConfigureAwait(false);
             if (reenrollingFrom != null)
             {
-                _certificateStore.RemoveCertificate(reenrollingFrom.SerialNumber, X509RevocationReason.Superseded);
+                await _certificateStore.RemoveCertificate(reenrollingFrom.SerialNumber, X509RevocationReason.Superseded,
+                    cancellationToken).ConfigureAwait(false);
             }
 
             return new SignCertificateResponse.Success(
@@ -206,11 +201,12 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     }
 
     /// <inheritdoc/>
-    public SignCertificateResponse SignCertificateRequestPem(
+    public async Task<SignCertificateResponse> SignCertificateRequestPem(
         string request,
         string? profileName = null,
         ClaimsIdentity? requestor = null,
-        X509Certificate2? reenrollingFrom = null)
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default)
     {
         var hasPem = PemEncoding.TryFind(request, out var fields);
         byte[] csr;
@@ -224,14 +220,15 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             csr = Convert.FromBase64CharArray(r.ToArray(), 0, r.Length);
         }
 
-        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom);
+        return await SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, cancellationToken).ConfigureAwait(false);
     }
 
-    private SignCertificateResponse SignCertificateRequest(
+    private Task<SignCertificateResponse> SignCertificateRequest(
         byte[] request,
         string? profileName = null,
         ClaimsIdentity? requestor = null,
-        X509Certificate2? reenrollingFrom = null)
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default)
     {
         var csr = CertificateRequest.LoadSigningRequest(
             request,
@@ -239,27 +236,34 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
             RSASignaturePadding.Pss);
 
-        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom);
+        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, cancellationToken);
     }
 
     /// <inheritdoc />
-    public X509Certificate2Collection GetRootCertificates(string? profileName = null)
+    public async Task<X509Certificate2Collection> GetRootCertificates(
+        string? profileName = null,
+        CancellationToken cancellationToken = default)
     {
-        var profile = _config.Profiles.GetProfile(profileName);
+        var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
         return profile.CertificateChain;
     }
 
     /// <inheritdoc/>
-    public Task<bool> RevokeCertificate(string serialNumber, X509RevocationReason reason)
+    public Task<bool> RevokeCertificate(
+        string serialNumber,
+        X509RevocationReason reason,
+        CancellationToken cancellationToken = default)
     {
-        return _certificateStore.RemoveCertificate(serialNumber, reason);
+        return _certificateStore.RemoveCertificate(serialNumber, reason, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<byte[]> GetRevocationList(string? profileName = null)
+    public async Task<byte[]> GetRevocationList(
+        string? profileName = null,
+        CancellationToken cancellationToken = default)
     {
-        var profile = _config.Profiles.GetProfile(profileName);
-        var list = _certificateStore.GetRevocationList();
+        var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
+        var list = _certificateStore.GetRevocationList(cancellationToken: cancellationToken);
         var builder = new CertificateRevocationListBuilder();
         await foreach (var revoked in list.ConfigureAwait(false))
         {
@@ -332,13 +336,14 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     private sealed partial class OwnCertificateValidation(IStoreCaProfiles caProfiles, ILogger logger)
         : IValidateCertificateRequests
     {
-        public string? Validate(
+        public async Task<string?> Validate(
             CertificateRequest request,
             string? profile = null,
             ClaimsIdentity? requestor = null,
-            X509Certificate2? reenrollingFrom = null)
+            X509Certificate2? reenrollingFrom = null,
+            CancellationToken cancellationToken = default)
         {
-            var caProfile = caProfiles.GetProfile(profile);
+            var caProfile = await caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
             var result = reenrollingFrom == null
              || caProfile.CertificateChain
                     .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);
@@ -364,11 +369,12 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             _logger = logger;
         }
 
-        public string? Validate(
+        public async Task<string?> Validate(
             CertificateRequest request,
             string? profile,
             ClaimsIdentity? requestor,
-            X509Certificate2? reenrollingFrom = null)
+            X509Certificate2? reenrollingFrom = null,
+            CancellationToken cancellationToken = default)
         {
             if (request.SubjectName.Format(true)
                 .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
