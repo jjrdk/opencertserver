@@ -62,12 +62,14 @@ public class ContentInfo : IAsnValue
         using (writer.PushSequence(tag))
         {
             writer.WriteObjectIdentifier(ContentType.Value!);
-            if (Content.Length > 0)
+            if (Content.Length <= 0)
             {
-                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true)))
-                {
-                    writer.WriteOctetString(Content);
-                }
+                return;
+            }
+
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true)))
+            {
+                writer.WriteOctetString(Content);
             }
         }
     }

@@ -101,10 +101,17 @@ public sealed class EstClient : IDisposable
         var response = await _messageClient
             .GetAsync(requestUriBuilder.Uri, HttpCompletionOption.ResponseContentRead, cancellationToken)
             .ConfigureAwait(false);
-        var bytes = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var coll = new X509Certificate2Collection();
-        coll.ImportFromPem(bytes);
-        return coll;
+        var b64 = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var bytes = Convert.FromBase64String(b64);
+        var reader = new AsnReader(bytes, AsnEncodingRules.DER);
+        var contentInfo = new CmsContentInfo(reader);
+        if(contentInfo.ContentType.Value != Oids.Pkcs7Signed)
+        {
+            throw new InvalidOperationException("Expected signed data from server");
+        }
+        reader = new AsnReader(contentInfo.EncodedContent, AsnEncodingRules.DER);
+        var signedData = new SignedData(reader);
+        return new X509Certificate2Collection(signedData.Certificates ?? []);
     }
 
     /// <inheritdoc />
@@ -192,6 +199,12 @@ public sealed class EstClient : IDisposable
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
         var reader = new AsnReader(bytes, AsnEncodingRules.DER,
             new AsnReaderOptions { SkipSetSortOrderVerification = true });
+        var contentInfo = new CmsContentInfo(reader);
+        if(contentInfo.ContentType.Value != Oids.Pkcs7Signed)
+        {
+            throw new InvalidOperationException("Expected signed data from server");
+        }
+        reader = new AsnReader(contentInfo.EncodedContent, AsnEncodingRules.DER);
         var signedData = new SignedData(reader);
         return (null, new X509Certificate2Collection(signedData.Certificates ?? []));
     }
@@ -255,6 +268,12 @@ public sealed class EstClient : IDisposable
 
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
+        var contentInfo = new CmsContentInfo(reader);
+        if(contentInfo.ContentType.Value != Oids.Pkcs7Signed)
+        {
+            throw new InvalidOperationException("Expected signed data from server");
+        }
+        reader = new AsnReader(contentInfo.EncodedContent, AsnEncodingRules.DER);
         var signedData = new SignedData(reader);
         return (null, new X509Certificate2Collection(signedData.Certificates ?? []));
     }
