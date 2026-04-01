@@ -20,7 +20,7 @@ internal static class SimpleReEnrollHandler
         ICertificateAuthority certificateAuthority,
         CancellationToken cancellationToken)
     {
-        return HandleProfile(context, user, certificateAuthority, "",  cancellationToken);
+        return HandleProfile(context, user, certificateAuthority, "", cancellationToken);
     }
 
     public static async Task<IResult> HandleProfile(
@@ -81,10 +81,16 @@ internal static class SimpleReEnrollHandler
         }
 
         X509Certificate2[] content = [success.Certificate];
-        var signedResponse = new SignedData(version: 4, certificates: content.Concat(success.Issuers).ToArray());
+        var signedResponse = new SignedData(version: 1, certificates: content.Concat(success.Issuers).ToArray());
         var writer = new AsnWriter(AsnEncodingRules.DER);
         signedResponse.Encode(writer);
         var derBytes = writer.Encode();
-        return Results.Bytes(derBytes, Constants.PemMimeType);
+        writer.Reset();
+        var contentInfo = new CmsContentInfo(
+            Oids.Pkcs7Signed.InitializeOid(Oids.Pkcs7SignedFriendlyName),
+            derBytes);
+        contentInfo.Encode(writer);
+        var contentBytes = writer.Encode();
+        return Results.Text(contentBytes, Constants.PemMimeType);
     }
 }

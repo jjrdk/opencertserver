@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Est.Server.Handlers;
+﻿using OpenCertServer.Ca.Utils;
+
+namespace OpenCertServer.Est.Server.Handlers;
 
 using System.Formats.Asn1;
 using System.IO;
@@ -52,11 +54,17 @@ internal static class SimpleEnrollHandler
             }
 
             X509Certificate2[] content = [success.Certificate];
-            var signedResponse = new SignedData(version: 4, certificates: content.Concat(success.Issuers).ToArray());
+            var signedResponse = new SignedData(version: 1, certificates: content.Concat(success.Issuers).ToArray());
             var writer = new AsnWriter(AsnEncodingRules.DER);
             signedResponse.Encode(writer);
             var derBytes = writer.Encode();
-            return Results.Bytes(derBytes, Constants.PemMimeType);
+            writer.Reset();
+            var contentInfo = new CmsContentInfo(
+                Oids.Pkcs7Signed.InitializeOid(Oids.Pkcs7SignedFriendlyName),
+                derBytes);
+            contentInfo.Encode(writer);
+            var contentBytes = writer.Encode();
+            return Results.Text(contentBytes, Constants.PemMimeType);
         }
 
         var error = (SignCertificateResponse.Error)newCert;
