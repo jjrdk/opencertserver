@@ -108,10 +108,10 @@ public static class EstServerExtensions
             // CSR Attributes
             groupBuilder.MapGet(
                 "/csrattrs",
-                CsrAttributesHandler.Handle).RequireAuthorization(csrAttrsPolicy ?? ConfigurePolicy());
+                CsrAttributesHandler.Handle);//.RequireAuthorization(csrAttrsPolicy ?? ConfigurePolicy());
             groupBuilder.MapGet(
                 "/{profileName}/csrattrs",
-                CsrAttributesHandler.HandleProfile).RequireAuthorization(csrAttrsPolicy ?? ConfigurePolicy());
+                CsrAttributesHandler.HandleProfile);//.RequireAuthorization(csrAttrsPolicy ?? ConfigurePolicy());
 
             // CA Cert
             groupBuilder.MapGet(
