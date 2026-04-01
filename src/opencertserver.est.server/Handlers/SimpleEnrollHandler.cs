@@ -59,7 +59,7 @@ internal static class SimpleEnrollHandler
         }
 
         var error = (SignCertificateResponse.Error)newCert;
-        return Results.Text(string.Join(Environment.NewLine, error.Errors), Constants.PemMimeType, Encoding.UTF8,
+        return Results.Text(string.Join(Environment.NewLine, error.Errors), Constants.TextPlainMimeType, Encoding.UTF8,
             (int)HttpStatusCode.BadRequest);
     }
 }

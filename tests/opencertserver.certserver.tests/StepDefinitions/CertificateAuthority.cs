@@ -1,11 +1,11 @@
+namespace OpenCertServer.CertServer.Tests.StepDefinitions;
+
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Reqnroll;
 using Xunit;
-
-namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 public partial class CertificateServerFeatures
 {

@@ -80,7 +80,7 @@ public class SignedData : IAsnValue
         var tag = sequenceReader.PeekTag();
         if (tag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
         {
-            var certificateReader = sequenceReader.ReadSetOf(new Asn1Tag(TagClass.ContextSpecific, 0));
+            var certificateReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
             var certificates = new List<X509Certificate2>();
             while (certificateReader.HasData)
             {
@@ -88,12 +88,13 @@ public class SignedData : IAsnValue
                 certificates.Add(cert);
             }
 
+//            certificates.Reverse();
             Certificates = certificates.ToArray();
         }
 
         if (tag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1)))
         {
-            var crlsReader = sequenceReader.ReadSetOf(new Asn1Tag(TagClass.ContextSpecific, 1));
+            var crlsReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 1));
             var crls = new List<byte[]>();
             while (crlsReader.HasData)
             {
@@ -170,7 +171,7 @@ public class SignedData : IAsnValue
             ContentInfo.Encode(writer);
             if (Certificates != null)
             {
-                using (writer.PushSetOf(new Asn1Tag(TagClass.ContextSpecific, 0)))
+                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0)))
                 {
                     foreach (var cert in Certificates)
                     {
@@ -181,7 +182,7 @@ public class SignedData : IAsnValue
 
             if (Crls != null)
             {
-                using (writer.PushSetOf(new Asn1Tag(TagClass.ContextSpecific, 1)))
+                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1)))
                 {
                     foreach (var crl in Crls)
                     {

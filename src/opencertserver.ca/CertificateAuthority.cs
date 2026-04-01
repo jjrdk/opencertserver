@@ -109,15 +109,14 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         CancellationToken cancellationToken = default)
     {
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken);
-        cancellationToken.ThrowIfCancellationRequested();
         if (request.PublicKey.Oid.Value != profile.CertificateChain[0].PublicKey.Oid.Value)
         {
             return new SignCertificateResponse.Error("Public key algorithm does not match CA certificate");
         }
 
-        var validationResults = await Task.WhenAll(_validators.Select(v =>
+        var results = await Task.WhenAll(_validators.Select(v =>
             v.Validate(request, profileName, requestor, reenrollingFrom, cancellationToken)));
-        var validationResult = validationResults.Where(r => r != null).ToArray();
+        var validationResult = results.Where(r => r != null).ToArray();
         if (validationResult.Length > 0)
         {
             LogCouldNotValidateRequest();
@@ -202,7 +201,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     }
 
     /// <inheritdoc/>
-    public Task<SignCertificateResponse> SignCertificateRequestPem(
+    public async Task<SignCertificateResponse> SignCertificateRequestPem(
         string request,
         string? profileName = null,
         ClaimsIdentity? requestor = null,
@@ -221,15 +220,14 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             csr = Convert.FromBase64CharArray(r.ToArray(), 0, r.Length);
         }
 
-        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, cancellationToken);
+        return await SignCertificateRequest(csr, profileName, requestor, reenrollingFrom);
     }
 
     private Task<SignCertificateResponse> SignCertificateRequest(
         byte[] request,
         string? profileName = null,
         ClaimsIdentity? requestor = null,
-        X509Certificate2? reenrollingFrom = null,
-        CancellationToken cancellationToken = default)
+        X509Certificate2? reenrollingFrom = null)
     {
         var csr = CertificateRequest.LoadSigningRequest(
             request,
@@ -237,7 +235,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
             RSASignaturePadding.Pss);
 
-        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, cancellationToken);
+        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom);
     }
 
     /// <inheritdoc />
@@ -250,9 +248,12 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     }
 
     /// <inheritdoc/>
-    public Task<bool> RevokeCertificate(string serialNumber, X509RevocationReason reason, CancellationToken cancellationToken = default)
+    public Task<bool> RevokeCertificate(
+        string serialNumber,
+        X509RevocationReason reason,
+        CancellationToken cancellationToken = default)
     {
-        return _certificateStore.RemoveCertificate(serialNumber, reason);
+        return _certificateStore.RemoveCertificate(serialNumber, reason, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -367,7 +368,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             _logger = logger;
         }
 
-        public Task<string?> Validate(
+        public async Task<string?> Validate(
             CertificateRequest request,
             string? profile,
             ClaimsIdentity? requestor,
@@ -377,10 +378,10 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             if (request.SubjectName.Format(true)
                 .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
                 .Any(x => x.StartsWith("CN=")))
-                return Task.FromResult<string?>(null);
+                return null;
 
             LogDistinguishedNameNameDoesNotContainACommonNameCnAttribute(request.SubjectName.Format(false));
-            return Task.FromResult<string?>("Subject name must contain a Common Name (CN) attribute");
+            return "Subject name must contain a Common Name (CN) attribute";
         }
 
         [LoggerMessage(LogLevel.Error, "{DistinguishedName} name does not contain a Common Name (CN) attribute")]

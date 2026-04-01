@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace OpenCertServer.Ca.Utils;
 
 using System;
@@ -236,7 +238,7 @@ public static class CertificateExtensions
     /// <summary>
     /// Executes the KeyUsageNames operation.
     /// </summary>
-    private static List<string> KeyUsageNames(X509KeyUsageFlags flags)
+    private static ReadOnlySpan<string> KeyUsageNames(X509KeyUsageFlags flags)
     {
         var list = new List<string>();
         if (flags.HasFlag(X509KeyUsageFlags.DigitalSignature)) list.Add("Digital Signature");
@@ -249,7 +251,7 @@ public static class CertificateExtensions
         if (flags.HasFlag(X509KeyUsageFlags.EncipherOnly)) list.Add("Encipher Only");
         if (flags.HasFlag(X509KeyUsageFlags.DecipherOnly)) list.Add("Decipher Only");
         if (list.Count == 0) list.Add("<none>");
-        return list;
+        return CollectionsMarshal.AsSpan(list);
     }
 
     /// <summary>
@@ -290,7 +292,7 @@ public static class CertificateExtensions
     /// </summary>
     private static string FormatHexDumpWithOffsets(byte[] data, string indent)
     {
-        if (data.Length == 0) return indent + "<none>\n";
+        if (data.Length == 0) return $"{indent}<none>\n";
 
         var sb = new StringBuilder();
         var offset = 0;
