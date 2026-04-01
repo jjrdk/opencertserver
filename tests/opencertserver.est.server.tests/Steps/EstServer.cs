@@ -269,7 +269,8 @@ public class EstServer
                 using var rsa = RSA.Create();
                 rsa.ImportSubjectPublicKeyInfo(publicKey, out _);
                 rsa.ImportRSAPrivateKey(privateKey, out _);
-                cert = await client.ReEnroll(rsa, cert[0]);
+                var (_, c) = await client.ReEnroll(rsa, cert[0]);
+                cert = c;
                 break;
             }
             case "ECDsa":
@@ -277,7 +278,8 @@ public class EstServer
                 using var ecdsa = ECDsa.Create();
                 ecdsa.ImportSubjectPublicKeyInfo(publicKey, out _);
                 ecdsa.ImportECPrivateKey(privateKey, out _);
-                cert = await client.ReEnroll(ecdsa, cert[0]);
+                var (_, c) = await client.ReEnroll(ecdsa, cert[0]);
+                cert = c;
                 break;
             }
             default:

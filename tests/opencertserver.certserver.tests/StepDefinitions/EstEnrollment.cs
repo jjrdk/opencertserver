@@ -1,11 +1,11 @@
+namespace OpenCertServer.CertServer.Tests.StepDefinitions;
+
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Est.Client;
 using Reqnroll;
 using Xunit;
-
-namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 public partial class CertificateServerFeatures
 {
@@ -16,14 +16,15 @@ public partial class CertificateServerFeatures
     [Given(@"an EST client")]
     public void GivenAnEstClient()
     {
-        _estClient = new EstClient(new Uri("https://localhost"), messageHandler: _server.CreateHandler());
+        _estClient = new EstClient(new Uri("https://localhost"), messageHandler: _server.CreateHandler(),
+            profileName: "rsa");
     }
 
     [When(@"I enroll with a valid JWT")]
     public async Task WhenIEnrollWithAValidJwt()
     {
         _key = RSA.Create();
-        var (_, collection) = await _estClient.Enroll(new X500DistinguishedName("cn=test.reimers.io, ou=test"), _key,
+        var (_, collection) = await _estClient.Enroll(new X500DistinguishedName("cn=test, ou=test"), _key,
             X509KeyUsageFlags.DigitalSignature,
             new AuthenticationHeaderValue("Bearer", "valid-jwt"));
         _certCollection = collection!;
@@ -44,7 +45,8 @@ public partial class CertificateServerFeatures
     [When("I use the certificate to re-enroll without a valid JWT")]
     public async Task WhenIUseTheCertificateToReEnrollWithoutAValidJwt()
     {
-        var renewed = await _estClient.ReEnroll(_key, _certCollection[0]);
+        var (_, renewed) = await _estClient.ReEnroll(_key, _certCollection[0]);
+        Assert.NotNull(renewed);
         Assert.NotEmpty(renewed);
         _certCollection = renewed;
         _key.Dispose();

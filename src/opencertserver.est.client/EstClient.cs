@@ -1,10 +1,7 @@
-﻿using System.Formats.Asn1;
-using OpenCertServer.Ca.Utils.Pkcs7;
-using OpenCertServer.Ca.Utils.X509.Templates;
-
-namespace OpenCertServer.Est.Client;
+﻿namespace OpenCertServer.Est.Client;
 
 using System;
+using System.Formats.Asn1;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -13,6 +10,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Ca.Utils;
+using OpenCertServer.Ca.Utils.Pkcs7;
+using OpenCertServer.Ca.Utils.X509.Templates;
 
 /// <summary>
 /// Defines an EST client for enrolling and re-enrolling certificates.
@@ -55,7 +54,7 @@ public sealed class EstClient : IDisposable
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use for the async operation.</param>
     /// <typeparam name="TAlgorithm">The <see cref="Type"/> of asymmetric key algorithm. The algorithm must be either <see cref="RSA"/> or <see cref="ECDsa"/>.</typeparam>
     /// <returns></returns>
-    public async Task<(string?, X509Certificate2Collection?)> Enroll<TAlgorithm>(
+    public Task<(string?, X509Certificate2Collection?)> Enroll<TAlgorithm>(
         X500DistinguishedName distinguishedName,
         TAlgorithm key,
         X509KeyUsageFlags usageFlags,
@@ -64,10 +63,7 @@ public sealed class EstClient : IDisposable
         CancellationToken cancellationToken = default) where TAlgorithm : AsymmetricAlgorithm
     {
         var request = CreateCertificateRequest(distinguishedName, key, usageFlags);
-        var collection =
-            await RequestEnrollCerts(_profileName, request, authenticationHeader, certificate, cancellationToken)
-                .ConfigureAwait(false);
-        return collection.Count == 0 ? ("", null) : (null, collection);
+        return RequestEnrollCerts(_profileName, request, authenticationHeader, certificate, cancellationToken);
     }
 
     /// <summary>
@@ -79,7 +75,7 @@ public sealed class EstClient : IDisposable
     /// <typeparam name="TAlgorithm">The <see cref="Type"/> of asymmetric key algorithm. The algorithm must be either <see cref="RSA"/> or <see cref="ECDsa"/>.</typeparam>
     /// <returns>An updated <see cref="X509Certificate2Collection"/> with the renewed certificate and issuer chain.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the re-enroll request to the server fails.</exception>
-    public async Task<X509Certificate2Collection> ReEnroll<TAlgorithm>(
+    public Task<(string?, X509Certificate2Collection?)> ReEnroll<TAlgorithm>(
         TAlgorithm key,
         X509Certificate2 certificate,
         CancellationToken cancellationToken = default) where TAlgorithm : AsymmetricAlgorithm
@@ -90,7 +86,7 @@ public sealed class EstClient : IDisposable
             certificate.Extensions.OfType<X509KeyUsageExtension>()
                 .Aggregate(X509KeyUsageFlags.None, (flags, ext) => flags | ext.KeyUsages));
 
-        return await RequestReEnrollCerts(certificate, certRequest, cancellationToken);
+        return RequestReEnrollCerts(certificate, certRequest, cancellationToken);
     }
 
     public async Task<X509Certificate2Collection> ServerCertificates(CancellationToken cancellationToken = default)
@@ -144,7 +140,7 @@ public sealed class EstClient : IDisposable
             new AsnReaderOptions { SkipSetSortOrderVerification = true }));
     }
 
-    private async Task<X509Certificate2Collection> RequestReEnrollCerts(
+    private async Task<(string?, X509Certificate2Collection?)> RequestReEnrollCerts(
         X509Certificate2 certificate,
         CertificateRequest certRequest,
         CancellationToken cancellationToken)
@@ -182,18 +178,26 @@ public sealed class EstClient : IDisposable
 
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException(
-                $"Re-enroll failed with status code {response.StatusCode} and message: {await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)}");
+            if (response.Headers.TryGetValues("Content-Type", out var values))
+            {
+                if (MediaTypeHeaderValue.TryParse(values.ToString() ?? "", out var media)
+                 && media.MediaType?.Equals("text/plain", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false), null);
+                }
+
+                return ("Error retrieving certificate", null);
+            }
         }
 
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
         var reader = new AsnReader(bytes, AsnEncodingRules.DER,
             new AsnReaderOptions { SkipSetSortOrderVerification = true });
         var signedData = new SignedData(reader);
-        return new X509Certificate2Collection(signedData.Certificates ?? []);
+        return (null, new X509Certificate2Collection(signedData.Certificates ?? []));
     }
 
-    private async Task<X509Certificate2Collection> RequestEnrollCerts(
+    private async Task<(string?, X509Certificate2Collection?)> RequestEnrollCerts(
         string? profileName,
         CertificateRequest request,
         AuthenticationHeaderValue? authenticationHeader = null,
@@ -239,11 +243,26 @@ public sealed class EstClient : IDisposable
             ch.ClientCertificates.Clear();
         }
 
+        if (!response.IsSuccessStatusCode)
+        {
+            if (!response.Headers.TryGetValues("Content-Type", out var values))
+            {
+                return ("Error retrieving certificate", null);
+            }
+
+            if (MediaTypeHeaderValue.TryParse(values.ToString() ?? "", out var media)
+             && media.MediaType?.Equals("text/plain", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false), null);
+            }
+
+            return ("Error retrieving certificate", null);
+        }
+
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-        var reader = new AsnReader(bytes, AsnEncodingRules.DER,
-            new AsnReaderOptions { SkipSetSortOrderVerification = true });
+        var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var signedData = new SignedData(reader);
-        return new X509Certificate2Collection(signedData.Certificates ?? []);
+        return (null, new X509Certificate2Collection(signedData.Certificates ?? []));
     }
 
     private static CertificateRequest CreateCertificateRequest<TAlgorithm>(
@@ -277,5 +296,4 @@ public sealed class EstClient : IDisposable
         req.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(req.PublicKey, false));
         return req;
     }
-
 }

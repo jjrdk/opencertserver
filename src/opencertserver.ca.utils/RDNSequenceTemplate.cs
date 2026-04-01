@@ -10,13 +10,13 @@ using OpenCertServer.Ca.Utils.X509.Templates;
 /// <code>
 /// RDNSequenceTemplate ::= SEQUENCE OF RelativeDistinguishedNameTemplate
 /// </code>
-// ReSharper disable once InconsistentNaming
 /// <summary>
 /// Represents the RDNSequenceTemplate class.
 /// </summary>
 /// <summary>
 /// Represents the IAsnValue.
 /// </summary>
+// ReSharper disable once InconsistentNaming
 public class RDNSequenceTemplate : IAsnValue
 {
     /// <summary>
