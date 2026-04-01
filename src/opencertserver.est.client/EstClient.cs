@@ -91,7 +91,7 @@ public sealed class EstClient : IDisposable
 
     public async Task<X509Certificate2Collection> ServerCertificates(CancellationToken cancellationToken = default)
     {
-        var pathValue = _profileName == null ? "/.well-known/est/cacert" : $"/.well-known/est/{_profileName}/cacert";
+        var pathValue = _profileName == null ? "/.well-known/est/cacerts" : $"/.well-known/est/{_profileName}/cacerts";
         var requestUriBuilder = new UriBuilder(
             Uri.UriSchemeHttps,
             _estHost.Host,

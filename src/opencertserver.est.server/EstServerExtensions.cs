@@ -115,11 +115,11 @@ public static class EstServerExtensions
 
             // CA Cert
             groupBuilder.MapGet(
-                    "/cacert", CaCertHandler.Handle)
+                    "/cacerts", CaCertsHandler.Handle)
                 .CacheOutput(b => b.Cache().Expire(TimeSpan.FromDays(30)))
                 .AllowAnonymous();
             groupBuilder.MapGet(
-                    "/{profileName}/cacert", CaCertHandler.HandleProfile)
+                    "/{profileName}/cacerts", CaCertsHandler.HandleProfile)
                 .CacheOutput(b => b.Cache().Expire(TimeSpan.FromDays(30)))
                 .AllowAnonymous();
 
