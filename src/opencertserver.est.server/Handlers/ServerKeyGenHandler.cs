@@ -12,10 +12,15 @@ using System.Text;
 using Microsoft.AspNetCore.Http;
 using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Pkcs7;
-using OpenCertServer.Ca.Utils.X509Extensions;
 
 internal static class ServerKeyGenHandler
 {
+    private const string KeyProtectionHeader = "X-Est-Keygen-Protection";
+    private const string KeyProtectionStatusHeader = "X-Est-Keygen-Protection-Status";
+    private const string SmimeCapabilitiesHeader = "X-Est-Smime-Capabilities";
+    private const string SymmetricDecryptKeyIdentifierHeader = "X-Est-Decrypt-Key-Identifier";
+    private const string AsymmetricDecryptKeyIdentifierHeader = "X-Est-Asymmetric-Decrypt-Key-Identifier";
+
     public static Task<IResult> Handle(
         ClaimsPrincipal user,
         HttpRequest httpRequest,
@@ -48,6 +53,12 @@ internal static class ServerKeyGenHandler
                     CertificateRequestLoadOptions.SkipSignatureValidation,
                     RSASignaturePadding.Pss);
 
+            var encryptedKeyDelivery = GetRequestedEncryptedKeyDelivery(httpRequest);
+            if (encryptedKeyDelivery.ErrorResult != null)
+            {
+                return encryptedKeyDelivery.ErrorResult;
+            }
+
             var privateKey = signingRequest.PublicKey.Oid.Value switch
             {
                 Oids.Rsa => CreateServerSideRsaRequest(signingRequest),
@@ -61,9 +72,8 @@ internal static class ServerKeyGenHandler
                     user.Identity as ClaimsIdentity, cancellationToken: cancellationToken).ConfigureAwait(false);
             if (newCert is SignCertificateResponse.Success success)
             {
-                var prefersEncryptedKeyPart = PrefersEncryptedKeyPart(httpRequest);
                 var mpr = new MultipartContent();
-                mpr.Add(prefersEncryptedKeyPart
+                mpr.Add(encryptedKeyDelivery.UseEncryptedKeyPart
                     ? new EstMultipartBase64Content(
                         privateKey.Pkcs8.Base64Encode(),
                         Constants.PemMimeType,
@@ -128,5 +138,61 @@ internal static class ServerKeyGenHandler
                     ?.Value.ToString().Trim('"'),
                 "server-generated-key",
                 StringComparison.OrdinalIgnoreCase)) == true;
+    }
+
+    private static (bool UseEncryptedKeyPart, IResult? ErrorResult) GetRequestedEncryptedKeyDelivery(HttpRequest httpRequest)
+    {
+        var prefersEncryptedKeyPart = PrefersEncryptedKeyPart(httpRequest);
+        var requestedProtection = httpRequest.Headers[KeyProtectionHeader].ToString();
+        var useEncryptedKeyPart = prefersEncryptedKeyPart || !string.IsNullOrWhiteSpace(requestedProtection);
+        if (!useEncryptedKeyPart)
+        {
+            return (false, null);
+        }
+
+        var smimeCapabilities = httpRequest.Headers[SmimeCapabilitiesHeader].ToString();
+        if (string.IsNullOrWhiteSpace(smimeCapabilities))
+        {
+            return (true, Results.Text(
+                "Encrypted server-side key delivery requires the SMIMECapabilities attribute.",
+                Constants.TextPlainMimeType,
+                Encoding.UTF8,
+                (int)HttpStatusCode.BadRequest));
+        }
+
+        var symmetricIdentifier = httpRequest.Headers[SymmetricDecryptKeyIdentifierHeader].ToString();
+        var asymmetricIdentifier = httpRequest.Headers[AsymmetricDecryptKeyIdentifierHeader].ToString();
+        var protection = requestedProtection.Trim().ToLowerInvariant();
+        var hasSymmetricIdentifier = !string.IsNullOrWhiteSpace(symmetricIdentifier);
+        var hasAsymmetricIdentifier = !string.IsNullOrWhiteSpace(asymmetricIdentifier);
+
+        var hasRequiredIdentifier = protection switch
+        {
+            "symmetric" => hasSymmetricIdentifier,
+            "asymmetric" => hasAsymmetricIdentifier,
+            _ => hasSymmetricIdentifier || hasAsymmetricIdentifier
+        };
+
+        if (!hasRequiredIdentifier)
+        {
+            return (true, Results.Text(
+                "Encrypted server-side key delivery requires a DecryptKeyIdentifier or AsymmetricDecryptKeyIdentifier attribute.",
+                Constants.TextPlainMimeType,
+                Encoding.UTF8,
+                (int)HttpStatusCode.BadRequest));
+        }
+
+        var protectionStatus = httpRequest.Headers[KeyProtectionStatusHeader].ToString();
+        if (string.Equals(protectionStatus, "unavailable", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(protectionStatus, "unusable", StringComparison.OrdinalIgnoreCase))
+        {
+            return (true, Results.Text(
+                "The requested key-encryption material is unavailable or unusable.",
+                Constants.TextPlainMimeType,
+                Encoding.UTF8,
+                (int)HttpStatusCode.BadRequest));
+        }
+
+        return (true, null);
     }
 }
