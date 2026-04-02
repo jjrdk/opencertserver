@@ -70,11 +70,19 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             distinguishedName,
             UsageFlags,
             certificateValidity);
+        var publishedCertificates = CreateRolloverPublicationCertificates(
+            distinguishedName,
+            UsageFlags,
+            certificateValidity,
+            key,
+            cert,
+            () => CreateSelfSignedRsaCert(distinguishedName, UsageFlags, certificateValidity));
         return new CaProfile
         {
             Name = profileName,
             PrivateKey = key,
             CertificateChain = [cert],
+            PublishedCertificateChain = publishedCertificates,
             CertificateValidity = certificateValidity,
             CrlNumber = crlNumber ?? BigInteger.Zero
         };
@@ -90,11 +98,19 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             distinguishedName,
             UsageFlags,
             certificateValidity);
+        var publishedCertificates = CreateRolloverPublicationCertificates(
+            distinguishedName,
+            UsageFlags,
+            certificateValidity,
+            key,
+            cert,
+            () => CreateSelfSignedEcDsaCert(distinguishedName, UsageFlags, certificateValidity));
         return new CaProfile
         {
             Name = profileName,
             PrivateKey = key,
             CertificateChain = [cert],
+            PublishedCertificateChain = publishedCertificates,
             CertificateValidity = certificateValidity,
             CrlNumber = crlNumber ?? BigInteger.Zero
         };
@@ -248,6 +264,17 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         return profile.CertificateChain;
     }
 
+    /// <inheritdoc />
+    public async Task<X509Certificate2Collection> GetPublishedCertificates(
+        string? profileName = null,
+        CancellationToken cancellationToken = default)
+    {
+        var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
+        return profile.PublishedCertificateChain.Count > 0
+            ? profile.PublishedCertificateChain
+            : profile.CertificateChain;
+    }
+
     /// <inheritdoc/>
     public Task<bool> RevokeCertificate(
         string serialNumber,
@@ -325,6 +352,125 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             DateTimeOffset.UtcNow.Date.Add(certificateValidity));
 
         return parentCert;
+    }
+
+    private static X509Certificate2Collection CreateRolloverPublicationCertificates(
+        X500DistinguishedName distinguishedName,
+        X509KeyUsageFlags usageFlags,
+        TimeSpan certificateValidity,
+        AsymmetricAlgorithm currentPrivateKey,
+        X509Certificate2 currentCertificate,
+        Func<(AsymmetricAlgorithm PrivateKey, X509Certificate2 Certificate)> createPreviousCertificate)
+    {
+        var (previousPrivateKey, previousCertificate) = createPreviousCertificate();
+
+        try
+        {
+            var oldWithNew = CreateCrossSignedCaCertificate(
+                distinguishedName,
+                usageFlags,
+                certificateValidity,
+                previousPrivateKey,
+                currentCertificate,
+                currentPrivateKey);
+            var newWithOld = CreateCrossSignedCaCertificate(
+                distinguishedName,
+                usageFlags,
+                certificateValidity,
+                currentPrivateKey,
+                previousCertificate,
+                previousPrivateKey);
+            var oldWithOld = ClonePublicCertificate(previousCertificate);
+
+            previousCertificate.Dispose();
+            previousPrivateKey.Dispose();
+
+            return
+            [
+                ClonePublicCertificate(currentCertificate),
+                oldWithOld,
+                oldWithNew,
+                newWithOld
+            ];
+        }
+        catch
+        {
+            previousCertificate.Dispose();
+            previousPrivateKey.Dispose();
+            throw;
+        }
+    }
+
+    private static X509Certificate2 CreateCrossSignedCaCertificate(
+        X500DistinguishedName distinguishedName,
+        X509KeyUsageFlags usageFlags,
+        TimeSpan certificateValidity,
+        AsymmetricAlgorithm subjectPrivateKey,
+        X509Certificate2 issuerCertificate,
+        AsymmetricAlgorithm issuerPrivateKey)
+    {
+        var request = CreateCaCertificateRequest(distinguishedName, usageFlags, subjectPrivateKey);
+        request.CertificateExtensions.Add(
+            X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(
+                ExportSubjectPublicKeyInfo(issuerCertificate)));
+
+        var signatureGenerator = issuerPrivateKey switch
+        {
+            RSA rsa => X509SignatureGenerator.CreateForRSA(rsa, RSASignaturePadding.Pss),
+            ECDsa ecdsa => X509SignatureGenerator.CreateForECDsa(ecdsa),
+            _ => throw new NotSupportedException()
+        };
+
+        return request.Create(
+            issuerCertificate.SubjectName,
+            signatureGenerator,
+            DateTimeOffset.UtcNow.Date,
+            DateTimeOffset.UtcNow.Date.Add(certificateValidity),
+            RandomNumberGenerator.GetBytes(16));
+    }
+
+    private static CertificateRequest CreateCaCertificateRequest(
+        X500DistinguishedName distinguishedName,
+        X509KeyUsageFlags usageFlags,
+        AsymmetricAlgorithm privateKey)
+    {
+        var request = privateKey switch
+        {
+            RSA rsa => new CertificateRequest(
+                distinguishedName,
+                rsa,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pss),
+            ECDsa ecdsa => new CertificateRequest(distinguishedName, ecdsa, HashAlgorithmName.SHA256),
+            _ => throw new NotSupportedException()
+        };
+
+        request.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+        request.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+        request.CertificateExtensions.Add(new X509KeyUsageExtension(usageFlags, true));
+        return request;
+    }
+
+    private static X509Certificate2 ClonePublicCertificate(X509Certificate2 certificate)
+    {
+        return X509Certificate2.CreateFromPem(certificate.ExportCertificatePem());
+    }
+
+    private static byte[] ExportSubjectPublicKeyInfo(X509Certificate2 certificate)
+    {
+        using var rsa = certificate.GetRSAPublicKey();
+        if (rsa != null)
+        {
+            return rsa.ExportSubjectPublicKeyInfo();
+        }
+
+        using var ecdsa = certificate.GetECDsaPublicKey();
+        if (ecdsa != null)
+        {
+            return ecdsa.ExportSubjectPublicKeyInfo();
+        }
+
+        throw new NotSupportedException($"Unsupported certificate public key algorithm '{certificate.PublicKey.Oid.Value}'.");
     }
 
     /// <inheritdoc/>

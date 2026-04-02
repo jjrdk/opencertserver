@@ -1,4 +1,5 @@
 using System.Formats.Asn1;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Est.Server.Handlers;
 
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
@@ -24,8 +25,10 @@ public partial class CertificateServerFeatures
     private const string SimpleEnrollHandlerPath = "src/opencertserver.est.server/Handlers/SimpleEnrollHandler.cs";
     private const string SimpleReEnrollHandlerPath = "src/opencertserver.est.server/Handlers/SimpleReEnrollHandler.cs";
     private const string RetryAfterResultPath = "src/opencertserver.est.server/Handlers/RetryAfterResult.cs";
+
     private const string TlsUniqueProofOfPossessionVerifierPath =
         "src/opencertserver.est.server/Handlers/TlsUniqueProofOfPossessionVerifier.cs";
+
     private const string ServerKeyGenHandlerPath = "src/opencertserver.est.server/Handlers/ServerKeyGenHandler.cs";
     private const string CsrAttributesHandlerPath = "src/opencertserver.est.server/Handlers/CsrAttributesHandler.cs";
 
@@ -247,16 +250,19 @@ public partial class CertificateServerFeatures
     public async Task WhenTheEstServerReturnsCaCertificates()
     {
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/cacerts"), accept: "application/pkcs7-mime");
+        ParseSignedDataIfPossible();
     }
 
     [When("the EST server supports root CA key rollover")]
-    public void WhenTheEstServerSupportsRootCaKeyRollover()
+    public async Task WhenTheEstServerSupportsRootCaKeyRollover()
     {
-        var response =
-            _server.Services.GetRequiredService<Func<string?, CancellationToken, Task<X509Certificate2Collection>>>()(
-                    null, CancellationToken.None)
-                .GetAwaiter().GetResult();
-        Assert.SkipUnless(response.Count > 1, "The current test CA is not configured for root key rollover.");
+        var response = await _server.Services.GetRequiredService<ICertificateAuthority>()
+            .GetPublishedCertificates(null, CancellationToken.None);
+        Assert.True(response.Count >= 4,
+            "The EST server did not publish a rollover bundle containing the current root and rollover certificates.");
+
+        await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/cacerts"), accept: "application/pkcs7-mime");
+        ParseSignedDataIfPossible();
     }
 
     [When("the client POSTs a PKCS #10 certification request to \"(.+)\"")]
@@ -915,25 +921,46 @@ public partial class CertificateServerFeatures
     }
 
     [Then("the current root CA certificate MUST be included in the response")]
-    public void ThenTheCurrentRootCaCertificateMustBeIncludedInTheResponse()
+    public async Task ThenTheCurrentRootCaCertificateMustBeIncludedInTheResponse()
     {
-        Assert.NotNull(ConformanceState.ResponseBytes);
-        Assert.True(ConformanceState.ResponseBytes!.Length > 0, "No CA certificate response payload was returned.");
+        var activeChain = await _server.Services.GetRequiredService<ICertificateAuthority>()
+            .GetRootCertificates(null, CancellationToken.None);
+        var publishedCertificates = GetPublishedResponseCertificates();
+        Assert.Contains(activeChain[0], publishedCertificates, X509Certificate2Comparer.Instance);
     }
 
     [Then(
         "every additional certificate needed to build a chain from an EST CA-issued certificate to the current EST CA trust anchor MUST be included in the response")]
-    public void ThenEveryAdditionalCertificateNeededToBuildAChainMustBeIncludedInTheResponse()
+    public async Task ThenEveryAdditionalCertificateNeededToBuildAChainMustBeIncludedInTheResponse()
     {
-        Assert.True(ConformanceState.ResponseBytes is { Length: > 0 }, "No CA chain was returned.");
+        var activeChain = await _server.Services.GetRequiredService<ICertificateAuthority>()
+            .GetRootCertificates(null, CancellationToken.None);
+        var publishedCertificates = GetPublishedResponseCertificates();
+        foreach (var certificate in activeChain)
+        {
+            Assert.Contains(certificate, publishedCertificates, X509Certificate2Comparer.Instance);
+        }
     }
 
     [Then(@"the \/cacerts response SHOULD include the OldWithOld certificate")]
-    [Then(@"the \/cacerts response SHOULD include the OldWithNew certificate")]
-    [Then(@"the \/cacerts response SHOULD include the NewWithOld certificate")]
-    public void ThenTheCacertsResponseShouldIncludeTheNamedRolloverCertificate()
+    public async Task ThenTheCaCertsResponseShouldIncludeTheOldWithOldCertificate()
     {
-        Assert.True(ConformanceState.ResponseBytes is { Length: > 0 }, "No rollover certificates were returned.");
+        var (oldWithOld, _, _) = await GetRolloverCertificates();
+        Assert.NotNull(oldWithOld);
+    }
+
+    [Then(@"the \/cacerts response SHOULD include the OldWithNew certificate")]
+    public async Task ThenTheCaCertsResponseShouldIncludeTheOldWithNewCertificate()
+    {
+        var (_, oldWithNew, _) = await GetRolloverCertificates();
+        Assert.NotNull(oldWithNew);
+    }
+
+    [Then(@"the \/cacerts response SHOULD include the NewWithOld certificate")]
+    public async Task ThenTheCaCertsResponseShouldIncludeTheNewWithOldCertificate()
+    {
+        var (_, _, newWithOld) = await GetRolloverCertificates();
+        Assert.NotNull(newWithOld);
     }
 
     [Then("the EST server MUST authenticate the client")]
@@ -954,7 +981,7 @@ public partial class CertificateServerFeatures
     public void ThenIfTheClientSubmittedTlsUniquePopInformationTheEstServerMustVerifyIt()
     {
         var source = ReadRepoFile(SimpleEnrollHandlerPath) + ReadRepoFile(SimpleReEnrollHandlerPath) +
-                     ReadRepoFile(TlsUniqueProofOfPossessionVerifierPath);
+            ReadRepoFile(TlsUniqueProofOfPossessionVerifierPath);
         Assert.Contains("tls-unique", source, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("verify", source, StringComparison.OrdinalIgnoreCase);
     }
@@ -1052,7 +1079,7 @@ public partial class CertificateServerFeatures
     {
         var source = ReadRepoFile(SimpleEnrollHandlerPath) + ReadRepoFile(RetryAfterResultPath);
         Assert.True(source.Contains("Retry-After", StringComparison.OrdinalIgnoreCase) ||
-                    source.Contains("RetryAfter", StringComparison.OrdinalIgnoreCase));
+            source.Contains("RetryAfter", StringComparison.OrdinalIgnoreCase));
     }
 
     [Then("the certification request Subject field MUST be identical to the current certificate Subject field")]
@@ -1252,15 +1279,15 @@ public partial class CertificateServerFeatures
         Assert.True(ConformanceState.Response != null);
         var actual = ConformanceState.Response!.Content.Headers.ContentType?.MediaType;
         Assert.True(actual == null || string.Equals(actual, mediaType, StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(actual, "text/plain", StringComparison.OrdinalIgnoreCase));
+            string.Equals(actual, "text/plain", StringComparison.OrdinalIgnoreCase));
     }
 
     [Then("the server MAY use the {string} content type for the human-readable error")]
     public void ThenTheServerMayUseTheContentTypeForTheHumanReadableError(string mediaType)
     {
         Assert.True(ConformanceState.Response?.Content.Headers.ContentType == null ||
-                    string.Equals(ConformanceState.Response.Content.Headers.ContentType?.MediaType, mediaType,
-                        StringComparison.OrdinalIgnoreCase));
+            string.Equals(ConformanceState.Response.Content.Headers.ContentType?.MediaType, mediaType,
+                StringComparison.OrdinalIgnoreCase));
     }
 
     [Then("the response MAY use HTTP status code 204 or HTTP status code 404")]
@@ -1281,7 +1308,7 @@ public partial class CertificateServerFeatures
     {
         var responseBytes = GetDecodedResponseBytesIfBase64();
         Assert.True(responseBytes is { Length: > 0 });
-        Assert.Equal(0x30, responseBytes![0]);
+        Assert.Equal(0x30, responseBytes[0]);
     }
 
     [Then("the client MUST ignore the unrecognized OID or attribute")]
@@ -1294,7 +1321,7 @@ public partial class CertificateServerFeatures
     public void ThenTheEstServerMayReturnAnEmptyCsrAttrsSequence()
     {
         Assert.True(ConformanceState.Response?.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound ||
-                    GetDecodedResponseBytesIfBase64() is { Length: > 0 });
+            GetDecodedResponseBytesIfBase64() is { Length: > 0 });
     }
 
     [Then("the empty CsrAttrs SEQUENCE MUST be treated as equivalent to HTTP 204 or HTTP 404")]
@@ -1472,16 +1499,17 @@ public partial class CertificateServerFeatures
     public void ThenTheAttributesFieldMustNotContainMultipleIdAaExtensionReqTemplateAttributes()
     {
         Assert.True((ConformanceState.Template?.Attributes.Count(attribute =>
-                        string.Equals(attribute.Oid.Value, ExtensionReqTemplateOid, StringComparison.Ordinal)) ?? 0) <= 1);
+            string.Equals(attribute.Oid.Value, ExtensionReqTemplateOid, StringComparison.Ordinal)) ?? 0) <= 1);
     }
 
     [Then("the attributes field MUST NOT contain both id-ExtensionReq and id-aa-extensionReqTemplate")]
     public void ThenTheAttributesFieldMustNotContainBothIdExtensionReqAndIdAaExtensionReqTemplate()
     {
         var attributes = ConformanceState.Template?.Attributes ?? [];
-        Assert.False(attributes.Any(attribute => string.Equals(attribute.Oid.Value, ExtensionReqOid, StringComparison.Ordinal)) &&
-                     attributes.Any(attribute =>
-                         string.Equals(attribute.Oid.Value, ExtensionReqTemplateOid, StringComparison.Ordinal)));
+        Assert.False(attributes.Any(attribute =>
+                string.Equals(attribute.Oid.Value, ExtensionReqOid, StringComparison.Ordinal)) &&
+            attributes.Any(attribute =>
+                string.Equals(attribute.Oid.Value, ExtensionReqTemplateOid, StringComparison.Ordinal)));
     }
 
     [Then("each id-aa-extensionReqTemplate values field MUST contain exactly one element of type ExtensionTemplate")]
@@ -1752,6 +1780,85 @@ public partial class CertificateServerFeatures
         catch
         {
             // ignored by design; failing assertions will report the non-conformance.
+        }
+    }
+
+    private X509Certificate2[] GetPublishedResponseCertificates()
+    {
+        ParseSignedDataIfPossible();
+        return ConformanceState.SignedData?.Certificates ??
+            throw new Xunit.Sdk.XunitException(
+                "The /cacerts response did not contain a decodable PKCS#7 certificate set.");
+    }
+
+    private async Task<(X509Certificate2? oldWithOld, X509Certificate2? oldWithNew, X509Certificate2? newWithOld)>
+        GetRolloverCertificates()
+    {
+        var currentRoot = (await _server.Services.GetRequiredService<ICertificateAuthority>()
+            .GetRootCertificates(null, CancellationToken.None))[0];
+        var publishedCertificates = GetPublishedResponseCertificates();
+
+        var currentRootSubjectKeyIdentifier = GetSubjectKeyIdentifier(currentRoot);
+        var otherCertificates = publishedCertificates
+            .Where(certificate => !X509Certificate2Comparer.Instance.Equals(certificate, currentRoot))
+            .ToArray();
+
+        var oldWithOld = otherCertificates
+            .SingleOrDefault(certificate =>
+                GetAuthorityKeyIdentifier(certificate) == null &&
+                GetSubjectKeyIdentifier(certificate) != currentRootSubjectKeyIdentifier);
+
+        var oldSubjectKeyIdentifier = oldWithOld == null ? null : GetSubjectKeyIdentifier(oldWithOld);
+
+        var oldWithNew = otherCertificates
+            .SingleOrDefault(certificate =>
+                oldSubjectKeyIdentifier != null &&
+                GetSubjectKeyIdentifier(certificate) == oldSubjectKeyIdentifier &&
+                !X509Certificate2Comparer.Instance.Equals(certificate, oldWithOld));
+
+        var newWithOld = otherCertificates
+            .SingleOrDefault(certificate =>
+                oldSubjectKeyIdentifier != null &&
+                GetSubjectKeyIdentifier(certificate) == currentRootSubjectKeyIdentifier &&
+                !X509Certificate2Comparer.Instance.Equals(certificate, currentRoot));
+
+        return (oldWithOld, oldWithNew, newWithOld);
+    }
+
+    private static string? GetSubjectKeyIdentifier(X509Certificate2 certificate)
+    {
+        var extension = certificate.Extensions.OfType<X509SubjectKeyIdentifierExtension>().SingleOrDefault();
+        return extension?.SubjectKeyIdentifier;
+    }
+
+    private static string? GetAuthorityKeyIdentifier(X509Certificate2 certificate)
+    {
+        var extension = certificate.Extensions
+            .FirstOrDefault(candidate => candidate.Oid?.Value == Oids.AuthorityKeyIdentifier);
+        if (extension == null)
+        {
+            return null;
+        }
+
+        var authorityKeyIdentifier = new X509AuthorityKeyIdentifierExtension(extension.RawData, extension.Critical)
+            .KeyIdentifier;
+        return authorityKeyIdentifier.HasValue
+            ? Convert.ToHexString(authorityKeyIdentifier.Value.Span)
+            : null;
+    }
+
+    private sealed class X509Certificate2Comparer : IEqualityComparer<X509Certificate2>
+    {
+        public static X509Certificate2Comparer Instance { get; } = new();
+
+        public bool Equals(X509Certificate2? x, X509Certificate2? y)
+        {
+            return x?.Thumbprint == y?.Thumbprint;
+        }
+
+        public int GetHashCode(X509Certificate2 obj)
+        {
+            return obj.Thumbprint.GetHashCode(StringComparison.Ordinal);
         }
     }
 
