@@ -50,6 +50,11 @@ public static class EstServerExtensions
                 {
                     var ca = sp.GetRequiredService<ICertificateAuthority>();
                     return ca.GetRootCertificates;
+                })
+                .AddTransient<EstPublishedCertificatesResolver>(sp =>
+                {
+                    var ca = sp.GetRequiredService<ICertificateAuthority>();
+                    return ca.GetPublishedCertificates;
                 });
         }
     }

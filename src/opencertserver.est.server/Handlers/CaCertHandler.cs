@@ -2,15 +2,15 @@
 
 using System.Formats.Asn1;
 using System.Net;
-using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Http;
 using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Pkcs7;
+using OpenCertServer.Est.Server;
 
 internal static class CaCertsHandler
 {
     public static Task<IResult> Handle(
-        Func<string?, CancellationToken, Task<X509Certificate2Collection>> certificates,
+        EstPublishedCertificatesResolver certificates,
         CancellationToken cancellationToken = default)
     {
         return HandleProfile("", certificates, cancellationToken);
@@ -18,7 +18,7 @@ internal static class CaCertsHandler
 
     public static async Task<IResult> HandleProfile(
         string profileName,
-        Func<string?, CancellationToken, Task<X509Certificate2Collection>> certificates,
+        EstPublishedCertificatesResolver certificates,
         CancellationToken cancellationToken = default)
     {
         var export = await certificates(profileName, cancellationToken).ConfigureAwait(false);

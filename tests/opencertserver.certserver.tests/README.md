@@ -19,15 +19,15 @@ dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.test
 
 Verified in this workspace:
 - Total: `64`
-- Passed: `59`
+- Passed: `60`
 - Failed: `0`
-- Skipped: `5`
+- Skipped: `4`
 
-The skipped scenarios are the conditional/optional cases that are not implemented in the current server build, such as `/fullcmc`, certificate-less TLS mutual authentication, and root key rollover.
+The skipped scenarios are the conditional/optional cases that are not implemented in the current server build, such as `/fullcmc` and certificate-less TLS mutual authentication.
 
 ## Failing tests and current non-conformance
 
-The focused EST conformance scenarios currently pass in this workspace. The remaining skipped scenarios are optional or conditional features that are not implemented in this test server configuration, such as `/fullcmc`, certificate-less TLS mutual authentication, and root key rollover.
+The focused EST conformance scenarios currently pass in this workspace. The remaining skipped scenarios are optional or conditional features that are not implemented in this test server configuration, such as `/fullcmc` and certificate-less TLS mutual authentication.
 
 ## Scenarios currently passing
 
@@ -46,5 +46,5 @@ Representative passing areas from the focused run:
 Recommended implementation order:
 1. Add optional `/fullcmc` support if desired.
 2. Add optional certificate-less TLS mutual authentication support if desired.
-3. Add optional root CA rollover fixtures if desired.
+3. Extend any future optional scenarios beyond the currently passing rollover coverage if desired.
 

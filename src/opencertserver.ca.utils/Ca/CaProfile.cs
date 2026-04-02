@@ -27,6 +27,12 @@ public record CaProfile : IDisposable
     public required X509Certificate2Collection CertificateChain { get; init; }
 
     /// <summary>
+    /// Gets the certificates that should be published to EST clients.
+    /// When empty, <see cref="CertificateChain"/> is published.
+    /// </summary>
+    public X509Certificate2Collection PublishedCertificateChain { get; init; } = [];
+
+    /// <summary>
     /// Gets the validity period for certificates issued by this CA profile.
     /// </summary>
     public TimeSpan CertificateValidity { get; init; }
@@ -58,6 +64,17 @@ public record CaProfile : IDisposable
         {
             cert.Dispose();
         }
+
+        foreach (var cert in PublishedCertificateChain)
+        {
+            if (CertificateChain.Any(existing => ReferenceEquals(existing, cert)))
+            {
+                continue;
+            }
+
+            cert.Dispose();
+        }
+
         GC.SuppressFinalize(this);
     }
 }
