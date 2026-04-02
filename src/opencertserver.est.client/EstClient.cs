@@ -206,6 +206,11 @@ public sealed class EstClient : IDisposable
         EnsureBootstrapRequestAllowed(request, authenticationHeader, clientCertificate: null);
         var response = await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseHeadersRead, CancellationToken.None)
             .ConfigureAwait(false);
+        if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound)
+        {
+            return new CertificateSigningRequestTemplate(subject: null, subjectPkInfo: null);
+        }
+
         response = response.EnsureSuccessStatusCode();
         var responseText = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         byte[] bytes;
@@ -222,8 +227,20 @@ public sealed class EstClient : IDisposable
             bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
         }
 
-        return new CertificateSigningRequestTemplate(new AsnReader(bytes, AsnEncodingRules.DER,
-            new AsnReaderOptions { SkipSetSortOrderVerification = true }));
+        var reader = new AsnReader(bytes, AsnEncodingRules.DER,
+            new AsnReaderOptions { SkipSetSortOrderVerification = true });
+
+        try
+        {
+            var csrAttributes = new CertificateSigningRequestTemplate(new AsnReader(bytes, AsnEncodingRules.DER,
+                new AsnReaderOptions { SkipSetSortOrderVerification = true }));
+            return csrAttributes;
+        }
+        catch (Exception)
+        {
+            var csrAttributes = new CsrAttributes(reader);
+            return csrAttributes.GetPreferredTemplate() ?? new CertificateSigningRequestTemplate(subject: null, subjectPkInfo: null);
+        }
     }
 
     private void ConfigureServerCertificateValidation(HttpMessageHandler handler, EstClientOptions options)

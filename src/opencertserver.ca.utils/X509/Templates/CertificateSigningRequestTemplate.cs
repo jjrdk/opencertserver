@@ -21,14 +21,16 @@ public class CertificateSigningRequestTemplate : IAsnValue
     /// </summary>
     /// <param name="subject">The <see cref="NameTemplate"/> of the subject.</param>
     /// <param name="subjectPkInfo">The optional <see cref="SubjectPublicKeyInfoTemplate"/>.</param>
+    /// <param name="attributes">The optional CRI attribute requirements.</param>
     public CertificateSigningRequestTemplate(
         NameTemplate? subject = null,
-        SubjectPublicKeyInfoTemplate? subjectPkInfo = null)
+        SubjectPublicKeyInfoTemplate? subjectPkInfo = null,
+        IEnumerable<CsrAttribute>? attributes = null)
     {
-        // TODO: Support CRIAttributes
         Version = BigInteger.Zero;
         Subject = subject;
         SubjectPublicKeyInfo = subjectPkInfo;
+        Attributes = (attributes ?? []).ToArray();
     }
 
     /// <summary>
@@ -58,6 +60,23 @@ public class CertificateSigningRequestTemplate : IAsnValue
                 SubjectPublicKeyInfo = new SubjectPublicKeyInfoTemplate(sequenceReader, tag);
             }
         }
+
+        if (sequenceReader.HasData &&
+            sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1)))
+        {
+            var attributesReader = sequenceReader.ReadSetOf(new Asn1Tag(TagClass.ContextSpecific, 1));
+            List<CsrAttribute> attributes = [];
+            while (attributesReader.HasData)
+            {
+                attributes.Add(new CsrAttribute(attributesReader));
+            }
+
+            Attributes = attributes.AsReadOnly();
+        }
+        else
+        {
+            Attributes = [];
+        }
     }
 
     /// <summary>
@@ -75,6 +94,13 @@ public class CertificateSigningRequestTemplate : IAsnValue
     /// </summary>
     public SubjectPublicKeyInfoTemplate? SubjectPublicKeyInfo { get; }
 
+    /// <summary>
+    /// Gets the optional CRI attribute requirements.
+    /// Full X.509 extension requirements use Oids.Pkcs9ExtensionRequest and partial template requirements MAY use
+    /// Oids.Pkcs9ExtensionRequestTemplate.
+    /// </summary>
+    public IReadOnlyList<CsrAttribute> Attributes { get; }
+
     /// <inheritdoc/>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
@@ -83,6 +109,16 @@ public class CertificateSigningRequestTemplate : IAsnValue
             writer.WriteInteger(Version);
             Subject?.Encode(writer);
             SubjectPublicKeyInfo?.Encode(writer, new Asn1Tag(TagClass.ContextSpecific, 0));
+            if (Attributes.Count > 0)
+            {
+                using (writer.PushSetOf(new Asn1Tag(TagClass.ContextSpecific, 1)))
+                {
+                    foreach (var attribute in Attributes)
+                    {
+                        attribute.Encode(writer);
+                    }
+                }
+            }
         }
     }
 }
