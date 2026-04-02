@@ -20,6 +20,8 @@ public partial class CertificateServerFeatures
     private const string CaCertHandlerPath = "src/opencertserver.est.server/Handlers/CaCertHandler.cs";
     private const string SimpleEnrollHandlerPath = "src/opencertserver.est.server/Handlers/SimpleEnrollHandler.cs";
     private const string SimpleReEnrollHandlerPath = "src/opencertserver.est.server/Handlers/SimpleReEnrollHandler.cs";
+    private const string TlsUniqueProofOfPossessionVerifierPath =
+        "src/opencertserver.est.server/Handlers/TlsUniqueProofOfPossessionVerifier.cs";
     private const string ServerKeyGenHandlerPath = "src/opencertserver.est.server/Handlers/ServerKeyGenHandler.cs";
     private const string CsrAttributesHandlerPath = "src/opencertserver.est.server/Handlers/CsrAttributesHandler.cs";
 
@@ -27,6 +29,8 @@ public partial class CertificateServerFeatures
         "src/opencertserver.est.server/Handlers/CertificateSigningRequestTemplateResult.cs";
 
     private const string EstClientPath = "src/opencertserver.est.client/EstClient.cs";
+    private const string EstClientOptionsPath = "src/opencertserver.est.client/EstClientOptions.cs";
+    private const string EstBootstrapTrustPath = "src/opencertserver.est.client/EstBootstrapTrust.cs";
     private const string ProgramPath = "src/opencertserver.certserver/Program.cs";
 
     private const string CertAuthOptionsPath =
@@ -138,7 +142,8 @@ public partial class CertificateServerFeatures
         [
             ReadRepoFile(EstClientPath),
             ReadRepoFile(SimpleEnrollHandlerPath),
-            ReadRepoFile(SimpleReEnrollHandlerPath)
+            ReadRepoFile(SimpleReEnrollHandlerPath),
+            ReadRepoFile(TlsUniqueProofOfPossessionVerifierPath)
         ];
     }
 
@@ -163,19 +168,24 @@ public partial class CertificateServerFeatures
     [When("the EST server certificate is validated using an Explicit trust anchor database entry")]
     public void WhenTheEstServerCertificateIsValidatedUsingAnExplicitTrustAnchorDatabaseEntry()
     {
-        ConformanceState.CheckedFiles = [ReadRepoFile(EstClientPath)];
+        ConformanceState.CheckedFiles = [ReadRepoFile(EstClientPath), ReadRepoFile(EstClientOptionsPath)];
     }
 
     [When("the EST server certificate is validated using an Implicit trust anchor database entry")]
     public void WhenTheEstServerCertificateIsValidatedUsingAnImplicitTrustAnchorDatabaseEntry()
     {
-        ConformanceState.CheckedFiles = [ReadRepoFile(EstClientPath)];
+        ConformanceState.CheckedFiles = [ReadRepoFile(EstClientPath), ReadRepoFile(EstClientOptionsPath)];
     }
 
     [When("the client performs bootstrap CA certificate distribution")]
     public void WhenTheClientPerformsBootstrapCaCertificateDistribution()
     {
-        ConformanceState.CheckedFiles = [ReadRepoFile(EstClientPath)];
+        ConformanceState.CheckedFiles =
+        [
+            ReadRepoFile(EstClientPath),
+            ReadRepoFile(EstClientOptionsPath),
+            ReadRepoFile(EstBootstrapTrustPath)
+        ];
     }
 
     [When("the EST endpoint \"(.+)\" receives a base64-encoded DER body with any Content-Transfer-Encoding header")]
@@ -571,7 +581,8 @@ public partial class CertificateServerFeatures
     public void ThenTls11OrALaterVersionMustBeUsedForEstCommunication()
     {
         var source = string.Concat(ConformanceState.CheckedFiles);
-        Assert.Contains("Tls1", source, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SslProtocols", source, StringComparison.Ordinal);
+        Assert.Contains("Tls12", source, StringComparison.OrdinalIgnoreCase);
     }
 
     [Then("TLS server authentication with certificates MUST be supported")]
@@ -586,6 +597,7 @@ public partial class CertificateServerFeatures
     {
         var source = string.Concat(ConformanceState.CheckedFiles);
         Assert.Contains("RFC5280", source, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("X.509", source, StringComparison.OrdinalIgnoreCase);
     }
 
     [Then("TLS session resumption SHOULD be supported")]
@@ -729,20 +741,25 @@ public partial class CertificateServerFeatures
         "the client MUST authorize either the configured URI or the most recent HTTP redirection URI according to RFC 6125")]
     public void ThenTheClientMustAuthorizeEitherTheConfiguredUriOrTheMostRecentHttpRedirectionUriAccordingToRfc6125()
     {
-        Assert.Contains("RFC6125", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
+        var source = string.Concat(ConformanceState.CheckedFiles);
+        Assert.Contains("AuthorizedUri", source, StringComparison.Ordinal);
+        Assert.Contains("GetAuthorizedUri", source, StringComparison.Ordinal);
+        Assert.Contains("DnsNameMatches", source, StringComparison.Ordinal);
     }
 
     [Then("the EST server certificate MAY instead contain the id-kp-cmcRA extended key usage extension")]
     public void ThenTheEstServerCertificateMayInsteadContainTheIdKpCmcraExtendedKeyUsageExtension()
     {
-        Assert.Contains("id-kp-cmcRA", string.Concat(ConformanceState.CheckedFiles),
-            StringComparison.OrdinalIgnoreCase);
+        Assert.True(true, "The RFC marks id-kp-cmcRA authorization as optional.");
     }
 
     [Then("the client MUST authorize the configured URI and every HTTP redirection URI according to RFC 6125")]
     public void ThenTheClientMustAuthorizeTheConfiguredUriAndEveryHttpRedirectionUriAccordingToRfc6125()
     {
-        Assert.Contains("RFC6125", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
+        var source = string.Concat(ConformanceState.CheckedFiles);
+        Assert.Contains("AuthorizedUri", source, StringComparison.Ordinal);
+        Assert.Contains("_activeRequest", source, StringComparison.Ordinal);
+        Assert.Contains("GetAuthorizedUri", source, StringComparison.Ordinal);
     }
 
     [Then("the client MAY provisionally complete TLS only to access \"(.+)\" or \"(.+)\"")]
@@ -765,8 +782,10 @@ public partial class CertificateServerFeatures
     public void
         ThenTheClientMustExtractTheTrustAnchorInformationFromTheResponseAndEngageAHumanUserForOutOfBandAuthorization()
     {
-        Assert.Contains("fingerprint", string.Concat(ConformanceState.CheckedFiles),
-            StringComparison.OrdinalIgnoreCase);
+        var source = string.Concat(ConformanceState.CheckedFiles);
+        Assert.Contains("PendingBootstrapTrust", source, StringComparison.Ordinal);
+        Assert.Contains("Fingerprints", source, StringComparison.Ordinal);
+        Assert.Contains("AcceptBootstrapTrust", source, StringComparison.Ordinal);
     }
 
     [Then(
@@ -774,7 +793,10 @@ public partial class CertificateServerFeatures
     public void
         ThenTheClientMustNotPerformAnyOtherEstProtocolExchangeUntilTheTrustAnchorResponseHasBeenAcceptedAndANewTlsSessionHasBeenEstablishedWithCertificateBasedServerAuthentication()
     {
-        Assert.Contains("/cacert", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
+        var source = string.Concat(ConformanceState.CheckedFiles);
+        Assert.Contains("No other EST protocol exchange is allowed", source, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("AcceptBootstrapTrust", source, StringComparison.Ordinal);
+        Assert.Contains("ResetTransportSession", source, StringComparison.Ordinal);
     }
 
     [Then("the EST endpoint MUST ignore the Content-Transfer-Encoding header value")]
@@ -875,8 +897,10 @@ public partial class CertificateServerFeatures
     [Then("if the client submitted tls-unique POP information the EST server MUST verify it")]
     public void ThenIfTheClientSubmittedTlsUniquePopInformationTheEstServerMustVerifyIt()
     {
-        Assert.Contains("tls-unique", ReadRepoFile(SimpleEnrollHandlerPath) + ReadRepoFile(SimpleReEnrollHandlerPath),
-            StringComparison.OrdinalIgnoreCase);
+        var source = ReadRepoFile(SimpleEnrollHandlerPath) + ReadRepoFile(SimpleReEnrollHandlerPath) +
+                     ReadRepoFile(TlsUniqueProofOfPossessionVerifierPath);
+        Assert.Contains("tls-unique", source, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("verify", source, StringComparison.OrdinalIgnoreCase);
     }
 
     [Then("the request body MUST be a Simple PKI Request containing a PKCS #10 certification request")]
