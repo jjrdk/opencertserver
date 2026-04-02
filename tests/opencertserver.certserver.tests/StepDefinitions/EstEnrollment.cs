@@ -16,7 +16,9 @@ public partial class CertificateServerFeatures
     [Given(@"an EST client")]
     public void GivenAnEstClient()
     {
-        _estClient = new EstClient(new Uri("https://localhost"), messageHandler: _server.CreateHandler(),
+        _estClient = new EstClient(new Uri("https://localhost"),
+            options: null,
+            messageHandler: _server.CreateHandler(),
             profileName: "rsa");
     }
 

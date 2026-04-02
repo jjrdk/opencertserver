@@ -1,8 +1,10 @@
 ﻿namespace OpenCertServer.Ca.Utils.X509Extensions;
 
+using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
+using OpenCertServer.Ca.Utils.X509;
 
 /// <summary>
 /// Defines extension methods for <see cref="X509Certificate2"/>.
@@ -38,6 +40,39 @@ public static partial class X509CertificatesExtensions
         }
 
         /// <summary>
+        /// Gets the DNS subject alternative names from the certificate.
+        /// </summary>
+        /// <returns>The DNS SAN values.</returns>
+        public IReadOnlyList<string> GetSubjectAlternativeDnsNames()
+        {
+            ArgumentNullException.ThrowIfNull(cert);
+            return GetSubjectAlternativeGeneralNames(cert)
+                .Where(name => name.Type == GeneralName.GeneralNameType.DnsName)
+                .Select(name => name.Value)
+                .OfType<AsnString>()
+                .Select(name => name.Value)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Gets the IP subject alternative names from the certificate.
+        /// </summary>
+        /// <returns>The IP SAN values.</returns>
+        public IReadOnlyList<IPAddress> GetSubjectAlternativeIpAddresses()
+        {
+            ArgumentNullException.ThrowIfNull(cert);
+            return GetSubjectAlternativeGeneralNames(cert)
+                .Where(name => name.Type == GeneralName.GeneralNameType.IpAddress)
+                .Select(name => name.Value)
+                .OfType<AsnOctetString>()
+                .Select(name => name.Value)
+                .Where(value => value.Length is 4 or 16)
+                .Select(value => new IPAddress(value))
+                .ToArray();
+        }
+
+        /// <summary>
         /// Converts the certificate and its issuers to a PEM chain.
         /// </summary>
         /// <param name="issuers">The certificate issuers.</param>
@@ -59,9 +94,16 @@ public static partial class X509CertificatesExtensions
         }
     }
 
-    [GeneratedRegex(@"^DNS Name=(.+)", RegexOptions.Compiled | RegexOptions.CultureInvariant)]
     /// <summary>
     /// Executes the DnsNameRegex operation.
     /// </summary>
+    [GeneratedRegex(@"^DNS Name=(.+)", RegexOptions.Compiled | RegexOptions.CultureInvariant)]
     private static partial Regex DnsNameRegex();
+
+    private static IEnumerable<GeneralName> GetSubjectAlternativeGeneralNames(X509Certificate2 cert)
+    {
+        return cert.Extensions
+            .Where(ext => ext.Oid?.Value == SubjectAlternateNameOid)
+            .SelectMany(ext => new GeneralNames(ext.RawData).Names);
+    }
 }

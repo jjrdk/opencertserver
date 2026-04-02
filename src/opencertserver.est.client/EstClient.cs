@@ -2,6 +2,8 @@
 
 using System;
 using System.Formats.Asn1;
+using System.Globalization;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -12,6 +14,7 @@ using System.Threading.Tasks;
 using Ca.Utils;
 using OpenCertServer.Ca.Utils.Pkcs7;
 using OpenCertServer.Ca.Utils.X509.Templates;
+using OpenCertServer.Ca.Utils.X509Extensions;
 
 /// <summary>
 /// Defines an EST client for enrolling and re-enrolling certificates.
@@ -27,10 +30,15 @@ public sealed class EstClient : IDisposable
     /// Initializes a new instance of the <see cref="EstClient"/> class.
     /// </summary>
     /// <param name="estHost">The <see cref="Uri"/> of the EST server.</param>
+    /// <param name="options">The client options.</param>
     /// <param name="profileName">The optional profile name to use for the EST server.</param>
     /// <param name="messageHandler">The optional <see cref="HttpMessageHandler"/> for handling server requests.</param>
     /// <exception cref="ArgumentException">Thrown if the <see cref="Uri"/> scheme of the server is not HTTPS.</exception>
-    public EstClient(Uri estHost, string? profileName = null, HttpMessageHandler? messageHandler = null)
+    public EstClient(
+        Uri estHost,
+        EstClientOptions? options,
+        string? profileName = null,
+        HttpMessageHandler? messageHandler = null)
     {
         if (estHost.Scheme != Uri.UriSchemeHttps)
         {
@@ -41,6 +49,7 @@ public sealed class EstClient : IDisposable
         _profileName = profileName;
         _messageHandler = messageHandler ?? new SocketsHttpHandler();
         _messageClient = new HttpClient(_messageHandler);
+        ConfigureServerCertificateValidation(_messageHandler, options ?? new EstClientOptions());
     }
 
     /// <summary>
@@ -105,10 +114,11 @@ public sealed class EstClient : IDisposable
         var bytes = Convert.FromBase64String(b64);
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var contentInfo = new CmsContentInfo(reader);
-        if(contentInfo.ContentType.Value != Oids.Pkcs7Signed)
+        if (contentInfo.ContentType.Value != Oids.Pkcs7Signed)
         {
             throw new InvalidOperationException("Expected signed data from server");
         }
+
         reader = new AsnReader(contentInfo.EncodedContent, AsnEncodingRules.DER);
         var signedData = new SignedData(reader);
         return new X509Certificate2Collection(signedData.Certificates ?? []);
@@ -147,6 +157,139 @@ public sealed class EstClient : IDisposable
         var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
         return new CertificateSigningRequestTemplate(new AsnReader(bytes, AsnEncodingRules.DER,
             new AsnReaderOptions { SkipSetSortOrderVerification = true }));
+    }
+
+    private void ConfigureServerCertificateValidation(HttpMessageHandler handler, EstClientOptions options)
+    {
+        switch (handler)
+        {
+            case SocketsHttpHandler sockets:
+                sockets.SslOptions.RemoteCertificateValidationCallback =
+                    (_, cert, chain, _) =>
+                        ValidateServerCertificate(cert as X509Certificate2, chain, options);
+                return;
+            case HttpClientHandler httpClientHandler:
+                httpClientHandler.ServerCertificateCustomValidationCallback =
+                    (_, certificate, chain, _) =>
+                        ValidateServerCertificate(certificate, chain, options);
+                break;
+        }
+    }
+
+    private bool ValidateServerCertificate(
+        X509Certificate2? certificate,
+        X509Chain? _,
+        EstClientOptions options)
+    {
+        if (certificate == null)
+        {
+            return false;
+        }
+
+        return options.TrustAnchorMode switch
+        {
+            EstTrustAnchorMode.ExplicitOnly => ExplicitTrustAuthorization(),
+            EstTrustAnchorMode.ImplicitOnly => ImplicitTrustAuthorization(),
+            EstTrustAnchorMode.ExplicitThenImplicit => ExplicitTrustAuthorization() || ImplicitTrustAuthorization(),
+            _ => throw new InvalidOperationException($"Unsupported trust anchor mode: {options.TrustAnchorMode}")
+        };
+
+        bool ExplicitTrustAuthorization()
+        {
+            if (options.ExplicitTrustAnchors.Count > 0 &&
+                BuildChainWithExplicitTrustAnchors(certificate, options))
+            {
+                return AuthorizeServerIdentity(certificate, options.AuthorizedUri ?? _estHost);
+            }
+
+            return false;
+        }
+
+        bool ImplicitTrustAuthorization()
+        {
+            using var chain = new X509Chain();
+            chain.ChainPolicy.RevocationMode = options.RevocationMode;
+            chain.ChainPolicy.RevocationFlag = options.RevocationFlag;
+
+            return chain.Build(certificate)
+             && AuthorizeServerIdentity(certificate, options.AuthorizedUri ?? _estHost);
+        }
+    }
+
+    private bool BuildChainWithExplicitTrustAnchors(X509Certificate2 certificate, EstClientOptions options)
+    {
+        using var chain = new X509Chain();
+        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+        chain.ChainPolicy.CustomTrustStore.Clear();
+
+        foreach (var anchor in options.ExplicitTrustAnchors)
+        {
+            chain.ChainPolicy.CustomTrustStore.Add(anchor);
+        }
+
+        chain.ChainPolicy.RevocationMode = options.RevocationMode;
+        chain.ChainPolicy.RevocationFlag = options.RevocationFlag;
+        chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
+
+        return chain.Build(certificate);
+    }
+
+    private static bool AuthorizeServerIdentity(X509Certificate2 certificate, Uri uri)
+    {
+        var host = uri.IdnHost;
+
+        if (Uri.CheckHostName(host) == UriHostNameType.IPv4 ||
+            Uri.CheckHostName(host) == UriHostNameType.IPv6)
+        {
+            return IPAddress.TryParse(host, out var expectedIp) &&
+                   certificate.GetSubjectAlternativeIpAddresses().Any(ip => ip.Equals(expectedIp));
+        }
+
+        var sanDnsNames = certificate.GetSubjectAlternativeDnsNames();
+        if (sanDnsNames.Count > 0)
+        {
+            return sanDnsNames.Any(name => DnsNameMatches(host, name));
+        }
+
+        var commonName = certificate.GetNameInfo(X509NameType.DnsName, false);
+        return !string.IsNullOrWhiteSpace(commonName) && DnsNameMatches(host, commonName);
+    }
+
+    private static bool DnsNameMatches(string host, string pattern)
+    {
+        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(pattern))
+        {
+            return false;
+        }
+
+        host = NormalizeDnsName(host);
+        pattern = NormalizeDnsName(pattern);
+
+        if (string.Equals(host, pattern, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!pattern.StartsWith("*.", StringComparison.Ordinal) || pattern.IndexOf('*', 1) >= 0)
+        {
+            return false;
+        }
+
+        var suffix = pattern[1..];
+        if (!host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var prefix = host[..^suffix.Length];
+        return prefix.Length > 0 && prefix.IndexOf('.') < 0;
+    }
+
+    private static string NormalizeDnsName(string value)
+    {
+        var normalized = value.Trim().TrimEnd('.');
+        var idn = new IdnMapping();
+        return idn.GetAscii(normalized).ToLowerInvariant();
     }
 
     private async Task<(string?, X509Certificate2Collection?)> RequestReEnrollCerts(
@@ -200,10 +343,11 @@ public sealed class EstClient : IDisposable
         var reader = new AsnReader(bytes, AsnEncodingRules.DER,
             new AsnReaderOptions { SkipSetSortOrderVerification = true });
         var contentInfo = new CmsContentInfo(reader);
-        if(contentInfo.ContentType.Value != Oids.Pkcs7Signed)
+        if (contentInfo.ContentType.Value != Oids.Pkcs7Signed)
         {
             throw new InvalidOperationException("Expected signed data from server");
         }
+
         reader = new AsnReader(contentInfo.EncodedContent, AsnEncodingRules.DER);
         var signedData = new SignedData(reader);
         return (null, new X509Certificate2Collection(signedData.Certificates ?? []));
@@ -269,10 +413,11 @@ public sealed class EstClient : IDisposable
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var contentInfo = new CmsContentInfo(reader);
-        if(contentInfo.ContentType.Value != Oids.Pkcs7Signed)
+        if (contentInfo.ContentType.Value != Oids.Pkcs7Signed)
         {
             throw new InvalidOperationException("Expected signed data from server");
         }
+
         reader = new AsnReader(contentInfo.EncodedContent, AsnEncodingRules.DER);
         var signedData = new SignedData(reader);
         return (null, new X509Certificate2Collection(signedData.Certificates ?? []));

@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -29,6 +32,34 @@ internal static partial class Program
         {
             Description = "Existing certificate to re-enroll (PEM or DER)"
         };
+        var estCaOptions = new Option<IList<string>>("--est-ca")
+        {
+            Description =
+                "Path to an EST CA certificate to trust explicitly (can specify multiple times for multiple CAs)",
+            AllowMultipleArgumentsPerToken = true
+        };
+        var taModeOption = new Option<EstTrustAnchorMode>("--ta-mode")
+        {
+            Description = "Trust anchor mode: implicit, explicit, or explicit-then-implicit (default: implicit)",
+            CustomParser = r =>
+            {
+                if (r.Tokens.Where(token => token.Type == TokenType.Argument).Select(token => token.Value)
+                        .FirstOrDefault() is { } value)
+                {
+                    return value.ToLower() switch
+                    {
+                        "implicit" => EstTrustAnchorMode.ImplicitOnly,
+                        "explicit" => EstTrustAnchorMode.ExplicitOnly,
+                        "explicit-then-implicit" => EstTrustAnchorMode.ExplicitThenImplicit,
+                        _ => throw new ArgumentException(
+                            "Invalid trust anchor mode. Valid values are: implicit, explicit, explicit-then-implicit.")
+                    };
+                }
+
+                return EstTrustAnchorMode.ImplicitOnly;
+            }
+        };
+
         var outOption = new Option<string>("--out")
         {
             DefaultValueFactory = _ => "reenrolled.pem",
@@ -41,6 +72,8 @@ internal static partial class Program
             privateKeyOption,
             profileOption,
             certificateOption,
+            taModeOption,
+            estCaOptions,
             outOption
         };
         cmd.SetAction(ReEnroll);
@@ -73,6 +106,9 @@ internal static partial class Program
                 return;
             }
 
+            var taMode = parse.GetValue(taModeOption);
+            var estCaPaths = parse.GetValue(estCaOptions) ?? [];
+
             var outPath = parse.GetValue(outOption);
             if (string.IsNullOrWhiteSpace(outPath))
             {
@@ -104,8 +140,19 @@ internal static partial class Program
                     }
                 }
 
+                var options = new EstClientOptions
+                {
+                    AuthorizedUri = baseUri,
+                    TrustAnchorMode = taMode
+                };
+
+                foreach (var path in estCaPaths)
+                {
+                    options.ExplicitTrustAnchors.Add(X509CertificateLoader.LoadCertificateFromFile(path));
+                }
+
                 using var estClient =
-                    new EstClient(baseUri, messageHandler: MessageHandlerFactory(), profileName: profile);
+                    new EstClient(baseUri, options, messageHandler: MessageHandlerFactory(), profileName: profile);
                 var (errors, collection) = await estClient.ReEnroll(key, currentCert).ConfigureAwait(false);
 
                 if (errors != null)

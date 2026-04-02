@@ -27,28 +27,6 @@ The skipped scenarios are the conditional/optional cases that are not implemente
 
 ## Failing tests and current non-conformance
 
-### 1. EST routing and CA certificate distribution
-
-**Failing scenarios**
-- `RFC 7030 Section 3.2.2 requires the well-known EST path prefix and mandatory operation paths`
-- `RFC 7030 Section 3.2.2 allows an additional CA label without shadowing registered operation paths`
-- `RFC 7030 Sections 4.1.2 and 4.1.3 define the /cacerts exchange`
-- `RFC 7030 Section 4.1.3 requires the current EST trust anchor chain in the /cacerts response`
-
-**Current non-conformance**
-- The server maps `/cacert` and `/{profileName}/cacert` instead of RFC 7030 `/cacerts` and `/{label}/cacerts`.
-- `src/opencertserver.est.server/Handlers/CaCertHandler.cs` returns PEM text while advertising `application/pkcs7-mime`.
-- The handler does not emit a certs-only CMC Simple PKI Response.
-- The RFC 8951 base64 body requirement is not met for CA certificate distribution.
-
-**Suggested fix**
-- Rename the route in `src/opencertserver.est.server/EstServerExtensions.cs` from `/cacert` to `/cacerts`.
-- Update `src/opencertserver.est.client/EstClient.cs` to request `/cacerts`.
-- Replace the PEM text response in `src/opencertserver.est.server/Handlers/CaCertHandler.cs` with a certs-only CMC Simple PKI Response.
-- Base64-encode the DER payload per RFC 8951 and ignore `Content-Transfer-Encoding` on input.
-
----
-
 ### 2. TLS, trust-anchor, authorization, redirect, and POP linkage requirements
 
 **Failing scenarios**

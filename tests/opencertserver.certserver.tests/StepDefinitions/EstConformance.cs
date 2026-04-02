@@ -22,11 +22,19 @@ public partial class CertificateServerFeatures
     private const string SimpleReEnrollHandlerPath = "src/opencertserver.est.server/Handlers/SimpleReEnrollHandler.cs";
     private const string ServerKeyGenHandlerPath = "src/opencertserver.est.server/Handlers/ServerKeyGenHandler.cs";
     private const string CsrAttributesHandlerPath = "src/opencertserver.est.server/Handlers/CsrAttributesHandler.cs";
-    private const string CsrTemplateResultPath = "src/opencertserver.est.server/Handlers/CertificateSigningRequestTemplateResult.cs";
+
+    private const string CsrTemplateResultPath =
+        "src/opencertserver.est.server/Handlers/CertificateSigningRequestTemplateResult.cs";
+
     private const string EstClientPath = "src/opencertserver.est.client/EstClient.cs";
     private const string ProgramPath = "src/opencertserver.certserver/Program.cs";
-    private const string CertAuthOptionsPath = "src/opencertserver.certserver/ConfigureCertificateAuthenticationOptions.cs";
-    private const string CertificateRequestTemplatePath = "src/opencertserver.ca.utils/X509/Templates/CertificateSigningRequestTemplate.cs";
+
+    private const string CertAuthOptionsPath =
+        "src/opencertserver.certserver/ConfigureCertificateAuthenticationOptions.cs";
+
+    private const string CertificateRequestTemplatePath =
+        "src/opencertserver.ca.utils/X509/Templates/CertificateSigningRequestTemplate.cs";
+
     private const string EncodingExtensionsPath = "src/opencertserver.ca.utils/EncodingExtensions.cs";
     private const string ExtensionReqOid = "1.2.840.113549.1.9.14";
     private const string ExtensionReqTemplateOid = "1.2.840.113549.1.9.62";
@@ -35,7 +43,8 @@ public partial class CertificateServerFeatures
     {
         get
         {
-            if (_scenarioContext.TryGetValue(nameof(EstConformanceState), out var value) && value is EstConformanceState state)
+            if (_scenarioContext.TryGetValue(nameof(EstConformanceState), out var value) &&
+                value is EstConformanceState state)
             {
                 return state;
             }
@@ -66,7 +75,8 @@ public partial class CertificateServerFeatures
     public void GivenTheEstServerIsConfiguredWithAnAdditionalCaLabel()
     {
         ConformanceState.ProfileName = "rsa";
-        _estClient = new EstClient(new Uri("https://localhost"), messageHandler: _server.CreateHandler(), profileName: "rsa");
+        _estClient = new EstClient(new Uri("https://localhost"), null, messageHandler: _server.CreateHandler(),
+            profileName: "rsa");
     }
 
     [Given("the EST client has neither an Explicit nor an Implicit trust anchor database for the EST server")]
@@ -79,7 +89,8 @@ public partial class CertificateServerFeatures
     {
         ConformanceState.Operation = operation;
         var implemented = SupportsOperation(operation);
-        Assert.SkipUnless(implemented, $"Optional EST operation '{operation}' is not implemented in the current server.");
+        Assert.SkipUnless(implemented,
+            $"Optional EST operation '{operation}' is not implemented in the current server.");
     }
 
     [When("the client requests the EST operation path \"(.+)\"")]
@@ -114,8 +125,9 @@ public partial class CertificateServerFeatures
     {
         var source = ReadRepoFile(ProgramPath) + ReadRepoFile(EstExtensionsPath);
         var supported = source.Contains("SRP", StringComparison.OrdinalIgnoreCase) ||
-                        source.Contains("zero knowledge", StringComparison.OrdinalIgnoreCase);
-        Assert.SkipUnless(supported, "Certificate-less TLS mutual authentication is not implemented in the current server.");
+            source.Contains("zero knowledge", StringComparison.OrdinalIgnoreCase);
+        Assert.SkipUnless(supported,
+            "Certificate-less TLS mutual authentication is not implemented in the current server.");
         ConformanceState.CheckedFiles = [source];
     }
 
@@ -167,19 +179,22 @@ public partial class CertificateServerFeatures
     }
 
     [When("the EST endpoint \"(.+)\" receives a base64-encoded DER body with any Content-Transfer-Encoding header")]
-    public async Task WhenTheEstEndpointReceivesABase64EncodedDerBodyWithAnyContentTransferEncodingHeader(string operation)
+    public async Task WhenTheEstEndpointReceivesABase64EncodedDerBodyWithAnyContentTransferEncodingHeader(
+        string operation)
     {
         ConformanceState.Operation = operation;
         if (string.Equals(operation, "/csrattrs", StringComparison.Ordinal))
         {
             TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
                 Task.FromResult(new CertificateSigningRequestTemplate(subject: null, subjectPkInfo: null)));
-            await SendRequestAsync(HttpMethod.Get, BuildOperationPath(operation), authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            await SendRequestAsync(HttpMethod.Get, BuildOperationPath(operation),
+                authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
             return;
         }
 
         var base64Body = CreateBase64DerCsr();
-        var content = new StringContent(base64Body, Encoding.ASCII, operation == "/fullcmc" ? "application/pkcs7-mime" : "application/pkcs10");
+        var content = new StringContent(base64Body, Encoding.ASCII,
+            operation == "/fullcmc" ? "application/pkcs7-mime" : "application/pkcs10");
         content.Headers.Add("Content-Transfer-Encoding", "quoted-printable");
         await SendRequestAsync(HttpMethod.Post, BuildOperationPath(operation), content,
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
@@ -217,8 +232,10 @@ public partial class CertificateServerFeatures
     [When("the EST server supports root CA key rollover")]
     public void WhenTheEstServerSupportsRootCaKeyRollover()
     {
-        var response = _server.Services.GetRequiredService<Func<string?, CancellationToken, Task<X509Certificate2Collection>>>()(null, CancellationToken.None)
-            .GetAwaiter().GetResult();
+        var response =
+            _server.Services.GetRequiredService<Func<string?, CancellationToken, Task<X509Certificate2Collection>>>()(
+                    null, CancellationToken.None)
+                .GetAwaiter().GetResult();
         Assert.SkipUnless(response.Count > 1, "The current test CA is not configured for root key rollover.");
     }
 
@@ -246,7 +263,8 @@ public partial class CertificateServerFeatures
     public void WhenTheCsrKeyUsageExtensionAllowsDigitalSignatures()
     {
         using var rsa = RSA.Create();
-        ConformanceState.GeneratedCertificateRequest = CreateClientCertificateRequest(new X500DistinguishedName("CN=test"), rsa,
+        ConformanceState.GeneratedCertificateRequest = CreateClientCertificateRequest(
+            new X500DistinguishedName("CN=test"), rsa,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment);
         ConformanceState.GeneratedRequestBytes = ConformanceState.GeneratedCertificateRequest.CreateSigningRequest();
         ConformanceState.GeneratedPublicKey = rsa.ExportSubjectPublicKeyInfo();
@@ -256,7 +274,8 @@ public partial class CertificateServerFeatures
     public void WhenTheCsrKeyUsageExtensionProhibitsDigitalSignaturesButThePrivateKeyCanCreateSignatures()
     {
         using var rsa = RSA.Create();
-        ConformanceState.GeneratedCertificateRequest = CreateClientCertificateRequest(new X500DistinguishedName("CN=test"), rsa,
+        ConformanceState.GeneratedCertificateRequest = CreateClientCertificateRequest(
+            new X500DistinguishedName("CN=test"), rsa,
             X509KeyUsageFlags.KeyEncipherment);
         ConformanceState.GeneratedRequestBytes = ConformanceState.GeneratedCertificateRequest.CreateSigningRequest();
         ConformanceState.GeneratedPublicKey = rsa.ExportSubjectPublicKeyInfo();
@@ -359,8 +378,11 @@ public partial class CertificateServerFeatures
         await WhenTheClientPostsAServerSideKeyGenerationRequest();
     }
 
-    [When("the client requests (.+) protection for the returned private key and the indicated protection key is unavailable or unusable")]
-    public async Task WhenTheClientRequestsProtectionForTheReturnedPrivateKeyAndTheIndicatedProtectionKeyIsUnavailableOrUnusable(string protection)
+    [When(
+        "the client requests (.+) protection for the returned private key and the indicated protection key is unavailable or unusable")]
+    public async Task
+        WhenTheClientRequestsProtectionForTheReturnedPrivateKeyAndTheIndicatedProtectionKeyIsUnavailableOrUnusable(
+        string protection)
     {
         await WhenTheClientPostsAServerSideKeyGenerationRequest();
     }
@@ -432,7 +454,7 @@ public partial class CertificateServerFeatures
                 Headers = { ContentType = new MediaTypeHeaderValue("application/csrattrs") }
             }
         }));
-        using var client = new EstClient(new Uri("https://localhost"), messageHandler: handler);
+        using var client = new EstClient(new Uri("https://localhost"), options: null, messageHandler: handler);
         ConformanceState.CsrAttributesException = await Record.ExceptionAsync(() => client.GetCsrAttributes(null));
     }
 
@@ -525,7 +547,8 @@ public partial class CertificateServerFeatures
     {
         var label = ConformanceState.ProfileName;
         Assert.NotNull(label);
-        Assert.DoesNotContain(label, new[] { "cacerts", "simpleenroll", "simplereenroll", "fullcmc", "serverkeygen", "csrattrs" });
+        Assert.DoesNotContain(label,
+            new[] { "cacerts", "simpleenroll", "simplereenroll", "fullcmc", "serverkeygen", "csrattrs" });
     }
 
     [Then("the EST server MUST provide service both with and without the additional CA label")]
@@ -540,7 +563,8 @@ public partial class CertificateServerFeatures
     [Then("HTTPS MUST be used for EST communication")]
     public void ThenHttpsMustBeUsedForEstCommunication()
     {
-        Assert.Throws<ArgumentException>(() => new EstClient(new Uri("http://localhost"), messageHandler: _server.CreateHandler()));
+        Assert.Throws<ArgumentException>(() =>
+            new EstClient(new Uri("http://localhost"), options: null, messageHandler: _server.CreateHandler()));
     }
 
     [Then(@"TLS 1\.1 or a later version MUST be used for EST communication")]
@@ -622,13 +646,15 @@ public partial class CertificateServerFeatures
     [Then("TLS cipher suites containing \"_EXPORT_\" MUST NOT be used")]
     public void ThenTlsCipherSuitesContainingExportMustNotBeUsed()
     {
-        Assert.DoesNotContain("_EXPORT_", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("_EXPORT_", string.Concat(ConformanceState.CheckedFiles),
+            StringComparison.OrdinalIgnoreCase);
     }
 
     [Then("TLS cipher suites containing \"_DES_\" MUST NOT be used")]
     public void ThenTlsCipherSuitesContainingDesMustNotBeUsed()
     {
-        Assert.DoesNotContain("_DES_", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("_DES_", string.Concat(ConformanceState.CheckedFiles),
+            StringComparison.OrdinalIgnoreCase);
     }
 
     [Then("the EST server MUST verify the tls-unique value")]
@@ -645,13 +671,17 @@ public partial class CertificateServerFeatures
         Assert.Contains(failInfo, string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
     }
 
-    [Then("if a human-readable reject message is returned it SHOULD explain that linking identity and proof-of-possession is required")]
-    public void ThenIfAHumanReadableRejectMessageIsReturnedItShouldExplainThatLinkingIdentityAndProofOfPossessionIsRequired()
+    [Then(
+        "if a human-readable reject message is returned it SHOULD explain that linking identity and proof-of-possession is required")]
+    public void
+        ThenIfAHumanReadableRejectMessageIsReturnedItShouldExplainThatLinkingIdentityAndProofOfPossessionIsRequired()
     {
-        Assert.Contains("proof-of-possession", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("proof-of-possession", string.Concat(ConformanceState.CheckedFiles),
+            StringComparison.OrdinalIgnoreCase);
     }
 
-    [Then("the client SHOULD follow same-origin redirects without user input after enforcing the initial security checks")]
+    [Then(
+        "the client SHOULD follow same-origin redirects without user input after enforcing the initial security checks")]
     public void ThenTheClientShouldFollowSameOriginRedirectsWithoutUserInputAfterEnforcingTheInitialSecurityChecks()
     {
         Assert.Contains("redirect", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
@@ -684,16 +714,19 @@ public partial class CertificateServerFeatures
     [Then("the client MUST check EST server authorization before accepting the response")]
     public void ThenTheClientMustCheckEstServerAuthorizationBeforeAcceptingTheResponse()
     {
-        Assert.Contains("authorization", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("authorization", string.Concat(ConformanceState.CheckedFiles),
+            StringComparison.OrdinalIgnoreCase);
     }
 
     [Then("the client MUST check EST server authorization before responding to an HTTP authentication challenge")]
     public void ThenTheClientMustCheckEstServerAuthorizationBeforeRespondingToAnHttpAuthenticationChallenge()
     {
-        Assert.Contains("authorization", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("authorization", string.Concat(ConformanceState.CheckedFiles),
+            StringComparison.OrdinalIgnoreCase);
     }
 
-    [Then("the client MUST authorize either the configured URI or the most recent HTTP redirection URI according to RFC 6125")]
+    [Then(
+        "the client MUST authorize either the configured URI or the most recent HTTP redirection URI according to RFC 6125")]
     public void ThenTheClientMustAuthorizeEitherTheConfiguredUriOrTheMostRecentHttpRedirectionUriAccordingToRfc6125()
     {
         Assert.Contains("RFC6125", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
@@ -702,7 +735,8 @@ public partial class CertificateServerFeatures
     [Then("the EST server certificate MAY instead contain the id-kp-cmcRA extended key usage extension")]
     public void ThenTheEstServerCertificateMayInsteadContainTheIdKpCmcraExtendedKeyUsageExtension()
     {
-        Assert.Contains("id-kp-cmcRA", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("id-kp-cmcRA", string.Concat(ConformanceState.CheckedFiles),
+            StringComparison.OrdinalIgnoreCase);
     }
 
     [Then("the client MUST authorize the configured URI and every HTTP redirection URI according to RFC 6125")]
@@ -722,17 +756,23 @@ public partial class CertificateServerFeatures
     [Then("the client MUST NOT answer HTTP authentication challenges on the unauthenticated connection")]
     public void ThenTheClientMustNotAnswerHttpAuthenticationChallengesOnTheUnauthenticatedConnection()
     {
-        Assert.DoesNotContain("WWW-Authenticate", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("WWW-Authenticate", string.Concat(ConformanceState.CheckedFiles),
+            StringComparison.OrdinalIgnoreCase);
     }
 
-    [Then("the client MUST extract the trust anchor information from the response and engage a human user for out-of-band authorization")]
-    public void ThenTheClientMustExtractTheTrustAnchorInformationFromTheResponseAndEngageAHumanUserForOutOfBandAuthorization()
+    [Then(
+        "the client MUST extract the trust anchor information from the response and engage a human user for out-of-band authorization")]
+    public void
+        ThenTheClientMustExtractTheTrustAnchorInformationFromTheResponseAndEngageAHumanUserForOutOfBandAuthorization()
     {
-        Assert.Contains("fingerprint", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("fingerprint", string.Concat(ConformanceState.CheckedFiles),
+            StringComparison.OrdinalIgnoreCase);
     }
 
-    [Then("the client MUST NOT perform any other EST protocol exchange until the trust anchor response has been accepted and a new TLS session has been established with certificate-based server authentication")]
-    public void ThenTheClientMustNotPerformAnyOtherEstProtocolExchangeUntilTheTrustAnchorResponseHasBeenAcceptedAndANewTlsSessionHasBeenEstablishedWithCertificateBasedServerAuthentication()
+    [Then(
+        "the client MUST NOT perform any other EST protocol exchange until the trust anchor response has been accepted and a new TLS session has been established with certificate-based server authentication")]
+    public void
+        ThenTheClientMustNotPerformAnyOtherEstProtocolExchangeUntilTheTrustAnchorResponseHasBeenAcceptedAndANewTlsSessionHasBeenEstablishedWithCertificateBasedServerAuthentication()
     {
         Assert.Contains("/cacert", string.Concat(ConformanceState.CheckedFiles), StringComparison.OrdinalIgnoreCase);
     }
@@ -754,14 +794,18 @@ public partial class CertificateServerFeatures
     [Then("the EST receiver SHOULD tolerate the whitespace while decoding the body")]
     public void ThenTheEstReceiverShouldTolerateTheWhitespaceWhileDecodingTheBody()
     {
-        Assert.Contains("Replace(\"\\n\", \"\")", string.Concat(ConformanceState.CheckedFiles), StringComparison.Ordinal);
-        Assert.Contains("Replace(\"\\r\", \"\")", string.Concat(ConformanceState.CheckedFiles), StringComparison.Ordinal);
+        Assert.Contains("Replace(\"\\n\", \"\")", string.Concat(ConformanceState.CheckedFiles),
+            StringComparison.Ordinal);
+        Assert.Contains("Replace(\"\\r\", \"\")", string.Concat(ConformanceState.CheckedFiles),
+            StringComparison.Ordinal);
     }
 
     [Then("the EST server SHOULD NOT require client authentication or authorization")]
     public void ThenTheEstServerShouldNotRequireClientAuthenticationOrAuthorization()
     {
-        Assert.True(ConformanceState.Response is { StatusCode: not HttpStatusCode.Unauthorized and not HttpStatusCode.Forbidden },
+        Assert.True(
+            ConformanceState.Response is
+                { StatusCode: not HttpStatusCode.Unauthorized and not HttpStatusCode.Forbidden },
             $"Expected the endpoint to allow anonymous access, but it returned {(int?)ConformanceState.Response?.StatusCode}.");
     }
 
@@ -799,7 +843,8 @@ public partial class CertificateServerFeatures
         Assert.True(ConformanceState.ResponseBytes!.Length > 0, "No CA certificate response payload was returned.");
     }
 
-    [Then("every additional certificate needed to build a chain from an EST CA-issued certificate to the current EST CA trust anchor MUST be included in the response")]
+    [Then(
+        "every additional certificate needed to build a chain from an EST CA-issued certificate to the current EST CA trust anchor MUST be included in the response")]
     public void ThenEveryAdditionalCertificateNeededToBuildAChainMustBeIncludedInTheResponse()
     {
         Assert.True(ConformanceState.ResponseBytes is { Length: > 0 }, "No CA chain was returned.");
@@ -879,7 +924,8 @@ public partial class CertificateServerFeatures
     public void ThenTheResponseMustUseAnHttp4XxOr5XxStatusCode()
     {
         Assert.NotNull(ConformanceState.Response);
-        Assert.True((int)ConformanceState.Response!.StatusCode >= 400, $"Expected an error response but got {(int)ConformanceState.Response.StatusCode}.");
+        Assert.True((int)ConformanceState.Response!.StatusCode >= 400,
+            $"Expected an error response but got {(int)ConformanceState.Response.StatusCode}.");
     }
 
     [Then("the response MAY include an \"application/pkcs7-mime\" error body")]
@@ -897,14 +943,16 @@ public partial class CertificateServerFeatures
         }
 
         var text = GetResponseText();
-        Assert.False(string.IsNullOrWhiteSpace(text), "Expected a plaintext error body when the content type is not set.");
+        Assert.False(string.IsNullOrWhiteSpace(text),
+            "Expected a plaintext error body when the content type is not set.");
     }
 
     [Then("the server MAY use the \"text/plain\" content type for the human-readable error")]
     public void ThenTheServerMayUseTheTextPlainContentTypeForTheHumanReadableError()
     {
         Assert.True(ConformanceState.Response?.Content.Headers.ContentType == null ||
-                    string.Equals(ConformanceState.Response.Content.Headers.ContentType?.MediaType, "text/plain", StringComparison.OrdinalIgnoreCase));
+            string.Equals(ConformanceState.Response.Content.Headers.ContentType?.MediaType, "text/plain",
+                StringComparison.OrdinalIgnoreCase));
     }
 
     [Then("the response MUST include a Retry-After header")]
@@ -935,8 +983,10 @@ public partial class CertificateServerFeatures
         Assert.Equal(cert.SubjectName.Name, csr.SubjectName.Name);
     }
 
-    [Then("the certification request SubjectAltName extension MUST be identical to the current certificate SubjectAltName extension")]
-    public async Task ThenTheCertificationRequestSubjectAltNameExtensionMustBeIdenticalToTheCurrentCertificateSubjectAltNameExtension()
+    [Then(
+        "the certification request SubjectAltName extension MUST be identical to the current certificate SubjectAltName extension")]
+    public async Task
+        ThenTheCertificationRequestSubjectAltNameExtensionMustBeIdenticalToTheCurrentCertificateSubjectAltNameExtension()
     {
         var cert = await EnsureIssuedCertificateAsync();
         var body = await ConformanceState.CapturedRequest!.Content!.ReadAsStringAsync();
@@ -965,7 +1015,8 @@ public partial class CertificateServerFeatures
     public void ThenTheEstServerMustTreatTheRequestAsCertificateRekeying()
     {
         Assert.NotNull(ConformanceState.ReenrolledCertificates);
-        Assert.Equal(ConformanceState.GeneratedPublicKey, ConformanceState.ReenrolledCertificates![0].PublicKey.ExportSubjectPublicKeyInfo());
+        Assert.Equal(ConformanceState.GeneratedPublicKey,
+            ConformanceState.ReenrolledCertificates![0].PublicKey.ExportSubjectPublicKeyInfo());
     }
 
     [Then("the EST server MUST reject the message")]
@@ -978,18 +1029,23 @@ public partial class CertificateServerFeatures
     [Then("the request content type MUST be \"application/pkcs7-mime\" with the smime-type parameter \"(.+)\"")]
     public void ThenTheRequestContentTypeMustBeApplicationPkcs7MimeWithTheSmimeTypeParameter(string smimeType)
     {
-        Assert.Equal("application/pkcs7-mime", ConformanceState.Response?.RequestMessage?.Content?.Headers.ContentType?.MediaType);
+        Assert.Equal("application/pkcs7-mime",
+            ConformanceState.Response?.RequestMessage?.Content?.Headers.ContentType?.MediaType);
         Assert.Equal(smimeType, ConformanceState.Response?.RequestMessage?.Content?.Headers.ContentType?.Parameters
             .FirstOrDefault(x => x.Name.Equals("smime-type", StringComparison.OrdinalIgnoreCase))?.Value?.Trim('"'));
     }
 
-    [Then("the response MUST contain either a certs-only Simple PKI Response or a Full PKI Response with smime-type \"(.+)\"")]
-    public void ThenTheResponseMustContainEitherACertsOnlySimplePkiResponseOrAFullPkiResponseWithSmimeType(string smimeType)
+    [Then(
+        "the response MUST contain either a certs-only Simple PKI Response or a Full PKI Response with smime-type \"(.+)\"")]
+    public void ThenTheResponseMustContainEitherACertsOnlySimplePkiResponseOrAFullPkiResponseWithSmimeType(
+        string smimeType)
     {
         Assert.NotNull(ConformanceState.Response);
         Assert.True(ConformanceState.SignedData != null ||
-                    string.Equals(ConformanceState.Response.Content.Headers.ContentType?.Parameters
-                        .FirstOrDefault(x => x.Name.Equals("smime-type", StringComparison.OrdinalIgnoreCase))?.Value?.Trim('"'), smimeType, StringComparison.OrdinalIgnoreCase),
+            string.Equals(ConformanceState.Response.Content.Headers.ContentType?.Parameters
+                    .FirstOrDefault(x => x.Name.Equals("smime-type", StringComparison.OrdinalIgnoreCase))?.Value
+                    ?.Trim('"'),
+                smimeType, StringComparison.OrdinalIgnoreCase),
             "Expected a certs-only or CMC-response payload.");
     }
 
@@ -1005,8 +1061,10 @@ public partial class CertificateServerFeatures
         Assert.DoesNotContain("NULL", ReadRepoFile(ServerKeyGenHandlerPath), StringComparison.OrdinalIgnoreCase);
     }
 
-    [Then("the TLS cipher suite used to return the private key and certificate MUST offer confidentiality commensurate with the private key being delivered")]
-    public void ThenTheTlsCipherSuiteUsedToReturnThePrivateKeyAndCertificateMustOfferConfidentialityCommensurateWithThePrivateKeyBeingDelivered()
+    [Then(
+        "the TLS cipher suite used to return the private key and certificate MUST offer confidentiality commensurate with the private key being delivered")]
+    public void
+        ThenTheTlsCipherSuiteUsedToReturnThePrivateKeyAndCertificateMustOfferConfidentialityCommensurateWithThePrivateKeyBeingDelivered()
     {
         Assert.Contains("https://", ReadRepoFile(ProgramPath), StringComparison.OrdinalIgnoreCase);
     }
@@ -1014,7 +1072,8 @@ public partial class CertificateServerFeatures
     [Then(@"the request format MUST match the \/simpleenroll CSR format")]
     public void ThenTheRequestFormatMustMatchTheSimpleenrollCsrFormat()
     {
-        Assert.Equal("application/pkcs10", ConformanceState.Response?.RequestMessage?.Content?.Headers.ContentType?.MediaType);
+        Assert.Equal("application/pkcs10",
+            ConformanceState.Response?.RequestMessage?.Content?.Headers.ContentType?.MediaType);
     }
 
     [Then("the EST server SHOULD treat the CSR as it would any enroll or re-enroll CSR")]
@@ -1073,8 +1132,9 @@ public partial class CertificateServerFeatures
     [Then("the private key part MUST be RFC 4648 base64-encoded DER PrivateKeyInfo")]
     public void ThenThePrivateKeyPartMustBeRfc4648Base64EncodedDerPrivateKeyInfo()
     {
-        Assert.True(GetResponseText(Encoding.Latin1).Contains("Content-Transfer-Encoding: base64", StringComparison.OrdinalIgnoreCase) &&
-                    IsAsciiBase64(ExtractFirstMultipartBody()),
+        Assert.True(GetResponseText(Encoding.Latin1)
+                .Contains("Content-Transfer-Encoding: base64", StringComparison.OrdinalIgnoreCase) &&
+            IsAsciiBase64(ExtractFirstMultipartBody()),
             "The private-key part was not emitted as RFC 4648 base64 text.");
     }
 
@@ -1087,7 +1147,8 @@ public partial class CertificateServerFeatures
     [Then("the private key part MUST be RFC 4648 base64-encoded DER CMS EnvelopedData")]
     public void ThenThePrivateKeyPartMustBeRfc4648Base64EncodedDerCmsEnvelopedData()
     {
-        Assert.True(IsAsciiBase64(ExtractFirstMultipartBody()), "The encrypted private-key part was not emitted as RFC 4648 base64 text.");
+        Assert.True(IsAsciiBase64(ExtractFirstMultipartBody()),
+            "The encrypted private-key part was not emitted as RFC 4648 base64 text.");
     }
 
     [Then("the certificate part MUST exactly match the certificate response used for \"(.+)\"")]
@@ -1112,7 +1173,8 @@ public partial class CertificateServerFeatures
     [Then("the response MAY use HTTP status code 204 or HTTP status code 404")]
     public void ThenTheResponseMayUseHttpStatusCode204OrHttpStatusCode404()
     {
-        Assert.Contains(ConformanceState.Response?.StatusCode ?? 0, new[] { HttpStatusCode.NoContent, HttpStatusCode.NotFound });
+        Assert.Contains(ConformanceState.Response?.StatusCode ?? 0,
+            new[] { HttpStatusCode.NoContent, HttpStatusCode.NotFound });
     }
 
     [Then("the EST server MAY still reject a later enrollment request for incomplete CSR attributes")]
@@ -1143,7 +1205,8 @@ public partial class CertificateServerFeatures
     [Then("the empty CsrAttrs SEQUENCE MUST be treated as equivalent to HTTP 204 or HTTP 404")]
     public void ThenTheEmptyCsrAttrsSequenceMustBeTreatedAsEquivalentToHttp204OrHttp404()
     {
-        Assert.Contains(ConformanceState.Response?.StatusCode ?? 0, new[] { HttpStatusCode.NoContent, HttpStatusCode.NotFound });
+        Assert.Contains(ConformanceState.Response?.StatusCode ?? 0,
+            new[] { HttpStatusCode.NoContent, HttpStatusCode.NotFound });
     }
 
     [Then("the EST server MUST provide that requirement in the CSR attributes response")]
@@ -1261,7 +1324,9 @@ public partial class CertificateServerFeatures
     [Then("the subjectPKInfo field MUST be absent if the server places no key requirements")]
     public void ThenTheSubjectPkInfoFieldMustBeAbsentIfTheServerPlacesNoKeyRequirements()
     {
-        Assert.Contains("subjectPkInfo: null", ReadRepoFile(CsrAttributesHandlerPath) + ReadRepoFile("tests/opencertserver.certserver.tests/StepDefinitions/TestCsrAttributesLoader.cs"),
+        Assert.Contains("subjectPkInfo: null",
+            ReadRepoFile(CsrAttributesHandlerPath) +
+            ReadRepoFile("tests/opencertserver.certserver.tests/StepDefinitions/TestCsrAttributesLoader.cs"),
             StringComparison.OrdinalIgnoreCase);
     }
 
@@ -1271,8 +1336,10 @@ public partial class CertificateServerFeatures
         Assert.NotNull(ConformanceState.Template?.SubjectPublicKeyInfo);
     }
 
-    [Then("when RSA key size requirements are specified the subjectPublicKey field MUST be present with a placeholder modulus of the desired length")]
-    public void ThenWhenRsaKeySizeRequirementsAreSpecifiedTheSubjectPublicKeyFieldMustBePresentWithAPlaceholderModulusOfTheDesiredLength()
+    [Then(
+        "when RSA key size requirements are specified the subjectPublicKey field MUST be present with a placeholder modulus of the desired length")]
+    public void
+        ThenWhenRsaKeySizeRequirementsAreSpecifiedTheSubjectPublicKeyFieldMustBePresentWithAPlaceholderModulusOfTheDesiredLength()
     {
         Assert.NotNull(ConformanceState.Template?.SubjectPublicKeyInfo?.PublicKey);
         Assert.Equal(512, ConformanceState.Template!.SubjectPublicKeyInfo!.PublicKey!.Length);
@@ -1281,25 +1348,29 @@ public partial class CertificateServerFeatures
     [Then("otherwise the subjectPublicKey field MUST be absent")]
     public void ThenOtherwiseTheSubjectPublicKeyFieldMustBeAbsent()
     {
-        Assert.True(ConformanceState.Template?.SubjectPublicKeyInfo?.PublicKey == null || ConformanceState.Template.SubjectPublicKeyInfo.PublicKey.Length == 512);
+        Assert.True(ConformanceState.Template?.SubjectPublicKeyInfo?.PublicKey == null ||
+            ConformanceState.Template.SubjectPublicKeyInfo.PublicKey.Length == 512);
     }
 
     [Then(@"full X\.509 extension requirements MUST use id-ExtensionReq")]
     public void ThenFullX509ExtensionRequirementsMustUseIdExtensionReq()
     {
-        Assert.Contains(ExtensionReqOid, ReadRepoFile(CertificateRequestTemplatePath), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(ExtensionReqOid, ReadRepoFile(CertificateRequestTemplatePath),
+            StringComparison.OrdinalIgnoreCase);
     }
 
     [Then(@"partial X\.509 extension requirements MAY use id-aa-extensionReqTemplate")]
     public void ThenPartialX509ExtensionRequirementsMayUseIdAaExtensionReqTemplate()
     {
-        Assert.Contains(ExtensionReqTemplateOid, ReadRepoFile(CertificateRequestTemplatePath), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(ExtensionReqTemplateOid, ReadRepoFile(CertificateRequestTemplatePath),
+            StringComparison.OrdinalIgnoreCase);
     }
 
     [Then("the attributes field MUST NOT contain multiple id-aa-extensionReqTemplate attributes")]
     public void ThenTheAttributesFieldMustNotContainMultipleIdAaExtensionReqTemplateAttributes()
     {
-        Assert.DoesNotContain("id-aa-extensionReqTemplate", ReadRepoFile(CertificateRequestTemplatePath), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("id-aa-extensionReqTemplate", ReadRepoFile(CertificateRequestTemplatePath),
+            StringComparison.OrdinalIgnoreCase);
     }
 
     [Then("the attributes field MUST NOT contain both id-ExtensionReq and id-aa-extensionReqTemplate")]
@@ -1311,7 +1382,8 @@ public partial class CertificateServerFeatures
     [Then("each id-aa-extensionReqTemplate values field MUST contain exactly one element of type ExtensionTemplate")]
     public void ThenEachIdAaExtensionReqTemplateValuesFieldMustContainExactlyOneElementOfTypeExtensionTemplate()
     {
-        Assert.Contains("TODO: Support CRIAttributes", ReadRepoFile(CertificateRequestTemplatePath), StringComparison.Ordinal);
+        Assert.Contains("TODO: Support CRIAttributes", ReadRepoFile(CertificateRequestTemplatePath),
+            StringComparison.Ordinal);
     }
 
     private static string BuildOperationPath(string operation, string? profileName = null)
@@ -1342,7 +1414,8 @@ public partial class CertificateServerFeatures
 
         if (clientCertificate != null)
         {
-            message.Headers.Add("X-Client-Cert", Convert.ToBase64String(clientCertificate.Export(X509ContentType.Cert)));
+            message.Headers.Add("X-Client-Cert",
+                Convert.ToBase64String(clientCertificate.Export(X509ContentType.Cert)));
         }
 
         var response = await client.SendAsync(message);
@@ -1356,7 +1429,7 @@ public partial class CertificateServerFeatures
         {
             Content = new StringContent("capture", Encoding.UTF8, "text/plain")
         }));
-        using var client = new EstClient(new Uri("https://localhost"), messageHandler: handler);
+        using var client = new EstClient(new Uri("https://localhost"), options: null, messageHandler: handler);
         using var rsa = RSA.Create();
         await client.Enroll(new X500DistinguishedName("CN=test"), rsa, X509KeyUsageFlags.DigitalSignature,
             new AuthenticationHeaderValue("Bearer", "valid-jwt"));
@@ -1370,7 +1443,10 @@ public partial class CertificateServerFeatures
         {
             Content = new StringContent("capture", Encoding.UTF8, "text/plain")
         }));
-        using var client = new EstClient(new Uri("https://localhost"), messageHandler: handler);
+        using var client = new EstClient(
+            new Uri("https://localhost"),
+            options: null,
+            messageHandler: handler);
         if (includeDifferentKey)
         {
             using var replacement = RSA.Create();
@@ -1461,7 +1537,8 @@ public partial class CertificateServerFeatures
     {
         var request = key switch
         {
-            RSA rsa => new CertificateRequest(distinguishedName, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss),
+            RSA rsa => new CertificateRequest(distinguishedName, rsa, HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pss),
             ECDsa ecDsa => new CertificateRequest(distinguishedName, ecDsa, HashAlgorithmName.SHA256),
             _ => throw new NotSupportedException($"{typeof(TAlgorithm).FullName} is not supported")
         };
@@ -1488,7 +1565,8 @@ public partial class CertificateServerFeatures
                 return;
             }
 
-            var reader = new System.Formats.Asn1.AsnReader(ConformanceState.ResponseBytes, System.Formats.Asn1.AsnEncodingRules.DER,
+            var reader = new System.Formats.Asn1.AsnReader(ConformanceState.ResponseBytes,
+                System.Formats.Asn1.AsnEncodingRules.DER,
                 new System.Formats.Asn1.AsnReaderOptions { SkipSetSortOrderVerification = true });
             ConformanceState.SignedData = new SignedData(reader);
         }
@@ -1507,7 +1585,8 @@ public partial class CertificateServerFeatures
                 return;
             }
 
-            var reader = new System.Formats.Asn1.AsnReader(ConformanceState.ResponseBytes, System.Formats.Asn1.AsnEncodingRules.DER,
+            var reader = new System.Formats.Asn1.AsnReader(ConformanceState.ResponseBytes,
+                System.Formats.Asn1.AsnEncodingRules.DER,
                 new System.Formats.Asn1.AsnReaderOptions { SkipSetSortOrderVerification = true });
             ConformanceState.Template = new CertificateSigningRequestTemplate(reader);
         }
@@ -1605,13 +1684,17 @@ public partial class CertificateServerFeatures
 
         public HttpRequestMessage? LastRequest { get; private set; }
 
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
         {
             LastRequest = await CloneAsync(request, cancellationToken);
             return await _responseFactory(request);
         }
 
-        private static async Task<HttpRequestMessage> CloneAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        private static async Task<HttpRequestMessage> CloneAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
         {
             var clone = new HttpRequestMessage(request.Method, request.RequestUri);
             foreach (var header in request.Headers)
@@ -1635,11 +1718,3 @@ public partial class CertificateServerFeatures
         }
     }
 }
-
-
-
-
-
-
-
-

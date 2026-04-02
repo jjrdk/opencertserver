@@ -58,7 +58,7 @@ public class GeneralName : IAsnValue
             4 /*directoryName*/ => new X509Name(reader.ReadEncodedValue()),
             3 /*x400Address*/ => new AsnString(tag, reader.ReadCharacterString(UniversalTagNumber.UTF8String, tag)),
             5 /*ediPartyName*/ => new EdiPartyName(reader),
-            7 /*ipAddress*/ => new AsnString(tag, reader.ReadCharacterString(UniversalTagNumber.OctetString, tag)),
+            7 /*ipAddress*/ => new AsnOctetString(tag, reader.ReadOctetString(tag)),
             8 /*registeredID*/ => new AsnString(tag, reader.ReadObjectIdentifier()),
             _ => throw new ArgumentException("Invalid GeneralName tag", nameof(reader))
         };
@@ -69,7 +69,7 @@ public class GeneralName : IAsnValue
     /// </summary>
     /// <param name="type">The general name type.</param>
     /// <param name="value">The general name value.</param>
-    public GeneralName(GeneralNameType type, AsnString value)
+    public GeneralName(GeneralNameType type, IAsnValue value)
     {
         Type = type;
         Value = value;
