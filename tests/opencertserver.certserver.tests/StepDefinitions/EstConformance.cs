@@ -46,6 +46,11 @@ public partial class CertificateServerFeatures
     private const string EncodingExtensionsPath = "src/opencertserver.ca.utils/EncodingExtensions.cs";
     private const string ExtensionReqOid = "1.2.840.113549.1.9.14";
     private const string ExtensionReqTemplateOid = "1.2.840.113549.1.9.62";
+    private const string KeyProtectionHeader = "X-Est-Keygen-Protection";
+    private const string KeyProtectionStatusHeader = "X-Est-Keygen-Protection-Status";
+    private const string SmimeCapabilitiesHeader = "X-Est-Smime-Capabilities";
+    private const string SymmetricDecryptKeyIdentifierHeader = "X-Est-Decrypt-Key-Identifier";
+    private const string AsymmetricDecryptKeyIdentifierHeader = "X-Est-Asymmetric-Decrypt-Key-Identifier";
 
     private EstConformanceState ConformanceState
     {
@@ -385,15 +390,15 @@ public partial class CertificateServerFeatures
     [When("the client POSTs a server-side key generation request")]
     public async Task WhenTheClientPostsAServerSideKeyGenerationRequest()
     {
-        var content = new StringContent(CreatePemCsr(), Encoding.UTF8, "application/pkcs10");
-        await SendRequestAsync(HttpMethod.Post, BuildOperationPath("/serverkeygen"), content,
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+        await SendServerKeyGenerationRequestAsync();
     }
 
     [When("the client requests private key encryption beyond the TLS transport")]
     public async Task WhenTheClientRequestsPrivateKeyEncryptionBeyondTheTlsTransport()
     {
-        await WhenTheClientPostsAServerSideKeyGenerationRequest();
+        await SendServerKeyGenerationRequestAsync(
+            requestEncryptedKeyDelivery: true,
+            includeProtectionMetadata: false);
     }
 
     [When(
@@ -402,7 +407,11 @@ public partial class CertificateServerFeatures
         WhenTheClientRequestsProtectionForTheReturnedPrivateKeyAndTheIndicatedProtectionKeyIsUnavailableOrUnusable(
         string protection)
     {
-        await WhenTheClientPostsAServerSideKeyGenerationRequest();
+        await SendServerKeyGenerationRequestAsync(
+            requestEncryptedKeyDelivery: true,
+            includeProtectionMetadata: true,
+            protection: protection,
+            protectionMaterialStatus: "unavailable");
     }
 
     [When("the EST server successfully processes a server-side key generation request")]
@@ -420,10 +429,11 @@ public partial class CertificateServerFeatures
     [When("the EST server returns a server-generated private key with additional application-layer encryption")]
     public async Task WhenTheEstServerReturnsAServerGeneratedPrivateKeyWithAdditionalApplicationLayerEncryption()
     {
-        var content = new StringContent(CreatePemCsr(), Encoding.UTF8, "application/pkcs10");
-        await SendRequestAsync(HttpMethod.Post, BuildOperationPath("/serverkeygen"), content,
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"),
-            accept: "multipart/mixed; smime-type=server-generated-key");
+        await SendServerKeyGenerationRequestAsync(
+            requestEncryptedKeyDelivery: true,
+            includeProtectionMetadata: true,
+            protection: "symmetric",
+            protectionMaterialStatus: "available");
     }
 
     [When("the EST server returns the certificate part of a server-side key generation response")]
@@ -1130,7 +1140,7 @@ public partial class CertificateServerFeatures
     [Then("cipher suites with NULL confidentiality MUST NOT be used")]
     public void ThenCipherSuitesWithNullConfidentialityMustNotBeUsed()
     {
-        Assert.DoesNotContain("NULL", ReadRepoFile(ServerKeyGenHandlerPath), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("_NULL_", ReadRepoFile(ServerKeyGenHandlerPath), StringComparison.OrdinalIgnoreCase);
     }
 
     [Then(
@@ -1494,7 +1504,8 @@ public partial class CertificateServerFeatures
         HttpContent? content = null,
         AuthenticationHeaderValue? authHeader = null,
         X509Certificate2? clientCertificate = null,
-        string? accept = null)
+        string? accept = null,
+        Action<HttpRequestMessage>? configureMessage = null)
     {
         using var client = _server.CreateClient();
         var message = new HttpRequestMessage(method, path) { Content = content };
@@ -1514,9 +1525,55 @@ public partial class CertificateServerFeatures
                 Convert.ToBase64String(clientCertificate.Export(X509ContentType.Cert)));
         }
 
+        configureMessage?.Invoke(message);
+
         var response = await client.SendAsync(message);
         ConformanceState.Response = response;
         ConformanceState.ResponseBytes = await response.Content.ReadAsByteArrayAsync();
+    }
+
+    private Task SendServerKeyGenerationRequestAsync(
+        bool requestEncryptedKeyDelivery = false,
+        bool includeProtectionMetadata = false,
+        string protection = "symmetric",
+        string protectionMaterialStatus = "available")
+    {
+        var content = new StringContent(CreatePemCsr(), Encoding.UTF8, "application/pkcs10");
+        return SendRequestAsync(
+            HttpMethod.Post,
+            BuildOperationPath("/serverkeygen"),
+            content,
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"),
+            accept: requestEncryptedKeyDelivery ? "multipart/mixed; smime-type=server-generated-key" : null,
+            configureMessage: message =>
+            {
+                if (!requestEncryptedKeyDelivery)
+                {
+                    return;
+                }
+
+                if (!string.IsNullOrWhiteSpace(protection))
+                {
+                    message.Headers.Add(KeyProtectionHeader, protection);
+                }
+
+                if (!includeProtectionMetadata)
+                {
+                    return;
+                }
+
+                message.Headers.Add(SmimeCapabilitiesHeader, "aes256-cbc");
+                message.Headers.Add(KeyProtectionStatusHeader, protectionMaterialStatus);
+
+                if (string.Equals(protection, "asymmetric", StringComparison.OrdinalIgnoreCase))
+                {
+                    message.Headers.Add(AsymmetricDecryptKeyIdentifierHeader, "test-recipient");
+                }
+                else
+                {
+                    message.Headers.Add(SymmetricDecryptKeyIdentifierHeader, "test-secret");
+                }
+            });
     }
 
     private async Task CaptureEnrollRequestAsync()
