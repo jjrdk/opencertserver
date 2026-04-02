@@ -19,36 +19,27 @@ dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.test
 
 Verified in this workspace:
 - Total: `64`
-- Passed: `50`
-- Failed: `9`
+- Passed: `56`
+- Failed: `3`
 - Skipped: `5`
 
 The skipped scenarios are the conditional/optional cases that are not implemented in the current server build, such as `/fullcmc`, certificate-less TLS mutual authentication, and root key rollover.
 
 ## Failing tests and current non-conformance
 
-### 5. `/csrattrs` authentication, status codes, encoding, and RFC 9908 updates
+### 4. Optional server-side key generation behavior
 
 **Failing scenarios**
-- `RFC 7030 Section 4.5.2 defines the status codes for CSR attributes availability`
-- `RFC 7030 Section 4.5.2 requires unrecognized CSR attributes to be ignored by clients`
-- `RFC 7030 Section 4.5.2 defines empty CSR attributes semantics`
-- `RFC 7030 Section 4.5.2 requires algorithm and POP requirements to be signaled explicitly`
-- `RFC 9908 Section 3.2 constrains legacy extension requirements in the unstructured CSR attributes response`
-- `RFC 9908 Section 3.4 constrains template-based extension requirements`
+- `RFC 7030 Section 4.4.1 requires key-delivery metadata when additional encryption is requested`
+- `RFC 7030 Sections 4.4.1.1 and 4.4.1.2 require errors when the requested key-encryption material is unavailable`
 
 **Current non-conformance**
-- `/csrattrs` always returns `200`; `204` / `404` unavailability semantics are not implemented.
-- `EstClient.GetCsrAttributes()` expects only the template form and does not gracefully ignore unknown legacy `CsrAttrs` elements.
-- The default CSR-attributes loader path does not emit the explicit legacy/template requirements needed for `id-ExtensionReq`, `challengePassword`, and related RFC 9908/RFC 7030 signaling scenarios.
-- `src/opencertserver.ca.utils/X509/Templates/CertificateSigningRequestTemplate.cs` still has `// TODO: Support CRIAttributes`, so RFC 9908 extension/template attribute handling is incomplete.
-- The codebase does not implement the `id-ExtensionReq` / `id-aa-extensionReqTemplate` coexistence rules described by RFC 9908.
+- The server still accepts encrypted `serverkeygen` requests without requiring DecryptKeyIdentifier / AsymmetricDecryptKeyIdentifier and `SMIMECapabilities`.
+- The application-layer encrypted private-key delivery modes from RFC 7030 are still not implemented; only the response part shape is negotiated today.
 
 **Suggested fix**
-- Return `204` or `404` when no CSR attributes are available.
-- Extend `CertificateSigningRequestTemplate` to support RFC 9908 CRI attributes and extension templates.
-- Update `EstClient.GetCsrAttributes()` so newer clients prefer the template form and ignore unknown legacy elements.
-- Emit the explicit legacy/template CSR-attribute requirements needed for `challengePassword`, `id-ExtensionReq`, and template extension constraints.
+- Reject encrypted key-delivery requests that omit the required key-identification metadata.
+- Implement CMS EnvelopedData packaging for server-generated-key responses when additional application-layer encryption is requested.
 
 ## Scenarios currently passing
 
@@ -56,6 +47,7 @@ Representative passing areas from the focused run:
 - mandatory `/simpleenroll` and `/simplereenroll` route support;
 - basic authenticated EST enrollment and re-enrollment happy paths already covered by the existing test harness;
 - RFC 7030 simple enrollment and re-enrollment response semantics, including manual authorization, renewal, and rekey handling;
+- `/csrattrs` authentication, status codes, RFC 8951 base64 encoding, client parsing, and RFC 9908 template/legacy requirement scenarios;
 - RFC 8951 request/response base64 updates for `/csrattrs` and `/serverkeygen`, including base64 private-key delivery and Content-Transfer-Encoding tolerance;
 - several request-shape checks for simple enrollment;
 - multipart response presence for `/serverkeygen`;
@@ -64,8 +56,6 @@ Representative passing areas from the focused run:
 ## Notes for future TDD work
 
 Recommended implementation order:
-1. Fix `/serverkeygen` encrypted-delivery metadata validation and CMS EnvelopedData packaging.
-2. Fix `/csrattrs` status code behavior for unavailable and empty responses.
-3. Update `EstClient.GetCsrAttributes()` to ignore unknown legacy CSR-attribute elements.
-4. Add RFC 9908 CRI attribute and extension-template support.
+1. Fix `/serverkeygen` encrypted-delivery metadata validation.
+2. Implement CMS EnvelopedData packaging for application-layer encrypted private-key delivery.
 

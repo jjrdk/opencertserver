@@ -225,6 +225,14 @@ public static class Oids
     /// <summary>
     /// Represents the member.
     /// </summary>
+    public const string ChallengePassword = "1.2.840.113549.1.9.7";
+    /// <summary>
+    /// Represents the member.
+    /// </summary>
+    public const string ChallengePasswordFriendlyName = "challengePassword";
+    /// <summary>
+    /// Represents the member.
+    /// </summary>
     public const string SigningCertificate = "1.2.840.113549.1.9.16.2.12";
     /// <summary>
     /// Represents the member.
@@ -338,6 +346,14 @@ public static class Oids
     /// Represents the member.
     /// </summary>
     public const string Pkcs9ExtensionRequestFriendlyName = "id-ExtensionReq";
+    /// <summary>
+    /// Represents the member.
+    /// </summary>
+    public const string Pkcs9ExtensionRequestTemplate = "1.2.840.113549.1.9.62";
+    /// <summary>
+    /// Represents the member.
+    /// </summary>
+    public const string Pkcs9ExtensionRequestTemplateFriendlyName = "id-aa-extensionReqTemplate";
     /// <summary>
     /// Represents the member.
     /// </summary>
