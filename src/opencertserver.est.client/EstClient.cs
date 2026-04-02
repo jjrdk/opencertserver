@@ -21,10 +21,16 @@ using OpenCertServer.Ca.Utils.X509Extensions;
 /// </summary>
 public sealed class EstClient : IDisposable
 {
+    private const int MaxRedirects = 10;
+    private static readonly HttpMethod HeadMethod = new("HEAD");
     private readonly Uri _estHost;
     private readonly string? _profileName;
-    private readonly HttpMessageHandler _messageHandler;
-    private readonly HttpClient _messageClient;
+    private readonly EstClientOptions _options;
+    private readonly bool _ownsMessageHandler;
+    private HttpMessageHandler _messageHandler;
+    private HttpClient _messageClient;
+    private readonly AsyncLocal<HttpRequestMessage?> _activeRequest = new();
+    private EstBootstrapTrust? _pendingBootstrapTrust;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EstClient"/> class.
@@ -47,9 +53,46 @@ public sealed class EstClient : IDisposable
 
         _estHost = estHost;
         _profileName = profileName;
+        _options = options ?? new EstClientOptions();
+        _ownsMessageHandler = messageHandler == null;
         _messageHandler = messageHandler ?? new SocketsHttpHandler();
-        _messageClient = new HttpClient(_messageHandler);
-        ConfigureServerCertificateValidation(_messageHandler, options ?? new EstClientOptions());
+        _messageClient = CreateHttpClient(_messageHandler);
+    }
+
+    /// <summary>
+    /// Gets the pending trust material retrieved during EST bootstrap.
+    /// </summary>
+    public EstBootstrapTrust? PendingBootstrapTrust => _pendingBootstrapTrust;
+
+    /// <summary>
+    /// Accepts the pending EST bootstrap trust material for subsequent explicit trust validation.
+    /// </summary>
+    public void AcceptBootstrapTrust()
+    {
+        if (_pendingBootstrapTrust == null)
+        {
+            throw new InvalidOperationException("No pending EST bootstrap trust is available to accept.");
+        }
+
+        foreach (var certificate in _pendingBootstrapTrust.Certificates)
+        {
+            if (_options.ExplicitTrustAnchors.Cast<X509Certificate2>()
+                .All(existing => !existing.RawData.AsSpan().SequenceEqual(certificate.RawData)))
+            {
+                _options.ExplicitTrustAnchors.Add(certificate);
+            }
+        }
+
+        _pendingBootstrapTrust = null;
+        ResetTransportSession();
+    }
+
+    /// <summary>
+    /// Rejects the pending EST bootstrap trust material.
+    /// </summary>
+    public void RejectBootstrapTrust()
+    {
+        _pendingBootstrapTrust = null;
     }
 
     /// <summary>
@@ -107,9 +150,16 @@ public sealed class EstClient : IDisposable
             _estHost.Port,
             pathValue);
 
-        var response = await _messageClient
-            .GetAsync(requestUriBuilder.Uri, HttpCompletionOption.ResponseContentRead, cancellationToken)
+        using var request = new HttpRequestMessage(HttpMethod.Get, requestUriBuilder.Uri);
+        EnsureBootstrapRequestAllowed(request, authenticationHeader: null, clientCertificate: null);
+        var response = await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken)
             .ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await CreateEstErrorAsync(response, "Error retrieving CA certificates", cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         var b64 = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         var bytes = Convert.FromBase64String(b64);
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
@@ -121,7 +171,9 @@ public sealed class EstClient : IDisposable
 
         reader = new AsnReader(contentInfo.EncodedContent, AsnEncodingRules.DER);
         var signedData = new SignedData(reader);
-        return new X509Certificate2Collection(signedData.Certificates ?? []);
+        var certificates = new X509Certificate2Collection(signedData.Certificates ?? []);
+        CaptureBootstrapTrustIfNeeded(request.RequestUri!, certificates);
+        return certificates;
     }
 
     /// <inheritdoc />
@@ -150,8 +202,8 @@ public sealed class EstClient : IDisposable
             RequestUri = requestUriBuilder.Uri
         };
         request.Headers.Authorization = authenticationHeader;
-        var response = await _messageClient
-            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
+        EnsureBootstrapRequestAllowed(request, authenticationHeader, clientCertificate: null);
+        var response = await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseHeadersRead, CancellationToken.None)
             .ConfigureAwait(false);
         response = response.EnsureSuccessStatusCode();
         var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
@@ -176,6 +228,19 @@ public sealed class EstClient : IDisposable
         }
     }
 
+    private void ConfigureRedirectHandling(HttpMessageHandler handler)
+    {
+        switch (handler)
+        {
+            case SocketsHttpHandler sockets:
+                sockets.AllowAutoRedirect = false;
+                break;
+            case HttpClientHandler httpClientHandler:
+                httpClientHandler.AllowAutoRedirect = false;
+                break;
+        }
+    }
+
     private bool ValidateServerCertificate(
         X509Certificate2? certificate,
         X509Chain? _,
@@ -192,14 +257,14 @@ public sealed class EstClient : IDisposable
             EstTrustAnchorMode.ImplicitOnly => ImplicitTrustAuthorization(),
             EstTrustAnchorMode.ExplicitThenImplicit => ExplicitTrustAuthorization() || ImplicitTrustAuthorization(),
             _ => throw new InvalidOperationException($"Unsupported trust anchor mode: {options.TrustAnchorMode}")
-        };
+        } || IsBootstrapCaCertificatesRequestAllowed(certificate, options);
 
         bool ExplicitTrustAuthorization()
         {
             if (options.ExplicitTrustAnchors.Count > 0 &&
                 BuildChainWithExplicitTrustAnchors(certificate, options))
             {
-                return AuthorizeServerIdentity(certificate, options.AuthorizedUri ?? _estHost);
+                return AuthorizeServerIdentity(certificate, GetAuthorizedUri(options));
             }
 
             return false;
@@ -212,8 +277,113 @@ public sealed class EstClient : IDisposable
             chain.ChainPolicy.RevocationFlag = options.RevocationFlag;
 
             return chain.Build(certificate)
-             && AuthorizeServerIdentity(certificate, options.AuthorizedUri ?? _estHost);
+             && AuthorizeServerIdentity(certificate, GetAuthorizedUri(options));
         }
+    }
+
+    private bool IsBootstrapCaCertificatesRequestAllowed(X509Certificate2 certificate, EstClientOptions options)
+    {
+        if (!options.AllowBootstrapCaCertsWithoutTrustedServer ||
+            options.TrustAnchorMode != EstTrustAnchorMode.ExplicitOnly ||
+            options.ExplicitTrustAnchors.Count != 0 ||
+            _pendingBootstrapTrust != null)
+        {
+            return false;
+        }
+
+        var request = _activeRequest.Value;
+        if (request is not { Method: { } method, RequestUri: { } requestUri } ||
+            method != HttpMethod.Get && method != HeadMethod)
+        {
+            return false;
+        }
+
+        if (request.Headers.Authorization != null)
+        {
+            return false;
+        }
+
+        var path = requestUri.AbsolutePath;
+        var isBootstrapPath = string.Equals(path, "/.well-known/est/cacerts", StringComparison.Ordinal) ||
+                              string.Equals(path, "/.well-known/est/fullcmc", StringComparison.Ordinal) ||
+                              (path.StartsWith("/.well-known/est/", StringComparison.Ordinal) &&
+                               (path.EndsWith("/cacerts", StringComparison.Ordinal) ||
+                                path.EndsWith("/fullcmc", StringComparison.Ordinal)));
+
+        return isBootstrapPath && AuthorizeServerIdentity(certificate, requestUri);
+    }
+
+    private Uri GetAuthorizedUri(EstClientOptions options)
+    {
+        return _activeRequest.Value?.RequestUri ?? options.AuthorizedUri ?? _estHost;
+    }
+
+    private void CaptureBootstrapTrustIfNeeded(Uri requestUri, X509Certificate2Collection certificates)
+    {
+        if (!ShouldCaptureBootstrapTrust(requestUri) || certificates.Count == 0)
+        {
+            return;
+        }
+
+        _pendingBootstrapTrust = new EstBootstrapTrust(requestUri, certificates);
+    }
+
+    private bool ShouldCaptureBootstrapTrust(Uri requestUri)
+    {
+        return _options.AllowBootstrapCaCertsWithoutTrustedServer &&
+               _options.TrustAnchorMode == EstTrustAnchorMode.ExplicitOnly &&
+               _options.ExplicitTrustAnchors.Count == 0 &&
+               _pendingBootstrapTrust == null &&
+               IsBootstrapPath(requestUri.AbsolutePath);
+    }
+
+    private void EnsureBootstrapRequestAllowed(
+        HttpRequestMessage request,
+        AuthenticationHeaderValue? authenticationHeader,
+        X509Certificate2? clientCertificate)
+    {
+        var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+
+        if (_pendingBootstrapTrust != null)
+        {
+            throw new InvalidOperationException(
+                "EST bootstrap trust is pending. No other EST protocol exchange is allowed until the trust response is accepted and a new TLS session is established.");
+        }
+
+        if (!IsBootstrapProvisioningRequired())
+        {
+            return;
+        }
+
+        var isBootstrapPath = IsBootstrapPath(path);
+
+        if (!isBootstrapPath)
+        {
+            throw new InvalidOperationException(
+                "EST bootstrap requires retrieving trust anchors from '/cacerts' or '/fullcmc' before any other EST protocol exchange can continue.");
+        }
+
+        if (authenticationHeader != null || clientCertificate != null)
+        {
+            throw new InvalidOperationException(
+                "EST bootstrap requests must not answer HTTP authentication challenges or present client certificates on the provisional unauthenticated connection.");
+        }
+    }
+
+    private bool IsBootstrapProvisioningRequired()
+    {
+        return _options.AllowBootstrapCaCertsWithoutTrustedServer &&
+               _options.TrustAnchorMode == EstTrustAnchorMode.ExplicitOnly &&
+               _options.ExplicitTrustAnchors.Count == 0;
+    }
+
+    private static bool IsBootstrapPath(string path)
+    {
+        return string.Equals(path, "/.well-known/est/cacerts", StringComparison.Ordinal) ||
+               string.Equals(path, "/.well-known/est/fullcmc", StringComparison.Ordinal) ||
+               (path.StartsWith("/.well-known/est/", StringComparison.Ordinal) &&
+                (path.EndsWith("/cacerts", StringComparison.Ordinal) ||
+                 path.EndsWith("/fullcmc", StringComparison.Ordinal)));
     }
 
     private bool BuildChainWithExplicitTrustAnchors(X509Certificate2 certificate, EstClientOptions options)
@@ -275,6 +445,12 @@ public sealed class EstClient : IDisposable
             return false;
         }
 
+        var domain = pattern[2..];
+        if (!domain.Contains('.', StringComparison.Ordinal))
+        {
+            return false;
+        }
+
         var suffix = pattern[1..];
         if (!host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
         {
@@ -314,14 +490,14 @@ public sealed class EstClient : IDisposable
         };
 
         request.Headers.Add("X-Client-Cert", Convert.ToBase64String(certificate.Export(X509ContentType.Cert)));
+        EnsureBootstrapRequestAllowed(request, authenticationHeader: null, clientCertificate: certificate);
         if (_messageHandler is HttpClientHandler clientHandler)
         {
             clientHandler.ClientCertificates.Clear();
             clientHandler.ClientCertificates.Add(certificate);
         }
 
-        var response = await _messageClient
-            .SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken)
+        var response = await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken)
             .ConfigureAwait(false);
         if (_messageHandler is HttpClientHandler ch)
         {
@@ -383,6 +559,8 @@ public sealed class EstClient : IDisposable
             requestMessage.Headers.Authorization = authenticationHeader;
         }
 
+        EnsureBootstrapRequestAllowed(requestMessage, authenticationHeader, certificate);
+
         if (_messageHandler is HttpClientHandler clientHandler && certificate != null)
         {
             clientHandler.ClientCertificateOptions = ClientCertificateOption.Manual;
@@ -390,8 +568,7 @@ public sealed class EstClient : IDisposable
             clientHandler.ClientCertificates.Add(certificate);
         }
 
-        var response = await _messageClient
-            .SendAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken)
+        var response = await SendWithRedirectHandlingAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken)
             .ConfigureAwait(false);
 
         if (_messageHandler is HttpClientHandler ch)
@@ -421,6 +598,142 @@ public sealed class EstClient : IDisposable
         reader = new AsnReader(contentInfo.EncodedContent, AsnEncodingRules.DER);
         var signedData = new SignedData(reader);
         return (null, new X509Certificate2Collection(signedData.Certificates ?? []));
+    }
+
+    private async Task<HttpResponseMessage> SendWithRedirectHandlingAsync(
+        HttpRequestMessage request,
+        HttpCompletionOption completionOption,
+        CancellationToken cancellationToken)
+    {
+        var currentRequest = request;
+        for (var redirectCount = 0; redirectCount <= MaxRedirects; redirectCount++)
+        {
+            _activeRequest.Value = currentRequest;
+            var response = await _messageClient.SendAsync(currentRequest, completionOption, cancellationToken)
+                .ConfigureAwait(false);
+            _activeRequest.Value = null;
+            if (!IsRedirect(response.StatusCode) || response.Headers.Location == null)
+            {
+                return response;
+            }
+
+            var redirectUri = response.Headers.Location.IsAbsoluteUri
+                ? response.Headers.Location
+                : new Uri(currentRequest.RequestUri!, response.Headers.Location);
+
+            if (!IsSameOrigin(currentRequest.RequestUri!, redirectUri))
+            {
+                response.Dispose();
+                throw new InvalidOperationException(
+                    $"Redirect to '{redirectUri}' requires user input. EST only follows same-origin redirects automatically.");
+            }
+
+            // Follow same-origin redirects without user input. A redirected origin would require a new TLS
+            // connection and repeating all security checks, so those redirects are rejected above.
+            var nextRequest = await CloneRequestAsync(currentRequest, redirectUri, response.StatusCode, cancellationToken)
+                .ConfigureAwait(false);
+            response.Dispose();
+            currentRequest = nextRequest;
+        }
+
+        throw new InvalidOperationException($"Too many EST redirects (>{MaxRedirects}).");
+    }
+
+    private static bool IsRedirect(HttpStatusCode statusCode)
+    {
+        return statusCode is HttpStatusCode.Moved or HttpStatusCode.Redirect or HttpStatusCode.RedirectMethod or
+            HttpStatusCode.TemporaryRedirect or HttpStatusCode.PermanentRedirect;
+    }
+
+    private static bool IsSameOrigin(Uri currentUri, Uri redirectUri)
+    {
+        return string.Equals(currentUri.Scheme, redirectUri.Scheme, StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(currentUri.Host, redirectUri.Host, StringComparison.OrdinalIgnoreCase) &&
+               currentUri.Port == redirectUri.Port;
+    }
+
+    private static async Task<HttpRequestMessage> CloneRequestAsync(
+        HttpRequestMessage request,
+        Uri requestUri,
+        HttpStatusCode redirectStatusCode,
+        CancellationToken cancellationToken)
+    {
+        var method = redirectStatusCode == HttpStatusCode.RedirectMethod
+            ? request.Method == HttpMethod.Head ? HttpMethod.Head : HttpMethod.Get
+            : request.Method;
+
+        var clone = new HttpRequestMessage(method, requestUri)
+        {
+            Version = request.Version,
+            VersionPolicy = request.VersionPolicy
+        };
+
+        foreach (var header in request.Headers)
+        {
+            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+
+        if (method != HttpMethod.Get && method != HttpMethod.Head && request.Content != null)
+        {
+            var contentBytes = await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+            var contentClone = new ByteArrayContent(contentBytes);
+            foreach (var header in request.Content.Headers)
+            {
+                contentClone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+
+            clone.Content = contentClone;
+        }
+
+        return clone;
+    }
+
+    private static async Task<InvalidOperationException> CreateEstErrorAsync(
+        HttpResponseMessage response,
+        string defaultMessage,
+        CancellationToken cancellationToken)
+    {
+        if (response.Content.Headers.ContentType?.MediaType?.Equals("text/plain", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                return new InvalidOperationException(error);
+            }
+        }
+
+        return new InvalidOperationException($"{defaultMessage} (HTTP {(int)response.StatusCode}).");
+    }
+
+    private HttpClient CreateHttpClient(HttpMessageHandler handler)
+    {
+        ConfigureRedirectHandling(handler);
+        ConfigureServerCertificateValidation(handler, _options);
+        return new HttpClient(handler, disposeHandler: false);
+    }
+
+    private void ResetTransportSession()
+    {
+        _messageClient.Dispose();
+
+        if (!_ownsMessageHandler)
+        {
+            _messageClient = CreateHttpClient(_messageHandler);
+            return;
+        }
+
+        if (_messageHandler is SocketsHttpHandler)
+        {
+            _messageHandler.Dispose();
+            _messageHandler = new SocketsHttpHandler();
+        }
+        else if (_messageHandler is HttpClientHandler)
+        {
+            _messageHandler.Dispose();
+            _messageHandler = new HttpClientHandler();
+        }
+
+        _messageClient = CreateHttpClient(_messageHandler);
     }
 
     private static CertificateRequest CreateCertificateRequest<TAlgorithm>(
