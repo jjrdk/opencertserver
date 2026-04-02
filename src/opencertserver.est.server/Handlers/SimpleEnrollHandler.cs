@@ -36,10 +36,16 @@ internal static class SimpleEnrollHandler
         var body = httpRequest.Body;
         var responseType = httpRequest.GetTypedHeaders().Accept;
         using var reader = new StreamReader(body, Encoding.UTF8);
-        var request = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var requestContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        if (!requestContent.TryVerifyTlsUniqueValue(out var proofOfPossessionError))
+        {
+            return Results.Text(proofOfPossessionError, Constants.TextPlainMimeType, Encoding.UTF8,
+                (int)HttpStatusCode.BadRequest);
+        }
+
         var newCert =
             await certificateAuthority.SignCertificateRequestPem(
-                request,
+                requestContent,
                 profileName,
                 user?.Identity as ClaimsIdentity,
                 cancellationToken: cancellationToken).ConfigureAwait(false);

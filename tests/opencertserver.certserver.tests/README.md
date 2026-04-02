@@ -19,42 +19,13 @@ dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.test
 
 Verified in this workspace:
 - Total: `64`
-- Passed: `21`
-- Failed: `38`
+- Passed: `32`
+- Failed: `27`
 - Skipped: `5`
 
 The skipped scenarios are the conditional/optional cases that are not implemented in the current server build, such as `/fullcmc`, certificate-less TLS mutual authentication, and root key rollover.
 
 ## Failing tests and current non-conformance
-
-### 2. TLS, trust-anchor, authorization, redirect, and POP linkage requirements
-
-**Failing scenarios**
-- `RFC 7030 Sections 3.3 and 3.3.1 require HTTPS, TLS 1.1 or later, and certificate-based server authentication`
-- `RFC 7030 Section 3.5 requires verification of tls-unique POP linkage whenever it is supplied`
-- `RFC 7030 Section 3.2.1 defines redirect handling for EST operations`
-- `RFC 7030 Section 3.1 requires explicit trust anchor configuration and the ability to disable implicit trust anchors`
-- `RFC 7030 Section 3.6 requires the client to authorize the EST server before continuing the protocol`
-- `RFC 7030 Sections 3.6.1 and 3.6.2 define authorization checks for Explicit and Implicit trust anchors`
-- `RFC 7030 Section 4.1.1 defines bootstrap distribution of CA certificates for minimally configured clients`
-- `RFC 7030 Sections 4.2 and 4.2.1 require authenticated and authorized simple enrollment requests`
-- `RFC 7030 Sections 4.2 and 4.2.2 require authenticated and authorized re-enrollment requests`
-
-**Current non-conformance**
-- The test suite finds no explicit implementation of the RFC 7030 trust-anchor model in `src/opencertserver.est.client/EstClient.cs`.
-- There is no RFC 6125 URI authorization logic for Explicit vs Implicit trust anchors.
-- There is no implemented `tls-unique` POP linkage check in the EST enrollment handlers.
-- Redirect handling requirements from RFC 7030 Section 3.2.1 are not implemented in the EST client.
-- The current certserver test harness uses `TestServer`, so transport is exercised functionally, but the product code still lacks explicit RFC-oriented TLS policy and POP enforcement.
-
-**Suggested fix**
-- Add explicit EST trust-anchor configuration concepts to `src/opencertserver.est.client/EstClient.cs`.
-- Implement RFC 6125 authorization checks for configured URI and redirect URI handling.
-- Add `tls-unique` generation/verification and challengePassword linkage for enroll/re-enroll flows.
-- Add explicit redirect policy in the EST client for same-origin vs cross-origin redirects.
-- Make the server and/or a dedicated integration fixture expose explicit TLS policy that is testable.
-
----
 
 ### 3. Simple enrollment and re-enrollment message semantics
 

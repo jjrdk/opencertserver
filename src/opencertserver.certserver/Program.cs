@@ -7,6 +7,7 @@ using OpenCertServer.Est.Server.Handlers;
 namespace OpenCertServer.CertServer;
 
 using System.Numerics;
+using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using Acme.Abstractions.IssuanceServices;
 using Est.Server;
@@ -143,7 +144,18 @@ internal static class Program
             .ConfigureOptions<ConfigureJwtBearerOptions>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
             .AddHealthChecks();
-        builder.WebHost.UseKestrel(options => { options.AddServerHeader = false; }).UseUrls($"https://*:{port}");
+        builder.WebHost.UseKestrel(options =>
+            {
+                options.AddServerHeader = false;
+                options.ConfigureHttpsDefaults(httpsOptions =>
+                {
+                    // RFC 7030 requires TLS 1.1 or later for EST; prefer TLS 1.2+ in practice.
+                    httpsOptions.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                    // Kestrel presents an X.509 server certificate that is expected to conform to RFC5280.
+                    // Leave TLS session resumption enabled (the default) because RFC 7030 recommends session resumption support.
+                });
+            })
+            .UseUrls($"https://*:{port}");
         var app = builder.Build();
         app.UseHttpsRedirection()
             .UseCors(c => c.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(_ => true).AllowCredentials())
