@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Pkcs7;
 using OpenCertServer.Ca.Utils.X509Extensions;
@@ -43,6 +44,18 @@ internal static class SimpleEnrollHandler
                 (int)HttpStatusCode.BadRequest);
         }
 
+        var manualAuthorizationStrategy = httpRequest.HttpContext.RequestServices
+            .GetRequiredService<IManualAuthorizationStrategy>();
+        if (manualAuthorizationStrategy.TryGetPendingAuthorization(
+                httpRequest,
+                user,
+                requestContent,
+                out var retryAfter,
+                out var pendingMessage))
+        {
+            return new RetryAfterResult(retryAfter, pendingMessage);
+        }
+
         var newCert =
             await certificateAuthority.SignCertificateRequestPem(
                 requestContent,
@@ -60,7 +73,7 @@ internal static class SimpleEnrollHandler
             }
 
             X509Certificate2[] content = [success.Certificate];
-            var signedResponse = new SignedData(version: 1, certificates: content.Concat(success.Issuers).ToArray());
+            var signedResponse = new SignedData(version: 1, certificates: content);
             var writer = new AsnWriter(AsnEncodingRules.DER);
             signedResponse.Encode(writer);
             var derBytes = writer.Encode();

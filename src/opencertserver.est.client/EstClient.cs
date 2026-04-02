@@ -137,6 +137,7 @@ public sealed class EstClient : IDisposable
             key,
             certificate.Extensions.OfType<X509KeyUsageExtension>()
                 .Aggregate(X509KeyUsageFlags.None, (flags, ext) => flags | ext.KeyUsages));
+        CopyReEnrollmentIdentityExtensions(certificate, certRequest);
 
         return RequestReEnrollCerts(certificate, certRequest, cancellationToken);
     }
@@ -466,6 +467,19 @@ public sealed class EstClient : IDisposable
         var normalized = value.Trim().TrimEnd('.');
         var idn = new IdnMapping();
         return idn.GetAscii(normalized).ToLowerInvariant();
+    }
+
+    private static void CopyReEnrollmentIdentityExtensions(X509Certificate2 certificate, CertificateRequest certRequest)
+    {
+        var subjectAlternativeName = certificate.Extensions.FirstOrDefault(x => x.Oid?.Value == Oids.SubjectAltName);
+        if (subjectAlternativeName != null)
+        {
+            certRequest.CertificateExtensions.Add(
+                new X509Extension(
+                    new Oid(subjectAlternativeName.Oid!.Value!, subjectAlternativeName.Oid.FriendlyName),
+                    subjectAlternativeName.RawData,
+                    subjectAlternativeName.Critical));
+        }
     }
 
     private async Task<(string?, X509Certificate2Collection?)> RequestReEnrollCerts(
