@@ -52,6 +52,16 @@ public interface ICertificateAuthority
     Task<X509Certificate2Collection> GetRootCertificates(string? profileName = null, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the certificates that should be published to EST clients for the specified profile.
+    /// </summary>
+    /// <param name="profileName">The name of the profile to get the published certificates for.</param>
+    /// <param name="cancellationToken">The cancellation token to use for the operation.</param>
+    /// <returns>The EST-published certificates as a collection of X509Certificate2 objects.</returns>
+    Task<X509Certificate2Collection> GetPublishedCertificates(
+        string? profileName = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Revokes a certificate by its serial number.
     /// </summary>
     /// <param name="serialNumber">The serial number of the certificate to revoke.</param>

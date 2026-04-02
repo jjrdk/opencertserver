@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Est.Server.Handlers;
 
@@ -6,6 +7,7 @@ using OpenCertServer.Est.Server.Handlers;
 
 namespace OpenCertServer.CertServer;
 
+using System.Linq;
 using System.Numerics;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
@@ -93,25 +95,22 @@ internal static class Program
         }
         else
         {
-            var certs = await Task.WhenAll(
-                CreateCert(args, "--rsa", "--rsa-key"),
-                CreateCert(args, "--ec", "--ec-key")).ConfigureAwait(false);
-            var rsaProfile = new CaProfile
-            {
-                Name = "rsa",
-                CertificateChain = [X509Certificate2.CreateFromPem(certs[0].ExportCertificatePem())],
-                CertificateValidity = TimeSpan.FromDays(90),
-                CrlNumber = BigInteger.Zero,
-                PrivateKey = certs[0].GetRSAPrivateKey()!
-            };
-            var ecdsaProfile = new CaProfile
-            {
-                Name = "ecdsa",
-                CertificateChain = [X509Certificate2.CreateFromPem(certs[1].ExportCertificatePem())],
-                CertificateValidity = TimeSpan.FromDays(90),
-                CrlNumber = BigInteger.Zero,
-                PrivateKey = certs[1].GetRSAPrivateKey()!
-            };
+            var rsaProfile = await CreateProfile(
+                args,
+                builder.Configuration,
+                profileName: "rsa",
+                certArgument: "--rsa",
+                keyArgument: "--rsa-key",
+                publishedArgument: "--rsa-published",
+                getPrivateKey: cert => cert.GetRSAPrivateKey()).ConfigureAwait(false);
+            var ecdsaProfile = await CreateProfile(
+                args,
+                builder.Configuration,
+                profileName: "ecdsa",
+                certArgument: "--ec",
+                keyArgument: "--ec-key",
+                publishedArgument: "--ec-published",
+                getPrivateKey: cert => cert.GetECDsaPrivateKey()).ConfigureAwait(false);
             services = services
                 .AddCertificateAuthority(
                     new CaConfiguration(
@@ -179,6 +178,84 @@ internal static class Program
         forwardedHeadersOptions.KnownProxies.Clear();
 
         return forwardedHeadersOptions;
+    }
+
+    private static async Task<CaProfile> CreateProfile(
+        string[] args,
+        IConfiguration configuration,
+        string profileName,
+        string certArgument,
+        string keyArgument,
+        string publishedArgument,
+        Func<X509Certificate2, AsymmetricAlgorithm?> getPrivateKey)
+    {
+        var certificate = await CreateCert(args, certArgument, keyArgument).ConfigureAwait(false);
+        var privateKey = getPrivateKey(certificate)
+            ?? throw new InvalidOperationException(
+                $"The certificate configured for profile '{profileName}' does not expose a compatible private key.");
+        var activeCertificate = X509Certificate2.CreateFromPem(certificate.ExportCertificatePem());
+        var publishedCertificatePath = GetArgumentValue(args, publishedArgument) ?? configuration[$"{profileName}:PublishedPem"];
+
+        return new CaProfile
+        {
+            Name = profileName,
+            CertificateChain = [activeCertificate],
+            PublishedCertificateChain = await LoadPublishedCertificateChain(publishedCertificatePath, activeCertificate)
+                .ConfigureAwait(false),
+            CertificateValidity = TimeSpan.FromDays(90),
+            CrlNumber = BigInteger.Zero,
+            PrivateKey = privateKey
+        };
+    }
+
+    private static string? GetArgumentValue(string[] args, string argumentName)
+    {
+        var index = Array.IndexOf(args, argumentName);
+        return index >= 0 && index + 1 < args.Length
+            ? args[index + 1]
+            : null;
+    }
+
+    private static async Task<X509Certificate2Collection> LoadPublishedCertificateChain(
+        string? certificateBundlePath,
+        X509Certificate2 activeCertificate)
+    {
+        if (string.IsNullOrWhiteSpace(certificateBundlePath))
+        {
+            return [];
+        }
+
+        var pem = await File.ReadAllTextAsync(certificateBundlePath).ConfigureAwait(false);
+        X509Certificate2Collection importedCertificates = [];
+        importedCertificates.ImportFromPem(pem);
+        if (importedCertificates.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"The published EST certificate bundle '{certificateBundlePath}' did not contain any PEM certificates.");
+        }
+
+        X509Certificate2Collection publishedCertificates = [];
+        AddUniqueCertificate(publishedCertificates, X509Certificate2.CreateFromPem(activeCertificate.ExportCertificatePem()));
+        foreach (var certificate in importedCertificates)
+        {
+            AddUniqueCertificate(publishedCertificates, certificate);
+        }
+
+        return publishedCertificates;
+    }
+
+    private static void AddUniqueCertificate(
+        X509Certificate2Collection collection,
+        X509Certificate2 certificate)
+    {
+        if (collection.Any(existing =>
+                string.Equals(existing.Thumbprint, certificate.Thumbprint, StringComparison.OrdinalIgnoreCase)))
+        {
+            certificate.Dispose();
+            return;
+        }
+
+        collection.Add(certificate);
     }
 
     private static async Task<X509Certificate2> CreateCert(string[] args, string cert, string certKey)
