@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
@@ -37,6 +40,33 @@ internal static partial class Program
         {
             Description = "Authentication header value (e.g. 'Bearer <token>')"
         };
+        var estCaOptions = new Option<IList<string>>("--est-ca")
+        {
+            Description =
+                "Path to an EST CA certificate to trust explicitly (can specify multiple times for multiple CAs)",
+            AllowMultipleArgumentsPerToken = true
+        };
+        var taModeOption = new Option<EstTrustAnchorMode>("--ta-mode")
+        {
+            Description = "Trust anchor mode: implicit, explicit, or explicit-then-implicit (default: implicit)",
+            CustomParser = r =>
+            {
+                if (r.Tokens.Where(token => token.Type == TokenType.Argument).Select(token => token.Value)
+                        .FirstOrDefault() is { } value)
+                {
+                    return value.ToLower() switch
+                    {
+                        "implicit" => EstTrustAnchorMode.ImplicitOnly,
+                        "explicit" => EstTrustAnchorMode.ExplicitOnly,
+                        "explicit-then-implicit" => EstTrustAnchorMode.ExplicitThenImplicit,
+                        _ => throw new ArgumentException(
+                            "Invalid trust anchor mode. Valid values are: implicit, explicit, explicit-then-implicit.")
+                    };
+                }
+
+                return EstTrustAnchorMode.ImplicitOnly;
+            }
+        };
 
         var csrOptions = CreateCsrOptions();
         var cmd = new Command("est-enroll", "Generate a CSR and enroll via EST")
@@ -47,6 +77,8 @@ internal static partial class Program
             outOption,
             clientCertOption,
             authOption,
+            taModeOption,
+            estCaOptions,
             csrOptions.Country,
             csrOptions.State,
             csrOptions.Locality,
@@ -92,7 +124,8 @@ internal static partial class Program
                 return;
             }
 
-            var resolvedOutPath = outPath;
+            var taMode = parse.GetValue(taModeOption);
+            var estCaPaths = parse.GetValue(estCaOptions) ?? [];
             var clientCertPath = parse.GetValue(clientCertOption);
             var authHeader = ParseAuthenticationHeader(parse.GetValue(authOption));
             X509Certificate2? clientCert = null;
@@ -133,8 +166,19 @@ internal static partial class Program
                 var csrInput = CollectCsrInput(parse, csrOptions, Console.Out, Console.In);
                 var request = BuildCertificateRequest(key, csrInput, Console.Out);
 
+                var options = new EstClientOptions
+                {
+                    AuthorizedUri = baseUri,
+                    TrustAnchorMode = taMode
+                };
+
+                foreach (var path in estCaPaths)
+                {
+                    options.ExplicitTrustAnchors.Add(X509CertificateLoader.LoadCertificateFromFile(path));
+                }
+
                 using var estClient =
-                    new EstClient(baseUri, messageHandler: MessageHandlerFactory(), profileName: profile);
+                    new EstClient(baseUri, options, messageHandler: MessageHandlerFactory(), profileName: profile);
                 var (error, certCollection) = await estClient.Enroll(
                     request.SubjectName,
                     key,
@@ -160,15 +204,15 @@ internal static partial class Program
                     builder.AppendLine(cert.ExportCertificatePem());
                 }
 
-                var directoryName = string.IsNullOrWhiteSpace(resolvedOutPath)
+                var directoryName = string.IsNullOrWhiteSpace(outPath)
                     ? null
-                    : Path.GetDirectoryName(resolvedOutPath);
+                    : Path.GetDirectoryName(outPath);
                 if (!string.IsNullOrWhiteSpace(directoryName))
                 {
                     Directory.CreateDirectory(directoryName);
                 }
 
-                await File.WriteAllTextAsync(resolvedOutPath, builder.ToString()).ConfigureAwait(false);
+                await File.WriteAllTextAsync(outPath, builder.ToString()).ConfigureAwait(false);
                 Console.WriteLine($"EST enrollment succeeded, output saved to {outPath}");
             }
             catch (Exception ex)
