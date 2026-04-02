@@ -33,9 +33,9 @@ public class SingleAttributeTemplate : IAsnValue
     {
         var sequenceReader = reader.ReadSequence();
         Oid = sequenceReader.ReadObjectIdentifier().InitializeOid();
-        if (reader.HasData)
+        if (sequenceReader.HasData)
         {
-            RawValue = sequenceReader.ReadOctetString();
+            RawValue = sequenceReader.ReadEncodedValue().ToArray();
         }
     }
 
@@ -57,7 +57,7 @@ public class SingleAttributeTemplate : IAsnValue
             writer.WriteObjectIdentifier(Oid.Value!);
             if (RawValue != null)
             {
-                writer.WriteOctetString(RawValue);
+                writer.WriteEncodedValue(RawValue);
             }
         }
     }

@@ -1,3 +1,6 @@
+using System.Formats.Asn1;
+using OpenCertServer.Est.Server.Handlers;
+
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Net;
@@ -197,7 +200,7 @@ public partial class CertificateServerFeatures
         if (string.Equals(operation, "/csrattrs", StringComparison.Ordinal))
         {
             TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
-                Task.FromResult(new CertificateSigningRequestTemplate(subject: null, subjectPkInfo: null)));
+                Task.FromResult(CsrAttributesResponse.FromTemplate(CreateDefaultCsrTemplate())));
             await SendRequestAsync(HttpMethod.Get, BuildOperationPath(operation),
                 authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
             return;
@@ -449,7 +452,7 @@ public partial class CertificateServerFeatures
     public async Task WhenCsrAttributesAreUnavailable()
     {
         TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
-            Task.FromResult(new CertificateSigningRequestTemplate(subject: null, subjectPkInfo: null)));
+            Task.FromResult(CsrAttributesResponse.Unavailable()));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
     }
@@ -460,6 +463,7 @@ public partial class CertificateServerFeatures
         TestCsrAttributesLoaderConfiguration.Reset();
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+        ParseCsrAttributesIfPossible();
         TryParseTemplate();
     }
 
@@ -481,7 +485,7 @@ public partial class CertificateServerFeatures
     public async Task WhenTheEstServerHasNoSpecificAdditionalCsrInformationToRequest()
     {
         TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
-            Task.FromResult(new CertificateSigningRequestTemplate(subject: null, subjectPkInfo: null)));
+            Task.FromResult(CsrAttributesResponse.Unavailable()));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
     }
@@ -490,18 +494,23 @@ public partial class CertificateServerFeatures
     public async Task WhenTheCaRequiresAParticularCryptographicAlgorithmOrSignatureScheme()
     {
         TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
-            Task.FromResult(CreateKeyConstrainedTemplate()));
+            Task.FromResult(CsrAttributesResponse.FromTemplate(CreateKeyConstrainedTemplate())));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+        ParseCsrAttributesIfPossible();
         TryParseTemplate();
     }
 
     [When("the EST server requires linking identity and proof-of-possession")]
     public async Task WhenTheEstServerRequiresLinkingIdentityAndProofOfPossession()
     {
-        TestCsrAttributesLoaderConfiguration.Reset();
+        TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
+            Task.FromResult(CsrAttributesResponse.Available(new CsrAttributes(
+                objectIdentifiers: [Oids.ChallengePassword.InitializeOid(Oids.ChallengePasswordFriendlyName)],
+                templates: [CreateKeyConstrainedTemplate()]))));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+        ParseCsrAttributesIfPossible();
     }
 
     [When("the EST server encodes CSR attributes")]
@@ -513,7 +522,12 @@ public partial class CertificateServerFeatures
     [When("the EST server encodes extension requirements using the original RFC 7030 CSR attributes format")]
     public async Task WhenTheEstServerEncodesExtensionRequirementsUsingTheOriginalRfc7030CsrAttributesFormat()
     {
-        await WhenTheEstServerReturnsCsrAttributes();
+        TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
+            Task.FromResult(CsrAttributesResponse.Available(new CsrAttributes(
+                attributes: [CreateLegacyExtensionRequestAttribute()]))));
+        await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+        ParseCsrAttributesIfPossible();
     }
 
     [When("the EST server requires a public key of a specific type using the original RFC 7030 CSR attributes format")]
@@ -525,9 +539,14 @@ public partial class CertificateServerFeatures
     [When("the EST server needs to interoperate with legacy and updated clients")]
     public async Task WhenTheEstServerNeedsToInteroperateWithLegacyAndUpdatedClients()
     {
-        TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) => Task.FromResult(CreateSubjectAndKeyTemplate()));
+        TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
+            Task.FromResult(CsrAttributesResponse.Available(new CsrAttributes(
+                objectIdentifiers: [Oids.ChallengePassword.InitializeOid(Oids.ChallengePasswordFriendlyName)],
+                attributes: [CreateLegacyExtensionRequestAttribute()],
+                templates: [CreateSubjectAndKeyTemplate()]))));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+        ParseCsrAttributesIfPossible();
         TryParseTemplate();
     }
 
@@ -544,9 +563,11 @@ public partial class CertificateServerFeatures
     [When("the EST server returns a CertificationRequestInfoTemplate")]
     public async Task WhenTheEstServerReturnsACertificationRequestInfoTemplate()
     {
-        TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) => Task.FromResult(CreateSubjectAndKeyTemplate()));
+        TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
+            Task.FromResult(CsrAttributesResponse.FromTemplate(CreateSubjectAndKeyTemplateWithAttributes())));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+        ParseCsrAttributesIfPossible();
         TryParseTemplate();
     }
 
@@ -1262,7 +1283,8 @@ public partial class CertificateServerFeatures
     [Then("the EST server MAY return an empty CsrAttrs SEQUENCE")]
     public void ThenTheEstServerMayReturnAnEmptyCsrAttrsSequence()
     {
-        Assert.True(GetDecodedResponseBytesIfBase64() is { Length: > 0 });
+        Assert.True(ConformanceState.Response?.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound ||
+                    GetDecodedResponseBytesIfBase64() is { Length: > 0 });
     }
 
     [Then("the empty CsrAttrs SEQUENCE MUST be treated as equivalent to HTTP 204 or HTTP 404")]
@@ -1282,7 +1304,8 @@ public partial class CertificateServerFeatures
     [Then("the CSR attributes response MUST include the challengePassword OID")]
     public void ThenTheCsrAttributesResponseMustIncludeTheChallengePasswordOid()
     {
-        Assert.Contains("challengePassword", GetResponseText(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(GetParsedCsrAttributes().ObjectIdentifiers,
+            oid => string.Equals(oid.Value, Oids.ChallengePassword, StringComparison.Ordinal));
     }
 
     [Then("the structure of the CSR attributes response SHOULD reflect the structure of the CSR being requested")]
@@ -1294,21 +1317,26 @@ public partial class CertificateServerFeatures
     [Then("the attribute type MUST be id-ExtensionReq")]
     public void ThenTheAttributeTypeMustBeIdExtensionReq()
     {
-        Assert.Contains(ExtensionReqOid,
-            Convert.ToHexString(GetDecodedResponseBytesIfBase64() ?? []).ToLowerInvariant());
+        Assert.Contains(GetParsedCsrAttributes().Attributes,
+            attribute => string.Equals(attribute.Oid.Value, ExtensionReqOid, StringComparison.Ordinal));
     }
 
     [Then("there MUST be only one id-ExtensionReq attribute")]
     public void ThenThereMustBeOnlyOneIdExtensionReqAttribute()
     {
-        var source = ReadRepoFile(CertificateRequestTemplatePath);
-        Assert.DoesNotContain("Attributes", source, StringComparison.Ordinal);
+        var matchingAttributes = GetParsedCsrAttributes().Attributes.Where(attribute =>
+            string.Equals(attribute.Oid.Value, ExtensionReqOid, StringComparison.Ordinal)).ToArray();
+        Assert.Single(matchingAttributes);
     }
 
     [Then("the id-ExtensionReq values field MUST contain exactly one element of type Extensions")]
     public void ThenTheIdExtensionReqValuesFieldMustContainExactlyOneElementOfTypeExtensions()
     {
-        Assert.Contains("Extensions", GetResponseText(), StringComparison.OrdinalIgnoreCase);
+        var matchingAttributes = GetParsedCsrAttributes().Attributes.Where(candidate =>
+            string.Equals(candidate.Oid.Value, ExtensionReqOid, StringComparison.Ordinal)).ToArray();
+        var attribute = Assert.Single(matchingAttributes);
+        var value = Assert.Single(attribute.Values);
+        Assert.True(value.Length > 0 && value[0] == 0x30, "Expected a single DER SEQUENCE for Extensions.");
     }
 
     [Then("the Extensions value MUST NOT contain multiple Extension elements with the same extnID")]
@@ -1419,35 +1447,39 @@ public partial class CertificateServerFeatures
     [Then(@"full X\.509 extension requirements MUST use id-ExtensionReq")]
     public void ThenFullX509ExtensionRequirementsMustUseIdExtensionReq()
     {
-        Assert.Contains(ExtensionReqOid, ReadRepoFile(CertificateRequestTemplatePath),
-            StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Pkcs9ExtensionRequest", ReadRepoFile(CertificateRequestTemplatePath),
+            StringComparison.Ordinal);
     }
 
     [Then(@"partial X\.509 extension requirements MAY use id-aa-extensionReqTemplate")]
     public void ThenPartialX509ExtensionRequirementsMayUseIdAaExtensionReqTemplate()
     {
-        Assert.Contains(ExtensionReqTemplateOid, ReadRepoFile(CertificateRequestTemplatePath),
-            StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Pkcs9ExtensionRequestTemplate", ReadRepoFile(CertificateRequestTemplatePath),
+            StringComparison.Ordinal);
     }
 
     [Then("the attributes field MUST NOT contain multiple id-aa-extensionReqTemplate attributes")]
     public void ThenTheAttributesFieldMustNotContainMultipleIdAaExtensionReqTemplateAttributes()
     {
-        Assert.DoesNotContain("id-aa-extensionReqTemplate", ReadRepoFile(CertificateRequestTemplatePath),
-            StringComparison.OrdinalIgnoreCase);
+        Assert.True((ConformanceState.Template?.Attributes.Count(attribute =>
+                        string.Equals(attribute.Oid.Value, ExtensionReqTemplateOid, StringComparison.Ordinal)) ?? 0) <= 1);
     }
 
     [Then("the attributes field MUST NOT contain both id-ExtensionReq and id-aa-extensionReqTemplate")]
     public void ThenTheAttributesFieldMustNotContainBothIdExtensionReqAndIdAaExtensionReqTemplate()
     {
-        Assert.DoesNotContain("CRIAttributes", ReadRepoFile(CertificateRequestTemplatePath), StringComparison.Ordinal);
+        var attributes = ConformanceState.Template?.Attributes ?? [];
+        Assert.False(attributes.Any(attribute => string.Equals(attribute.Oid.Value, ExtensionReqOid, StringComparison.Ordinal)) &&
+                     attributes.Any(attribute =>
+                         string.Equals(attribute.Oid.Value, ExtensionReqTemplateOid, StringComparison.Ordinal)));
     }
 
     [Then("each id-aa-extensionReqTemplate values field MUST contain exactly one element of type ExtensionTemplate")]
     public void ThenEachIdAaExtensionReqTemplateValuesFieldMustContainExactlyOneElementOfTypeExtensionTemplate()
     {
-        Assert.Contains("TODO: Support CRIAttributes", ReadRepoFile(CertificateRequestTemplatePath),
-            StringComparison.Ordinal);
+        Assert.All(ConformanceState.Template?.Attributes.Where(attribute =>
+                string.Equals(attribute.Oid.Value, ExtensionReqTemplateOid, StringComparison.Ordinal)) ?? [],
+            attribute => Assert.Single(attribute.Values));
     }
 
     private static string BuildOperationPath(string operation, string? profileName = null)
@@ -1666,10 +1698,37 @@ public partial class CertificateServerFeatures
         }
     }
 
+    private void ParseCsrAttributesIfPossible()
+    {
+        try
+        {
+            var responseBytes = GetDecodedResponseBytesIfBase64();
+            if (responseBytes == null || responseBytes.Length == 0)
+            {
+                return;
+            }
+
+            var reader = new AsnReader(responseBytes, AsnEncodingRules.DER,
+                new AsnReaderOptions { SkipSetSortOrderVerification = true });
+            ConformanceState.CsrAttributes = new CsrAttributes(reader);
+            ConformanceState.Template ??= ConformanceState.CsrAttributes.GetPreferredTemplate();
+        }
+        catch
+        {
+            // intentionally ignored; assertions will surface the incompatibility.
+        }
+    }
+
     private void TryParseTemplate()
     {
         try
         {
+            ParseCsrAttributesIfPossible();
+            if (ConformanceState.Template != null)
+            {
+                return;
+            }
+
             var responseBytes = GetDecodedResponseBytesIfBase64();
             if (responseBytes == null || responseBytes.Length == 0)
             {
@@ -1690,6 +1749,13 @@ public partial class CertificateServerFeatures
     private string GetResponseText(Encoding? encoding = null)
     {
         return (encoding ?? Encoding.UTF8).GetString(ConformanceState.ResponseBytes ?? []);
+    }
+
+    private CsrAttributes GetParsedCsrAttributes()
+    {
+        ParseCsrAttributesIfPossible();
+        Assert.NotNull(ConformanceState.CsrAttributes);
+        return ConformanceState.CsrAttributes!;
     }
 
     private byte[]? GetDecodedResponseBytesIfBase64()
@@ -1751,11 +1817,58 @@ public partial class CertificateServerFeatures
         return new CertificateSigningRequestTemplate(subject, keyInfo);
     }
 
+    private static CertificateSigningRequestTemplate CreateDefaultCsrTemplate()
+    {
+        return new CertificateSigningRequestTemplate(
+            subject: new NameTemplate(new RDNSequenceTemplate(
+            [
+                new RelativeDistinguishedNameTemplate([new SingleAttributeTemplate(Oids.CommonName.InitializeOid())])
+            ])),
+            subjectPkInfo: null);
+    }
+
+    private static CertificateSigningRequestTemplate CreateSubjectAndKeyTemplateWithAttributes()
+    {
+        return new CertificateSigningRequestTemplate(
+            CreateSubjectAndKeyTemplate().Subject,
+            CreateSubjectAndKeyTemplate().SubjectPublicKeyInfo,
+            [
+                new CsrAttribute(
+                    Oids.Pkcs9ExtensionRequest.InitializeOid(Oids.Pkcs9ExtensionRequestFriendlyName),
+                    [CreateExtensionsSequence([Oids.SubjectAltName])])
+            ]);
+    }
+
     private static CertificateSigningRequestTemplate CreateKeyConstrainedTemplate()
     {
         return new CertificateSigningRequestTemplate(subject: null,
             subjectPkInfo: new SubjectPublicKeyInfoTemplate(new AlgorithmIdentifier(new Oid(Oids.EcPublicKey),
                 new Oid("1.2.840.10045.3.1.7", "secp256r1"))));
+    }
+
+    private static CsrAttribute CreateLegacyExtensionRequestAttribute()
+    {
+        return new CsrAttribute(
+            Oids.Pkcs9ExtensionRequest.InitializeOid(Oids.Pkcs9ExtensionRequestFriendlyName),
+            [CreateExtensionsSequence([Oids.SubjectAltName])]);
+    }
+
+    private static byte[] CreateExtensionsSequence(IEnumerable<string> extensionOids)
+    {
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        using (writer.PushSequence())
+        {
+            foreach (var extensionOid in extensionOids)
+            {
+                using (writer.PushSequence())
+                {
+                    writer.WriteObjectIdentifier(extensionOid);
+                    writer.WriteOctetString([]);
+                }
+            }
+        }
+
+        return writer.Encode();
     }
 
     private sealed class EstConformanceState
@@ -1773,6 +1886,7 @@ public partial class CertificateServerFeatures
         public X509Certificate2? CurrentCertificate { get; set; }
         public X509Certificate2Collection? ReenrolledCertificates { get; set; }
         public Exception? CsrAttributesException { get; set; }
+        public CsrAttributes? CsrAttributes { get; set; }
         public CertificateSigningRequestTemplate? Template { get; set; }
     }
 
