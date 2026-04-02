@@ -1,9 +1,12 @@
 ﻿namespace OpenCertServer.Est.Server.Handlers;
 
 using System.Formats.Asn1;
+using System.IO;
+using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading.Tasks;
 using Ca.Utils;
 using Microsoft.AspNetCore.Http;
@@ -32,10 +35,18 @@ internal static class SimpleReEnrollHandler
     {
         var connection = context.Connection;
         var cert = await connection.GetClientCertificateAsync(cancellationToken).ConfigureAwait(false);
+        using var reader = new StreamReader(context.Request.Body, Encoding.UTF8);
+        var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
         if (cert == null)
         {
             return Results.BadRequest();
+        }
+
+        if (!requestBody.TryVerifyTlsUniqueValue(out var proofOfPossessionError))
+        {
+            return Results.Text(proofOfPossessionError, Constants.TextPlainMimeType, Encoding.UTF8,
+                (int)HttpStatusCode.BadRequest);
         }
 
         var request = cert.PublicKey.Oid.Value switch
