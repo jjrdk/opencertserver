@@ -63,6 +63,9 @@ public partial class CertificateServerFeatures
                 .AddInMemoryCertificateStore()
                 .AddSelfSignedCertificateAuthority(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"])
                 .AddEstServer<TestCsrAttributesLoader>()
+                .AddSingleton<TestManualAuthorizationStrategy>()
+                .Replace(ServiceDescriptor.Singleton<OpenCertServer.Est.Server.Handlers.IManualAuthorizationStrategy>(sp =>
+                    sp.GetRequiredService<TestManualAuthorizationStrategy>()))
                 .AddSingleton(sp => sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates())
                 .AddAcmeServer(ctx.Configuration, _ => _server.CreateClient(),
                     new AcmeServerOptions
