@@ -4,29 +4,32 @@ using OpenCertServer.Ca.Utils.Ca;
 
 namespace OpenCertServer.Est.Server.Handlers;
 
+using System.Formats.Asn1;
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Net.Http.Headers;
 using OpenCertServer.Ca.Utils;
+using OpenCertServer.Ca.Utils.Pkcs7;
 using OpenCertServer.Ca.Utils.X509Extensions;
 
 internal static class ServerKeyGenHandler
 {
     public static Task<IResult> Handle(
         ClaimsPrincipal user,
+        HttpRequest httpRequest,
         ICertificateAuthority certificateAuthority,
         Stream body,
         CancellationToken cancellationToken)
     {
-        return HandleProfile("", user, certificateAuthority, body, cancellationToken);
+        return HandleProfile("", user, httpRequest, certificateAuthority, body, cancellationToken);
     }
 
     public static async Task<IResult> HandleProfile(
         [FromRoute] string profileName,
         ClaimsPrincipal user,
+        HttpRequest httpRequest,
         ICertificateAuthority certificateAuthority,
         Stream body,
         CancellationToken cancellationToken)
@@ -35,7 +38,7 @@ internal static class ServerKeyGenHandler
         {
             using var reader = new StreamReader(body, Encoding.UTF8);
             var request = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-            var signingRequest = request.StartsWith("-----BEGIN CERTIFICATE REQUEST-----")
+            var signingRequest = PemEncoding.TryFind(request, out _)
                 ? CertificateRequest.LoadSigningRequestPem(
                     request,
                     HashAlgorithmName.SHA256)
@@ -44,29 +47,29 @@ internal static class ServerKeyGenHandler
                     HashAlgorithmName.SHA256,
                     CertificateRequestLoadOptions.SkipSignatureValidation,
                     RSASignaturePadding.Pss);
-            using var ecdsa = ECDsa.Create();
-            signingRequest = new CertificateRequest(signingRequest.SubjectName, ecdsa, HashAlgorithmName.SHA256);
+
+            var privateKey = signingRequest.PublicKey.Oid.Value switch
+            {
+                Oids.Rsa => CreateServerSideRsaRequest(signingRequest),
+                Oids.EcPublicKey => CreateServerSideEcRequest(signingRequest),
+                _ => throw new NotSupportedException(
+                    $"Server-side key generation does not support CSR public key algorithm '{signingRequest.PublicKey.Oid.Value}'.")
+            };
+
             var newCert =
-                await certificateAuthority.SignCertificateRequest(signingRequest, profileName,
+                await certificateAuthority.SignCertificateRequest(privateKey.Request, profileName,
                     user.Identity as ClaimsIdentity, cancellationToken: cancellationToken).ConfigureAwait(false);
             if (newCert is SignCertificateResponse.Success success)
             {
+                var prefersEncryptedKeyPart = PrefersEncryptedKeyPart(httpRequest);
                 var mpr = new MultipartContent();
-                mpr.Add(new ReadOnlyMemoryContent(ecdsa.ExportPkcs8PrivateKey())
-                {
-                    Headers =
-                    {
-                        { HeaderNames.ContentType, Constants.Pkcs8 },
-                        { "Content-Transfer-Encoding", "base64" }
-                    }
-                });
-                mpr.Add(new StringContent(success.Certificate.ToPemChain(success.Issuers))
-                {
-                    Headers =
-                    {
-                        { HeaderNames.ContentType, Constants.PemMimeType }
-                    }
-                });
+                mpr.Add(prefersEncryptedKeyPart
+                    ? new EstMultipartBase64Content(
+                        privateKey.Pkcs8.Base64Encode(),
+                        Constants.PemMimeType,
+                        smimeType: "server-generated-key")
+                    : new EstMultipartBase64Content(privateKey.Pkcs8.Base64Encode(), Constants.Pkcs8));
+                mpr.Add(new EstMultipartBase64Content(CreateCertsOnlyResponse(success.Certificate), Constants.PemMimeType));
                 return new MultipartContentResult(mpr);
             }
 
@@ -82,5 +85,48 @@ internal static class ServerKeyGenHandler
                 "An error occurred while processing the request.", Constants.TextPlainMimeType, Encoding.UTF8,
                 (int)HttpStatusCode.BadRequest);
         }
+    }
+
+    private static (CertificateRequest Request, byte[] Pkcs8) CreateServerSideRsaRequest(
+        CertificateRequest signingRequest)
+    {
+        var rsa = RSA.Create();
+        var pkcs8 = rsa.ExportPkcs8PrivateKey();
+        return (new CertificateRequest(signingRequest.SubjectName, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss), pkcs8);
+    }
+
+    private static (CertificateRequest Request, byte[] Pkcs8) CreateServerSideEcRequest(
+        CertificateRequest signingRequest)
+    {
+        var ecdsa = ECDsa.Create();
+        var pkcs8 = ecdsa.ExportPkcs8PrivateKey();
+        return (new CertificateRequest(signingRequest.SubjectName, ecdsa, HashAlgorithmName.SHA256), pkcs8);
+    }
+
+    private static string CreateCertsOnlyResponse(X509Certificate2 certificate)
+    {
+        var signedData = new SignedData(version: 1, certificates: [certificate]);
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        signedData.Encode(writer);
+        var signedBytes = writer.Encode();
+        writer.Reset();
+
+        var contentInfo = new CmsContentInfo(
+            Oids.Pkcs7Signed.InitializeOid(Oids.Pkcs7SignedFriendlyName),
+            signedBytes);
+        contentInfo.Encode(writer);
+        return writer.Encode().Base64Encode();
+    }
+
+    private static bool PrefersEncryptedKeyPart(HttpRequest httpRequest)
+    {
+        return httpRequest.GetTypedHeaders().Accept?.Any(mediaType =>
+            string.Equals(mediaType.MediaType.Value, Constants.MultiPartMixed, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(
+                mediaType.Parameters.FirstOrDefault(parameter =>
+                        parameter.Name.Equals("smime-type", StringComparison.OrdinalIgnoreCase))
+                    ?.Value.ToString().Trim('"'),
+                "server-generated-key",
+                StringComparison.OrdinalIgnoreCase)) == true;
     }
 }

@@ -6,6 +6,7 @@ using System.Formats.Asn1;
 using System.IO;
 using System.Net;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
@@ -38,6 +39,22 @@ internal static class SimpleEnrollHandler
         var responseType = httpRequest.GetTypedHeaders().Accept;
         using var reader = new StreamReader(body, Encoding.UTF8);
         var requestContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var normalizedRequestContent = requestContent;
+        if (!PemEncoding.TryFind(requestContent, out _))
+        {
+            try
+            {
+                normalizedRequestContent = requestContent.NormalizeBase64();
+            }
+            catch (InvalidOperationException)
+            {
+                normalizedRequestContent = requestContent;
+            }
+            catch (FormatException)
+            {
+                normalizedRequestContent = requestContent;
+            }
+        }
         if (!requestContent.TryVerifyTlsUniqueValue(out var proofOfPossessionError))
         {
             return Results.Text(proofOfPossessionError, Constants.TextPlainMimeType, Encoding.UTF8,
@@ -49,19 +66,29 @@ internal static class SimpleEnrollHandler
         if (manualAuthorizationStrategy.TryGetPendingAuthorization(
                 httpRequest,
                 user,
-                requestContent,
+                normalizedRequestContent,
                 out var retryAfter,
                 out var pendingMessage))
         {
             return new RetryAfterResult(retryAfter, pendingMessage);
         }
 
-        var newCert =
-            await certificateAuthority.SignCertificateRequestPem(
-                requestContent,
+        SignCertificateResponse newCert;
+        try
+        {
+            newCert = await certificateAuthority.SignCertificateRequestPem(
+                normalizedRequestContent,
                 profileName,
                 user?.Identity as ClaimsIdentity,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            return Results.Text($"The enrollment CSR could not be parsed: {ex.Message}", Constants.TextPlainMimeType,
+                Encoding.UTF8,
+                (int)HttpStatusCode.BadRequest);
+        }
+
         if (newCert is SignCertificateResponse.Success success)
         {
             // This is a deviation from the RFC but is easier to parse.

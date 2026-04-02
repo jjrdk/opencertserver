@@ -60,6 +60,7 @@ public static class EncodingExtensions
         {
             var s = value
                 .Replace(" ", "+")
+                .Replace("\t", "")
                 .Replace('-', '+')
                 .Replace('_', '/')
                 .Replace("\n", "")
@@ -78,6 +79,14 @@ public static class EncodingExtensions
                 default:
                     throw new InvalidOperationException("Illegal base64url string!");
             }
+        }
+
+        /// <summary>
+        /// Normalizes the string as RFC 4648 base64 text.
+        /// </summary>
+        public string NormalizeBase64()
+        {
+            return Convert.ToBase64String(value.Base64DecodeBytes());
         }
 
         /// <summary>
@@ -129,6 +138,17 @@ public static class EncodingExtensions
             _ = oid.FriendlyName;
 
             return oid;
+        }
+    }
+
+    extension(byte[] value)
+    {
+        /// <summary>
+        /// Encodes the bytes as RFC 4648 base64 text.
+        /// </summary>
+        public string Base64Encode()
+        {
+            return Convert.ToBase64String(value);
         }
     }
 

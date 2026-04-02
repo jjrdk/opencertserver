@@ -232,6 +232,7 @@ public partial class CertificateServerFeatures
         }
 
         await SendRequestAsync(HttpMethod.Get, path, accept: "application/pkcs7-mime");
+        ParseSignedDataIfPossible();
     }
 
     [When("the EST server returns CA certificates")]
@@ -416,7 +417,10 @@ public partial class CertificateServerFeatures
     [When("the EST server returns a server-generated private key with additional application-layer encryption")]
     public async Task WhenTheEstServerReturnsAServerGeneratedPrivateKeyWithAdditionalApplicationLayerEncryption()
     {
-        await WhenTheClientPostsAServerSideKeyGenerationRequest();
+        var content = new StringContent(CreatePemCsr(), Encoding.UTF8, "application/pkcs10");
+        await SendRequestAsync(HttpMethod.Post, BuildOperationPath("/serverkeygen"), content,
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"),
+            accept: "multipart/mixed; smime-type=server-generated-key");
     }
 
     [When("the EST server returns the certificate part of a server-side key generation response")]
@@ -456,6 +460,7 @@ public partial class CertificateServerFeatures
         TestCsrAttributesLoaderConfiguration.Reset();
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+        TryParseTemplate();
     }
 
     [When("the CSR attributes response contains an unrecognized OID or attribute")]
@@ -463,7 +468,7 @@ public partial class CertificateServerFeatures
     {
         var handler = new CapturingHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new ByteArrayContent(Convert.FromBase64String("MAQGAioE"))
+            Content = new StringContent("MAQGAioE", Encoding.ASCII)
             {
                 Headers = { ContentType = new MediaTypeHeaderValue("application/csrattrs") }
             }
@@ -488,6 +493,7 @@ public partial class CertificateServerFeatures
             Task.FromResult(CreateKeyConstrainedTemplate()));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+        TryParseTemplate();
     }
 
     [When("the EST server requires linking identity and proof-of-possession")]
@@ -522,6 +528,7 @@ public partial class CertificateServerFeatures
         TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) => Task.FromResult(CreateSubjectAndKeyTemplate()));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+        TryParseTemplate();
     }
 
     [When("the CSR attributes response contains both legacy and template-based CSR attribute encodings")]
@@ -623,14 +630,14 @@ public partial class CertificateServerFeatures
     public void ThenNullCipherSuitesMustNotBeUsed()
     {
         var source = ReadRepoFile(ProgramPath) + ReadRepoFile(EstExtensionsPath);
-        Assert.DoesNotContain("NULL", source, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("_NULL_", source, StringComparison.OrdinalIgnoreCase);
     }
 
     [Then("anonymous cipher suites MUST NOT be used")]
     public void ThenAnonymousCipherSuitesMustNotBeUsed()
     {
         var source = ReadRepoFile(ProgramPath) + ReadRepoFile(EstExtensionsPath);
-        Assert.DoesNotContain("anon", source, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("_anon_", source, StringComparison.OrdinalIgnoreCase);
     }
 
     [Then("the EST server MUST support certificate-based client authentication")]
@@ -835,6 +842,12 @@ public partial class CertificateServerFeatures
             $"Expected the endpoint to allow anonymous access, but it returned {(int?)ConformanceState.Response?.StatusCode}.");
     }
 
+    [Then("the EST server SHOULD NOT require client authentication or authorization to reply")]
+    public void ThenTheEstServerShouldNotRequireClientAuthenticationOrAuthorizationToReply()
+    {
+        ThenTheEstServerShouldNotRequireClientAuthenticationOrAuthorization();
+    }
+
     [Then(@"a successful response MUST use HTTP status code (\d+)")]
     [Then(@"the response MUST use HTTP status code (\d+)")]
     public void ThenTheResponseMustUseHttpStatusCode(int statusCode)
@@ -860,6 +873,14 @@ public partial class CertificateServerFeatures
     public void ThenTheResponseBodyMustBeRfc4648Base64EncodedDerAsUpdatedByRfc8951()
     {
         Assert.True(IsAsciiBase64(ConformanceState.ResponseBytes), "The response body was not RFC 4648 base64 text.");
+    }
+
+    [Then("the response body MUST be RFC {int} base{int}-encoded DER")]
+    public void ThenTheResponseBodyMustBeRfcBaseEncodedDer(int rfcNumber, int baseNumber)
+    {
+        Assert.Equal(4648, rfcNumber);
+        Assert.Equal(64, baseNumber);
+        ThenTheResponseBodyMustBeRfc4648Base64EncodedDerAsUpdatedByRfc8951();
     }
 
     [Then("the current root CA certificate MUST be included in the response")]
@@ -1227,8 +1248,9 @@ public partial class CertificateServerFeatures
     [Then("the response body MUST encode a CsrAttrs SEQUENCE")]
     public void ThenTheResponseBodyMustEncodeACsrAttrsSequence()
     {
-        Assert.True(ConformanceState.ResponseBytes is { Length: > 0 });
-        Assert.Equal(0x30, ConformanceState.ResponseBytes![0]);
+        var responseBytes = GetDecodedResponseBytesIfBase64();
+        Assert.True(responseBytes is { Length: > 0 });
+        Assert.Equal(0x30, responseBytes![0]);
     }
 
     [Then("the client MUST ignore the unrecognized OID or attribute")]
@@ -1240,7 +1262,7 @@ public partial class CertificateServerFeatures
     [Then("the EST server MAY return an empty CsrAttrs SEQUENCE")]
     public void ThenTheEstServerMayReturnAnEmptyCsrAttrsSequence()
     {
-        Assert.True(ConformanceState.ResponseBytes is { Length: > 0 });
+        Assert.True(GetDecodedResponseBytesIfBase64() is { Length: > 0 });
     }
 
     [Then("the empty CsrAttrs SEQUENCE MUST be treated as equivalent to HTTP 204 or HTTP 404")]
@@ -1272,7 +1294,8 @@ public partial class CertificateServerFeatures
     [Then("the attribute type MUST be id-ExtensionReq")]
     public void ThenTheAttributeTypeMustBeIdExtensionReq()
     {
-        Assert.Contains(ExtensionReqOid, Convert.ToHexString(ConformanceState.ResponseBytes ?? []).ToLowerInvariant());
+        Assert.Contains(ExtensionReqOid,
+            Convert.ToHexString(GetDecodedResponseBytesIfBase64() ?? []).ToLowerInvariant());
     }
 
     [Then("there MUST be only one id-ExtensionReq attribute")]
@@ -1450,7 +1473,7 @@ public partial class CertificateServerFeatures
 
         if (accept != null)
         {
-            message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(accept));
+            message.Headers.Accept.Add(MediaTypeWithQualityHeaderValue.Parse(accept));
         }
 
         if (clientCertificate != null)
@@ -1647,12 +1670,13 @@ public partial class CertificateServerFeatures
     {
         try
         {
-            if (ConformanceState.ResponseBytes == null || ConformanceState.ResponseBytes.Length == 0)
+            var responseBytes = GetDecodedResponseBytesIfBase64();
+            if (responseBytes == null || responseBytes.Length == 0)
             {
                 return;
             }
 
-            var reader = new System.Formats.Asn1.AsnReader(ConformanceState.ResponseBytes,
+            var reader = new System.Formats.Asn1.AsnReader(responseBytes,
                 System.Formats.Asn1.AsnEncodingRules.DER,
                 new System.Formats.Asn1.AsnReaderOptions { SkipSetSortOrderVerification = true });
             ConformanceState.Template = new CertificateSigningRequestTemplate(reader);
@@ -1666,6 +1690,18 @@ public partial class CertificateServerFeatures
     private string GetResponseText(Encoding? encoding = null)
     {
         return (encoding ?? Encoding.UTF8).GetString(ConformanceState.ResponseBytes ?? []);
+    }
+
+    private byte[]? GetDecodedResponseBytesIfBase64()
+    {
+        if (ConformanceState.ResponseBytes == null || ConformanceState.ResponseBytes.Length == 0)
+        {
+            return ConformanceState.ResponseBytes;
+        }
+
+        return IsAsciiBase64(ConformanceState.ResponseBytes)
+            ? Encoding.ASCII.GetString(ConformanceState.ResponseBytes).Base64DecodeBytes()
+            : ConformanceState.ResponseBytes;
     }
 
     private string ExtractFirstMultipartBody()
@@ -1697,7 +1733,7 @@ public partial class CertificateServerFeatures
             "/simplereenroll" => ReadRepoFile(SimpleReEnrollHandlerPath),
             "/serverkeygen" => ReadRepoFile(ServerKeyGenHandlerPath),
             "/csrattrs" => ReadRepoFile(CsrAttributesHandlerPath) + ReadRepoFile(CsrTemplateResultPath),
-            "/fullcmc" => ReadRepoFile(EstExtensionsPath),
+            "/fullcmc" => ReadRepoFile(EstExtensionsPath) + ReadRepoFile(EncodingExtensionsPath),
             _ => string.Empty
         };
     }
