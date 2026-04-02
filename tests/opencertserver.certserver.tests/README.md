@@ -19,38 +19,13 @@ dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.test
 
 Verified in this workspace:
 - Total: `64`
-- Passed: `32`
-- Failed: `27`
+- Passed: `38`
+- Failed: `21`
 - Skipped: `5`
 
 The skipped scenarios are the conditional/optional cases that are not implemented in the current server build, such as `/fullcmc`, certificate-less TLS mutual authentication, and root key rollover.
 
 ## Failing tests and current non-conformance
-
-### 3. Simple enrollment and re-enrollment message semantics
-
-**Failing scenarios**
-- `RFC 7030 Section 4.2.3 defines the successful simple enrollment response`
-- `RFC 7030 Section 4.2 allows manual authorization with a Retry-After response`
-- `RFC 7030 Section 4.2.2 constrains the simple re-enrollment request identity fields`
-- `RFC 7030 Section 4.2.2 distinguishes certificate renewal from certificate rekeying`
-- `RFC 7030 Section 4.2.3 and RFC 8951 define simple re-enrollment error handling`
-
-**Current non-conformance**
-- `src/opencertserver.est.server/Handlers/SimpleEnrollHandler.cs` includes issuer certificates in the success payload; RFC 7030 requires the issued certificate only.
-- The server does not implement the RFC 7030 HTTP `202` plus `Retry-After` manual-authorization workflow.
-- `src/opencertserver.est.client/EstClient.cs` creates a re-enrollment request without copying the current SAN set.
-- `src/opencertserver.est.server/Handlers/SimpleReEnrollHandler.cs` ignores the posted CSR subject public key and reconstructs the request from the current client certificate, preventing proper rekey.
-- Re-enrollment error handling is incomplete and does not consistently produce the RFC 7030 / RFC 8951 human-readable error behavior.
-
-**Suggested fix**
-- Change `SimpleEnrollHandler` success output to emit only the issued certificate in the certs-only CMC response.
-- Introduce a pending/manual approval path that returns `202` and `Retry-After`.
-- Update `EstClient.ReEnroll` to preserve SAN and other identity fields from the current certificate.
-- Update `SimpleReEnrollHandler` to parse and validate the submitted CSR instead of discarding it.
-- Distinguish renewal from rekey by comparing the submitted SubjectPublicKeyInfo with the current certificate.
-
----
 
 ### 4. RFC 8951 wire-format updates
 
@@ -123,6 +98,7 @@ The skipped scenarios are the conditional/optional cases that are not implemente
 Representative passing areas from the focused run:
 - mandatory `/simpleenroll` and `/simplereenroll` route support;
 - basic authenticated EST enrollment and re-enrollment happy paths already covered by the existing test harness;
+- RFC 7030 simple enrollment and re-enrollment response semantics, including manual authorization, renewal, and rekey handling;
 - several request-shape checks for simple enrollment;
 - multipart response presence for `/serverkeygen`;
 - some RFC 9908 template subject/key presence checks where the current test loader can generate a simple template.

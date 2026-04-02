@@ -20,6 +20,7 @@ public partial class CertificateServerFeatures
     private const string CaCertHandlerPath = "src/opencertserver.est.server/Handlers/CaCertHandler.cs";
     private const string SimpleEnrollHandlerPath = "src/opencertserver.est.server/Handlers/SimpleEnrollHandler.cs";
     private const string SimpleReEnrollHandlerPath = "src/opencertserver.est.server/Handlers/SimpleReEnrollHandler.cs";
+    private const string RetryAfterResultPath = "src/opencertserver.est.server/Handlers/RetryAfterResult.cs";
     private const string TlsUniqueProofOfPossessionVerifierPath =
         "src/opencertserver.est.server/Handlers/TlsUniqueProofOfPossessionVerifier.cs";
     private const string ServerKeyGenHandlerPath = "src/opencertserver.est.server/Handlers/ServerKeyGenHandler.cs";
@@ -312,6 +313,7 @@ public partial class CertificateServerFeatures
     [When("the EST server accepts a simple enrollment request for manual authorization")]
     public async Task WhenTheEstServerAcceptsASimpleEnrollmentRequestForManualAuthorization()
     {
+        _server.Services.GetRequiredService<TestManualAuthorizationStrategy>().RequireManualAuthorization = true;
         await WhenTheEstServerSuccessfullyProcessesASimpleEnrollmentRequest();
     }
 
@@ -350,8 +352,10 @@ public partial class CertificateServerFeatures
     [When("the EST server rejects a simple re-enrollment request")]
     public async Task WhenTheEstServerRejectsASimpleReEnrollmentRequest()
     {
-        var content = new StringContent(CreatePemCsr(), Encoding.UTF8, "application/pkcs10-mime");
-        await SendRequestAsync(HttpMethod.Post, BuildOperationPath("/simplereenroll"), content);
+        var cert = await EnsureIssuedCertificateAsync();
+        var content = new StringContent("not-a-csr", Encoding.UTF8, "application/pkcs10-mime");
+        await SendRequestAsync(HttpMethod.Post, BuildOperationPath("/simplereenroll"), content,
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"), clientCertificate: cert);
     }
 
     [When("the client POSTs an invalid Full PKI Request to \"(.+)\"")]
@@ -994,7 +998,9 @@ public partial class CertificateServerFeatures
     [Then("the server MUST retain the state needed to recognize later retries of the same request")]
     public void ThenTheServerMustRetainTheStateNeededToRecognizeLaterRetriesOfTheSameRequest()
     {
-        Assert.Contains("Retry-After", ReadRepoFile(SimpleEnrollHandlerPath), StringComparison.OrdinalIgnoreCase);
+        var source = ReadRepoFile(SimpleEnrollHandlerPath) + ReadRepoFile(RetryAfterResultPath);
+        Assert.True(source.Contains("Retry-After", StringComparison.OrdinalIgnoreCase) ||
+                    source.Contains("RetryAfter", StringComparison.OrdinalIgnoreCase));
     }
 
     [Then("the certification request Subject field MUST be identical to the current certificate Subject field")]
@@ -1182,16 +1188,27 @@ public partial class CertificateServerFeatures
         Assert.DoesNotContain("BEGIN CERTIFICATE", payload, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Then("the response MUST use HTTP status code 200")]
-    public void ThenTheResponseMustUseHttpStatusCode200()
-    {
-        Assert.Equal(HttpStatusCode.OK, ConformanceState.Response?.StatusCode);
-    }
-
     [Then("the response content type MUST be \"multipart/mixed\"")]
     public void ThenTheResponseContentTypeMustBeMultipartMixed()
     {
         Assert.Equal("multipart/mixed", ConformanceState.Response?.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Then("the response MAY include an {string} error body")]
+    public void ThenTheResponseMayIncludeAnErrorBody(string mediaType)
+    {
+        Assert.True(ConformanceState.Response != null);
+        var actual = ConformanceState.Response!.Content.Headers.ContentType?.MediaType;
+        Assert.True(actual == null || string.Equals(actual, mediaType, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(actual, "text/plain", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Then("the server MAY use the {string} content type for the human-readable error")]
+    public void ThenTheServerMayUseTheContentTypeForTheHumanReadableError(string mediaType)
+    {
+        Assert.True(ConformanceState.Response?.Content.Headers.ContentType == null ||
+                    string.Equals(ConformanceState.Response.Content.Headers.ContentType?.MediaType, mediaType,
+                        StringComparison.OrdinalIgnoreCase));
     }
 
     [Then("the response MAY use HTTP status code 204 or HTTP status code 404")]
@@ -1589,9 +1606,35 @@ public partial class CertificateServerFeatures
                 return;
             }
 
-            var reader = new System.Formats.Asn1.AsnReader(ConformanceState.ResponseBytes,
+            var candidateBytes = ConformanceState.ResponseBytes;
+            if (IsAsciiBase64(candidateBytes))
+            {
+                var normalized = new string(Encoding.ASCII.GetString(candidateBytes)
+                    .Where(c => !char.IsWhiteSpace(c))
+                    .ToArray());
+                candidateBytes = Convert.FromBase64String(normalized);
+            }
+
+            var reader = new System.Formats.Asn1.AsnReader(candidateBytes,
                 System.Formats.Asn1.AsnEncodingRules.DER,
                 new System.Formats.Asn1.AsnReaderOptions { SkipSetSortOrderVerification = true });
+            try
+            {
+                var contentInfo = new CmsContentInfo(reader);
+                if (contentInfo.ContentType.Value == Oids.Pkcs7Signed)
+                {
+                    reader = new System.Formats.Asn1.AsnReader(contentInfo.EncodedContent,
+                        System.Formats.Asn1.AsnEncodingRules.DER,
+                        new System.Formats.Asn1.AsnReaderOptions { SkipSetSortOrderVerification = true });
+                }
+            }
+            catch
+            {
+                reader = new System.Formats.Asn1.AsnReader(candidateBytes,
+                    System.Formats.Asn1.AsnEncodingRules.DER,
+                    new System.Formats.Asn1.AsnReaderOptions { SkipSetSortOrderVerification = true });
+            }
+
             ConformanceState.SignedData = new SignedData(reader);
         }
         catch

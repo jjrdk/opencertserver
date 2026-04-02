@@ -44,6 +44,7 @@ public static class EstServerExtensions
             where TCsrTemplateLoader : class, ICsrTemplateLoader
         {
             return services
+                .AddSingleton<IManualAuthorizationStrategy, DefaultManualAuthorizationStrategy>()
                 .AddTransient<ICsrTemplateLoader, TCsrTemplateLoader>()
                 .AddTransient<Func<string?, CancellationToken, Task<X509Certificate2Collection>>>(sp =>
                 {

@@ -40,7 +40,8 @@ internal static class SimpleReEnrollHandler
 
         if (cert == null)
         {
-            return Results.BadRequest();
+            return Results.Text("A client certificate is required for simple re-enrollment.",
+                Constants.TextPlainMimeType, Encoding.UTF8, (int)HttpStatusCode.BadRequest);
         }
 
         if (!requestBody.TryVerifyTlsUniqueValue(out var proofOfPossessionError))
@@ -49,27 +50,43 @@ internal static class SimpleReEnrollHandler
                 (int)HttpStatusCode.BadRequest);
         }
 
-        var request = cert.PublicKey.Oid.Value switch
+        CertificateRequest request;
+        try
         {
-            Oids.EcPublicKey => new CertificateRequest(
-                cert.SubjectName,
-                cert.GetECDsaPublicKey()!,
-                HashAlgorithmName.SHA256),
-            Oids.Rsa => new CertificateRequest(
-                cert.SubjectName,
-                cert.GetRSAPublicKey()!,
-                HashAlgorithmName.SHA256,
-                RSASignaturePadding.Pss),
-            _ => null
-        };
-        if (request == null)
+            request = PemEncoding.TryFind(requestBody, out _)
+                ? CertificateRequest.LoadSigningRequestPem(
+                    requestBody,
+                    HashAlgorithmName.SHA256,
+                    CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
+                    RSASignaturePadding.Pss)
+                : CertificateRequest.LoadSigningRequest(
+                    requestBody.Base64DecodeBytes(),
+                    HashAlgorithmName.SHA256,
+                    CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
+                    RSASignaturePadding.Pss);
+        }
+        catch (Exception ex)
         {
-            return Results.BadRequest();
+            return Results.Text($"The re-enrollment CSR could not be parsed: {ex.Message}",
+                Constants.TextPlainMimeType, Encoding.UTF8, (int)HttpStatusCode.BadRequest);
         }
 
-        foreach (var extension in cert.Extensions)
+        if (!cert.SubjectName.RawData.AsSpan().SequenceEqual(request.SubjectName.RawData))
         {
-            request.CertificateExtensions.Add(extension);
+            return Results.Text("The re-enrollment CSR Subject must match the current certificate Subject.",
+                Constants.TextPlainMimeType, Encoding.UTF8, (int)HttpStatusCode.BadRequest);
+        }
+
+        var currentSan = cert.Extensions.FirstOrDefault(x => x.Oid?.Value == Oids.SubjectAltName)?.RawData;
+        var requestedSan = request.CertificateExtensions.FirstOrDefault(x => x.Oid?.Value == Oids.SubjectAltName)?.RawData;
+        if (!(currentSan == null && requestedSan == null) &&
+            (currentSan == null || requestedSan == null || !currentSan.AsSpan().SequenceEqual(requestedSan)))
+        {
+            return Results.Text(
+                "The re-enrollment CSR SubjectAltName extension must match the current certificate SubjectAltName extension.",
+                Constants.TextPlainMimeType,
+                Encoding.UTF8,
+                (int)HttpStatusCode.BadRequest);
         }
 
         var newCert = await certificateAuthority.SignCertificateRequest(
@@ -79,7 +96,9 @@ internal static class SimpleReEnrollHandler
             cert, cancellationToken).ConfigureAwait(false);
         if (newCert is not SignCertificateResponse.Success success)
         {
-            return Results.BadRequest();
+            var error = (SignCertificateResponse.Error)newCert;
+            return Results.Text(string.Join(Environment.NewLine, error.Errors), Constants.TextPlainMimeType,
+                Encoding.UTF8, (int)HttpStatusCode.BadRequest);
         }
 
         var responseType = context.Request.GetTypedHeaders().Accept;
