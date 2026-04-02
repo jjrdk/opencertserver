@@ -207,7 +207,21 @@ public sealed class EstClient : IDisposable
         var response = await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseHeadersRead, CancellationToken.None)
             .ConfigureAwait(false);
         response = response.EnsureSuccessStatusCode();
-        var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        var responseText = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        byte[] bytes;
+        try
+        {
+            bytes = responseText.Base64DecodeBytes();
+        }
+        catch (FormatException)
+        {
+            bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        }
+        catch (InvalidOperationException)
+        {
+            bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        }
+
         return new CertificateSigningRequestTemplate(new AsnReader(bytes, AsnEncodingRules.DER,
             new AsnReaderOptions { SkipSetSortOrderVerification = true }));
     }
