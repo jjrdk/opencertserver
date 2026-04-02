@@ -184,6 +184,7 @@ public class EstServer
 
         var client = new EstClient(
             new Uri("https://localhost/"),
+            options: null,
             profileName: profile.ToLowerInvariant(),
             messageHandler: new TestMessageHandler(_server, _context["certificate"] as X509Certificate2));
         var (_, cert) = await client.Enroll(
@@ -202,6 +203,7 @@ public class EstServer
         var c = await GetCertificate(rsa);
         var client = new EstClient(
             new Uri("https://localhost/"),
+            options: null,
             messageHandler: _server.CreateHandler(),
             profileName: profile);
         var (error, cert) = await client.Enroll(
@@ -222,6 +224,7 @@ public class EstServer
         var c = await GetCertificate(rsa);
         var client = new EstClient(
             new Uri("https://localhost/"),
+            options: null,
             messageHandler: new TestMessageHandler(_server, c));
         var (error, cert) = await client.Enroll(
             new X500DistinguishedName(""),
@@ -236,7 +239,10 @@ public class EstServer
     [When("^an authenticated client requests the server attributes for the (.+?) certificate profile$")]
     public async Task WhenAnAuthenticatedClientRequestsTheServerAttributes(string profile)
     {
-        var client = new EstClient(new Uri("https://localhost/"), messageHandler: _server.CreateHandler(),
+        var client = new EstClient(
+            new Uri("https://localhost/"),
+            options: null,
+            messageHandler: _server.CreateHandler(),
             profileName: profile);
         var attributes = await client.GetCsrAttributes(
             new AuthenticationHeaderValue("Bearer", "valid-jwt"));
@@ -258,6 +264,7 @@ public class EstServer
         var cert = (X509Certificate2Collection)_context["enrolledCertificate"]!;
         var client = new EstClient(
             new Uri("https://localhost/"),
+            options: null,
             profileName: keytype.ToLowerInvariant(),
             messageHandler: new TestMessageHandler(_server));
         var privateKey = (byte[])_context["privateKey"]!;
@@ -299,7 +306,10 @@ public class EstServer
     [When("^a client requests the CA certificates for the \"(.+?)\" certificate profile$")]
     public async Task WhenAClientRequestsTheCaCertificates(string profileName)
     {
-        var client = new EstClient(new Uri("https://localhost/"), messageHandler: _server.CreateHandler(),
+        var client = new EstClient(
+            new Uri("https://localhost/"),
+            options: null,
+            messageHandler: _server.CreateHandler(),
             profileName: profileName);
         var certs = await client.ServerCertificates();
         _context["certificates"] = certs;
