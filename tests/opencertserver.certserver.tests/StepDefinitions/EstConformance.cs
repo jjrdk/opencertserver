@@ -100,6 +100,12 @@ public partial class CertificateServerFeatures
     {
     }
 
+    [Given("the EST server remembers its current CA certificate")]
+    public void GivenTheEstServerRemembersItsCurrentCaCertificate()
+    {
+        ConformanceState.PreRollOverRootThumbprint = GetCurrentRootCertificate().Thumbprint;
+    }
+
     [Given("the EST server implements \"(.+)\"")]
     public void GivenTheEstServerImplements(string operation)
     {
@@ -263,6 +269,31 @@ public partial class CertificateServerFeatures
 
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/cacerts"), accept: "application/pkcs7-mime");
         ParseSignedDataIfPossible();
+    }
+
+    [When("the active EST CA profile is rolled over to a new key and certificate")]
+    public void WhenTheActiveEstCaProfileIsRolledOverToANewKeyAndCertificate()
+    {
+        var profile = _server.Services.GetRequiredService<IStoreCaProfiles>()
+            .GetProfile(GetCurrentProfileName(), CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        var currentRoot = profile.CertificateChain[0];
+        var (privateKey, certificate) = CreateReplacementCaMaterial(currentRoot, profile.CertificateValidity);
+
+        try
+        {
+            profile.RollOver(certificate, privateKey);
+        }
+        catch
+        {
+            certificate.Dispose();
+            privateKey.Dispose();
+            throw;
+        }
+
+        certificate.Dispose();
+        ConformanceState.PostRollOverRootThumbprint = profile.CertificateChain[0].Thumbprint;
     }
 
     [When("the client POSTs a PKCS #10 certification request to \"(.+)\"")]
@@ -929,6 +960,17 @@ public partial class CertificateServerFeatures
         Assert.Contains(activeChain[0], publishedCertificates, X509Certificate2Comparer.Instance);
     }
 
+    [Then("the current root CA certificate MUST be different from the pre-rollover root")]
+    public void ThenTheCurrentRootCaCertificateMustBeDifferentFromThePreRolloverRoot()
+    {
+        Assert.False(string.IsNullOrWhiteSpace(ConformanceState.PreRollOverRootThumbprint),
+            "The scenario did not capture the pre-rollover CA certificate.");
+
+        var currentRootThumbprint = GetCurrentRootCertificate().Thumbprint;
+        Assert.NotEqual(ConformanceState.PreRollOverRootThumbprint, currentRootThumbprint);
+        Assert.Equal(currentRootThumbprint, ConformanceState.PostRollOverRootThumbprint);
+    }
+
     [Then(
         "every additional certificate needed to build a chain from an EST CA-issued certificate to the current EST CA trust anchor MUST be included in the response")]
     public async Task ThenEveryAdditionalCertificateNeededToBuildAChainMustBeIncludedInTheResponse()
@@ -1025,6 +1067,16 @@ public partial class CertificateServerFeatures
     {
         Assert.NotNull(ConformanceState.SignedData);
         Assert.Single(ConformanceState.SignedData!.Certificates ?? []);
+    }
+
+    [Then("newly issued certificates MUST chain to the current root CA certificate")]
+    public void ThenNewlyIssuedCertificatesMustChainToTheCurrentRootCaCertificate()
+    {
+        Assert.NotNull(_certCollection);
+        Assert.NotEmpty(_certCollection);
+
+        var currentRoot = GetCurrentRootCertificate();
+        Assert.Equal(currentRoot.SubjectName.Name, _certCollection[0].IssuerName.Name);
     }
 
     [Then("the response MUST use an HTTP 4xx or 5xx status code")]
@@ -1794,8 +1846,7 @@ public partial class CertificateServerFeatures
     private async Task<(X509Certificate2? oldWithOld, X509Certificate2? oldWithNew, X509Certificate2? newWithOld)>
         GetRolloverCertificates()
     {
-        var currentRoot = (await _server.Services.GetRequiredService<ICertificateAuthority>()
-            .GetRootCertificates(null, CancellationToken.None))[0];
+        var currentRoot = GetCurrentRootCertificate();
         var publishedCertificates = GetPublishedResponseCertificates();
 
         var currentRootSubjectKeyIdentifier = GetSubjectKeyIdentifier(currentRoot);
@@ -1823,6 +1874,67 @@ public partial class CertificateServerFeatures
                 !X509Certificate2Comparer.Instance.Equals(certificate, currentRoot));
 
         return (oldWithOld, oldWithNew, newWithOld);
+    }
+
+    private X509Certificate2 GetCurrentRootCertificate()
+    {
+        return _server.Services.GetRequiredService<ICertificateAuthority>()
+            .GetRootCertificates(GetCurrentProfileName(), CancellationToken.None)
+            .GetAwaiter()
+            .GetResult()[0];
+    }
+
+    private string GetCurrentProfileName()
+    {
+        return ConformanceState.ProfileName ?? "rsa";
+    }
+
+    private static (AsymmetricAlgorithm PrivateKey, X509Certificate2 Certificate) CreateReplacementCaMaterial(
+        X509Certificate2 currentRoot,
+        TimeSpan certificateValidity)
+    {
+        var validity = certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity;
+        if (currentRoot.GetRSAPublicKey() != null)
+        {
+            var privateKey = RSA.Create(3072);
+            var request = new CertificateRequest(
+                currentRoot.SubjectName,
+                privateKey,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pss);
+            ApplyCaExtensions(currentRoot, request);
+            var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.Add(validity));
+            return (privateKey, certificate);
+        }
+
+        if (currentRoot.GetECDsaPublicKey() != null)
+        {
+            var privateKey = ECDsa.Create();
+            var request = new CertificateRequest(currentRoot.SubjectName, privateKey, HashAlgorithmName.SHA256);
+            ApplyCaExtensions(currentRoot, request);
+            var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.Add(validity));
+            return (privateKey, certificate);
+        }
+
+        throw new NotSupportedException($"Unsupported CA public key algorithm '{currentRoot.PublicKey.Oid.Value}'.");
+    }
+
+    private static void ApplyCaExtensions(X509Certificate2 currentRoot, CertificateRequest request)
+    {
+        var basicConstraints = currentRoot.Extensions.OfType<X509BasicConstraintsExtension>().SingleOrDefault();
+        request.CertificateExtensions.Add(basicConstraints == null
+            ? new X509BasicConstraintsExtension(true, false, 0, true)
+            : new X509BasicConstraintsExtension(
+                basicConstraints.CertificateAuthority,
+                basicConstraints.HasPathLengthConstraint,
+                basicConstraints.PathLengthConstraint,
+                basicConstraints.Critical));
+        request.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+
+        var keyUsage = currentRoot.Extensions.OfType<X509KeyUsageExtension>().SingleOrDefault();
+        request.CertificateExtensions.Add(keyUsage == null
+            ? new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true)
+            : new X509KeyUsageExtension(keyUsage.KeyUsages, keyUsage.Critical));
     }
 
     private static string? GetSubjectKeyIdentifier(X509Certificate2 certificate)
@@ -2052,6 +2164,8 @@ public partial class CertificateServerFeatures
         public Exception? CsrAttributesException { get; set; }
         public CsrAttributes? CsrAttributes { get; set; }
         public CertificateSigningRequestTemplate? Template { get; set; }
+        public string? PreRollOverRootThumbprint { get; set; }
+        public string? PostRollOverRootThumbprint { get; set; }
     }
 
     private sealed class CapturingHandler : HttpMessageHandler

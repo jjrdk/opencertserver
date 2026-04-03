@@ -18,8 +18,8 @@ dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.test
 ## Latest focused run result
 
 Verified in this workspace:
-- Total: `64`
-- Passed: `60`
+- Total: `65`
+- Passed: `61`
 - Failed: `0`
 - Skipped: `4`
 
