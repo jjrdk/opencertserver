@@ -140,6 +140,18 @@ Unified EST conformance requirements from RFC 7030 as updated by RFC 8951 and RF
             And the /cacerts response SHOULD include the OldWithNew certificate
             And the /cacerts response SHOULD include the NewWithOld certificate
 
+        Scenario: Rolling over the active EST CA updates both the issuing chain and the published rollover bundle
+            Given the EST server remembers its current CA certificate
+            When the active EST CA profile is rolled over to a new key and certificate
+            And the EST server returns CA certificates
+            Then the current root CA certificate MUST be different from the pre-rollover root
+            And the current root CA certificate MUST be included in the response
+            And the /cacerts response SHOULD include the OldWithOld certificate
+            And the /cacerts response SHOULD include the OldWithNew certificate
+            And the /cacerts response SHOULD include the NewWithOld certificate
+            When I enroll with a valid JWT
+            Then newly issued certificates MUST chain to the current root CA certificate
+
     Rule: Simple enrollment using /simpleenroll
 
         Scenario: RFC 7030 Sections 4.2 and 4.2.1 allow authenticated simple enrollment to issue a certificate
