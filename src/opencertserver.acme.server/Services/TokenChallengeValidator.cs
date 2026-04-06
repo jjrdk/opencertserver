@@ -35,13 +35,13 @@ public abstract class TokenChallengeValidator : IValidateChallenges
         {
             challenge.Authorization.SetStatus(AuthorizationStatus.Expired);
             return (false,
-                new AcmeError("custom:authExpired", "Authorization expired", challenge.Authorization.Identifier));
+                new AcmeError("unauthorized", "Authorization expired", challenge.Authorization.Identifier));
         }
 
         if (challenge.Authorization.Order.Expires < DateTimeOffset.UtcNow)
         {
             challenge.Authorization.Order.SetStatus(OrderStatus.Invalid);
-            return (false, new AcmeError("custom:orderExpired", "Order expired"));
+            return (false, new AcmeError("malformed", "Order expired"));
         }
 
         var (challengeContent, error) = await LoadChallengeResponse(challenge, cancellationToken).ConfigureAwait(false);
@@ -55,7 +55,7 @@ public abstract class TokenChallengeValidator : IValidateChallenges
             ? (false,
                 new AcmeError(
                     "incorrectResponse",
-                    "Challenge response dod not contain the expected content.",
+                    "Challenge response did not contain the expected content.",
                     challenge.Authorization.Identifier))
             : (true, null);
     }

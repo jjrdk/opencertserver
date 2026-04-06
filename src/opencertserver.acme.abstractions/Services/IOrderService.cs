@@ -80,4 +80,18 @@ public interface IOrderService
         string authId,
         string challengeId,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Deactivates an authorization for the specified order.
+    /// </summary>
+    /// <param name="account">The account that owns the order.</param>
+    /// <param name="orderId">The order ID.</param>
+    /// <param name="authId">The authorization ID.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The updated authorization object.</returns>
+    Task<Authorization> DeactivateAuthorization(
+        Account account,
+        string orderId,
+        string authId,
+        CancellationToken cancellationToken);
 }

@@ -89,13 +89,7 @@ public sealed class DefaultOrderService : IOrderService
     {
         ValidateAccount(account);
 
-        var order = await _orderStore.LoadOrder(
-            orderId,
-            cancellationToken).ConfigureAwait(false);
-        if (order == null)
-        {
-            throw new NotFoundException();
-        }
+        var order = await HandleLoadOrder(account, orderId, null, cancellationToken).ConfigureAwait(false);
 
         var authZ = order.GetAuthorization(authId);
         var challenge = authZ?.GetChallenge(challengeId);
@@ -116,6 +110,29 @@ public sealed class DefaultOrderService : IOrderService
         await _orderStore.SaveOrder(order, cancellationToken).ConfigureAwait(false);
 
         return challenge;
+    }
+
+    public async Task<Authorization> DeactivateAuthorization(
+        Account account,
+        string orderId,
+        string authId,
+        CancellationToken cancellationToken)
+    {
+        ValidateAccount(account);
+
+        var order = await HandleLoadOrder(account, orderId, null, cancellationToken).ConfigureAwait(false);
+        var authorization = order.GetAuthorization(authId);
+        if (authorization == null)
+        {
+            throw new NotFoundException();
+        }
+
+        authorization.SetStatus(AuthorizationStatus.Deactivated);
+        order.Error ??= new AcmeError("unauthorized", "Authorization was deactivated by the client.", authorization.Identifier);
+        order.SetStatusFromAuthorizations();
+        await _orderStore.SaveOrder(order, cancellationToken).ConfigureAwait(false);
+
+        return authorization;
     }
 
     public async Task<Order> ProcessCsr(

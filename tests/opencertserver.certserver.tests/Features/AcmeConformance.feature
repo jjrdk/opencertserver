@@ -250,6 +250,7 @@ They are intentionally written before adding step implementations so they can dr
 
     Rule: Authorization and challenge objects
 
+        @acme-item5
         Scenario: RFC 8555 Section 7.1.4 defines the authorization object
             When the client fetches an authorization
             Then the authorization object MUST contain the identifier being authorized
@@ -257,6 +258,7 @@ They are intentionally written before adding step implementations so they can dr
             And pending authorizations SHOULD contain an expires timestamp
             And the authorization object MUST include its offered challenges
 
+        @acme-item5
         Scenario: RFC 8555 Section 7.1.5 defines the challenge object
             When the client fetches a challenge
             Then the challenge object MUST contain its type
@@ -266,16 +268,24 @@ They are intentionally written before adding step implementations so they can dr
             And valid challenges SHOULD include the validation timestamp
             And invalid challenges SHOULD include an error object
 
+        @acme-item5
         Scenario: RFC 8555 Section 7.5 requires challenge acknowledgements to trigger validation
             When the client acknowledges a pending challenge
             Then the ACME server MUST begin validating that challenge
             And the immediate challenge response MUST reflect a state of "pending" or "processing"
             And only the account that owns the authorization MUST be allowed to acknowledge the challenge
 
+        @acme-item5
         Scenario: RFC 8555 Section 7.5 permits authorization deactivation
             When the client POSTs an authorization object with status "deactivated" to its authorization URL
             Then the ACME server MUST deactivate the authorization
             And the returned authorization object MUST have status "deactivated"
+
+        @acme-item5
+        Scenario: RFC 8555 requires embedded challenge and order errors to use ACME problem URNs
+            When challenge validation fails
+            Then the challenge error object MUST use an "urn:ietf:params:acme:error:" URN
+            And the order error object MUST use an "urn:ietf:params:acme:error:" URN
 
         Scenario: RFC 8555 Section 8 requires challenge tokens to be random and URL-safe
             When the ACME server generates a challenge token
@@ -284,6 +294,7 @@ They are intentionally written before adding step implementations so they can dr
 
     Rule: Identifier validation methods
 
+        @acme-item5
         Scenario: RFC 8555 Section 8.3 defines http-01 validation for non-wildcard DNS identifiers
             Given the ACME server offers the "http-01" challenge for a non-wildcard DNS identifier
             When the client provisions the HTTP challenge response
@@ -291,6 +302,7 @@ They are intentionally written before adding step implementations so they can dr
             And the response body MUST equal the challenge token followed by "." and the account key thumbprint
             And a successful validation MUST transition the challenge and authorization to "valid"
 
+        @acme-item5
         Scenario: RFC 8555 Section 8.4 defines dns-01 validation
             Given the ACME server offers the "dns-01" challenge
             When the client provisions the DNS TXT challenge response
@@ -298,6 +310,7 @@ They are intentionally written before adding step implementations so they can dr
             And the TXT value MUST equal the base64url-encoded SHA-256 digest of the key authorization
             And a successful validation MUST transition the challenge and authorization to "valid"
 
+        @acme-item5
         Scenario: RFC 8555 Section 7.5 requires failed challenge validation to invalidate the authorization
             When challenge validation fails
             Then the ACME server MUST mark the challenge "invalid"

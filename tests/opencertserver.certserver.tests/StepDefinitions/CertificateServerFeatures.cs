@@ -83,8 +83,6 @@ public partial class CertificateServerFeatures
                     new AcmeServerOptions
                         { HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false } })
                 .AddSingleton<ICsrValidator, DefaultCsrValidator>()
-                .Replace(new ServiceDescriptor(typeof(IValidateHttp01Challenges), typeof(PassAllChallenges),
-                    ServiceLifetime.Transient))
                 .AddAcmeInMemoryStore()
                 .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
                 .AddRouting()
@@ -123,6 +121,9 @@ public partial class CertificateServerFeatures
 
             services.AddSingleton(sp => new DefaultIssuer(sp.GetRequiredService<ICertificateAuthority>()));
             services.AddSingleton(sp => new TestAcmeIssuer(sp.GetRequiredService<DefaultIssuer>()));
+            services.AddSingleton<TestAcmeChallengeValidationState>();
+            services.AddSingleton<IValidateHttp01Challenges, TestAcmeHttp01ChallengeValidator>();
+            services.AddSingleton<IValidateDns01Challenges, TestAcmeDns01ChallengeValidator>();
             services.Replace(ServiceDescriptor.Singleton<IIssueCertificates>(sp => sp.GetRequiredService<TestAcmeIssuer>()));
         }
     }

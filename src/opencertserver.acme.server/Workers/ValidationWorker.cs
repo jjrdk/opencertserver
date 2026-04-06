@@ -45,7 +45,7 @@ public sealed class ValidationWorker : IValidationWorker
         if (account == null)
         {
             order.SetStatus(OrderStatus.Invalid);
-            order.Error = new AcmeError("TODO", "Account could not be located. Order will be marked invalid.");
+            order.Error = new AcmeError("accountDoesNotExist", "Account could not be located. Order will be marked invalid.");
             await _orderStore.SaveOrder(order, cancellationToken).ConfigureAwait(false);
 
             return;
@@ -60,6 +60,7 @@ public sealed class ValidationWorker : IValidationWorker
             {
                 pendingAuthZ.ClearChallenges();
                 pendingAuthZ.SetStatus(AuthorizationStatus.Expired);
+                order.Error = new AcmeError("unauthorized", "Authorization expired", pendingAuthZ.Identifier);
                 continue;
             }
 
@@ -70,14 +71,22 @@ public sealed class ValidationWorker : IValidationWorker
 
             if (isValid)
             {
+                challenge.Error = null;
+                challenge.Validated = DateTimeOffset.UtcNow;
                 challenge.SetStatus(ChallengeStatus.Valid);
                 pendingAuthZ.SetStatus(AuthorizationStatus.Valid);
+
+                if (order.Error != null && string.Equals(order.Error.Type, "urn:ietf:params:acme:error:unauthorized", StringComparison.Ordinal))
+                {
+                    order.Error = null;
+                }
             }
             else
             {
-                challenge.Error = error!;
+                challenge.Error = error ?? new AcmeError("serverInternal", "Challenge validation failed.", pendingAuthZ.Identifier);
                 challenge.SetStatus(ChallengeStatus.Invalid);
                 pendingAuthZ.SetStatus(AuthorizationStatus.Invalid);
+                order.Error = challenge.Error;
             }
         }
 
