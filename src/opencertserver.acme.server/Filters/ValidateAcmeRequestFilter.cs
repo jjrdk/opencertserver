@@ -4,6 +4,7 @@ using OpenCertServer.Acme.Server.Extensions;
 namespace OpenCertServer.Acme.Server.Filters;
 
 using Abstractions.RequestServices;
+using OpenCertServer.Acme.Abstractions.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 
@@ -26,7 +27,7 @@ public sealed class ValidateAcmeRequestFilter : IEndpointFilter
         var payload = context.Arguments.OfType<JwsPayload>().FirstOrDefault();
         if (payload == null)
         {
-            throw new ArgumentException("Invalid JWS payload");
+            throw new MalformedRequestException("Invalid JWS payload.");
         }
 
         var acmeHeader = payload.ToAcmeHeader();

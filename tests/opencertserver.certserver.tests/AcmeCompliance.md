@@ -8,6 +8,7 @@ It is a **server-side RFC 8555 conformance inventory** for the code that is actu
 Primary implementation files reviewed:
 
 - `src/opencertserver.acme.server/AcmeRegistration.cs`
+- `src/opencertserver.acme.server/Filters/AcmeProtocolResponseFilter.cs`
 - `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs`
 - `src/opencertserver.acme.server/Endpoints/NonceEndpoints.cs`
 - `src/opencertserver.acme.server/Endpoints/AccountEndpoints.cs`
@@ -30,19 +31,59 @@ Primary implementation files reviewed:
 Existing integration coverage reviewed:
 
 - `tests/opencertserver.certserver.tests/Features/AcmeFeature.feature`
+- `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature`
 - `tests/opencertserver.certserver.tests/StepDefinitions/CertificateServerFeatures.cs`
+- `tests/opencertserver.certserver.tests/StepDefinitions/AcmeConformance.cs`
 
 The new RFC inventory lives in `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature`.
+
+## Focused feature runs
+
+### Item 1 focused run
+
+```zsh
+dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "Category=acme-item1"
+```
+
+Verified in this workspace:
+- Total: `5`
+- Passed: `5`
+- Failed: `0`
+- Skipped: `0`
+
+Covered scenarios:
+- `RFC 8555 Section 7.2 defines the newNonce resource`
+- `RFC 8555 Sections 6.4 and 6.5 require anti-replay protection on POST requests`
+- `RFC 8555 Section 6.5 requires fresh nonces on successful POST responses`
+- `RFC 8555 Section 6.7 requires RFC 7807 style ACME problem documents`
+- `RFC 8555 Section 6.5 requires protocol error responses to carry a fresh nonce`
+
+### ACME smoke regression run
+
+```zsh
+dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "DisplayName~Can complete certificate flow"
+```
+
+Verified in this workspace:
+- Total: `4`
+- Passed: `4`
+- Failed: `0`
+- Skipped: `0`
+
+This confirms the existing ACME happy-path issuance scenarios still pass after the centralized response/nonces changes.
+
+## Resolved items
+
+1. **Add a centralized ACME error/response layer and emit fresh nonces on POST responses.**
+   - Fixed in this workspace.
+   - `src/opencertserver.acme.server/Filters/AcmeProtocolResponseFilter.cs` now centralizes ACME exception handling for the route group and emits RFC 8555 `application/problem+json` responses.
+   - `src/opencertserver.acme.server/Endpoints/NonceEndpoints.cs` now exposes the replay-nonce helper so successful POST responses and ACME protocol error responses both receive fresh `Replay-Nonce` headers.
+   - The focused item 1 scenarios in `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature` are now implemented and passing.
 
 ## Current non-conformance list
 
 The items below are the ACME counterpart to the EST non-conformance tracking list.
 They are intended to be actionable, removable one by one, and backed by the detailed analysis in the sections that follow.
-
-1. **Add a centralized ACME error/response layer and emit fresh nonces on POST responses.**
-   - The server currently lacks a component that converts `AcmeException` instances into RFC 8555 `application/problem+json` responses.
-   - Successful POST responses and protocol error responses also do not consistently include a fresh `Replay-Nonce` header.
-   - Primary touchpoints: `src/opencertserver.acme.server/Filters/ValidateAcmeRequestFilter.cs`, `src/opencertserver.acme.server/RequestServices/DefaultRequestValidationService.cs`, the ACME endpoint classes, and a new centralized response/middleware component.
 
 2. **Fix account lifecycle conformance and account URL handling.**
    - `onlyReturnExisting` is currently wrong because `DefaultAccountService.FindAccount(...)` creates a new account instead of only finding one.
@@ -168,24 +209,19 @@ Nonce creation and validation exist:
 - `src/opencertserver.acme.server/Services/DefaultNonceService.cs`
 - `src/opencertserver.acme.server/Stores/InMemoryNonceStore.cs`
 - `src/opencertserver.acme.server/RequestServices/DefaultRequestValidationService.cs`
+- `src/opencertserver.acme.server/Filters/AcmeProtocolResponseFilter.cs`
 
 What works:
 
 - `HEAD /new-nonce` and `GET /new-nonce` mint nonces.
 - POST validation rejects missing or unknown nonces.
 - Nonces are one-time-use because `TryRemoveNonceAsync` removes them from the store.
+- Successful ACME POST responses now include a fresh `Replay-Nonce` header.
+- ACME protocol error responses now include a fresh `Replay-Nonce` header.
 
 ### Gaps and bugs found
 
-1. **Fresh `Replay-Nonce` headers are only added on `/new-nonce`.**
-   - `NonceEndpoints.AddNonceHeader(...)` is only called by the nonce endpoint handlers.
-   - RFC 8555 requires fresh nonces on successful POST responses and on protocol error responses as well.
-   - The current server does not add them globally.
-
-2. **`badNonce` responses are not rendered as ACME problem documents.**
-   - `DefaultRequestValidationService` throws `BadNonceException`.
-   - No ACME exception-to-`application/problem+json` mapping is currently present.
-   - So even though the server detects bad nonces, the response shape is not RFC conformant.
+No remaining replay-nonce response-shaping gaps are currently tracked for item 1 in this workspace.
 
 ---
 
@@ -250,23 +286,17 @@ There is an ACME exception hierarchy in `src/opencertserver.acme.abstractions/Ex
 - `NotFoundException`
 - `ConflictRequestException`
 
+There is now also a centralized ACME response layer in:
+
+- `src/opencertserver.acme.server/Filters/AcmeProtocolResponseFilter.cs`
+
 This is a good starting point conceptually.
 
 ### Gaps and bugs found
 
-1. **I found no exception-handling layer that converts ACME exceptions into RFC 8555 problem documents.**
-   - A workspace search did not find `UseExceptionHandler`, `IExceptionHandler`, `Results.Problem`, or any ACME-specific error middleware in `src/opencertserver.acme.server`.
-   - In practice this means the server is not currently producing reliable `application/problem+json` error bodies.
-
-2. **HTTP status mapping is not centralized.**
-   - Even when the code throws a semantically meaningful ACME exception, there is no visible response factory that maps it to the expected ACME status code and problem document.
-
 3. **Challenge and order embedded error objects use ad-hoc strings instead of ACME URNs.**
    - Examples include `"incorrectResponse"`, `"connection"`, `"dns"`, `"custom:authExpired"`, and `"custom:orderExpired"` in the challenge validation path.
    - Those do not follow the RFC 8555 ACME problem URN namespace.
-
-4. **Protocol error responses do not appear to guarantee a fresh nonce.**
-   - This compounds the nonce non-conformance above.
 
 ---
 
@@ -576,7 +606,6 @@ The major RFC 8555 gaps are captured in the numbered non-conformance list above.
 
 In short, the current implementation is a functioning ACME happy-path server, but it still needs:
 
-- RFC-shaped error handling and nonce emission;
 - complete account lifecycle support;
 - stricter JWS and POST-as-GET enforcement;
 - stricter order/finalization validation;

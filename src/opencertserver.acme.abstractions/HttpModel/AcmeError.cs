@@ -45,6 +45,11 @@ public sealed class AcmeError
     }
 
     /// <summary>
+    /// Gets or sets the HTTP status code associated with the problem document.
+    /// </summary>
+    public int? Status { get; set; }
+
+    /// <summary>
     /// Gets or sets the error type URN.
     /// </summary>
     public string Type { get; set; }
@@ -53,7 +58,7 @@ public sealed class AcmeError
     /// Gets or sets the error detail message.
     /// </summary>
     public string Detail { get; set; }
-        
+
     /// <summary>
     /// Gets or sets the list of subproblem errors, if any.
     /// </summary>
