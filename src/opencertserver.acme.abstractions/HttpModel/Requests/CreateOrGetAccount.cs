@@ -15,7 +15,7 @@ public sealed class CreateOrGetAccount
     /// <summary>
     /// Gets or sets a value indicating whether the terms of service have been agreed to.
     /// </summary>
-    public bool TermsOfServiceAgreed { get; set; }
+    public bool? TermsOfServiceAgreed { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether to only return an existing account.

@@ -6,6 +6,7 @@ using Abstractions.Model;
 using Abstractions.Storage;
 using Configuration;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 public sealed class AccountStore : StoreBase, IStoreAccounts
 {
@@ -46,5 +47,36 @@ public sealed class AccountStore : StoreBase, IStoreAccounts
         HandleVersioning(existingAccount, setAccount);
 
         await ReplaceFileStreamContent(fileStream, setAccount, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<Account?> FindAccount(JsonWebKey jwk, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(jwk);
+
+        var expectedThumbprint = Base64UrlEncoder.Encode(jwk.ComputeJwkThumbprint());
+        if (!Directory.Exists(Options.Value.AccountPath))
+        {
+            return null;
+        }
+
+        foreach (var accountFilePath in Directory.EnumerateFiles(Options.Value.AccountPath, "account.json",
+                     SearchOption.AllDirectories))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var account = await LoadFromPath<Account>(accountFilePath, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+            {
+                continue;
+            }
+
+            var currentThumbprint = Base64UrlEncoder.Encode(account.Jwk.ComputeJwkThumbprint());
+            if (string.Equals(currentThumbprint, expectedThumbprint, StringComparison.Ordinal))
+            {
+                return account;
+            }
+        }
+
+        return null;
     }
 }

@@ -58,6 +58,26 @@ Covered scenarios:
 - `RFC 8555 Section 6.7 requires RFC 7807 style ACME problem documents`
 - `RFC 8555 Section 6.5 requires protocol error responses to carry a fresh nonce`
 
+### Item 2 focused run
+
+```zsh
+dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "Category=acme-item2"
+```
+
+Verified in this workspace:
+- Total: `6`
+- Passed: `6`
+- Failed: `0`
+- Skipped: `0`
+
+Covered scenarios:
+- `RFC 8555 Section 7.3 allows an ACME client to create a new account`
+- `RFC 8555 Section 7.3 requires onlyReturnExisting to return an existing account without creating a new one`
+- `RFC 8555 Section 7.3 requires account URLs to be dereferenceable with POST-as-GET`
+- `RFC 8555 Section 7.3.2 allows account updates`
+- `RFC 8555 Section 7.3.2 allows account deactivation`
+- `RFC 8555 Section 7.3 requires the account orders list resource`
+
 ### ACME smoke regression run
 
 ```zsh
@@ -70,7 +90,7 @@ Verified in this workspace:
 - Failed: `0`
 - Skipped: `0`
 
-This confirms the existing ACME happy-path issuance scenarios still pass after the centralized response/nonces changes.
+This confirms the existing ACME happy-path issuance scenarios still pass after the account lifecycle and URL-handling changes.
 
 ## Resolved items
 
@@ -80,16 +100,16 @@ This confirms the existing ACME happy-path issuance scenarios still pass after t
    - `src/opencertserver.acme.server/Endpoints/NonceEndpoints.cs` now exposes the replay-nonce helper so successful POST responses and ACME protocol error responses both receive fresh `Replay-Nonce` headers.
    - The focused item 1 scenarios in `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature` are now implemented and passing.
 
+2. **Fix account lifecycle conformance and account URL handling.**
+   - Fixed in this workspace.
+   - `src/opencertserver.acme.server/Services/DefaultAccountService.cs` now performs true JWK-based account lookup and supports account updates/deactivation.
+   - `src/opencertserver.acme.server/Endpoints/AccountEndpoints.cs` now implements `onlyReturnExisting`, account retrieval/update/deactivation, and `/account/{accountId}/orders`, and emits absolute HTTPS account/order URLs.
+   - `tests/opencertserver.certserver.tests/StepDefinitions/AcmeConformance.cs` now implements the focused item 2 BDD scenarios, all of which are passing in this workspace.
+
 ## Current non-conformance list
 
 The items below are the ACME counterpart to the EST non-conformance tracking list.
 They are intended to be actionable, removable one by one, and backed by the detailed analysis in the sections that follow.
-
-2. **Fix account lifecycle conformance and account URL handling.**
-   - `onlyReturnExisting` is currently wrong because `DefaultAccountService.FindAccount(...)` creates a new account instead of only finding one.
-   - `POST /account/{accountId}` and `POST /account/{accountId}/orders` still return `501`, so account retrieval/update/deactivation and order listing are incomplete.
-   - Account and orders URLs are currently built with `GetPathByName(...)` instead of absolute URLs.
-   - Primary touchpoints: `src/opencertserver.acme.server/Services/DefaultAccountService.cs`, `src/opencertserver.acme.server/Endpoints/AccountEndpoints.cs`.
 
 3. **Tighten ACME JWS and POST-as-GET request validation.**
    - The server validates nonce, URL, signature, and `jwk`/`kid` exclusivity, but it does not explicitly enforce `application/jose+json`, endpoint-specific `jwk` versus `kid` rules, or empty payloads for POST-as-GET.
@@ -161,19 +181,17 @@ This is defined in:
    - There is no `/key-change` endpoint.
    - RFC 8555 account key rollover is therefore absent.
 
-3. **Account management surface is only partially implemented.**
-   - `POST /account/{accountId}` returns `501` in `AccountEndpoints.cs`.
-   - `POST /account/{accountId}/orders` returns `501` in `AccountEndpoints.cs`.
-   - That leaves account update, deactivation, and account order listing non-conformant.
+3. **Account management surface is now implemented for the core RFC 8555 lifecycle.**
+   - `POST /account/{accountId}` now supports POST-as-GET retrieval, updates, and deactivation.
+   - `POST /account/{accountId}/orders` now returns the account’s order URLs.
 
 4. **The directory advertises only part of the RFC 8555 surface.**
    - `newNonce`, `newAccount`, and `newOrder` are present.
    - `newAuthz` is omitted, which is acceptable for RFC 8555.
    - `revokeCert` and `keyChange` are absent because the features are absent.
 
-5. **Likely interoperability issue: account URLs are built as relative paths, not absolute URLs.**
-   - `AccountEndpoints.cs` uses `links.GetPathByName(...)` for `ordersUrl` and `accountUrl`.
-   - ACME resource fields are specified as URLs; using relative paths is risky and should be treated as non-conformant until proven interoperable with strict clients.
+5. **Account URLs are now emitted as absolute HTTPS URLs.**
+   - `AccountEndpoints.cs` now uses absolute URI generation for the `Location` header, the account resource URL, and the embedded `orders` URL.
 
 ---
 
@@ -316,32 +334,15 @@ The code supports:
 - `termsOfServiceAgreed`
 - `onlyReturnExisting`
 
-### Gaps and bugs found
+### Remaining gaps
 
-1. **`onlyReturnExisting` is implemented incorrectly.**
-   - `DefaultAccountService.FindAccount(...)` calls `CreateAccount(...)` and returns the new account.
-   - This means `onlyReturnExisting = true` creates accounts instead of only returning existing ones.
-   - That is a direct RFC 8555 conformance failure.
-
-2. **Unknown existing-account lookup returns the wrong behavior.**
-   - Because of the bug above, the server does not currently have the RFC-required “do not create a new account” behavior.
-
-3. **Account update is not implemented.**
-   - `POST /account/{accountId}` returns `501`.
-
-4. **Account deactivation is not implemented.**
-   - Same endpoint, same `501`.
-
-5. **Terms-of-service enforcement is incomplete.**
+1. **Terms-of-service enforcement is incomplete.**
    - `DirectoryEndpoints.cs` can advertise a TOS URL when `AcmeServerOptions.TOS.RequireAgreement` is set.
    - But `AccountEndpoints.cs` and `DefaultAccountService.cs` do not enforce rejection when the client omits `termsOfServiceAgreed` under a required-agreement policy.
 
-6. **External account binding is not enforced.**
+2. **External account binding is not enforced.**
    - The directory metadata hardcodes `ExternalAccountRequired = false`.
    - There is no server-side validation of `externalAccountBinding` if that mode were to be enabled later.
-
-7. **The account object's URLs are likely not emitted as absolute URLs.**
-   - `GetPathByName(...)` is used instead of `GetUriByName(...)`.
 
 ---
 
@@ -363,20 +364,16 @@ The integration smoke flow in `AcmeFeature.feature` and `CertificateServerFeatur
 
 ### Gaps and bugs found
 
-1. **The account order-list resource is not implemented.**
-   - `/account/{accountId}/orders` returns `501`.
-   - RFC 8555 requires this resource as part of the account object.
-
-2. **Orders do not currently set `Expires`.**
+1. **Orders do not currently set `Expires`.**
    - `src/opencertserver.acme.abstractions/Model/Order.cs` has an `Expires` property.
    - `DefaultOrderService.CreateOrder(...)` never populates it.
    - `HttpModel.Order` therefore emits no order expiration information.
 
-3. **Malformed order requests can fall through to non-RFC-shaped failures.**
+2. **Malformed order requests can fall through to non-RFC-shaped failures.**
    - `OrderEndpoints.cs` checks `Identifiers?.Count == 0`, but then force-uses `orderRequest!` and `Identifiers!`.
    - A truly null or badly shaped payload risks a server-side exception path rather than a proper ACME problem response.
 
-4. **The order list / pagination behavior required by RFC 8555 is absent.**
+3. **The order list / pagination behavior required by RFC 8555 is still absent beyond the non-paginated account order list resource.**
    - No implementation exists yet to return the account’s orders or paginate them.
 
 ---

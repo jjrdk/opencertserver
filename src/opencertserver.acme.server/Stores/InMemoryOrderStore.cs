@@ -30,4 +30,15 @@ internal sealed class InMemoryOrderStore : IStoreOrders
             .ToList().AsReadOnly();
         return Task.FromResult<IReadOnlyList<Order>>(orders);
     }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetOrderIds(string accountId, CancellationToken cancellationToken)
+    {
+        var orderIds = _orders.Values
+            .Where(x => string.Equals(x.AccountId, accountId, StringComparison.Ordinal))
+            .Select(x => x.OrderId)
+            .ToList()
+            .AsReadOnly();
+        return Task.FromResult<IReadOnlyList<string>>(orderIds);
+    }
 }
