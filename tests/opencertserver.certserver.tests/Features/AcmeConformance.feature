@@ -39,6 +39,7 @@ They are intentionally written before adding step implementations so they can dr
 
     Rule: Replay nonces and anti-replay protection
 
+        @acme-item1
         Scenario: RFC 8555 Section 7.2 defines the newNonce resource
             When the client requests a new nonce with HEAD
             Then the ACME server MUST return a Replay-Nonce header
@@ -47,6 +48,7 @@ They are intentionally written before adding step implementations so they can dr
             When the client requests a new nonce with GET
             Then the ACME server SHOULD return a Replay-Nonce header
 
+        @acme-item1
         Scenario: RFC 8555 Sections 6.4 and 6.5 require anti-replay protection on POST requests
             When the client sends a POST request to an ACME resource
             Then the JWS protected header MUST contain a nonce from the ACME server
@@ -54,6 +56,7 @@ They are intentionally written before adding step implementations so they can dr
             And the rejection MUST use the "badNonce" ACME error type
             And the rejection response MUST include a fresh Replay-Nonce header
 
+        @acme-item1
         Scenario: RFC 8555 Section 6.5 requires fresh nonces on successful POST responses
             When the client successfully POSTs to an ACME resource
             Then the response MUST include a fresh Replay-Nonce header
@@ -98,6 +101,7 @@ They are intentionally written before adding step implementations so they can dr
 
     Rule: ACME problem documents and protocol errors
 
+        @acme-item1
         Scenario: RFC 8555 Section 6.7 requires RFC 7807 style ACME problem documents
             When the ACME server rejects a request for a protocol reason
             Then the response content type MUST be "application/problem+json"
@@ -111,6 +115,7 @@ They are intentionally written before adding step implementations so they can dr
             Then the ACME server MAY return a top-level problem document containing "subproblems"
             And each subproblem SHOULD identify the affected identifier
 
+        @acme-item1
         Scenario: RFC 8555 Section 6.5 requires protocol error responses to carry a fresh nonce
             When the ACME server returns an error response to a POST request
             Then the response MUST include a fresh Replay-Nonce header

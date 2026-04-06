@@ -16,7 +16,8 @@ public static class AcmeRegistration
 
     public static IEndpointRouteBuilder RegisterAcmeEndpoints(this IEndpointRouteBuilder app, string pathBase = "")
     {
-        _ = app.MapGroup(pathBase).AddEndpointFilter<AcmeIndexLinkFilter>()
+        _ = app.MapGroup(pathBase).AddEndpointFilter<AcmeProtocolResponseFilter>()
+            .AddEndpointFilter<AcmeIndexLinkFilter>()
             .AddEndpointFilter<ValidateAcmeRequestFilter>()
             .MapDirectoryEndpoints().MapNonceEndpoints().MapAccountEndpoints().MapOrderEndpoints();
         return app;
