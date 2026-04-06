@@ -120,7 +120,7 @@ They are intentionally written before adding step implementations so they can dr
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/AcmeConformance.feature.ndjson", 60);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/AcmeConformance.feature.ndjson", 61);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -1573,15 +1573,17 @@ They are intentionally written before adding step implementations so they can dr
         [global::Xunit.FactAttribute(DisplayName="RFC 8555 Section 7.1.4 defines the authorization object")]
         [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
         [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 7.1.4 defines the authorization object")]
+        [global::Xunit.TraitAttribute("Category", "acme-item5")]
         public async global::System.Threading.Tasks.Task RFC8555Section7_1_4DefinesTheAuthorizationObject()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "acme-item5"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "36";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.1.4 defines the authorization object", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Authorization and challenge objects", null, tagsOfRule);
-#line 253
+#line 254
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1594,19 +1596,19 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 254
+#line 255
             await testRunner.WhenAsync("the client fetches an authorization", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 255
+#line 256
             await testRunner.ThenAsync("the authorization object MUST contain the identifier being authorized", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 256
+#line 257
             await testRunner.AndAsync("the authorization object MUST contain the current status", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 257
+#line 258
             await testRunner.AndAsync("pending authorizations SHOULD contain an expires timestamp", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 258
+#line 259
             await testRunner.AndAsync("the authorization object MUST include its offered challenges", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -1616,15 +1618,17 @@ They are intentionally written before adding step implementations so they can dr
         [global::Xunit.FactAttribute(DisplayName="RFC 8555 Section 7.1.5 defines the challenge object")]
         [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
         [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 7.1.5 defines the challenge object")]
+        [global::Xunit.TraitAttribute("Category", "acme-item5")]
         public async global::System.Threading.Tasks.Task RFC8555Section7_1_5DefinesTheChallengeObject()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "acme-item5"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "37";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.1.5 defines the challenge object", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Authorization and challenge objects", null, tagsOfRule);
-#line 260
+#line 262
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1637,25 +1641,25 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 261
+#line 263
             await testRunner.WhenAsync("the client fetches a challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 262
+#line 264
             await testRunner.ThenAsync("the challenge object MUST contain its type", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 263
+#line 265
             await testRunner.AndAsync("the challenge object MUST contain its URL", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 264
+#line 266
             await testRunner.AndAsync("the challenge object MUST contain its status", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 265
+#line 267
             await testRunner.AndAsync("the challenge object MUST contain its token", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 266
+#line 268
             await testRunner.AndAsync("valid challenges SHOULD include the validation timestamp", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 267
+#line 269
             await testRunner.AndAsync("invalid challenges SHOULD include an error object", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -1665,15 +1669,17 @@ They are intentionally written before adding step implementations so they can dr
         [global::Xunit.FactAttribute(DisplayName="RFC 8555 Section 7.5 requires challenge acknowledgements to trigger validation")]
         [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
         [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 7.5 requires challenge acknowledgements to trigger validation")]
+        [global::Xunit.TraitAttribute("Category", "acme-item5")]
         public async global::System.Threading.Tasks.Task RFC8555Section7_5RequiresChallengeAcknowledgementsToTriggerValidation()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "acme-item5"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "38";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.5 requires challenge acknowledgements to trigger validation", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Authorization and challenge objects", null, tagsOfRule);
-#line 269
+#line 272
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1686,17 +1692,17 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 270
+#line 273
             await testRunner.WhenAsync("the client acknowledges a pending challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 271
+#line 274
             await testRunner.ThenAsync("the ACME server MUST begin validating that challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 272
+#line 275
             await testRunner.AndAsync("the immediate challenge response MUST reflect a state of \"pending\" or \"processing" +
                         "\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 273
+#line 276
             await testRunner.AndAsync("only the account that owns the authorization MUST be allowed to acknowledge the c" +
                         "hallenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -1707,15 +1713,17 @@ They are intentionally written before adding step implementations so they can dr
         [global::Xunit.FactAttribute(DisplayName="RFC 8555 Section 7.5 permits authorization deactivation")]
         [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
         [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 7.5 permits authorization deactivation")]
+        [global::Xunit.TraitAttribute("Category", "acme-item5")]
         public async global::System.Threading.Tasks.Task RFC8555Section7_5PermitsAuthorizationDeactivation()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "acme-item5"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "39";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.5 permits authorization deactivation", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Authorization and challenge objects", null, tagsOfRule);
-#line 275
+#line 279
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1728,15 +1736,54 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 276
+#line 280
             await testRunner.WhenAsync("the client POSTs an authorization object with status \"deactivated\" to its authori" +
                         "zation URL", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 277
+#line 281
             await testRunner.ThenAsync("the ACME server MUST deactivate the authorization", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 278
+#line 282
             await testRunner.AndAsync("the returned authorization object MUST have status \"deactivated\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 8555 requires embedded challenge and order errors to use ACME problem URNs")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 8555 requires embedded challenge and order errors to use ACME problem URNs")]
+        [global::Xunit.TraitAttribute("Category", "acme-item5")]
+        public async global::System.Threading.Tasks.Task RFC8555RequiresEmbeddedChallengeAndOrderErrorsToUseACMEProblemURNs()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "acme-item5"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "40";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 requires embedded challenge and order errors to use ACME problem URNs", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Authorization and challenge objects", null, tagsOfRule);
+#line 285
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 286
+            await testRunner.WhenAsync("challenge validation fails", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 287
+            await testRunner.ThenAsync("the challenge error object MUST use an \"urn:ietf:params:acme:error:\" URN", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 288
+            await testRunner.AndAsync("the order error object MUST use an \"urn:ietf:params:acme:error:\" URN", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -1749,11 +1796,11 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "40";
+            string pickleIndex = "41";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 8 requires challenge tokens to be random and URL-safe", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Authorization and challenge objects", null, tagsOfRule);
-#line 280
+#line 290
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1766,13 +1813,13 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 281
+#line 291
             await testRunner.WhenAsync("the ACME server generates a challenge token", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 282
+#line 292
             await testRunner.ThenAsync("the token MUST contain at least 128 bits of entropy", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 283
+#line 293
             await testRunner.AndAsync("the token MUST be base64url encoded without padding", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -1782,15 +1829,17 @@ They are intentionally written before adding step implementations so they can dr
         [global::Xunit.FactAttribute(DisplayName="RFC 8555 Section 8.3 defines http-01 validation for non-wildcard DNS identifiers")]
         [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
         [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 8.3 defines http-01 validation for non-wildcard DNS identifiers")]
+        [global::Xunit.TraitAttribute("Category", "acme-item5")]
         public async global::System.Threading.Tasks.Task RFC8555Section8_3DefinesHttp_01ValidationForNon_WildcardDNSIdentifiers()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "acme-item5"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "41";
+            string pickleIndex = "42";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 8.3 defines http-01 validation for non-wildcard DNS identifiers", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Identifier validation methods", null, tagsOfRule);
-#line 287
+#line 298
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1803,21 +1852,21 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 288
+#line 299
             await testRunner.GivenAsync("the ACME server offers the \"http-01\" challenge for a non-wildcard DNS identifier", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 289
+#line 300
             await testRunner.WhenAsync("the client provisions the HTTP challenge response", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 290
+#line 301
             await testRunner.ThenAsync("the ACME server MUST fetch \"http://{identifier}/.well-known/acme-challenge/{token" +
                         "}\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 291
+#line 302
             await testRunner.AndAsync("the response body MUST equal the challenge token followed by \".\" and the account " +
                         "key thumbprint", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 292
+#line 303
             await testRunner.AndAsync("a successful validation MUST transition the challenge and authorization to \"valid" +
                         "\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -1828,15 +1877,17 @@ They are intentionally written before adding step implementations so they can dr
         [global::Xunit.FactAttribute(DisplayName="RFC 8555 Section 8.4 defines dns-01 validation")]
         [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
         [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 8.4 defines dns-01 validation")]
+        [global::Xunit.TraitAttribute("Category", "acme-item5")]
         public async global::System.Threading.Tasks.Task RFC8555Section8_4DefinesDns_01Validation()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "acme-item5"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "42";
+            string pickleIndex = "43";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 8.4 defines dns-01 validation", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Identifier validation methods", null, tagsOfRule);
-#line 294
+#line 306
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1849,20 +1900,20 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 295
+#line 307
             await testRunner.GivenAsync("the ACME server offers the \"dns-01\" challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 296
+#line 308
             await testRunner.WhenAsync("the client provisions the DNS TXT challenge response", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 297
+#line 309
             await testRunner.ThenAsync("the ACME server MUST query the \"_acme-challenge\" TXT record for the identifier", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 298
+#line 310
             await testRunner.AndAsync("the TXT value MUST equal the base64url-encoded SHA-256 digest of the key authoriz" +
                         "ation", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 299
+#line 311
             await testRunner.AndAsync("a successful validation MUST transition the challenge and authorization to \"valid" +
                         "\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -1875,16 +1926,18 @@ They are intentionally written before adding step implementations so they can dr
         [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
         [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 7.5 requires failed challenge validation to invalidate the autho" +
             "rization")]
+        [global::Xunit.TraitAttribute("Category", "acme-item5")]
         public async global::System.Threading.Tasks.Task RFC8555Section7_5RequiresFailedChallengeValidationToInvalidateTheAuthorization()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "acme-item5"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "43";
+            string pickleIndex = "44";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.5 requires failed challenge validation to invalidate the autho" +
                     "rization", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Identifier validation methods", null, tagsOfRule);
-#line 301
+#line 314
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1897,16 +1950,16 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 302
+#line 315
             await testRunner.WhenAsync("challenge validation fails", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 303
+#line 316
             await testRunner.ThenAsync("the ACME server MUST mark the challenge \"invalid\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 304
+#line 317
             await testRunner.AndAsync("the ACME server MUST mark the authorization \"invalid\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 305
+#line 318
             await testRunner.AndAsync("the challenge or authorization object MUST expose the validation error", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -1922,90 +1975,8 @@ They are intentionally written before adding step implementations so they can dr
             string[] tagsOfScenario = new string[] {
                     "acme-item4"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "44";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.4 requires the order to become ready before finalization", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Finalization and certificate issuance", null, tagsOfRule);
-#line 310
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 311
-            await testRunner.WhenAsync("not all authorizations for an order are valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 312
-            await testRunner.ThenAsync("the ACME server MUST NOT finalize the order", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 313
-            await testRunner.AndAsync("the order MUST remain \"pending\" or become \"invalid\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="RFC 8555 Section 7.4 requires CSR submission to the finalize URL")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 7.4 requires CSR submission to the finalize URL")]
-        [global::Xunit.TraitAttribute("Category", "acme-item4")]
-        public async global::System.Threading.Tasks.Task RFC8555Section7_4RequiresCSRSubmissionToTheFinalizeURL()
-        {
-            string[] tagsOfScenario = new string[] {
-                    "acme-item4"};
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "45";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.4 requires CSR submission to the finalize URL", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Finalization and certificate issuance", null, tagsOfRule);
-#line 316
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 317
-            await testRunner.WhenAsync("the client finalizes a ready order", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 318
-            await testRunner.ThenAsync("the request body MUST contain a base64url-encoded CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 319
-            await testRunner.AndAsync("the ACME server MUST verify that the identifiers requested in the CSR match the o" +
-                        "rder\'s identifiers", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 320
-            await testRunner.AndAsync("the ACME server MUST reject a malformed or unacceptable CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="RFC 8555 Section 7.4 requires CSRs without subjectAltName entries to be rejected")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 7.4 requires CSRs without subjectAltName entries to be rejected")]
-        [global::Xunit.TraitAttribute("Category", "acme-item4")]
-        public async global::System.Threading.Tasks.Task RFC8555Section7_4RequiresCSRsWithoutSubjectAltNameEntriesToBeRejected()
-        {
-            string[] tagsOfScenario = new string[] {
-                    "acme-item4"};
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "46";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.4 requires CSRs without subjectAltName entries to be rejected", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.4 requires the order to become ready before finalization", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Finalization and certificate issuance", null, tagsOfRule);
 #line 323
@@ -2022,10 +1993,92 @@ They are intentionally written before adding step implementations so they can dr
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 324
+            await testRunner.WhenAsync("not all authorizations for an order are valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 325
+            await testRunner.ThenAsync("the ACME server MUST NOT finalize the order", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 326
+            await testRunner.AndAsync("the order MUST remain \"pending\" or become \"invalid\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 8555 Section 7.4 requires CSR submission to the finalize URL")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 7.4 requires CSR submission to the finalize URL")]
+        [global::Xunit.TraitAttribute("Category", "acme-item4")]
+        public async global::System.Threading.Tasks.Task RFC8555Section7_4RequiresCSRSubmissionToTheFinalizeURL()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "acme-item4"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "46";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.4 requires CSR submission to the finalize URL", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Finalization and certificate issuance", null, tagsOfRule);
+#line 329
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 330
+            await testRunner.WhenAsync("the client finalizes a ready order", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 331
+            await testRunner.ThenAsync("the request body MUST contain a base64url-encoded CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 332
+            await testRunner.AndAsync("the ACME server MUST verify that the identifiers requested in the CSR match the o" +
+                        "rder\'s identifiers", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 333
+            await testRunner.AndAsync("the ACME server MUST reject a malformed or unacceptable CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 8555 Section 7.4 requires CSRs without subjectAltName entries to be rejected")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 7.4 requires CSRs without subjectAltName entries to be rejected")]
+        [global::Xunit.TraitAttribute("Category", "acme-item4")]
+        public async global::System.Threading.Tasks.Task RFC8555Section7_4RequiresCSRsWithoutSubjectAltNameEntriesToBeRejected()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "acme-item4"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "47";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.4 requires CSRs without subjectAltName entries to be rejected", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Finalization and certificate issuance", null, tagsOfRule);
+#line 336
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 337
             await testRunner.WhenAsync("the client finalizes a ready order with a CSR that has no subjectAltName extensio" +
                         "n", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 325
+#line 338
             await testRunner.ThenAsync("the ACME server MUST reject the request with the \"badCSR\" ACME error type", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -2041,11 +2094,11 @@ They are intentionally written before adding step implementations so they can dr
             string[] tagsOfScenario = new string[] {
                     "acme-item4"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "47";
+            string pickleIndex = "48";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.4 requires CSR identifiers to match the order exactly", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Finalization and certificate issuance", null, tagsOfRule);
-#line 328
+#line 341
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2058,11 +2111,11 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 329
+#line 342
             await testRunner.WhenAsync("the client finalizes a ready order with a CSR whose identifiers do not exactly ma" +
                         "tch the order", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 330
+#line 343
             await testRunner.ThenAsync("the ACME server MUST reject the request with the \"badCSR\" ACME error type", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -2080,12 +2133,12 @@ They are intentionally written before adding step implementations so they can dr
             string[] tagsOfScenario = new string[] {
                     "acme-item4"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "48";
+            string pickleIndex = "49";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.4 allows successful finalization to return processing or valid" +
                     "", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Finalization and certificate issuance", null, tagsOfRule);
-#line 333
+#line 346
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2098,16 +2151,16 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 334
+#line 347
             await testRunner.WhenAsync("the ACME server accepts a CSR for a ready order", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 335
+#line 348
             await testRunner.ThenAsync("the response MUST return the order object", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 336
+#line 349
             await testRunner.AndAsync("the order status MUST become either \"processing\" or \"valid\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 337
+#line 350
             await testRunner.AndAsync("if issuance is not complete the ACME server MAY include a Retry-After header", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2123,11 +2176,11 @@ They are intentionally written before adding step implementations so they can dr
             string[] tagsOfScenario = new string[] {
                     "acme-item4"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "49";
+            string pickleIndex = "50";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.4 requires orders that cannot be issued to become invalid", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Finalization and certificate issuance", null, tagsOfRule);
-#line 340
+#line 353
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2140,13 +2193,13 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 341
+#line 354
             await testRunner.WhenAsync("certificate issuance fails after finalization", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 342
+#line 355
             await testRunner.ThenAsync("the ACME server MUST mark the order \"invalid\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 343
+#line 356
             await testRunner.AndAsync("the order object MUST contain an error object explaining the failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2164,12 +2217,12 @@ They are intentionally written before adding step implementations so they can dr
             string[] tagsOfScenario = new string[] {
                     "acme-item4"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "50";
+            string pickleIndex = "51";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Sections 7.1.3 and 7.4 require accepted notBefore and notAfter values to" +
                     " be enforced during issuance", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Finalization and certificate issuance", null, tagsOfRule);
-#line 346
+#line 359
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2182,13 +2235,13 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 347
+#line 360
             await testRunner.WhenAsync("the client finalizes a ready order with accepted notBefore and notAfter values", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 348
+#line 361
             await testRunner.ThenAsync("the issued certificate MUST honor the accepted notBefore value", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 349
+#line 362
             await testRunner.AndAsync("the issued certificate MUST honor the accepted notAfter value", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2204,12 +2257,12 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "51";
+            string pickleIndex = "52";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.4.2 requires certificate URLs to be retrievable with POST-as-G" +
                     "ET", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Certificate retrieval", null, tagsOfRule);
-#line 353
+#line 366
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2222,16 +2275,16 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 354
+#line 367
             await testRunner.GivenAsync("the order status is \"valid\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 355
+#line 368
             await testRunner.WhenAsync("the client fetches the certificate URL", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 356
+#line 369
             await testRunner.ThenAsync("the ACME server MUST return the issued certificate chain", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 357
+#line 370
             await testRunner.AndAsync("the response content type MUST be \"application/pem-certificate-chain\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2245,11 +2298,11 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "52";
+            string pickleIndex = "53";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.4.2 allows alternate certificate chains", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Certificate retrieval", null, tagsOfRule);
-#line 359
+#line 372
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2262,10 +2315,10 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 360
+#line 373
             await testRunner.WhenAsync("the ACME server can provide alternate certificate chains for the same order", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 361
+#line 374
             await testRunner.ThenAsync("the response MAY include Link headers with relation \"alternate\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -2279,11 +2332,11 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "53";
+            string pickleIndex = "54";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.6 defines certificate revocation when the server supports it", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Certificate revocation", null, tagsOfRule);
-#line 365
+#line 378
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2296,16 +2349,16 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 366
+#line 379
             await testRunner.GivenAsync("the ACME server implements the \"revokeCert\" resource", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 367
+#line 380
             await testRunner.WhenAsync("the client revokes a certificate using the account that issued it", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 368
+#line 381
             await testRunner.ThenAsync("the ACME server MUST accept the revocation request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 369
+#line 382
             await testRunner.AndAsync("a successful revocation MUST return status code 200", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2319,11 +2372,11 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "54";
+            string pickleIndex = "55";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.6 also allows revocation using the certificate\'s private key", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Certificate revocation", null, tagsOfRule);
-#line 371
+#line 384
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2336,13 +2389,13 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 372
+#line 385
             await testRunner.GivenAsync("the ACME server implements the \"revokeCert\" resource", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 373
+#line 386
             await testRunner.WhenAsync("the client revokes a certificate using the certificate\'s private key", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 374
+#line 387
             await testRunner.ThenAsync("the ACME server MUST accept the revocation request if the signature is valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -2356,11 +2409,11 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "55";
+            string pickleIndex = "56";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.6 requires authorization checks on revocation", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Certificate revocation", null, tagsOfRule);
-#line 376
+#line 389
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2373,13 +2426,13 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 377
+#line 390
             await testRunner.GivenAsync("the ACME server implements the \"revokeCert\" resource", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 378
+#line 391
             await testRunner.WhenAsync("an unauthorized account attempts to revoke a certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 379
+#line 392
             await testRunner.ThenAsync("the ACME server MUST reject the revocation request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -2393,11 +2446,11 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "56";
+            string pickleIndex = "57";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.3.5 defines account key rollover when the server supports it", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Account key rollover", null, tagsOfRule);
-#line 383
+#line 396
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2410,25 +2463,25 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 384
+#line 397
             await testRunner.GivenAsync("the ACME server implements the \"keyChange\" resource", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 385
+#line 398
             await testRunner.WhenAsync("the client requests account key rollover", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 386
+#line 399
             await testRunner.ThenAsync("the outer JWS MUST be signed by the new account key", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 387
+#line 400
             await testRunner.AndAsync("the inner JWS MUST be signed by the old account key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 388
+#line 401
             await testRunner.AndAsync("the inner payload MUST identify the same account URL as the outer request", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 389
+#line 402
             await testRunner.AndAsync("the ACME server MUST verify that the old key currently controls the account", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 390
+#line 403
             await testRunner.AndAsync("the ACME server MUST reject attempts to roll an account key to a key already in u" +
                         "se by another account", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -2443,11 +2496,11 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "57";
+            string pickleIndex = "58";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.3.5 requires the new key to authorize subsequent requests", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Account key rollover", null, tagsOfRule);
-#line 392
+#line 405
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2460,16 +2513,16 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 393
+#line 406
             await testRunner.GivenAsync("the ACME server implements the \"keyChange\" resource", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 394
+#line 407
             await testRunner.WhenAsync("account key rollover succeeds", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 395
+#line 408
             await testRunner.ThenAsync("subsequent requests signed with the new key MUST be accepted", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 396
+#line 409
             await testRunner.AndAsync("subsequent requests signed only with the old key MUST be rejected", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }

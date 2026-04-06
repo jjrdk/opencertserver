@@ -54,7 +54,7 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
                 return (
                     null,
                     new AcmeError(
-                        "Address",
+                        "rejectedIdentifier",
                         "Challenge target resolves to prohibited address range.",
                         challenge.Authorization.Identifier));
             }

@@ -129,6 +129,28 @@ Covered scenarios:
 - `RFC 8555 Section 7.4 requires orders that cannot be issued to become invalid`
 - `RFC 8555 Sections 7.1.3 and 7.4 require accepted notBefore and notAfter values to be enforced during issuance`
 
+### Item 5 focused run
+
+```zsh
+dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "Category=acme-item5"
+```
+
+Verified in this workspace:
+- Total: `8`
+- Passed: `8`
+- Failed: `0`
+- Skipped: `0`
+
+Covered scenarios:
+- `RFC 8555 Section 7.1.4 defines the authorization object`
+- `RFC 8555 Section 7.1.5 defines the challenge object`
+- `RFC 8555 Section 7.5 requires challenge acknowledgements to trigger validation`
+- `RFC 8555 Section 7.5 permits authorization deactivation`
+- `RFC 8555 requires embedded challenge and order errors to use ACME problem URNs`
+- `RFC 8555 Section 8.3 defines http-01 validation for non-wildcard DNS identifiers`
+- `RFC 8555 Section 8.4 defines dns-01 validation`
+- `RFC 8555 Section 7.5 requires failed challenge validation to invalidate the authorization`
+
 ### ACME smoke regression run
 
 ```zsh
@@ -171,22 +193,23 @@ This confirms the existing ACME happy-path issuance scenarios still pass after t
    - `src/opencertserver.acme.abstractions/HttpModel/Order.cs` now always exposes the finalize URL, and `src/opencertserver.acme.server/Endpoints/OrderEndpoints.cs` now rejects malformed new-order payloads more safely.
    - `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature` and `tests/opencertserver.certserver.tests/StepDefinitions/AcmeConformance.cs` now implement the focused item 4 conformance scenarios, all of which are passing in this workspace.
 
+5. **Complete authorization and challenge RFC semantics.**
+   - Fixed in this workspace.
+   - `src/opencertserver.acme.server/Endpoints/OrderEndpoints.cs` now supports authorization deactivation via POST to the authorization resource and challenge retrieval via POST-as-GET.
+   - `src/opencertserver.acme.server/Services/DefaultOrderService.cs` now deactivates authorizations through the order service, while `src/opencertserver.acme.server/Workers/ValidationWorker.cs` stamps `validated` timestamps on successful challenge validation and propagates RFC-shaped challenge/order errors.
+   - `src/opencertserver.acme.server/Services/TokenChallengeValidator.cs`, `src/opencertserver.acme.server/Services/Http01ChallengeValidator.cs`, and `src/opencertserver.acme.server/Services/Dns01ChallengeValidator.cs` now normalize embedded challenge-validation errors to ACME problem URNs.
+   - `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature` and `tests/opencertserver.certserver.tests/StepDefinitions/AcmeConformance.cs` now implement the focused item 5 scenarios, all of which are passing in this workspace.
+
 ## Current non-conformance list
 
 The items below are the ACME counterpart to the EST non-conformance tracking list.
 They are intended to be actionable, removable one by one, and backed by the detailed analysis in the sections that follow.
 
-5. **Complete authorization and challenge RFC semantics.**
-   - Authorization deactivation is not implemented.
-   - Successful challenge validation does not set `validated`, so the challenge resource omits a required/expected RFC field.
-   - Embedded challenge/order error objects still use ad-hoc types rather than RFC 8555 ACME problem URNs.
-   - Primary touchpoints: `src/opencertserver.acme.server/Endpoints/OrderEndpoints.cs`, `src/opencertserver.acme.server/Workers/ValidationWorker.cs`, `src/opencertserver.acme.server/Services/Http01ChallengeValidator.cs`, `src/opencertserver.acme.server/Services/Dns01ChallengeValidator.cs`.
-
-6. **Implement certificate revocation and advertise it in the directory.**
+5. **Implement certificate revocation and advertise it in the directory.**
    - The client library already has revocation support, but the server does not expose `revokeCert`, a revocation endpoint, or the associated authorization rules.
    - Primary touchpoints: `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs` and new server-side revocation endpoint/service code.
 
-7. **Implement account key rollover and advertise it in the directory.**
+6. **Implement account key rollover and advertise it in the directory.**
    - The client library already has `ChangeKey(...)`, but the server has no `keyChange` route, no nested-JWS verification logic, and no account-key replacement flow.
    - Primary touchpoints: `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs`, `src/opencertserver.acme.server/Endpoints/AccountEndpoints.cs` or a dedicated key-change endpoint, `src/opencertserver.acme.server/Services/DefaultAccountService.cs`, and account storage.
 
@@ -349,9 +372,7 @@ This is a good starting point conceptually.
 
 ### Gaps and bugs found
 
-3. **Challenge and order embedded error objects use ad-hoc strings instead of ACME URNs.**
-   - Examples include `"incorrectResponse"`, `"connection"`, `"dns"`, `"custom:authExpired"`, and `"custom:orderExpired"` in the challenge validation path.
-   - Those do not follow the RFC 8555 ACME problem URN namespace.
+No remaining embedded challenge/order error-URN gaps are currently tracked in this workspace.
 
 ---
 
@@ -423,7 +444,10 @@ Current behavior includes:
 
 - one authorization per identifier;
 - challenge generation for `dns-01` and, for non-wildcard identifiers, `http-01`;
-- `POST` to a challenge URL transitions it to `processing` and selects that challenge.
+- `POST` to a challenge URL transitions it to `processing` and selects that challenge;
+- `POST` to an authorization URL can deactivate the authorization when the client submits status `deactivated`;
+- successful challenge validation now stamps `validated` and promotes the authorization to `valid`;
+- failed challenge validation now populates embedded challenge and order errors with ACME problem URNs.
 
 A good detail already present:
 
@@ -431,20 +455,7 @@ A good detail already present:
 
 ### Gaps and bugs found
 
-1. **Authorization deactivation is not implemented.**
-   - RFC 8555 allows deactivation via POST to the authorization URL.
-   - `POST /order/{orderId}/auth/{authId}` currently ignores the payload and always returns the authorization resource unchanged.
-
-2. **Valid challenges never record a validation timestamp.**
-   - `ValidationWorker.cs` sets challenge status to `Valid`, but never sets `challenge.Validated`.
-   - As a result, the challenge object cannot expose the validation time.
-
-3. **Challenge error object types are not RFC ACME URNs.**
-   - The challenge validation path emits ad-hoc strings, not `urn:ietf:params:acme:error:*` values.
-
-4. **Challenge objects are available, but their RFC error semantics are incomplete.**
-   - The state transitions exist.
-   - The problem-detail shape does not fully match RFC 8555 yet.
+No remaining authorization/challenge-semantics gaps are currently tracked for item 5 in this workspace.
 
 ---
 
@@ -462,17 +473,13 @@ What is good already:
 - `http-01` computes the expected key authorization as `{token}.{thumbprint}`.
 - `dns-01` computes the expected TXT value as `base64url(SHA-256(keyAuthorization))`.
 - the worker updates order/authorization/challenge state after validation.
+- successful validation stamps the challenge `validated` timestamp.
+- validation failures are surfaced as embedded ACME problem URNs on the challenge/order state.
 - wildcard identifiers naturally route to `dns-01` only.
 
 ### Gaps and bugs found
 
-1. **The success path does not stamp `validated`.**
-   - This is the most direct missing RFC field in the challenge object.
-
-2. **`http-01` and `dns-01` errors are not surfaced as RFC-shaped ACME problem objects.**
-   - The validator error payloads are internal model objects with non-URN types.
-
-3. **`http-01` behavior is intentionally security-conscious, but not yet documented in conformance terms.**
+1. **`http-01` behavior is intentionally security-conscious, but not yet documented in conformance terms.**
    - The validator blocks loopback, link-local, and private address ranges.
    - That is good hardening, but it is extra policy on top of RFC 8555 and should eventually be documented explicitly so the conformance suite can distinguish policy from protocol.
 
@@ -503,8 +510,7 @@ What works:
 
 ### Gaps and bugs found
 
-1. **Order error objects are only partially populated.**
-   - Issuance failures now populate the order `error` object, but broader embedded ACME error-shape consistency is still tracked under the later authorization/challenge work.
+No additional finalization-specific gaps are currently tracked in this workspace beyond the remaining revocation/key-rollover feature areas.
 
 ---
 
@@ -586,13 +592,12 @@ It proves:
      - nonce replay rejection and ACME problem documents;
      - account update/deactivation and account order listing;
      - request media-type enforcement, key-identifier rules, unsupported-algorithm rejection, and POST-as-GET rejection rules;
-     - order metadata, malformed new-order handling, strict CSR validation, invalid-order propagation, and `notBefore` / `notAfter` issuance enforcement.
+     - order metadata, malformed new-order handling, strict CSR validation, invalid-order propagation, and `notBefore` / `notAfter` issuance enforcement;
+     - authorization deactivation, challenge validation timestamps, challenge acknowledgement flow, and embedded challenge/order ACME problem URNs.
    - Focused executable scenarios are still missing for:
      - revocation;
      - key rollover;
-     - wildcard order behavior;
-     - exact CSR identifier matching;
-     - authorization deactivation and validation timestamps.
+     - wildcard order behavior.
 
 2. **The new `AcmeConformance.feature` is intentionally broader than the current implementation.**
    - It provides the requirement inventory before any step implementations are added.
@@ -621,27 +626,20 @@ That is why the existing basic ACME feature can succeed.
 
 The major RFC 8555 gaps are captured in the numbered non-conformance list above.
 
-In short, the current implementation is a functioning ACME happy-path server, but it still needs:
+In short, the current implementation is a functioning ACME server for the currently exercised account, order, authorization, challenge, finalization, and certificate-download flows, but it still needs:
 
-- full authorization/challenge semantics;
 - revocation support;
 - key rollover support.
 
 ### Practical implementation touchpoints for the next phase
 
-When the project moves from inventory to implementation, the highest-value files to change first are:
+When the project moves from inventory to implementation, the highest-value files to change next are:
 
-- `src/opencertserver.acme.server/RequestServices/DefaultRequestValidationService.cs`
-- `src/opencertserver.acme.server/Filters/ValidateAcmeRequestFilter.cs`
-- `src/opencertserver.acme.server/Endpoints/AccountEndpoints.cs`
 - `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs`
-- `src/opencertserver.acme.server/Endpoints/OrderEndpoints.cs`
-- `src/opencertserver.acme.server/Workers/ValidationWorker.cs`
-- `src/opencertserver.certserver/DefaultCsrValidator.cs`
+- new server-side revocation endpoint/service code under `src/opencertserver.acme.server`
+- `src/opencertserver.acme.server/Endpoints/AccountEndpoints.cs` or a dedicated key-change endpoint
+- `src/opencertserver.acme.server/Services/DefaultAccountService.cs`
+- account storage abstractions/implementations used by the ACME server
 
-And the project likely needs **one new centralized ACME error/response component** so the server can emit:
-
-- `application/problem+json` responses;
-- correct ACME error URNs;
-- fresh `Replay-Nonce` headers on POST responses and failures.
+The centralized ACME response layer added in this workspace already provides the core problem-document and replay-nonce behavior, so the next phase can focus on the remaining revocation and key-rollover protocol surface.
 

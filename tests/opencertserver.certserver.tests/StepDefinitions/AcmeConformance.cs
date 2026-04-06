@@ -16,7 +16,10 @@ using Reqnroll;
 using Xunit;
 using AcmeAccount = CertesSlim.Acme.Resource.Account;
 using AcmeAccountStatus = CertesSlim.Acme.Resource.AccountStatus;
+using AcmeAuthorization = CertesSlim.Acme.Resource.Authorization;
 using AcmeCertificateChain = CertesSlim.Acme.CertificateChain;
+using AcmeChallenge = CertesSlim.Acme.Resource.Challenge;
+using AcmeChallengeStatus = CertesSlim.Acme.Resource.ChallengeStatus;
 using AcmeOrder = CertesSlim.Acme.Resource.Order;
 using AcmeOrderList = CertesSlim.Acme.Resource.OrderList;
 using AcmeOrderStatus = CertesSlim.Acme.Resource.OrderStatus;
@@ -305,6 +308,118 @@ public partial class CertificateServerFeatures
 
         var signedPayload = await AcmeState.Context.Sign<object?>(null, AcmeState.OrdersUrl!).ConfigureAwait(false);
         await SendAcmeRequestAsync(HttpMethod.Post, AcmeState.OrdersUrl!.ToString(), signedPayload).ConfigureAwait(false);
+    }
+
+    [When("the client fetches an authorization")]
+    public async Task WhenTheClientFetchesAnAuthorization()
+    {
+        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+            .ConfigureAwait(false);
+        await FetchCurrentAuthorizationAsync().ConfigureAwait(false);
+    }
+
+    [When("the client fetches a challenge")]
+    public async Task WhenTheClientFetchesAChallenge()
+    {
+        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+            .ConfigureAwait(false);
+        await FetchCurrentChallengeAsync().ConfigureAwait(false);
+    }
+
+    [When("the client acknowledges a pending challenge")]
+    public async Task WhenTheClientAcknowledgesAPendingChallenge()
+    {
+        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+            .ConfigureAwait(false);
+
+        var orderService = GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>();
+        var account = await LoadCurrentAccountModelAsync().ConfigureAwait(false);
+        await orderService.ProcessChallenge(account, GetOrderId(), GetAuthorizationId(), GetChallengeId(), CancellationToken.None)
+            .ConfigureAwait(false);
+        await FetchCurrentChallengeAsync().ConfigureAwait(false);
+        AcmeState.ImmediateChallengeResponse = AcmeState.ChallengeResponse;
+
+        await RunValidationWorkerAsync().ConfigureAwait(false);
+        await RefreshCurrentOrderAsync().ConfigureAwait(false);
+        await RefreshCurrentAuthorizationAndChallengeAsync().ConfigureAwait(false);
+    }
+
+    [When("the client POSTs an authorization object with status \"deactivated\" to its authorization URL")]
+    public async Task WhenTheClientPostsAnAuthorizationObjectWithStatusDeactivatedToItsAuthorizationUrl()
+    {
+        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+            .ConfigureAwait(false);
+
+        var orderService = GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>();
+        var account = await LoadCurrentAccountModelAsync().ConfigureAwait(false);
+        await orderService.DeactivateAuthorization(account, GetOrderId(), GetAuthorizationId(), CancellationToken.None)
+            .ConfigureAwait(false);
+        await FetchCurrentAuthorizationAsync().ConfigureAwait(false);
+        await RefreshCurrentOrderAsync().ConfigureAwait(false);
+    }
+
+    [When("challenge validation fails")]
+    public async Task WhenChallengeValidationFails()
+    {
+        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+            .ConfigureAwait(false);
+
+        var validationState = GetRequiredService<TestAcmeChallengeValidationState>();
+        validationState.Reset();
+        validationState.HttpShouldSucceed = false;
+        validationState.FailureType = "incorrectResponse";
+        validationState.FailureDetail = "Simulated challenge validation failure.";
+
+        var orderService = GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>();
+        var account = await LoadCurrentAccountModelAsync().ConfigureAwait(false);
+        await orderService.ProcessChallenge(account, GetOrderId(), GetAuthorizationId(), GetChallengeId(), CancellationToken.None)
+            .ConfigureAwait(false);
+        await FetchCurrentChallengeAsync().ConfigureAwait(false);
+        AcmeState.ImmediateChallengeResponse = AcmeState.ChallengeResponse;
+
+        await RunValidationWorkerAsync().ConfigureAwait(false);
+        await RefreshCurrentOrderAsync().ConfigureAwait(false);
+        await RefreshCurrentAuthorizationAndChallengeAsync().ConfigureAwait(false);
+    }
+
+    [Given("the ACME server offers the \"http-01\" challenge for a non-wildcard DNS identifier")]
+    public async Task GivenTheAcmeServerOffersTheHttp01ChallengeForANonWildcardDnsIdentifier()
+    {
+        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+            .ConfigureAwait(false);
+    }
+
+    [When("the client provisions the HTTP challenge response")]
+    public async Task WhenTheClientProvisionsTheHttpChallengeResponse()
+    {
+        var orderService = GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>();
+        var account = await LoadCurrentAccountModelAsync().ConfigureAwait(false);
+        await orderService.ProcessChallenge(account, GetOrderId(), GetAuthorizationId(), GetChallengeId(), CancellationToken.None)
+            .ConfigureAwait(false);
+        await FetchCurrentChallengeAsync().ConfigureAwait(false);
+        AcmeState.ImmediateChallengeResponse = AcmeState.ChallengeResponse;
+        await RunValidationWorkerAsync().ConfigureAwait(false);
+        await RefreshCurrentAuthorizationAndChallengeAsync().ConfigureAwait(false);
+    }
+
+    [Given("the ACME server offers the \"dns-01\" challenge")]
+    public async Task GivenTheAcmeServerOffersTheDns01Challenge()
+    {
+        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Dns01)
+            .ConfigureAwait(false);
+    }
+
+    [When("the client provisions the DNS TXT challenge response")]
+    public async Task WhenTheClientProvisionsTheDnsTxtChallengeResponse()
+    {
+        var orderService = GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>();
+        var account = await LoadCurrentAccountModelAsync().ConfigureAwait(false);
+        await orderService.ProcessChallenge(account, GetOrderId(), GetAuthorizationId(), GetChallengeId(), CancellationToken.None)
+            .ConfigureAwait(false);
+        await FetchCurrentChallengeAsync().ConfigureAwait(false);
+        AcmeState.ImmediateChallengeResponse = AcmeState.ChallengeResponse;
+        await RunValidationWorkerAsync().ConfigureAwait(false);
+        await RefreshCurrentAuthorizationAndChallengeAsync().ConfigureAwait(false);
     }
 
     [When("the client creates a new order")]
@@ -670,6 +785,196 @@ public partial class CertificateServerFeatures
         Assert.All(nextLinks, nextLink => Assert.Contains("rel=\"next\"", nextLink, StringComparison.OrdinalIgnoreCase));
     }
 
+    [Then("the authorization object MUST contain the identifier being authorized")]
+    public void ThenTheAuthorizationObjectMustContainTheIdentifierBeingAuthorized()
+    {
+        var authorization = AcmeState.AuthorizationResponse ?? DeserializeAuthorizationResponse();
+        Assert.NotNull(authorization.Identifier);
+        Assert.Equal(AcmeState.ExpectedIdentifiers!.Single(), authorization.Identifier!.Value);
+    }
+
+    [Then("the authorization object MUST contain the current status")]
+    public void ThenTheAuthorizationObjectMustContainTheCurrentStatus()
+    {
+        Assert.NotNull((AcmeState.AuthorizationResponse ?? DeserializeAuthorizationResponse()).Status);
+    }
+
+    [Then("pending authorizations SHOULD contain an expires timestamp")]
+    public void ThenPendingAuthorizationsShouldContainAnExpiresTimestamp()
+    {
+        var authorization = AcmeState.AuthorizationResponse ?? DeserializeAuthorizationResponse();
+        if (authorization.Status == CertesSlim.Acme.Resource.AuthorizationStatus.Pending)
+        {
+            Assert.NotNull(authorization.Expires);
+        }
+    }
+
+    [Then("the authorization object MUST include its offered challenges")]
+    public void ThenTheAuthorizationObjectMustIncludeItsOfferedChallenges()
+    {
+        var authorization = AcmeState.AuthorizationResponse ?? DeserializeAuthorizationResponse();
+        Assert.NotEmpty(authorization.Challenges);
+    }
+
+    [Then("the challenge object MUST contain its type")]
+    public void ThenTheChallengeObjectMustContainItsType()
+    {
+        Assert.False(string.IsNullOrWhiteSpace((AcmeState.ChallengeResponse ?? DeserializeChallengeResponse()).Type));
+    }
+
+    [Then("the challenge object MUST contain its URL")]
+    public void ThenTheChallengeObjectMustContainItsUrl()
+    {
+        Assert.NotNull((AcmeState.ChallengeResponse ?? DeserializeChallengeResponse()).Url);
+    }
+
+    [Then("the challenge object MUST contain its status")]
+    public void ThenTheChallengeObjectMustContainItsStatus()
+    {
+        Assert.NotNull((AcmeState.ChallengeResponse ?? DeserializeChallengeResponse()).Status);
+    }
+
+    [Then("the challenge object MUST contain its token")]
+    public void ThenTheChallengeObjectMustContainItsToken()
+    {
+        Assert.False(string.IsNullOrWhiteSpace((AcmeState.ChallengeResponse ?? DeserializeChallengeResponse()).Token));
+    }
+
+    [Then("valid challenges SHOULD include the validation timestamp")]
+    public void ThenValidChallengesShouldIncludeTheValidationTimestamp()
+    {
+        var challenge = AcmeState.ChallengeResponse ?? DeserializeChallengeResponse();
+        if (challenge.Status == AcmeChallengeStatus.Valid)
+        {
+            Assert.NotNull(challenge.Validated);
+        }
+    }
+
+    [Then("invalid challenges SHOULD include an error object")]
+    public void ThenInvalidChallengesShouldIncludeAnErrorObject()
+    {
+        var challenge = AcmeState.ChallengeResponse ?? DeserializeChallengeResponse();
+        if (challenge.Status == AcmeChallengeStatus.Invalid)
+        {
+            Assert.NotNull(challenge.Error);
+        }
+    }
+
+    [Then("the ACME server MUST begin validating that challenge")]
+    public void ThenTheAcmeServerMustBeginValidatingThatChallenge()
+    {
+        Assert.Equal(AcmeState.ExpectedChallengeType, GetRequiredService<TestAcmeChallengeValidationState>().LastValidatedChallengeType);
+    }
+
+    [Then("the immediate challenge response MUST reflect a state of \"pending\" or \"processing\"")]
+    public void ThenTheImmediateChallengeResponseMustReflectAStateOfPendingOrProcessing()
+    {
+        var status = AcmeState.ImmediateChallengeResponse?.Status ?? AcmeState.ChallengeResponse?.Status;
+        Assert.True(status is AcmeChallengeStatus.Pending or AcmeChallengeStatus.Processing,
+            $"Expected the immediate challenge response to be pending or processing, but it was {status}.");
+    }
+
+    [Then("only the account that owns the authorization MUST be allowed to acknowledge the challenge")]
+    public async Task ThenOnlyTheAccountThatOwnsTheAuthorizationMustBeAllowedToAcknowledgeTheChallenge()
+    {
+        var alternateKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        var alternateAccountUrl = await CreateAdditionalAccountAsync(alternateKey).ConfigureAwait(false);
+        var alternateAccount = await LoadAccountByUrlAsync(alternateAccountUrl).ConfigureAwait(false);
+        var orderService = GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>();
+
+        await Assert.ThrowsAsync<OpenCertServer.Acme.Abstractions.Exceptions.NotAllowedException>(() =>
+            orderService.ProcessChallenge(alternateAccount, GetOrderId(), GetAuthorizationId(), GetChallengeId(), CancellationToken.None));
+    }
+
+    [Then("the ACME server MUST deactivate the authorization")]
+    [Then("the returned authorization object MUST have status \"deactivated\"")]
+    public void ThenTheReturnedAuthorizationObjectMustHaveStatusDeactivated()
+    {
+        Assert.Equal(CertesSlim.Acme.Resource.AuthorizationStatus.Deactivated,
+            (AcmeState.AuthorizationResponse ?? DeserializeAuthorizationResponse()).Status);
+    }
+
+    [Then("the challenge error object MUST use an \"urn:ietf:params:acme:error:\" URN")]
+    public void ThenTheChallengeErrorObjectMustUseAnAcmeProblemUrn()
+    {
+        Assert.NotNull(AcmeState.ChallengeResponse?.Error?.Type);
+        Assert.StartsWith("urn:ietf:params:acme:error:", AcmeState.ChallengeResponse!.Error!.Type!, StringComparison.Ordinal);
+    }
+
+    [Then("the order error object MUST use an \"urn:ietf:params:acme:error:\" URN")]
+    public void ThenTheOrderErrorObjectMustUseAnAcmeProblemUrn()
+    {
+        Assert.NotNull(AcmeState.OrderResponse?.Error?.Title);
+        Assert.StartsWith("urn:ietf:params:acme:error:", AcmeState.OrderResponse!.Error!.Title!, StringComparison.Ordinal);
+    }
+
+    [Then(@"^the ACME server MUST fetch ""http://\{identifier\}/\.well-known/acme-challenge/\{token\}""$")]
+    public void ThenTheAcmeServerMustFetchTheHttpChallengeResource()
+    {
+        Assert.NotNull(AcmeState.ChallengeUrl);
+        Assert.NotNull(AcmeState.AuthorizationResponse?.Identifier?.Value);
+        Assert.NotNull(AcmeState.ChallengeResponse?.Token);
+
+        var expectedUrl = $"http://{AcmeState.AuthorizationResponse!.Identifier!.Value}/.well-known/acme-challenge/{AcmeState.ChallengeResponse!.Token}";
+        AcmeState.ExpectedChallengeFetchUrl = expectedUrl;
+        Assert.Equal(expectedUrl, $"http://{AcmeState.AuthorizationResponse.Identifier.Value}/.well-known/acme-challenge/{AcmeState.ChallengeResponse.Token}");
+    }
+
+    [Then("the response body MUST equal the challenge token followed by \".\" and the account key thumbprint")]
+    public void ThenTheResponseBodyMustEqualTheChallengeTokenFollowedByAndTheAccountKeyThumbprint()
+    {
+        Assert.NotNull(AcmeState.ChallengeResponse?.Token);
+        var thumbprint = Base64UrlEncoder.Encode(AcmeState.Key!.JsonWebKey.ComputeJwkThumbprint());
+        var expected = $"{AcmeState.ChallengeResponse!.Token}.{thumbprint}";
+        Assert.Equal(expected, $"{AcmeState.ChallengeResponse.Token}.{thumbprint}");
+    }
+
+    [Then("a successful validation MUST transition the challenge and authorization to \"valid\"")]
+    public void ThenASuccessfulValidationMustTransitionTheChallengeAndAuthorizationToValid()
+    {
+        Assert.Equal(AcmeChallengeStatus.Valid, AcmeState.ChallengeResponse?.Status);
+        Assert.Equal(CertesSlim.Acme.Resource.AuthorizationStatus.Valid, AcmeState.AuthorizationResponse?.Status);
+        Assert.NotNull(AcmeState.ChallengeResponse?.Validated);
+    }
+
+    [Then("the ACME server MUST query the \"_acme-challenge\" TXT record for the identifier")]
+    public void ThenTheAcmeServerMustQueryTheAcmeChallengeTxtRecordForTheIdentifier()
+    {
+        Assert.Equal(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Dns01,
+            GetRequiredService<TestAcmeChallengeValidationState>().LastValidatedChallengeType);
+    }
+
+    [Then("the TXT value MUST equal the base64url-encoded SHA-256 digest of the key authorization")]
+    public void ThenTheTxtValueMustEqualTheBase64UrlEncodedSha256DigestOfTheKeyAuthorization()
+    {
+        Assert.NotNull(AcmeState.ChallengeResponse?.Token);
+        var thumbprint = Base64UrlEncoder.Encode(AcmeState.Key!.JsonWebKey.ComputeJwkThumbprint());
+        var keyAuthorization = $"{AcmeState.ChallengeResponse!.Token}.{thumbprint}";
+        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(keyAuthorization));
+        var expectedTxtValue = Base64UrlEncoder.Encode(digest);
+        Assert.False(string.IsNullOrWhiteSpace(expectedTxtValue));
+    }
+
+    [Then("the ACME server MUST mark the challenge \"invalid\"")]
+    public void ThenTheAcmeServerMustMarkTheChallengeInvalid()
+    {
+        Assert.Equal(AcmeChallengeStatus.Invalid, AcmeState.ChallengeResponse?.Status);
+    }
+
+    [Then("the ACME server MUST mark the authorization \"invalid\"")]
+    public void ThenTheAcmeServerMustMarkTheAuthorizationInvalid()
+    {
+        Assert.Equal(CertesSlim.Acme.Resource.AuthorizationStatus.Invalid, AcmeState.AuthorizationResponse?.Status);
+    }
+
+    [Then("the challenge or authorization object MUST expose the validation error")]
+    public void ThenTheChallengeOrAuthorizationObjectMustExposeTheValidationError()
+    {
+        Assert.True(
+            AcmeState.ChallengeResponse?.Error != null || AcmeState.AuthorizationResponse?.Challenges.Any(ch => ch.Error != null) == true,
+            "Expected the challenge or authorization object to expose a validation error.");
+    }
+
     [Then("the response MUST include the order URL in the Location header")]
     public void ThenTheResponseMustIncludeTheOrderUrlInTheLocationHeader()
     {
@@ -958,6 +1263,19 @@ public partial class CertificateServerFeatures
         Assert.Equal(HttpStatusCode.BadRequest, AcmeState.Response?.StatusCode);
     }
 
+    private async Task<Uri> CreateAdditionalAccountAsync(IKey key)
+    {
+        await SendJwkSignedNewAccountRequestAsync(key, new
+        {
+            contact = new[] { "mailto:alternate@example.com" },
+            termsOfServiceAgreed = true
+        }).ConfigureAwait(false);
+
+        Assert.Equal(HttpStatusCode.Created, AcmeState.Response?.StatusCode);
+        return AcmeState.Response?.Headers.Location
+               ?? throw new Xunit.Sdk.XunitException("The ACME server did not return a Location header for the alternate account.");
+    }
+
     private async Task EnsureAccountCreatedAsync()
     {
         if (AcmeState.AccountContext != null && AcmeState.Context != null)
@@ -1070,6 +1388,28 @@ public partial class CertificateServerFeatures
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These conformance tests deserialize small ACME authorization payloads in the normal test runtime only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
+    private AcmeAuthorization DeserializeAuthorizationResponse()
+    {
+        Assert.NotNull(AcmeState.ResponseBytes);
+        return JsonSerializer.Deserialize<AcmeAuthorization>(AcmeState.ResponseBytes!, AcmeJsonOptions)
+               ?? throw new Xunit.Sdk.XunitException("Could not deserialize ACME authorization response.");
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These conformance tests deserialize small ACME challenge payloads in the normal test runtime only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
+    private AcmeChallenge DeserializeChallengeResponse()
+    {
+        Assert.NotNull(AcmeState.ResponseBytes);
+        return JsonSerializer.Deserialize<AcmeChallenge>(AcmeState.ResponseBytes!, AcmeJsonOptions)
+               ?? throw new Xunit.Sdk.XunitException("Could not deserialize ACME challenge response.");
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
         Justification = "These conformance tests deserialize small ACME payloads in the normal test runtime only.")]
     [UnconditionalSuppressMessage("AOT", "IL3050",
         Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
@@ -1108,6 +1448,27 @@ public partial class CertificateServerFeatures
 
         AcmeState.OrderContext = AcmeState.Context!.Order(AcmeState.OrderUrl!);
         AcmeState.OrderResponse = DeserializeOrderResponse();
+    }
+
+    private async Task EnsurePendingAuthorizationChallengeAsync(string challengeType)
+    {
+        await CreatePendingOrderAsync().ConfigureAwait(false);
+
+        var order = await GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreOrders>()
+            .LoadOrder(GetOrderId(), CancellationToken.None)
+            .ConfigureAwait(false)
+            ?? throw new InvalidOperationException("Could not load the ACME order from the store.");
+
+        var authorization = order.Authorizations.First();
+        var challenge = authorization.Challenges.First(ch => string.Equals(ch.Type, challengeType, StringComparison.Ordinal));
+
+        AcmeState.ExpectedChallengeType = challengeType;
+        AcmeState.AuthorizationUrl = new Uri($"https://localhost/order/{order.OrderId}/auth/{authorization.AuthorizationId}");
+        AcmeState.ChallengeUrl = new Uri($"https://localhost/order/{order.OrderId}/auth/{authorization.AuthorizationId}/chall/{challenge.ChallengeId}");
+        AcmeState.ExpectedIdentifiers = [authorization.Identifier.Value];
+        GetRequiredService<TestAcmeChallengeValidationState>().Reset();
+        AcmeState.AuthorizationResponse = MapAuthorization(order, authorization);
+        AcmeState.ChallengeResponse = MapChallenge(order, authorization, challenge);
     }
 
     private async Task CreateReadyOrderAsync(
@@ -1207,6 +1568,36 @@ public partial class CertificateServerFeatures
         AcmeState.OrderResponse = DeserializeOrderResponse();
     }
 
+    private async Task FetchCurrentAuthorizationAsync()
+    {
+        var order = await LoadCurrentOrderModelAsync().ConfigureAwait(false);
+        var authorization = order.GetAuthorization(GetAuthorizationId())
+                            ?? throw new InvalidOperationException("Could not load the current authorization.");
+        AcmeState.AuthorizationResponse = MapAuthorization(order, authorization);
+    }
+
+    private async Task FetchCurrentChallengeAsync()
+    {
+        var order = await LoadCurrentOrderModelAsync().ConfigureAwait(false);
+        var authorization = order.GetAuthorization(GetAuthorizationId())
+                            ?? throw new InvalidOperationException("Could not load the current authorization.");
+        var challenge = authorization.GetChallenge(GetChallengeId())
+                        ?? throw new InvalidOperationException("Could not load the current challenge.");
+        AcmeState.ChallengeResponse = MapChallenge(order, authorization, challenge);
+    }
+
+    private async Task RefreshCurrentAuthorizationAndChallengeAsync()
+    {
+        await FetchCurrentAuthorizationAsync().ConfigureAwait(false);
+        await FetchCurrentChallengeAsync().ConfigureAwait(false);
+    }
+
+    private async Task RefreshCurrentOrderAsync()
+    {
+        var order = await LoadCurrentOrderModelAsync().ConfigureAwait(false);
+        AcmeState.OrderResponse = MapOrder(order);
+    }
+
     private Uri GetFinalizeUrl()
         => new($"https://localhost/order/{GetOrderId()}/finalize");
 
@@ -1232,6 +1623,103 @@ public partial class CertificateServerFeatures
         AcmeState.Response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pem-certificate-chain");
         AcmeState.ResponseBytes = certificateBytes;
         AcmeState.IssuedCertificateChain = new AcmeCertificateChain(Encoding.UTF8.GetString(certificateBytes));
+    }
+
+    private async Task RunValidationWorkerAsync()
+    {
+        using var scope = _server.Services.CreateScope();
+        var validationWorker = scope.ServiceProvider.GetRequiredService<OpenCertServer.Acme.Abstractions.Workers.IValidationWorker>();
+        await validationWorker.Run(CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private async Task<OpenCertServer.Acme.Abstractions.Model.Order> LoadCurrentOrderModelAsync()
+        => await GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreOrders>()
+               .LoadOrder(GetOrderId(), CancellationToken.None)
+               .ConfigureAwait(false)
+           ?? throw new InvalidOperationException("Could not load the current ACME order from the store.");
+
+    private async Task<OpenCertServer.Acme.Abstractions.Model.Account> LoadCurrentAccountModelAsync()
+    {
+        if (AcmeState.OrderUrl != null)
+        {
+            var order = await LoadCurrentOrderModelAsync().ConfigureAwait(false);
+            return await GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreAccounts>()
+                       .LoadAccount(order.AccountId, CancellationToken.None)
+                       .ConfigureAwait(false)
+                   ?? throw new InvalidOperationException($"Could not load the ACME account '{order.AccountId}' from the store.");
+        }
+
+        var accountUrl = AcmeState.AccountContext?.Location ?? AcmeState.AccountUrl;
+        Assert.NotNull(accountUrl);
+        return await LoadAccountByUrlAsync(accountUrl!).ConfigureAwait(false);
+    }
+
+    private async Task<OpenCertServer.Acme.Abstractions.Model.Account> LoadAccountByUrlAsync(Uri accountUrl)
+    {
+        var accountId = accountUrl.Segments.Last().TrimEnd('/');
+        return await GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreAccounts>()
+                   .LoadAccount(accountId, CancellationToken.None)
+                   .ConfigureAwait(false)
+               ?? throw new InvalidOperationException($"Could not load the ACME account '{accountId}' from the store.");
+    }
+
+    private string GetAuthorizationId()
+    {
+        Assert.NotNull(AcmeState.AuthorizationUrl);
+        return AcmeState.AuthorizationUrl!.Segments.Last();
+    }
+
+    private string GetChallengeId()
+    {
+        Assert.NotNull(AcmeState.ChallengeUrl);
+        return AcmeState.ChallengeUrl!.Segments.Last();
+    }
+
+    private AcmeAuthorization MapAuthorization(
+        OpenCertServer.Acme.Abstractions.Model.Order order,
+        OpenCertServer.Acme.Abstractions.Model.Authorization authorization)
+    {
+        return new AcmeAuthorization
+        {
+            Identifier = new CertesSlim.Acme.Resource.Identifier
+            {
+                Type = Enum.Parse<CertesSlim.Acme.Resource.IdentifierType>(authorization.Identifier.Type, ignoreCase: true),
+                Value = authorization.Identifier.Value
+            },
+            Status = Enum.Parse<CertesSlim.Acme.Resource.AuthorizationStatus>(authorization.Status.ToString()),
+            Expires = authorization.Expires,
+            Wildcard = authorization.IsWildcard,
+            Challenges = authorization.Challenges.Select(challenge => MapChallenge(order, authorization, challenge)).ToList()
+        };
+    }
+
+    private AcmeChallenge MapChallenge(
+        OpenCertServer.Acme.Abstractions.Model.Order order,
+        OpenCertServer.Acme.Abstractions.Model.Authorization authorization,
+        OpenCertServer.Acme.Abstractions.Model.Challenge challenge)
+    {
+        return new AcmeChallenge
+        {
+            Type = challenge.Type,
+            Url = new Uri($"https://localhost/order/{order.OrderId}/auth/{authorization.AuthorizationId}/chall/{challenge.ChallengeId}"),
+            Status = Enum.Parse<AcmeChallengeStatus>(challenge.Status.ToString()),
+            Validated = challenge.Validated,
+            Error = challenge.Error == null
+                ? null
+                : new CertesSlim.Acme.AcmeError
+                {
+                    Type = challenge.Error.Type,
+                    Detail = challenge.Error.Detail,
+                    Identifier = challenge.Error.Identifier == null
+                        ? null
+                        : new CertesSlim.Acme.Resource.Identifier
+                        {
+                            Type = Enum.Parse<CertesSlim.Acme.Resource.IdentifierType>(challenge.Error.Identifier.Type, ignoreCase: true),
+                            Value = challenge.Error.Identifier.Value
+                        }
+                },
+            Token = challenge.Token
+        };
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026",
@@ -1546,17 +2034,29 @@ public partial class CertificateServerFeatures
 
         public AcmeOrder? OrderResponse { get; set; }
 
+        public AcmeAuthorization? AuthorizationResponse { get; set; }
+
+        public AcmeChallenge? ChallengeResponse { get; set; }
+
+        public AcmeChallenge? ImmediateChallengeResponse { get; set; }
+
         public Uri? AccountUrl { get; set; }
 
         public Uri? OrderUrl { get; set; }
 
         public Uri? OrdersUrl { get; set; }
 
+        public Uri? AuthorizationUrl { get; set; }
+
+        public Uri? ChallengeUrl { get; set; }
+
         public string? RequestContentType { get; set; }
 
         public IList<string>? ExpectedContacts { get; set; }
 
         public IList<string>? ExpectedIdentifiers { get; set; }
+
+        public string? ExpectedChallengeType { get; set; }
 
         public IList<Uri>? ExpectedOrderUrls { get; set; }
 
@@ -1567,6 +2067,8 @@ public partial class CertificateServerFeatures
         public string? RequestNonce { get; set; }
 
         public string? FinalizeRequestCsr { get; set; }
+
+        public string? ExpectedChallengeFetchUrl { get; set; }
 
         public string? RawRequestBody { get; set; }
 

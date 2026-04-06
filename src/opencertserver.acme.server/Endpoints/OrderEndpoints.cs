@@ -85,6 +85,20 @@ public static class OrderEndpoints
             if (order == null) return Results.NotFound();
             var authZ = order.GetAuthorization(authId);
             if (authZ == null) return Results.NotFound();
+
+            if (!IsPostAsGet(payload))
+            {
+                var request = payload.ToPayload<UpdateAuthorizationRequest>();
+                if (request?.Status == CertesSlim.Acme.Resource.AuthorizationStatus.Deactivated)
+                {
+                    authZ = await orderService.DeactivateAuthorization(account, orderId, authId, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    throw new MalformedRequestException("Authorization update payload was empty or unsupported.");
+                }
+            }
+
             var challenges = authZ.Challenges.Select(challenge =>
                 new OpenCertServer.Acme.Abstractions.HttpModel.Challenge(challenge,
                     GetChallengeUrl(context, links, challenge)));
@@ -104,12 +118,25 @@ public static class OrderEndpoints
             CancellationToken cancellationToken) =>
         {
             var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
-            var challenge =
+            if (IsPostAsGet(payload))
+            {
+                var order = await orderService.GetOrderAsync(account, orderId, cancellationToken).ConfigureAwait(false);
+                if (order == null) return Results.NotFound();
+                var authorization = order.GetAuthorization(authId);
+                var currentChallenge = authorization?.GetChallenge(challengeId);
+                if (currentChallenge == null) return Results.NotFound();
+
+                return Results.Ok(new OpenCertServer.Acme.Abstractions.HttpModel.Challenge(
+                    currentChallenge,
+                    GetChallengeUrl(context, links, currentChallenge)));
+            }
+
+            var processedChallenge =
                 await orderService.ProcessChallenge(account, orderId, authId, challengeId, cancellationToken).ConfigureAwait(false);
-            if (challenge == null) return Results.NotFound();
+            if (processedChallenge == null) return Results.NotFound();
             var challengeResponse =
-                new OpenCertServer.Acme.Abstractions.HttpModel.Challenge(challenge,
-                    GetChallengeUrl(context, links, challenge));
+                new OpenCertServer.Acme.Abstractions.HttpModel.Challenge(processedChallenge,
+                    GetChallengeUrl(context, links, processedChallenge));
             return Results.Ok(challengeResponse);
         }).WithName("AcceptChallenge").AddEndpointFilter<AcmeLocationFilter>();
 
@@ -188,4 +215,7 @@ public static class OrderEndpoints
         ]);
         return links.GetUriByName(context, "AcceptChallenge", routeDic, scheme: Uri.UriSchemeHttps) ?? string.Empty;
     }
+
+    private static bool IsPostAsGet(JwsPayload payload)
+        => string.IsNullOrEmpty(payload.Payload);
 }
