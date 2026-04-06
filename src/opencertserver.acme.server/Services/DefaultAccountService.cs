@@ -36,7 +36,33 @@ public sealed class DefaultAccountService : IAccountService
 
     public async Task<Account?> FindAccount(JsonWebKey jwk, CancellationToken cancellationToken)
     {
-        var account = await CreateAccount(jwk, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return await _accountStore.FindAccount(jwk, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<Account> UpdateAccount(
+        Account account,
+        IEnumerable<string>? contact,
+        bool termsOfServiceAgreed,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateAccount(account);
+
+        account.UpdateContacts(contact);
+        if (termsOfServiceAgreed)
+        {
+            account.AgreeToTermsOfService();
+        }
+
+        await _accountStore.SaveAccount(account, cancellationToken).ConfigureAwait(false);
+        return account;
+    }
+
+    public async Task<Account> DeactivateAccount(Account account, CancellationToken cancellationToken = default)
+    {
+        ValidateAccount(account);
+
+        account.Deactivate();
+        await _accountStore.SaveAccount(account, cancellationToken).ConfigureAwait(false);
         return account;
     }
 

@@ -68,6 +68,12 @@ public sealed class DefaultOrderService : IOrderService
         return order;
     }
 
+    public async Task<IReadOnlyList<string>> GetOrderIds(Account account, CancellationToken cancellationToken)
+    {
+        ValidateAccount(account);
+        return await _orderStore.GetOrderIds(account.AccountId, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<Challenge?> ProcessChallenge(
         Account account,
         string orderId,

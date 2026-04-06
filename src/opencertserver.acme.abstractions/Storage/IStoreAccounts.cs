@@ -1,5 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Abstractions.Storage;
 
+using Microsoft.IdentityModel.Tokens;
 using System.Threading;
 using System.Threading.Tasks;
 using Model;
@@ -23,4 +24,12 @@ public interface IStoreAccounts
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The loaded account, or null if not found.</returns>
     Task<Account?> LoadAccount(string accountId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Loads an account from the store asynchronously by its JSON Web Key.
+    /// </summary>
+    /// <param name="jwk">The account key.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The loaded account, or null if not found.</returns>
+    Task<Account?> FindAccount(JsonWebKey jwk, CancellationToken cancellationToken);
 }

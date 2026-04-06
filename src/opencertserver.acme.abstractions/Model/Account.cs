@@ -52,6 +52,31 @@ using System.Linq;
         /// </summary>
         public DateTimeOffset? TosAccepted { get; private set; }
 
+            /// <summary>
+            /// Replaces the account contact URIs.
+            /// </summary>
+            /// <param name="contacts">The new contact URIs, or null to clear them.</param>
+            public void UpdateContacts(IEnumerable<string>? contacts)
+            {
+                Contacts = contacts?.ToList();
+            }
+
+            /// <summary>
+            /// Records acceptance of the current terms of service.
+            /// </summary>
+            public void AgreeToTermsOfService()
+            {
+                TosAccepted ??= DateTimeOffset.UtcNow;
+            }
+
+            /// <summary>
+            /// Deactivates the account.
+            /// </summary>
+            public void Deactivate()
+            {
+                Status = AccountStatus.Deactivated;
+            }
+
         /// <summary>
         /// Gets or sets the concurrency token for optimistic concurrency control.
         /// </summary>

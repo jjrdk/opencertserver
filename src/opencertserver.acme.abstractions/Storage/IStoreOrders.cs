@@ -31,4 +31,12 @@ public interface IStoreOrders
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>A read-only list of validatable orders.</returns>
     Task<IReadOnlyList<Order>> GetValidatableOrders(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Gets the order identifiers associated with a specific ACME account.
+    /// </summary>
+    /// <param name="accountId">The account identifier.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>A read-only list of order identifiers.</returns>
+    Task<IReadOnlyList<string>> GetOrderIds(string accountId, CancellationToken cancellationToken);
 }

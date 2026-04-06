@@ -39,6 +39,14 @@ public interface IOrderService
     Task<Order?> GetOrderAsync(Account account, string orderId, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Gets the order identifiers associated with the specified account.
+    /// </summary>
+    /// <param name="account">The account that owns the orders.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The order identifiers for the account.</returns>
+    Task<IReadOnlyList<string>> GetOrderIds(Account account, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Processes a CSR for the specified order.
     /// </summary>
     /// <param name="account">The account that owns the order.</param>

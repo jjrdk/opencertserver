@@ -70,6 +70,7 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
     {
         return exception switch
         {
+            AccountDoesNotExistException => StatusCodes.Status400BadRequest,
             BadNonceException => StatusCodes.Status400BadRequest,
             BadSignatureAlgorithmException => StatusCodes.Status400BadRequest,
             ConflictRequestException => StatusCodes.Status409Conflict,

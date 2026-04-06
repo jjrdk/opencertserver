@@ -122,6 +122,7 @@ They are intentionally written before adding step implementations so they can dr
 
     Rule: Account management
 
+        @acme-item2
         Scenario: RFC 8555 Section 7.3 allows an ACME client to create a new account
             When an ACME client creates a new account
             Then the response MUST use status code 201
@@ -129,6 +130,7 @@ They are intentionally written before adding step implementations so they can dr
             And the response body MUST be an account object whose status is "valid"
             And the account object MUST include the orders URL
 
+        @acme-item2
         Scenario: RFC 8555 Section 7.3 requires onlyReturnExisting to return an existing account without creating a new one
             When the client requests onlyReturnExisting for an existing account key
             Then the ACME server MUST return status code 200
@@ -137,16 +139,19 @@ They are intentionally written before adding step implementations so they can dr
             Then the ACME server MUST NOT create a new account
             And the ACME server MUST reject the request with the "accountDoesNotExist" ACME error type
 
+        @acme-item2
         Scenario: RFC 8555 Section 7.3 requires account URLs to be dereferenceable with POST-as-GET
             When the client fetches an existing account by its account URL
             Then the ACME server MUST return the current account object
 
+        @acme-item2
         Scenario: RFC 8555 Section 7.3.2 allows account updates
             When the client updates an existing account
             Then the ACME server MUST apply contact changes carried in the account object
             And the ACME server MUST record agreement to updated terms of service when requested
             And the response MUST return the updated account object
 
+        @acme-item2
         Scenario: RFC 8555 Section 7.3.2 allows account deactivation
             When the client POSTs an account object with status "deactivated" to its account URL
             Then the ACME server MUST deactivate the account
@@ -195,6 +200,7 @@ They are intentionally written before adding step implementations so they can dr
             When the client fetches an existing order by its order URL
             Then the ACME server MUST return the current order object
 
+        @acme-item2
         Scenario: RFC 8555 Section 7.3 requires the account orders list resource
             When the client fetches the account orders URL
             Then the ACME server MUST return the list of order URLs for that account
