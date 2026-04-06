@@ -63,6 +63,7 @@ They are intentionally written before adding step implementations so they can dr
 
     Rule: JWS envelope validation and POST-as-GET behavior
 
+        @acme-item3
         Scenario: RFC 8555 Sections 6.2 6.3 and 6.5 require ACME POST bodies to be signed JWS objects
             When the client POSTs to an ACME resource
             Then the request content type MUST be "application/jose+json"
@@ -74,6 +75,12 @@ They are intentionally written before adding step implementations so they can dr
             And the JWS protected header MUST contain either "jwk" or "kid"
             And the JWS protected header MUST NOT contain both "jwk" and "kid"
 
+        @acme-item3
+        Scenario: RFC 8555 Section 6.2 requires ACME POST requests to use the application jose+json media type
+            When the client POSTs an ACME request with the wrong content type
+            Then the ACME server MUST reject the request
+
+        @acme-item3
         Scenario: RFC 8555 Section 6.3 requires the protected header URL to match the request URL
             When the JWS protected header "url" value does not equal the actual request URL
             Then the ACME server MUST reject the request
@@ -84,10 +91,12 @@ They are intentionally written before adding step implementations so they can dr
             And the JWS payload for the retrieval request MUST be the empty string
             And the ACME server MUST accept POST-as-GET for account order authorization challenge and certificate resources
 
+        @acme-item3
         Scenario: RFC 8555 Section 6.2 forbids non-empty payloads on POST-as-GET requests
             When the client sends a POST-as-GET request with a non-empty payload
             Then the ACME server MUST reject the request
 
+        @acme-item3
         Scenario: RFC 8555 Section 6.5 distinguishes account-creation requests from existing-account requests
             When the client POSTs to the newAccount resource
             Then the JWS protected header MUST contain a "jwk" member
@@ -95,6 +104,22 @@ They are intentionally written before adding step implementations so they can dr
             When the client POSTs to an existing account order authorization challenge finalize or certificate resource
             Then the JWS protected header MUST contain a "kid" member
 
+        @acme-item3
+        Scenario: RFC 8555 Section 6.5 requires newAccount requests to use a jwk rather than a kid
+            When the client sends a newAccount request signed with a kid instead of a jwk
+            Then the ACME server MUST reject the request
+
+        @acme-item3
+        Scenario: RFC 8555 Section 6.5 requires existing-account requests to use a kid rather than a jwk
+            When the client sends an existing-account request signed with a jwk instead of a kid
+            Then the ACME server MUST reject the request
+
+        @acme-item3
+        Scenario: RFC 8555 Section 6.5 requires unknown kids to be rejected as accountDoesNotExist
+            When the client sends an existing-account request with an unknown kid
+            Then the ACME server MUST reject the request with the "accountDoesNotExist" ACME error type
+
+        @acme-item3
         Scenario: RFC 8555 Section 6.5 requires unsupported signature algorithms to be rejected
             When the client uses an unsupported JWS signature algorithm
             Then the ACME server MUST reject the request with the "badSignatureAlgorithm" ACME error type
@@ -167,6 +192,7 @@ They are intentionally written before adding step implementations so they can dr
 
     Rule: Orders and order objects
 
+        @acme-item3
         Scenario Outline: RFC 8555 Section 7.4 allows the core certificate flow for supported account key algorithms
             Given an ACME client for <keyAlgorithm>
             When the client requests a certificate
@@ -176,6 +202,8 @@ They are intentionally written before adding step implementations so they can dr
               | keyAlgorithm |
               | RS256        |
               | ES256        |
+              | ES384        |
+              | ES512        |
 
         Scenario: RFC 8555 Section 7.4 requires new orders to create pending authorizations
             When the client creates a new order
