@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics.CodeAnalysis;
 using OpenCertServer.Acme.Abstractions.IssuanceServices;
 using OpenCertServer.Acme.Abstractions.Services;
 using OpenCertServer.Acme.AspNetClient.Certes;
@@ -35,6 +36,10 @@ public partial class CertificateServerFeatures
     private TestServer _server = null!;
     private IAcmeClient _acmeClient = null!;
 
+    [UnconditionalSuppressMessage("Trimming", "IL2111",
+        Justification = "The test host registers known concrete services in the regular test runtime and is not trimmed.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These certserver tests do not target AOT publishing.")]
     [Given(@"a certificate server")]
     public void GivenACertificateServer()
     {
@@ -57,7 +62,14 @@ public partial class CertificateServerFeatures
                 e.MapCertificateAuthorityServer();
             });
 
-        void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services) =>
+        [UnconditionalSuppressMessage("Trimming", "IL2067",
+            Justification = "The certserver test host registers known concrete services only for the non-trimmed test runtime.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2111",
+            Justification = "The certserver test host registers known concrete services only for the non-trimmed test runtime.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050",
+            Justification = "These certserver tests do not target AOT publishing.")]
+        void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services)
+        {
             services
                 .AddSingleton<IResponderId>(new ResponderIdByKey("test"u8.ToArray()))
                 .AddInMemoryCertificateStore()
@@ -71,7 +83,6 @@ public partial class CertificateServerFeatures
                     new AcmeServerOptions
                         { HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false } })
                 .AddSingleton<ICsrValidator, DefaultCsrValidator>()
-                .AddSingleton<IIssueCertificates, DefaultIssuer>()
                 .Replace(new ServiceDescriptor(typeof(IValidateHttp01Challenges), typeof(PassAllChallenges),
                     ServiceLifetime.Transient))
                 .AddAcmeInMemoryStore()
@@ -109,6 +120,11 @@ public partial class CertificateServerFeatures
                     };
                 })
                 .AddCertificate();
+
+            services.AddSingleton(sp => new DefaultIssuer(sp.GetRequiredService<ICertificateAuthority>()));
+            services.AddSingleton(sp => new TestAcmeIssuer(sp.GetRequiredService<DefaultIssuer>()));
+            services.Replace(ServiceDescriptor.Singleton<IIssueCertificates>(sp => sp.GetRequiredService<TestAcmeIssuer>()));
+        }
     }
 
     [Given(@"an ACME client for (.+)")]

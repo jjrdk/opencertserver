@@ -43,9 +43,15 @@ public sealed class DefaultOrderService : IOrderService
     {
         ValidateAccount(account);
 
+        if (notBefore.HasValue && notAfter.HasValue && notAfter <= notBefore)
+        {
+            throw new MalformedRequestException("The requested validity window is invalid.");
+        }
+
         var order = new Order(account, identifiers, profile) { NotBefore = notBefore, NotAfter = notAfter };
 
         _authorizationFactory.CreateAuthorizations(order);
+        order.Expires = order.Authorizations.Min(a => a.Expires);
 
         await _orderStore.SaveOrder(order, cancellationToken).ConfigureAwait(false);
 
@@ -133,7 +139,13 @@ public sealed class DefaultOrderService : IOrderService
             order.SetStatus(OrderStatus.Processing);
             order.CertificateSigningRequest = csr;
             var (certificate, acmeError) =
-                await _issuer.IssueCertificate(order.Profile, csr, order.Identifiers, cancellationToken).ConfigureAwait(false);
+                await _issuer.IssueCertificate(
+                    order.Profile,
+                    csr,
+                    order.Identifiers,
+                    order.NotBefore,
+                    order.NotAfter,
+                    cancellationToken).ConfigureAwait(false);
             if (certificate != null)
             {
                 order.Certificate = certificate;
@@ -141,11 +153,17 @@ public sealed class DefaultOrderService : IOrderService
             }
             else if (acmeError != null)
             {
+                order.Error = acmeError;
                 order.SetStatus(OrderStatus.Invalid);
             }
         }
         else
         {
+            if (error != null && string.Equals(error.Type, "urn:ietf:params:acme:error:badCSR", StringComparison.Ordinal))
+            {
+                throw new BadCsrException(error.Detail);
+            }
+
             order.Error = error;
             order.SetStatus(OrderStatus.Invalid);
         }

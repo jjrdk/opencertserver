@@ -26,15 +26,15 @@ public static class OrderEndpoints
             var header = payload.ToAcmeHeader();
             var account = await accountService.FromRequest(header, cancellationToken).ConfigureAwait(false);
             var orderRequest = payload.ToPayload<CreateOrderRequest>();
-            if (orderRequest?.Identifiers?.Count == 0)
+            if (orderRequest?.Identifiers == null || orderRequest.Identifiers.Count == 0)
             {
-                throw new MalformedRequestException("No identifiers submitted");
+                throw new MalformedRequestException("No identifiers submitted.");
             }
 
-            foreach (var i in orderRequest!.Identifiers!.Where(i =>
+            foreach (var i in orderRequest.Identifiers.Where(i =>
                 string.IsNullOrWhiteSpace(i.Type) || string.IsNullOrWhiteSpace(i.Value)))
                 throw new MalformedRequestException($"Malformed identifier: (Type: {i.Type}, Value: {i.Value})");
-            var identifiers = orderRequest.Identifiers!.Select(x =>
+            var identifiers = orderRequest.Identifiers.Select(x =>
                 new OpenCertServer.Acme.Abstractions.Model.Identifier(x.Type!, x.Value!));
             var order = await orderService.CreateOrder(orderRequest.Profile, account, identifiers,
                 orderRequest.NotBefore,

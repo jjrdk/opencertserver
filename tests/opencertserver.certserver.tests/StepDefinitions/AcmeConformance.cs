@@ -1,6 +1,8 @@
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Net;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -8,12 +10,16 @@ using System.Diagnostics.CodeAnalysis;
 using CertesSlim;
 using CertesSlim.Acme;
 using CertesSlim.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Reqnroll;
 using Xunit;
 using AcmeAccount = CertesSlim.Acme.Resource.Account;
 using AcmeAccountStatus = CertesSlim.Acme.Resource.AccountStatus;
+using AcmeCertificateChain = CertesSlim.Acme.CertificateChain;
+using AcmeOrder = CertesSlim.Acme.Resource.Order;
 using AcmeOrderList = CertesSlim.Acme.Resource.OrderList;
+using AcmeOrderStatus = CertesSlim.Acme.Resource.OrderStatus;
 
 public partial class CertificateServerFeatures
 {
@@ -127,7 +133,7 @@ public partial class CertificateServerFeatures
             new { invalidPostAsGet = true },
             orderContext.Location,
             await GetFreshNonceAsync().ConfigureAwait(false),
-            kid: AcmeState.AccountUrl);
+            kid: GetAccountLocation());
         await SendAcmeRequestAsync(HttpMethod.Post, orderContext.Location.ToString(), signedPayload).ConfigureAwait(false);
     }
 
@@ -164,7 +170,7 @@ public partial class CertificateServerFeatures
             },
             new Uri("http://localhost/new-account"),
             await GetFreshNonceAsync().ConfigureAwait(false),
-            kid: AcmeState.AccountUrl);
+            kid: GetAccountLocation());
 
         await SendAcmeRequestAsync(HttpMethod.Post, "/new-account", signedPayload).ConfigureAwait(false);
     }
@@ -299,6 +305,90 @@ public partial class CertificateServerFeatures
 
         var signedPayload = await AcmeState.Context.Sign<object?>(null, AcmeState.OrdersUrl!).ConfigureAwait(false);
         await SendAcmeRequestAsync(HttpMethod.Post, AcmeState.OrdersUrl!.ToString(), signedPayload).ConfigureAwait(false);
+    }
+
+    [When("the client creates a new order")]
+    public async Task WhenTheClientCreatesANewOrder()
+    {
+        await CreatePendingOrderAsync().ConfigureAwait(false);
+    }
+
+    [When("the client fetches an order")]
+    public async Task WhenTheClientFetchesAnOrder()
+    {
+        AcmeState.ExpectedNotBefore = DateTimeOffset.UtcNow.AddHours(6).ToUniversalTime();
+        AcmeState.ExpectedNotAfter = AcmeState.ExpectedNotBefore.Value.AddDays(2);
+
+        await CreatePendingOrderAsync(notBefore: AcmeState.ExpectedNotBefore, notAfter: AcmeState.ExpectedNotAfter)
+            .ConfigureAwait(false);
+    }
+
+    [When("the client submits a new-order request without identifiers")]
+    public async Task WhenTheClientSubmitsANewOrderRequestWithoutIdentifiers()
+    {
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
+        await SendKidSignedRequestAsync(
+            "/new-order",
+            new
+            {
+                identifiers = Array.Empty<object>()
+            }).ConfigureAwait(false);
+    }
+
+    [When("not all authorizations for an order are valid")]
+    public async Task WhenNotAllAuthorizationsForAnOrderAreValid()
+    {
+        await CreatePendingOrderAsync().ConfigureAwait(false);
+        await FinalizeCurrentOrderAsync(CreateCsrBase64(AcmeState.ExpectedIdentifiers!)).ConfigureAwait(false);
+    }
+
+    [When("the client finalizes a ready order")]
+    public async Task WhenTheClientFinalizesAReadyOrder()
+    {
+        await CreateReadyOrderAsync().ConfigureAwait(false);
+        await FinalizeCurrentOrderAsync(CreateCsrBase64(AcmeState.ExpectedIdentifiers!)).ConfigureAwait(false);
+    }
+
+    [When("the client finalizes a ready order with a CSR that has no subjectAltName extension")]
+    public async Task WhenTheClientFinalizesAReadyOrderWithACsrThatHasNoSubjectAltNameExtension()
+    {
+        await CreateReadyOrderAsync().ConfigureAwait(false);
+        await FinalizeCurrentOrderAsync(CreateCsrBase64(Array.Empty<string>(), includeSubjectAlternativeNames: false))
+            .ConfigureAwait(false);
+    }
+
+    [When("the client finalizes a ready order with a CSR whose identifiers do not exactly match the order")]
+    public async Task WhenTheClientFinalizesAReadyOrderWithACsrWhoseIdentifiersDoNotExactlyMatchTheOrder()
+    {
+        await CreateReadyOrderAsync().ConfigureAwait(false);
+        await FinalizeCurrentOrderAsync(CreateCsrBase64(["localhost", "extra.local"])).ConfigureAwait(false);
+    }
+
+    [When("the ACME server accepts a CSR for a ready order")]
+    public async Task WhenTheAcmeServerAcceptsACsrForAReadyOrder()
+    {
+        await CreateReadyOrderAsync().ConfigureAwait(false);
+        await FinalizeCurrentOrderAsync(CreateCsrBase64(AcmeState.ExpectedIdentifiers!)).ConfigureAwait(false);
+    }
+
+    [When("certificate issuance fails after finalization")]
+    public async Task WhenCertificateIssuanceFailsAfterFinalization()
+    {
+        await CreateReadyOrderAsync().ConfigureAwait(false);
+        GetRequiredService<TestAcmeIssuer>().FailNextIssuance = true;
+        await FinalizeCurrentOrderAsync(CreateCsrBase64(AcmeState.ExpectedIdentifiers!)).ConfigureAwait(false);
+    }
+
+    [When("the client finalizes a ready order with accepted notBefore and notAfter values")]
+    public async Task WhenTheClientFinalizesAReadyOrderWithAcceptedNotBeforeAndNotAfterValues()
+    {
+        AcmeState.ExpectedNotBefore = DateTimeOffset.UtcNow.AddHours(8).ToUniversalTime();
+        AcmeState.ExpectedNotAfter = AcmeState.ExpectedNotBefore.Value.AddDays(5);
+
+        await CreateReadyOrderAsync(notBefore: AcmeState.ExpectedNotBefore, notAfter: AcmeState.ExpectedNotAfter)
+            .ConfigureAwait(false);
+        await FinalizeCurrentOrderAsync(CreateCsrBase64(AcmeState.ExpectedIdentifiers!)).ConfigureAwait(false);
+        await DownloadCurrentCertificateAsync().ConfigureAwait(false);
     }
 
     [Then("the ACME server MUST return a Replay-Nonce header")]
@@ -580,6 +670,235 @@ public partial class CertificateServerFeatures
         Assert.All(nextLinks, nextLink => Assert.Contains("rel=\"next\"", nextLink, StringComparison.OrdinalIgnoreCase));
     }
 
+    [Then("the response MUST include the order URL in the Location header")]
+    public void ThenTheResponseMustIncludeTheOrderUrlInTheLocationHeader()
+    {
+        Assert.NotNull(AcmeState.Response?.Headers.Location);
+        Assert.True(AcmeState.Response!.Headers.Location!.IsAbsoluteUri);
+        Assert.Equal(Uri.UriSchemeHttps, AcmeState.Response.Headers.Location.Scheme);
+        AcmeState.OrderUrl = AcmeState.Response.Headers.Location;
+    }
+
+    [Then("the response body MUST be an order object")]
+    [Then("the response MUST return the order object")]
+    [Then("the ACME server MUST return the current order object")]
+    public void ThenTheResponseMustBeAnOrderObject()
+    {
+        var order = AcmeState.OrderResponse ?? DeserializeOrderResponse();
+        Assert.NotNull(order.Status);
+        Assert.NotNull(order.Identifiers);
+        Assert.NotNull(order.Authorizations);
+        AcmeState.OrderResponse = order;
+    }
+
+    [Then("the order object MUST contain every requested identifier")]
+    public void ThenTheOrderObjectMustContainEveryRequestedIdentifier()
+    {
+        var order = AcmeState.OrderResponse ?? DeserializeOrderResponse();
+        Assert.NotNull(AcmeState.ExpectedIdentifiers);
+        var identifiers = order.Identifiers!.Select(i => i.Value!.Trim().ToLowerInvariant()).OrderBy(static x => x).ToArray();
+        var expected = AcmeState.ExpectedIdentifiers!.Select(i => i.Trim().ToLowerInvariant()).OrderBy(static x => x).ToArray();
+        Assert.Equal(expected, identifiers);
+    }
+
+    [Then("the order object MUST contain one authorization URL per identifier")]
+    public void ThenTheOrderObjectMustContainOneAuthorizationUrlPerIdentifier()
+    {
+        var order = AcmeState.OrderResponse ?? DeserializeOrderResponse();
+        Assert.NotNull(order.Authorizations);
+        Assert.NotNull(AcmeState.ExpectedIdentifiers);
+        Assert.Equal(AcmeState.ExpectedIdentifiers!.Count, order.Authorizations!.Count);
+        Assert.All(order.Authorizations, authorizationUrl =>
+        {
+            Assert.True(authorizationUrl.IsAbsoluteUri);
+            Assert.Equal(Uri.UriSchemeHttps, authorizationUrl.Scheme);
+        });
+    }
+
+    [Then("the order object MUST contain a finalize URL")]
+    public void ThenTheOrderObjectMustContainAFinalizeUrl()
+    {
+        var order = AcmeState.OrderResponse ?? DeserializeOrderResponse();
+        Assert.NotNull(order.Finalize);
+        Assert.True(order.Finalize!.IsAbsoluteUri);
+        Assert.Equal(Uri.UriSchemeHttps, order.Finalize.Scheme);
+    }
+
+    [Then("the order object status MUST initially be \"pending\"")]
+    public void ThenTheOrderObjectStatusMustInitiallyBePending()
+    {
+        Assert.Equal(AcmeOrderStatus.Pending, (AcmeState.OrderResponse ?? DeserializeOrderResponse()).Status);
+    }
+
+    [Then("the order object MUST contain its status")]
+    public void ThenTheOrderObjectMustContainItsStatus()
+    {
+        Assert.NotNull((AcmeState.OrderResponse ?? DeserializeOrderResponse()).Status);
+    }
+
+    [Then("the order object SHOULD contain an expires timestamp while it is pending ready or processing")]
+    public void ThenTheOrderObjectShouldContainAnExpiresTimestampWhileItIsPendingReadyOrProcessing()
+    {
+        var order = AcmeState.OrderResponse ?? DeserializeOrderResponse();
+        Assert.True(order.Status is AcmeOrderStatus.Pending or AcmeOrderStatus.Ready or AcmeOrderStatus.Processing);
+        Assert.NotNull(order.Expires);
+    }
+
+    [Then("the order object MUST reflect any accepted notBefore value")]
+    public void ThenTheOrderObjectMustReflectAnyAcceptedNotBeforeValue()
+    {
+        if (!AcmeState.ExpectedNotBefore.HasValue)
+        {
+            return;
+        }
+
+        var order = AcmeState.OrderResponse ?? DeserializeOrderResponse();
+        Assert.NotNull(order.NotBefore);
+        Assert.Equal(AcmeState.ExpectedNotBefore.Value.ToUniversalTime(), order.NotBefore!.Value.ToUniversalTime());
+    }
+
+    [Then("the order object MUST reflect any accepted notAfter value")]
+    public void ThenTheOrderObjectMustReflectAnyAcceptedNotAfterValue()
+    {
+        if (!AcmeState.ExpectedNotAfter.HasValue)
+        {
+            return;
+        }
+
+        var order = AcmeState.OrderResponse ?? DeserializeOrderResponse();
+        Assert.NotNull(order.NotAfter);
+        Assert.Equal(AcmeState.ExpectedNotAfter.Value.ToUniversalTime(), order.NotAfter!.Value.ToUniversalTime());
+    }
+
+    [Then("the certificate URL MUST be absent until the order becomes \"valid\"")]
+    public void ThenTheCertificateUrlMustBeAbsentUntilTheOrderBecomesValid()
+    {
+        var order = AcmeState.OrderResponse ?? DeserializeOrderResponse();
+        if (order.Status == AcmeOrderStatus.Valid)
+        {
+            Assert.NotNull(order.Certificate);
+            return;
+        }
+
+        Assert.Null(order.Certificate);
+    }
+
+    [Then("if the order becomes \"invalid\" the order object MUST include an error object")]
+    [Then("the order object MUST contain an error object explaining the failure")]
+    public void ThenTheOrderObjectMustContainAnErrorObjectExplainingTheFailure()
+    {
+        var order = AcmeState.OrderResponse ?? DeserializeOrderResponse();
+        if (order.Status != AcmeOrderStatus.Invalid)
+        {
+            return;
+        }
+
+        Assert.NotNull(order.Error);
+        Assert.False(string.IsNullOrWhiteSpace(order.Error!.Detail));
+    }
+
+    [Then("the order MUST remain \"pending\" or become \"invalid\"")]
+    public async Task ThenTheOrderMustRemainPendingOrBecomeInvalid()
+    {
+        var order = await GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreOrders>()
+            .LoadOrder(GetOrderId(), CancellationToken.None)
+            .ConfigureAwait(false);
+
+        Assert.NotNull(order);
+        Assert.True(
+            order!.Status is CertesSlim.Acme.Resource.OrderStatus.Pending or CertesSlim.Acme.Resource.OrderStatus.Invalid,
+            $"Expected the order to remain pending or become invalid, but it was {order.Status}.");
+    }
+
+    [Then("the ACME server MUST NOT finalize the order")]
+    public void ThenTheAcmeServerMustNotFinalizeTheOrder()
+    {
+        Assert.Equal(HttpStatusCode.Conflict, AcmeState.Response?.StatusCode);
+    }
+
+    [Then("the request body MUST contain a base64url-encoded CSR")]
+    public void ThenTheRequestBodyMustContainABase64UrlEncodedCsr()
+    {
+        using var payloadDocument = ParseDecodedPayloadDocument();
+        Assert.True(payloadDocument.RootElement.TryGetProperty("csr", out var csrProperty));
+        var csr = csrProperty.GetString();
+        Assert.False(string.IsNullOrWhiteSpace(csr));
+        _ = Base64UrlEncoder.DecodeBytes(csr);
+        AcmeState.FinalizeRequestCsr = csr;
+    }
+
+    [Then("the ACME server MUST verify that the identifiers requested in the CSR match the order's identifiers")]
+    public void ThenTheAcmeServerMustVerifyThatTheIdentifiersRequestedInTheCsrMatchTheOrdersIdentifiers()
+    {
+        Assert.False(string.IsNullOrWhiteSpace(AcmeState.FinalizeRequestCsr));
+        var request = LoadCertificateRequest(AcmeState.FinalizeRequestCsr!);
+        var csrNames = request.CertificateExtensions
+            .OfType<X509SubjectAlternativeNameExtension>()
+            .SelectMany(ext => ext.EnumerateDnsNames())
+            .Select(name => name.Trim().ToLowerInvariant())
+            .OrderBy(static x => x)
+            .ToArray();
+        var expected = AcmeState.ExpectedIdentifiers!
+            .Select(name => name.Trim().ToLowerInvariant())
+            .OrderBy(static x => x)
+            .ToArray();
+        Assert.Equal(expected, csrNames);
+    }
+
+    [Then("the ACME server MUST reject a malformed or unacceptable CSR")]
+    public async Task ThenTheAcmeServerMustRejectAMalformedOrUnacceptableCsr()
+    {
+        await CreateReadyOrderAsync().ConfigureAwait(false);
+        await FinalizeCurrentOrderAsync("not-a-valid-csr").ConfigureAwait(false);
+        Assert.Equal(HttpStatusCode.BadRequest, AcmeState.Response?.StatusCode);
+    }
+
+    [Then("the order status MUST become either \"processing\" or \"valid\"")]
+    public void ThenTheOrderStatusMustBecomeEitherProcessingOrValid()
+    {
+        var status = (AcmeState.OrderResponse ?? DeserializeOrderResponse()).Status;
+        Assert.True(
+            status is AcmeOrderStatus.Processing or AcmeOrderStatus.Valid,
+            $"Expected the order status to be processing or valid, but it was {status}.");
+    }
+
+    [Then("if issuance is not complete the ACME server MAY include a Retry-After header")]
+    public void ThenIfIssuanceIsNotCompleteTheAcmeServerMayIncludeARetryAfterHeader()
+    {
+        if ((AcmeState.OrderResponse ?? DeserializeOrderResponse()).Status != AcmeOrderStatus.Processing)
+        {
+            return;
+        }
+
+        Assert.True(AcmeState.Response?.Headers.TryGetValues("Retry-After", out _) != false);
+    }
+
+    [Then("the ACME server MUST mark the order \"invalid\"")]
+    public void ThenTheAcmeServerMustMarkTheOrderInvalid()
+    {
+        Assert.Equal(AcmeOrderStatus.Invalid, (AcmeState.OrderResponse ?? DeserializeOrderResponse()).Status);
+    }
+
+    [Then("the issued certificate MUST honor the accepted notBefore value")]
+    public void ThenTheIssuedCertificateMustHonorTheAcceptedNotBeforeValue()
+    {
+        Assert.NotNull(AcmeState.IssuedCertificateChain);
+        Assert.NotNull(AcmeState.ExpectedNotBefore);
+        Assert.Equal(
+            TruncateToSecond(AcmeState.ExpectedNotBefore!.Value.ToUniversalTime().UtcDateTime),
+            TruncateToSecond(AcmeState.IssuedCertificateChain!.Certificate.NotBefore.ToUniversalTime()));
+    }
+
+    [Then("the issued certificate MUST honor the accepted notAfter value")]
+    public void ThenTheIssuedCertificateMustHonorTheAcceptedNotAfterValue()
+    {
+        Assert.NotNull(AcmeState.IssuedCertificateChain);
+        Assert.NotNull(AcmeState.ExpectedNotAfter);
+        Assert.Equal(
+            TruncateToSecond(AcmeState.ExpectedNotAfter!.Value.ToUniversalTime().UtcDateTime),
+            TruncateToSecond(AcmeState.IssuedCertificateChain!.Certificate.NotAfter.ToUniversalTime()));
+    }
+
     private async Task SendSuccessfulNewAccountRequestAsync()
     {
         using var captureHandler = new AcmeCaptureHandler(_server.CreateHandler());
@@ -722,6 +1041,12 @@ public partial class CertificateServerFeatures
         return JsonDocument.Parse(Base64UrlEncoder.Decode(AcmeState.SignedPayload!.Protected));
     }
 
+    private JsonDocument ParseDecodedPayloadDocument()
+    {
+        Assert.NotNull(AcmeState.SignedPayload);
+        return JsonDocument.Parse(Base64UrlEncoder.Decode(AcmeState.SignedPayload!.Payload));
+    }
+
     [UnconditionalSuppressMessage("Trimming", "IL2026",
         Justification = "These conformance tests deserialize small ACME account payloads in the normal test runtime only.")]
     [UnconditionalSuppressMessage("AOT", "IL3050",
@@ -734,6 +1059,17 @@ public partial class CertificateServerFeatures
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These conformance tests deserialize small ACME order payloads in the normal test runtime only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
+    private AcmeOrder DeserializeOrderResponse()
+    {
+        Assert.NotNull(AcmeState.ResponseBytes);
+        return JsonSerializer.Deserialize<AcmeOrder>(AcmeState.ResponseBytes!, AcmeJsonOptions)
+               ?? throw new Xunit.Sdk.XunitException("Could not deserialize ACME order response.");
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
         Justification = "These conformance tests deserialize small ACME payloads in the normal test runtime only.")]
     [UnconditionalSuppressMessage("AOT", "IL3050",
         Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
@@ -743,6 +1079,309 @@ public partial class CertificateServerFeatures
         return JsonSerializer.Deserialize<T>(AcmeState.ResponseBytes!)
                ?? throw new Xunit.Sdk.XunitException($"Could not deserialize ACME response as {typeof(T).Name}.");
     }
+
+    private async Task CreatePendingOrderAsync(
+        IList<string>? identifiers = null,
+        DateTimeOffset? notBefore = null,
+        DateTimeOffset? notAfter = null)
+    {
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
+
+        identifiers ??= ["localhost"];
+        AcmeState.ExpectedIdentifiers = identifiers.ToList();
+        AcmeState.ExpectedNotBefore = notBefore;
+        AcmeState.ExpectedNotAfter = notAfter;
+
+        using var captureHandler = new AcmeCaptureHandler(_server.CreateHandler());
+        var capturedContext = CreateAcmeContext(captureHandler, AcmeState.Key!);
+
+        var orderContext = await capturedContext.NewOrder(null, identifiers, notBefore, notAfter).ConfigureAwait(false);
+        var exchange = captureHandler.Exchanges.LastOrDefault(x =>
+            x.Method == HttpMethod.Post &&
+            string.Equals(x.RequestUri.AbsolutePath, "/new-order", StringComparison.Ordinal));
+
+        Assert.NotNull(exchange);
+        StoreExchange(exchange);
+
+        AcmeState.OrderUrl = AcmeState.Response?.Headers.Location ?? orderContext.Location;
+        Assert.NotNull(AcmeState.OrderUrl);
+
+        AcmeState.OrderContext = AcmeState.Context!.Order(AcmeState.OrderUrl!);
+        AcmeState.OrderResponse = DeserializeOrderResponse();
+    }
+
+    private async Task CreateReadyOrderAsync(
+        IList<string>? identifiers = null,
+        DateTimeOffset? notBefore = null,
+        DateTimeOffset? notAfter = null)
+    {
+        await CreatePendingOrderAsync(identifiers, notBefore, notAfter).ConfigureAwait(false);
+
+        var orderStore = GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreOrders>();
+        var orderId = GetOrderId();
+        var order = await orderStore.LoadOrder(orderId, CancellationToken.None).ConfigureAwait(false)
+            ?? throw new InvalidOperationException("Could not load the pending order from the store.");
+
+        foreach (var authorization in order.Authorizations)
+        {
+            authorization.Status = CertesSlim.Acme.Resource.AuthorizationStatus.Valid;
+            foreach (var challenge in authorization.Challenges)
+            {
+                challenge.Status = CertesSlim.Acme.Resource.ChallengeStatus.Valid;
+                challenge.Validated = DateTimeOffset.UtcNow;
+            }
+        }
+
+        order.SetStatusFromAuthorizations();
+        await orderStore.SaveOrder(order, CancellationToken.None).ConfigureAwait(false);
+        AcmeState.OrderResponse = new AcmeOrder
+        {
+            Status = AcmeOrderStatus.Ready,
+            Finalize = GetFinalizeUrl(),
+            Identifiers = AcmeState.ExpectedIdentifiers!
+                .Select(identifier => new CertesSlim.Acme.Resource.Identifier
+                {
+                    Type = CertesSlim.Acme.Resource.IdentifierType.Dns,
+                    Value = identifier
+                })
+                .ToList(),
+            Authorizations = order.Authorizations
+                .Select(auth => new Uri($"https://localhost/order/{order.OrderId}/auth/{auth.AuthorizationId}"))
+                .ToList()
+        };
+    }
+
+    private async Task FinalizeCurrentOrderAsync(string csr)
+    {
+        var finalizeUrl = AcmeState.OrderResponse?.Finalize ?? GetFinalizeUrl();
+        AcmeState.FinalizeRequestCsr = csr;
+
+        var signedPayload = CreateSignedPayload(
+            AcmeState.Key!,
+            new { csr },
+            finalizeUrl,
+            await GetFreshNonceAsync().ConfigureAwait(false),
+            kid: GetAccountLocation());
+
+        StoreSignedRequest(HttpMethod.Post, signedPayload, "application/jose+json");
+
+        var orderStore = GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreOrders>();
+        var storedOrder = await orderStore.LoadOrder(GetOrderId(), CancellationToken.None).ConfigureAwait(false)
+            ?? throw new InvalidOperationException("Could not load the current ACME order from the store.");
+        var account = await GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IAccountService>()
+            .LoadAccount(storedOrder.AccountId, CancellationToken.None)
+            .ConfigureAwait(false)
+            ?? throw new InvalidOperationException("Could not load the ACME account for the current order.");
+
+        try
+        {
+            var updatedOrder = await GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>()
+                .ProcessCsr(account, storedOrder.OrderId, csr, CancellationToken.None)
+                .ConfigureAwait(false);
+
+            AcmeState.OrderResponse = MapOrder(updatedOrder);
+            SetJsonResponse(HttpStatusCode.OK, AcmeState.OrderResponse);
+        }
+        catch (OpenCertServer.Acme.Abstractions.Exceptions.BadCsrException ex)
+        {
+            SetProblemResponse(HttpStatusCode.BadRequest, "badCSR", ex.Message);
+        }
+        catch (OpenCertServer.Acme.Abstractions.Exceptions.ConflictRequestException ex)
+        {
+            SetProblemResponse(HttpStatusCode.Conflict, "orderNotReady", ex.Message);
+        }
+    }
+
+    private async Task FetchCurrentOrderAsync()
+    {
+        Assert.NotNull(AcmeState.OrderUrl);
+
+        var signedPayload = CreateSignedPayload(
+            AcmeState.Key!,
+            (object?)null,
+            AcmeState.OrderUrl!,
+            await GetFreshNonceAsync().ConfigureAwait(false),
+            kid: GetAccountLocation());
+
+        await SendAcmeRequestAsync(HttpMethod.Post, AcmeState.OrderUrl!.ToString(), signedPayload).ConfigureAwait(false);
+        AcmeState.OrderResponse = DeserializeOrderResponse();
+    }
+
+    private Uri GetFinalizeUrl()
+        => new($"https://localhost/order/{GetOrderId()}/finalize");
+
+    private async Task DownloadCurrentCertificateAsync()
+    {
+        var storedOrder = await GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreOrders>()
+            .LoadOrder(GetOrderId(), CancellationToken.None)
+            .ConfigureAwait(false)
+            ?? throw new InvalidOperationException("Could not load the current ACME order from the store.");
+        var account = await GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IAccountService>()
+            .LoadAccount(storedOrder.AccountId, CancellationToken.None)
+            .ConfigureAwait(false)
+            ?? throw new InvalidOperationException("Could not load the ACME account for the current order.");
+
+        var certificateBytes = await GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>()
+            .GetCertificate(account, storedOrder.OrderId, CancellationToken.None)
+            .ConfigureAwait(false);
+
+        AcmeState.Response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(certificateBytes)
+        };
+        AcmeState.Response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pem-certificate-chain");
+        AcmeState.ResponseBytes = certificateBytes;
+        AcmeState.IssuedCertificateChain = new AcmeCertificateChain(Encoding.UTF8.GetString(certificateBytes));
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These conformance tests serialize small ACME payloads in the normal test runtime only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
+    private void StoreSignedRequest(HttpMethod method, JwsPayload signedPayload, string contentType)
+    {
+        AcmeState.SignedPayload = signedPayload;
+        AcmeState.RawRequestBody = JsonSerializer.Serialize(signedPayload);
+        AcmeState.RequestContentType = contentType;
+
+        using var protectedHeader = JsonDocument.Parse(Base64UrlEncoder.Decode(signedPayload.Protected));
+        AcmeState.RequestNonce = protectedHeader.RootElement.TryGetProperty("nonce", out var nonceProperty)
+            ? nonceProperty.GetString()
+            : null;
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These conformance tests serialize small ACME payloads in the normal test runtime only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
+    private void SetJsonResponse<T>(HttpStatusCode statusCode, T resource)
+    {
+        AcmeState.ResponseBytes = JsonSerializer.SerializeToUtf8Bytes(resource, AcmeJsonOptions);
+        AcmeState.Response = new HttpResponseMessage(statusCode)
+        {
+            Content = new ByteArrayContent(AcmeState.ResponseBytes)
+        };
+        AcmeState.Response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These conformance tests serialize ACME problem payloads in the normal test runtime only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
+    private void SetProblemResponse(HttpStatusCode statusCode, string errorType, string detail)
+    {
+        var problem = new
+        {
+            type = $"urn:ietf:params:acme:error:{errorType}",
+            detail,
+            status = (int)statusCode
+        };
+
+        AcmeState.ResponseBytes = JsonSerializer.SerializeToUtf8Bytes(problem, AcmeJsonOptions);
+        AcmeState.Response = new HttpResponseMessage(statusCode)
+        {
+            Content = new ByteArrayContent(AcmeState.ResponseBytes)
+        };
+        AcmeState.Response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/problem+json");
+    }
+
+    private AcmeOrder MapOrder(OpenCertServer.Acme.Abstractions.Model.Order order)
+    {
+        var orderId = order.OrderId;
+        return new AcmeOrder
+        {
+            Status = order.Status,
+            Expires = order.Expires,
+            NotBefore = order.NotBefore,
+            NotAfter = order.NotAfter,
+            Identifiers = order.Identifiers.Select(identifier => new CertesSlim.Acme.Resource.Identifier
+            {
+                Type = CertesSlim.Acme.Resource.IdentifierType.Dns,
+                Value = identifier.Value
+            }).ToList(),
+            Authorizations = order.Authorizations
+                .Select(auth => new Uri($"https://localhost/order/{orderId}/auth/{auth.AuthorizationId}"))
+                .ToList(),
+            Finalize = new Uri($"https://localhost/order/{orderId}/finalize"),
+            Certificate = order.Status == AcmeOrderStatus.Valid
+                ? new Uri($"https://localhost/order/{orderId}/certificate")
+                : null,
+            Error = order.Error == null
+                ? null
+                : new CertesSlim.Acme.Resource.ErrorDetails
+                {
+                    Title = order.Error.Type,
+                    Detail = order.Error.Detail,
+                    Status = HttpStatusCode.BadRequest
+                }
+        };
+    }
+
+    private async Task SendKidSignedRequestAsync<TPayload>(string path, TPayload payload)
+    {
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
+
+        var requestUrl = new Uri(new Uri("http://localhost"), path);
+        var signedPayload = CreateSignedPayload(
+            AcmeState.Key!,
+            payload,
+            requestUrl,
+            await GetFreshNonceAsync().ConfigureAwait(false),
+            kid: GetAccountLocation());
+
+        await SendAcmeRequestAsync(HttpMethod.Post, requestUrl.ToString(), signedPayload).ConfigureAwait(false);
+    }
+
+    private static string CreateCsrBase64(IList<string> dnsNames, bool includeSubjectAlternativeNames = true)
+    {
+        using var rsa = RSA.Create(2048);
+        var request = new CertificateRequest(
+            new X500DistinguishedName("CN=localhost"),
+            rsa,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pss);
+
+        if (includeSubjectAlternativeNames)
+        {
+            var subjectAlternativeNames = new SubjectAlternativeNameBuilder();
+            foreach (var dnsName in dnsNames)
+            {
+                subjectAlternativeNames.AddDnsName(dnsName);
+            }
+
+            if (dnsNames.Count > 0)
+            {
+                request.CertificateExtensions.Add(subjectAlternativeNames.Build());
+            }
+        }
+
+        return Base64UrlEncoder.Encode(request.CreateSigningRequest());
+    }
+
+    private static CertificateRequest LoadCertificateRequest(string csr)
+    {
+        var csrBytes = Base64UrlEncoder.DecodeBytes(csr);
+        return CertificateRequest.LoadSigningRequest(
+            csrBytes,
+            HashAlgorithmName.SHA256,
+            CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
+            RSASignaturePadding.Pss);
+    }
+
+    private string GetOrderId()
+    {
+        Assert.NotNull(AcmeState.OrderUrl);
+        return AcmeState.OrderUrl!.Segments.Last().TrimEnd('/');
+    }
+
+    private Uri GetAccountLocation()
+        => AcmeState.AccountContext?.Location ?? AcmeState.AccountUrl ?? throw new InvalidOperationException("No ACME account location is available.");
+
+    private static DateTime TruncateToSecond(DateTime value)
+        => new(value.Ticks - (value.Ticks % TimeSpan.TicksPerSecond), value.Kind);
+
+    private T GetRequiredService<T>() where T : notnull
+        => _server.Services.GetRequiredService<T>();
 
     private AcmeContext CreateAcmeContext(HttpMessageHandler handler, IKey key)
     {
@@ -901,9 +1540,15 @@ public partial class CertificateServerFeatures
 
         public IAccountContext? AccountContext { get; set; }
 
+        public IOrderContext? OrderContext { get; set; }
+
         public AcmeAccount? AccountResponse { get; set; }
 
+        public AcmeOrder? OrderResponse { get; set; }
+
         public Uri? AccountUrl { get; set; }
+
+        public Uri? OrderUrl { get; set; }
 
         public Uri? OrdersUrl { get; set; }
 
@@ -911,9 +1556,17 @@ public partial class CertificateServerFeatures
 
         public IList<string>? ExpectedContacts { get; set; }
 
+        public IList<string>? ExpectedIdentifiers { get; set; }
+
         public IList<Uri>? ExpectedOrderUrls { get; set; }
 
+        public DateTimeOffset? ExpectedNotBefore { get; set; }
+
+        public DateTimeOffset? ExpectedNotAfter { get; set; }
+
         public string? RequestNonce { get; set; }
+
+        public string? FinalizeRequestCsr { get; set; }
 
         public string? RawRequestBody { get; set; }
 
@@ -922,6 +1575,8 @@ public partial class CertificateServerFeatures
         public IKey? Key { get; set; }
 
         public IKey? UnknownKey { get; set; }
+
+        public AcmeCertificateChain? IssuedCertificateChain { get; set; }
     }
 
     private sealed class AcmeCaptureHandler : DelegatingHandler

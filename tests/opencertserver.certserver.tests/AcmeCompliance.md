@@ -105,6 +105,30 @@ Covered scenarios:
 - `RFC 8555 Section 7.4 allows the core certificate flow for supported account key algorithms` (`ES384`)
 - `RFC 8555 Section 7.4 allows the core certificate flow for supported account key algorithms` (`ES512`)
 
+### Item 4 focused run
+
+```zsh
+dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "Category=acme-item4"
+```
+
+Verified in this workspace:
+- Total: `10`
+- Passed: `10`
+- Failed: `0`
+- Skipped: `0`
+
+Covered scenarios:
+- `RFC 8555 Section 7.4 requires new orders to create pending authorizations`
+- `RFC 8555 Section 7.1.3 defines the order object fields and certificate link timing`
+- `RFC 8555 Section 7.4 requires malformed new-order requests to be rejected`
+- `RFC 8555 Section 7.4 requires the order to become ready before finalization`
+- `RFC 8555 Section 7.4 requires CSR submission to the finalize URL`
+- `RFC 8555 Section 7.4 requires CSRs without subjectAltName entries to be rejected`
+- `RFC 8555 Section 7.4 requires CSR identifiers to match the order exactly`
+- `RFC 8555 Section 7.4 allows successful finalization to return processing or valid`
+- `RFC 8555 Section 7.4 requires orders that cannot be issued to become invalid`
+- `RFC 8555 Sections 7.1.3 and 7.4 require accepted notBefore and notAfter values to be enforced during issuance`
+
 ### ACME smoke regression run
 
 ```zsh
@@ -139,16 +163,18 @@ This confirms the existing ACME happy-path issuance scenarios still pass after t
    - `src/opencertserver.acme.server/Filters/ValidateAcmeRequestFilter.cs` now passes endpoint identity and request media type into the shared validator.
    - `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature` and `tests/opencertserver.certserver.tests/StepDefinitions/AcmeConformance.cs` now implement the focused item 3 conformance scenarios, all of which are passing in this workspace.
 
+4. **Complete order metadata and strict finalization validation.**
+   - Fixed in this workspace.
+   - `src/opencertserver.acme.server/Services/DefaultOrderService.cs` now sets order `Expires`, rejects invalid requested validity windows, preserves issuer errors on invalid orders, and forwards accepted `notBefore` / `notAfter` values into issuance.
+   - `src/opencertserver.certserver/DefaultCsrValidator.cs` now rejects malformed CSRs, rejects CSRs without DNS SAN entries, and enforces exact SAN-to-order identifier equality with RFC-shaped `badCSR` failures.
+   - `src/opencertserver.certserver/DefaultIssuer.cs`, `src/opencertserver.lambda/DefaultIssuer.cs`, `src/opencertserver.ca.utils/Ca/ICertificateAuthority.cs`, and `src/opencertserver.ca/CertificateAuthority.cs` now honor accepted `notBefore` / `notAfter` values when issuing certificates.
+   - `src/opencertserver.acme.abstractions/HttpModel/Order.cs` now always exposes the finalize URL, and `src/opencertserver.acme.server/Endpoints/OrderEndpoints.cs` now rejects malformed new-order payloads more safely.
+   - `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature` and `tests/opencertserver.certserver.tests/StepDefinitions/AcmeConformance.cs` now implement the focused item 4 conformance scenarios, all of which are passing in this workspace.
+
 ## Current non-conformance list
 
 The items below are the ACME counterpart to the EST non-conformance tracking list.
 They are intended to be actionable, removable one by one, and backed by the detailed analysis in the sections that follow.
-
-4. **Complete order metadata and strict finalization validation.**
-   - Orders do not currently populate `Expires`.
-   - `DefaultCsrValidator` is too permissive because it does not enforce exact identifier matching and can accept CSRs with no SAN extension.
-   - `notBefore` / `notAfter` values are accepted into the order object but not clearly enforced during issuance.
-   - Primary touchpoints: `src/opencertserver.acme.server/Services/DefaultOrderService.cs`, `src/opencertserver.acme.server/Endpoints/OrderEndpoints.cs`, `src/opencertserver.certserver/DefaultCsrValidator.cs`, `src/opencertserver.certserver/DefaultIssuer.cs`.
 
 5. **Complete authorization and challenge RFC semantics.**
    - Authorization deactivation is not implemented.
@@ -367,24 +393,17 @@ What works:
 
 - new orders can be created;
 - order objects are returned;
+- order objects now include `Expires` and the accepted `notBefore` / `notAfter` values;
 - authorization URLs are generated;
 - finalize URLs are generated;
 - certificate URLs are exposed once the order becomes `valid` via `HttpModel.Order`.
+- malformed new-order payloads are rejected with ACME protocol errors instead of falling through into null-forgiving paths.
 
 The integration smoke flow in `AcmeFeature.feature` and `CertificateServerFeatures.cs` demonstrates the happy path.
 
 ### Gaps and bugs found
 
-1. **Orders do not currently set `Expires`.**
-   - `src/opencertserver.acme.abstractions/Model/Order.cs` has an `Expires` property.
-   - `DefaultOrderService.CreateOrder(...)` never populates it.
-   - `HttpModel.Order` therefore emits no order expiration information.
-
-2. **Malformed order requests can fall through to non-RFC-shaped failures.**
-   - `OrderEndpoints.cs` checks `Identifiers?.Count == 0`, but then force-uses `orderRequest!` and `Identifiers!`.
-   - A truly null or badly shaped payload risks a server-side exception path rather than a proper ACME problem response.
-
-3. **The order list / pagination behavior required by RFC 8555 is still absent beyond the non-paginated account order list resource.**
+1. **The order list / pagination behavior required by RFC 8555 is still absent beyond the non-paginated account order list resource.**
    - No implementation exists yet to return the account’s orders or paginate them.
 
 ---
@@ -474,28 +493,18 @@ What works:
 
 - the finalize endpoint requires a non-empty `csr` field;
 - only `ready` orders can be finalized;
+- malformed or unacceptable CSRs now fail with ACME `badCSR` semantics;
+- CSRs without subjectAltName extensions are rejected;
+- CSRs must contain exactly the same identifiers as the order;
 - the certificate issuer is called;
 - successful issuance marks the order `valid`;
-- issuance failure can mark the order `invalid`.
+- issuance failure can mark the order `invalid` and populate the order error object;
+- accepted `notBefore` / `notAfter` values are now enforced during issuance.
 
 ### Gaps and bugs found
 
-1. **CSR validation is too weak for RFC 8555 exact-identifier matching.**
-   - `DefaultCsrValidator.cs` only checks that every DNS SAN in the CSR appears in the order.
-   - It does **not** ensure that every identifier in the order appears in the CSR.
-   - It also allows a CSR with no SAN extension at all because `All(...)` over an empty set returns `true`.
-   - That is not strict enough for ACME finalization.
-
-2. **The CSR validator does not produce RFC-specific ACME problem types.**
-   - It only returns a boolean and a nullable `AcmeError`, and the current implementation returns `null` even on most mismatch paths.
-
-3. **Requested `notBefore` / `notAfter` values are not clearly enforced end-to-end.**
-   - They are accepted into the order object.
-   - `DefaultIssuer.cs` does not use them when calling the CA.
-   - The server may therefore echo values in the order while ignoring them during issuance.
-
-4. **Order error objects are only partially populated.**
-   - The order can become `invalid`, but the resulting `error` information is not yet consistently RFC shaped.
+1. **Order error objects are only partially populated.**
+   - Issuance failures now populate the order `error` object, but broader embedded ACME error-shape consistency is still tracked under the later authorization/challenge work.
 
 ---
 
@@ -576,7 +585,8 @@ It proves:
    - Focused executable scenarios now cover:
      - nonce replay rejection and ACME problem documents;
      - account update/deactivation and account order listing;
-     - request media-type enforcement, key-identifier rules, unsupported-algorithm rejection, and POST-as-GET rejection rules.
+     - request media-type enforcement, key-identifier rules, unsupported-algorithm rejection, and POST-as-GET rejection rules;
+     - order metadata, malformed new-order handling, strict CSR validation, invalid-order propagation, and `notBefore` / `notAfter` issuance enforcement.
    - Focused executable scenarios are still missing for:
      - revocation;
      - key rollover;
@@ -613,7 +623,6 @@ The major RFC 8555 gaps are captured in the numbered non-conformance list above.
 
 In short, the current implementation is a functioning ACME happy-path server, but it still needs:
 
-- stricter order/finalization validation;
 - full authorization/challenge semantics;
 - revocation support;
 - key rollover support.
