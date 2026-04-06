@@ -4,6 +4,7 @@ using OpenCertServer.Acme.Abstractions.Exceptions;
 namespace OpenCertServer.Acme.Server.RequestServices;
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.HttpModel.Requests;
@@ -21,7 +22,35 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
 
     private readonly ILogger<DefaultRequestValidationService> _logger;
 
-    private readonly string[] _supportedAlgs = ["RS256", "ES256"];
+    private static readonly HashSet<string> SupportedAlgs =
+    [
+        "RS256",
+        "RS384",
+        "RS512",
+        "ES256",
+        "ES384",
+        "ES512"
+    ];
+
+    private static readonly HashSet<string> KidOnlyEndpoints =
+    [
+        "Account",
+        "OrderList",
+        "NewOrder",
+        "GetOrder",
+        "GetAuthorization",
+        "AcceptChallenge",
+        "FinalizeOrder",
+        "GetCertificate"
+    ];
+
+    private static readonly HashSet<string> EmptyPayloadOnlyEndpoints =
+    [
+        "OrderList",
+        "GetOrder",
+        "GetAuthorization",
+        "GetCertificate"
+    ];
 
     public DefaultRequestValidationService(IAccountService accountService, INonceStore nonceStore,
         ILogger<DefaultRequestValidationService> logger)
@@ -32,7 +61,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
     }
 
     public async Task ValidateRequestAsync(JwsPayload request, AcmeHeader header,
-        string requestUrl, CancellationToken cancellationToken)
+        string requestUrl, string? requestContentType, string? endpointName, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -43,16 +72,51 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
             throw new ArgumentNullException(nameof(requestUrl));
         }
 
-        ValidateRequestHeader(header, requestUrl);
+        ValidateRequestEnvelope(request);
+        ValidateRequestContentType(requestContentType);
+        ValidateRequestHeader(header, requestUrl, endpointName);
+        ValidateRequestPayloadSemantics(request, endpointName);
         await ValidateNonceAsync(header.Nonce, cancellationToken).ConfigureAwait(false);
         await ValidateSignatureAsync(request, header, cancellationToken).ConfigureAwait(false);
     }
 
-    private void ValidateRequestHeader(AcmeHeader header, string requestUrl)
+    private static void ValidateRequestEnvelope(JwsPayload request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Protected))
+        {
+            throw new MalformedRequestException("The JWS protected header was empty.");
+        }
+
+        if (request.Payload == null)
+        {
+            throw new MalformedRequestException("The JWS payload was missing.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Signature))
+        {
+            throw new MalformedRequestException("The JWS signature was empty.");
+        }
+    }
+
+    private static void ValidateRequestContentType(string? requestContentType)
+    {
+        var mediaType = requestContentType?.Split(';', 2, StringSplitOptions.TrimEntries)[0];
+        if (!string.Equals(mediaType, "application/jose+json", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new MalformedRequestException("ACME POST requests must use the application/jose+json media type.");
+        }
+    }
+
+    private void ValidateRequestHeader(AcmeHeader header, string requestUrl, string? endpointName)
     {
         ArgumentNullException.ThrowIfNull(header);
 
         _logger.LogDebug("Attempting to validate AcmeHeader ...");
+
+        if (string.IsNullOrWhiteSpace(header.Url))
+        {
+            throw new MalformedRequestException("Header Url was empty.");
+        }
 
         if (!Uri.IsWellFormedUriString(header.Url, UriKind.RelativeOrAbsolute))
         {
@@ -64,7 +128,12 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
             throw new NotAuthorizedException();
         }
 
-        if (!_supportedAlgs.Contains(header.Alg))
+        if (string.IsNullOrWhiteSpace(header.Alg))
+        {
+            throw new MalformedRequestException("Header Alg was empty.");
+        }
+
+        if (!SupportedAlgs.Contains(header.Alg))
         {
             throw new BadSignatureAlgorithmException();
         }
@@ -79,7 +148,35 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
             throw new MalformedRequestException("Provide either Jwk or Kid.");
         }
 
+        ValidateEndpointKeyIdentifierRules(header, endpointName);
+
         _logger.LogDebug("successfully validated AcmeHeader");
+    }
+
+    private static void ValidateEndpointKeyIdentifierRules(AcmeHeader header, string? endpointName)
+    {
+        if (string.Equals(endpointName, "NewAccount", StringComparison.Ordinal))
+        {
+            if (header.Jwk == null || header.Kid != null)
+            {
+                throw new MalformedRequestException("newAccount requests must be signed with a JWK and must not contain a Kid.");
+            }
+
+            return;
+        }
+
+        if (endpointName != null && KidOnlyEndpoints.Contains(endpointName) && (header.Kid == null || header.Jwk != null))
+        {
+            throw new MalformedRequestException("Existing-account ACME requests must be signed with a Kid and must not contain a JWK.");
+        }
+    }
+
+    private static void ValidateRequestPayloadSemantics(JwsPayload request, string? endpointName)
+    {
+        if (endpointName != null && EmptyPayloadOnlyEndpoints.Contains(endpointName) && !string.IsNullOrEmpty(request.Payload))
+        {
+            throw new MalformedRequestException("POST-as-GET requests to this ACME resource must use the empty string as the JWS payload.");
+        }
     }
 
     private async Task ValidateNonceAsync(string? nonce, CancellationToken cancellationToken)
@@ -109,13 +206,18 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
         _logger.LogDebug("Attempting to validate signature ...");
 
         var jwk = header.Jwk;
-        if(jwk == null)
+        if (jwk == null)
         {
             try
             {
                 var accountId = header.GetAccountId();
                 var account = await _accountService.LoadAccount(accountId, cancellationToken).ConfigureAwait(false);
-                jwk = account?.Jwk;
+                if (account == null)
+                {
+                    throw new AccountDoesNotExistException();
+                }
+
+                jwk = account.Jwk;
             }
             catch (InvalidOperationException)
             {
@@ -123,7 +225,7 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
             }
         }
 
-        if(jwk == null)
+        if (jwk == null)
         {
             throw new MalformedRequestException("Could not load JWK.");
         }

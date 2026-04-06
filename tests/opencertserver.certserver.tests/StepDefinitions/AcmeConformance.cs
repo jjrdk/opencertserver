@@ -69,10 +69,156 @@ public partial class CertificateServerFeatures
         await SendSuccessfulNewAccountRequestAsync();
     }
 
+    [When("the client POSTs to an ACME resource")]
+    public async Task WhenTheClientPostsToAnAcmeResource()
+    {
+        await SendJwkSignedRequestAsync(
+            AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256),
+            "/new-account",
+            new
+            {
+                contact = new[] { "mailto:test@example.com" },
+                termsOfServiceAgreed = true
+            }).ConfigureAwait(false);
+    }
+
     [When("the client successfully POSTs to an ACME resource")]
     public async Task WhenTheClientSuccessfullyPostsToAnAcmeResource()
     {
         await SendSuccessfulNewAccountRequestAsync();
+    }
+
+    [When("the client POSTs an ACME request with the wrong content type")]
+    public async Task WhenTheClientPostsAnAcmeRequestWithTheWrongContentType()
+    {
+        await SendJwkSignedRequestAsync(
+            AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256),
+            "/new-account",
+            new
+            {
+                contact = new[] { "mailto:test@example.com" },
+                termsOfServiceAgreed = true
+            },
+            contentType: "application/json").ConfigureAwait(false);
+    }
+
+    [When("the JWS protected header \"url\" value does not equal the actual request URL")]
+    public async Task WhenTheJwsProtectedHeaderUrlValueDoesNotEqualTheActualRequestUrl()
+    {
+        await SendJwkSignedRequestAsync(
+            AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256),
+            "/new-account",
+            new
+            {
+                contact = new[] { "mailto:test@example.com" },
+                termsOfServiceAgreed = true
+            },
+            protectedUrl: new Uri("http://localhost/not-the-request-url")).ConfigureAwait(false);
+    }
+
+    [When("the client sends a POST-as-GET request with a non-empty payload")]
+    public async Task WhenTheClientSendsAPostAsGetRequestWithANonEmptyPayload()
+    {
+        await EnsureAccountCreatedAsync();
+
+        var orderContext = await AcmeState.Context!.NewOrder(null, ["localhost"]).ConfigureAwait(false);
+        var signedPayload = CreateSignedPayload(
+            AcmeState.Key!,
+            new { invalidPostAsGet = true },
+            orderContext.Location,
+            await GetFreshNonceAsync().ConfigureAwait(false),
+            kid: AcmeState.AccountUrl);
+        await SendAcmeRequestAsync(HttpMethod.Post, orderContext.Location.ToString(), signedPayload).ConfigureAwait(false);
+    }
+
+    [When("the client POSTs to the newAccount resource")]
+    public async Task WhenTheClientPostsToTheNewAccountResource()
+    {
+        await SendJwkSignedRequestAsync(
+            AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256),
+            "/new-account",
+            new
+            {
+                contact = new[] { "mailto:test@example.com" },
+                termsOfServiceAgreed = true
+            }).ConfigureAwait(false);
+    }
+
+    [When("the client POSTs to an existing account order authorization challenge finalize or certificate resource")]
+    public async Task WhenTheClientPostsToAnExistingAccountOrderAuthorizationChallengeFinalizeOrCertificateResource()
+    {
+        await CaptureNewOrderRequestAsync().ConfigureAwait(false);
+    }
+
+    [When("the client sends a newAccount request signed with a kid instead of a jwk")]
+    public async Task WhenTheClientSendsANewAccountRequestSignedWithAKidInsteadOfAJwk()
+    {
+        await EnsureAccountCreatedAsync();
+
+        var signedPayload = CreateSignedPayload(
+            AcmeState.Key!,
+            new
+            {
+                contact = new[] { "mailto:test@example.com" },
+                termsOfServiceAgreed = true
+            },
+            new Uri("http://localhost/new-account"),
+            await GetFreshNonceAsync().ConfigureAwait(false),
+            kid: AcmeState.AccountUrl);
+
+        await SendAcmeRequestAsync(HttpMethod.Post, "/new-account", signedPayload).ConfigureAwait(false);
+    }
+
+    [When("the client sends an existing-account request signed with a jwk instead of a kid")]
+    public async Task WhenTheClientSendsAnExistingAccountRequestSignedWithAJwkInsteadOfAKid()
+    {
+        await EnsureAccountCreatedAsync();
+
+        await SendJwkSignedRequestAsync(
+            AcmeState.Key!,
+            "/new-order",
+            new
+            {
+                identifiers = new[]
+                {
+                    new { type = "dns", value = "localhost" }
+                }
+            }).ConfigureAwait(false);
+    }
+
+    [When("the client sends an existing-account request with an unknown kid")]
+    public async Task WhenTheClientSendsAnExistingAccountRequestWithAnUnknownKid()
+    {
+        AcmeState.UnknownKey ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        var nonce = await GetFreshNonceAsync().ConfigureAwait(false);
+        var signedPayload = CreateSignedPayload(
+            AcmeState.UnknownKey,
+            new
+            {
+                identifiers = new[]
+                {
+                    new { type = "dns", value = "localhost" }
+                }
+            },
+            new Uri("http://localhost/new-order"),
+            nonce,
+            kid: new Uri("http://localhost/account/does-not-exist"));
+
+        await SendAcmeRequestAsync(HttpMethod.Post, "/new-order", signedPayload).ConfigureAwait(false);
+    }
+
+    [When("the client uses an unsupported JWS signature algorithm")]
+    public async Task WhenTheClientUsesAnUnsupportedJwsSignatureAlgorithm()
+    {
+        await SendJwkSignedRequestAsync(
+            AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256),
+            "/new-account",
+            new
+            {
+                contact = new[] { "mailto:test@example.com" },
+                termsOfServiceAgreed = true
+            },
+            algOverride: "HS256").ConfigureAwait(false);
     }
 
     [When("the ACME server rejects a request for a protocol reason")]
@@ -232,6 +378,76 @@ public partial class CertificateServerFeatures
         Assert.Equal(mediaType, AcmeState.Response?.Content.Headers.ContentType?.MediaType);
     }
 
+    [Scope(Tag = "acme")]
+    [Then("the request content type MUST be \"(.+)\"")]
+    public void ThenTheAcmeRequestContentTypeMustBe(string mediaType)
+    {
+        Assert.Equal(mediaType, AcmeState.RequestContentType);
+    }
+
+    [Then("the request body MUST be a flattened JWS JSON serialization")]
+    public void ThenTheRequestBodyMustBeAFlattenedJwsJsonSerialization()
+    {
+        using var requestDocument = ParseRequestDocument();
+        Assert.Equal(JsonValueKind.Object, requestDocument.RootElement.ValueKind);
+        Assert.True(requestDocument.RootElement.TryGetProperty("protected", out _));
+        Assert.True(requestDocument.RootElement.TryGetProperty("payload", out _));
+        Assert.True(requestDocument.RootElement.TryGetProperty("signature", out _));
+        Assert.False(requestDocument.RootElement.TryGetProperty("signatures", out _));
+    }
+
+    [Then("the JWS object MUST contain exactly one signature")]
+    public void ThenTheJwsObjectMustContainExactlyOneSignature()
+    {
+        using var requestDocument = ParseRequestDocument();
+        Assert.True(requestDocument.RootElement.TryGetProperty("signature", out var signatureProperty));
+        Assert.False(string.IsNullOrWhiteSpace(signatureProperty.GetString()));
+        Assert.False(requestDocument.RootElement.TryGetProperty("signatures", out _));
+    }
+
+    [Then("the JWS protected header MUST contain the \"(.+)\" member")]
+    [Then("the JWS protected header MUST contain a \"(.+)\" member")]
+    public void ThenTheJwsProtectedHeaderMustContainTheMember(string memberName)
+    {
+        using var protectedHeader = ParseProtectedHeader();
+        Assert.True(protectedHeader.RootElement.TryGetProperty(memberName, out _),
+            $"Expected protected header to contain '{memberName}'.");
+    }
+
+    [Then("the JWS protected header MUST contain either \"jwk\" or \"kid\"")]
+    public void ThenTheJwsProtectedHeaderMustContainEitherJwkOrKid()
+    {
+        using var protectedHeader = ParseProtectedHeader();
+        var hasJwk = protectedHeader.RootElement.TryGetProperty("jwk", out _);
+        var hasKid = protectedHeader.RootElement.TryGetProperty("kid", out _);
+        Assert.True(hasJwk || hasKid);
+    }
+
+    [Then("the JWS protected header MUST NOT contain a \"(.+)\" member")]
+    public void ThenTheJwsProtectedHeaderMustNotContainAMember(string memberName)
+    {
+        using var protectedHeader = ParseProtectedHeader();
+        Assert.False(protectedHeader.RootElement.TryGetProperty(memberName, out _),
+            $"Expected protected header not to contain '{memberName}'.");
+    }
+
+    [Then("the JWS protected header MUST NOT contain both \"jwk\" and \"kid\"")]
+    public void ThenTheJwsProtectedHeaderMustNotContainBothJwkAndKid()
+    {
+        using var protectedHeader = ParseProtectedHeader();
+        var hasJwk = protectedHeader.RootElement.TryGetProperty("jwk", out _);
+        var hasKid = protectedHeader.RootElement.TryGetProperty("kid", out _);
+        Assert.False(hasJwk && hasKid);
+    }
+
+    [Then("the ACME server MUST reject the request")]
+    public void ThenTheAcmeServerMustRejectTheRequest()
+    {
+        Assert.NotNull(AcmeState.Response);
+        Assert.True((int)AcmeState.Response!.StatusCode >= 400,
+            $"Expected an ACME error response but got {(int)AcmeState.Response.StatusCode}.");
+    }
+
     [Then("the body MUST contain the ACME problem \"type\"")]
     public void ThenTheBodyMustContainTheAcmeProblemType()
     {
@@ -377,20 +593,7 @@ public partial class CertificateServerFeatures
 
         Assert.NotNull(exchange);
 
-        AcmeState.Response = exchange.Response;
-        AcmeState.ResponseBytes = exchange.ResponseBytes;
-        AcmeState.RawRequestBody = exchange.RequestBody;
-        using var requestDocument = JsonDocument.Parse(exchange.RequestBody);
-        AcmeState.SignedPayload = new JwsPayload
-        {
-            Protected = requestDocument.RootElement.GetProperty("protected").GetString(),
-            Payload = requestDocument.RootElement.GetProperty("payload").GetString(),
-            Signature = requestDocument.RootElement.GetProperty("signature").GetString()
-        };
-        Assert.NotNull(AcmeState.SignedPayload);
-
-        using var protectedHeader = JsonDocument.Parse(Base64UrlEncoder.Decode(AcmeState.SignedPayload!.Protected));
-        AcmeState.RequestNonce = protectedHeader.RootElement.GetProperty("nonce").GetString();
+        StoreExchange(exchange);
 
         if (AcmeState.Response?.StatusCode != HttpStatusCode.Created)
         {
@@ -401,6 +604,23 @@ public partial class CertificateServerFeatures
 
         AcmeState.Context = CreateAcmeContext(_server.CreateClient(), AcmeState.Key!);
         AcmeState.AccountContext = await AcmeState.Context.Account().ConfigureAwait(false);
+    }
+
+    private async Task CaptureNewOrderRequestAsync()
+    {
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
+
+        using var captureHandler = new AcmeCaptureHandler(_server.CreateHandler());
+        var capturedContext = CreateAcmeContext(captureHandler, AcmeState.Key!);
+
+        _ = await capturedContext.NewOrder(null, ["localhost"]).ConfigureAwait(false);
+
+        var exchange = captureHandler.Exchanges.LastOrDefault(x =>
+            x.Method == HttpMethod.Post &&
+            string.Equals(x.RequestUri.AbsolutePath, "/new-order", StringComparison.Ordinal));
+
+        Assert.NotNull(exchange);
+        StoreExchange(exchange);
     }
 
     private async Task SendOnlyReturnExistingRequestAsync(IKey key, bool expectSuccess)
@@ -445,15 +665,24 @@ public partial class CertificateServerFeatures
     [UnconditionalSuppressMessage("AOT", "IL3050",
         Justification = "These conformance tests run in the regular test runtime and do not target AOT publishing.")]
     private async Task SendJwkSignedNewAccountRequestAsync<TPayload>(IKey key, TPayload payload)
-    {
-        using var client = _server.CreateClient();
-        client.BaseAddress = new Uri("http://localhost");
+        => await SendJwkSignedRequestAsync(key, "/new-account", payload).ConfigureAwait(false);
 
-        var requestUrl = new Uri(client.BaseAddress, "/new-account");
-        var acmeHttpClient = new AcmeHttpClient(new Uri(client.BaseAddress, "/directory"), client);
-        var nonce = await acmeHttpClient.ConsumeNonce().ConfigureAwait(false);
-        var signedPayload = CreateJwkSignedPayload(key, payload, requestUrl, nonce);
-        await SendAcmeRequestAsync(HttpMethod.Post, requestUrl.ToString(), signedPayload).ConfigureAwait(false);
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These conformance tests build small JSON payloads at runtime in the test host only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These conformance tests run in the regular test runtime and do not target AOT publishing.")]
+    private async Task SendJwkSignedRequestAsync<TPayload>(
+        IKey key,
+        string path,
+        TPayload payload,
+        string contentType = "application/jose+json",
+        string? algOverride = null,
+        Uri? protectedUrl = null)
+    {
+        var requestUrl = new Uri(new Uri("http://localhost"), path);
+        var nonce = await GetFreshNonceAsync().ConfigureAwait(false);
+        var signedPayload = CreateSignedPayload(key, payload, protectedUrl ?? requestUrl, nonce, algOverride: algOverride);
+        await SendAcmeRequestAsync(HttpMethod.Post, requestUrl.ToString(), signedPayload, contentType).ConfigureAwait(false);
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026",
@@ -463,13 +692,34 @@ public partial class CertificateServerFeatures
     private async Task SendAcmeRequestAsync(HttpMethod method, string path, JwsPayload? payload = null)
     {
         await SendRawAcmeRequestAsync(method, path,
-            payload == null ? null : JsonSerializer.Serialize(payload));
+            payload == null ? null : JsonSerializer.Serialize(payload), "application/jose+json");
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These conformance tests serialize small ACME payloads in the normal test runtime only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
+    private async Task SendAcmeRequestAsync(HttpMethod method, string path, JwsPayload payload, string contentType)
+    {
+        await SendRawAcmeRequestAsync(method, path, JsonSerializer.Serialize(payload), contentType);
     }
 
     private JsonDocument ParseProblemDocument()
     {
         Assert.NotNull(AcmeState.ResponseBytes);
         return JsonDocument.Parse(AcmeState.ResponseBytes!);
+    }
+
+    private JsonDocument ParseRequestDocument()
+    {
+        Assert.False(string.IsNullOrWhiteSpace(AcmeState.RawRequestBody));
+        return JsonDocument.Parse(AcmeState.RawRequestBody!);
+    }
+
+    private JsonDocument ParseProtectedHeader()
+    {
+        Assert.NotNull(AcmeState.SignedPayload);
+        return JsonDocument.Parse(Base64UrlEncoder.Decode(AcmeState.SignedPayload!.Protected));
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026",
@@ -512,19 +762,44 @@ public partial class CertificateServerFeatures
         return new AcmeContext(directoryUri, accountKey: key, http: new AcmeHttpClient(directoryUri, client));
     }
 
+    private async Task<string> GetFreshNonceAsync()
+    {
+        using var client = _server.CreateClient();
+        client.BaseAddress = new Uri("http://localhost");
+
+        var directoryUri = new Uri(client.BaseAddress, "/directory");
+        var acmeHttpClient = new AcmeHttpClient(directoryUri, client);
+        return await acmeHttpClient.ConsumeNonce().ConfigureAwait(false);
+    }
+
     [UnconditionalSuppressMessage("Trimming", "IL2026",
         Justification = "These conformance tests build small JSON payloads at runtime in the test host only.")]
     [UnconditionalSuppressMessage("AOT", "IL3050",
         Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
-    private static JwsPayload CreateJwkSignedPayload<TPayload>(IKey key, TPayload payload, Uri requestUrl, string nonce)
+    private static JwsPayload CreateSignedPayload<TPayload>(
+        IKey key,
+        TPayload payload,
+        Uri requestUrl,
+        string nonce,
+        Uri? kid = null,
+        string? algOverride = null)
     {
-        var protectedHeader = new
-        {
-            alg = ToJwsAlgorithm(key.Algorithm),
-            jwk = key.JsonWebKey,
-            nonce,
-            url = requestUrl
-        };
+        var alg = algOverride ?? ToJwsAlgorithm(key.Algorithm);
+        object protectedHeader = kid == null
+            ? new
+            {
+                alg,
+                jwk = key.JsonWebKey,
+                nonce,
+                url = requestUrl
+            }
+            : new
+            {
+                alg,
+                kid,
+                nonce,
+                url = requestUrl
+            };
 
         var protectedHeaderJson = JsonSerializer.Serialize(protectedHeader);
         var payloadJson = payload == null ? string.Empty : JsonSerializer.Serialize(payload);
@@ -564,18 +839,56 @@ public partial class CertificateServerFeatures
         Justification = "These conformance tests build small JSON payloads at runtime in the test host only.")]
     [UnconditionalSuppressMessage("AOT", "IL3050",
         Justification = "These conformance tests run in the normal test runtime and do not target AOT publishing.")]
-    private async Task SendRawAcmeRequestAsync(HttpMethod method, string path, string? requestBody)
+    private async Task SendRawAcmeRequestAsync(HttpMethod method, string path, string? requestBody, string? contentType = "application/jose+json")
     {
         using var client = _server.CreateClient();
         using var request = new HttpRequestMessage(method, path);
         if (requestBody != null)
         {
-            request.Content = new StringContent(requestBody, Encoding.UTF8, "application/jose+json");
+            request.Content = new StringContent(requestBody, Encoding.UTF8, contentType);
         }
 
         var response = await client.SendAsync(request);
         AcmeState.Response = response;
         AcmeState.ResponseBytes = await response.Content.ReadAsByteArrayAsync();
+        AcmeState.RawRequestBody = requestBody;
+        AcmeState.RequestContentType = request.Content?.Headers.ContentType?.MediaType;
+        if (!string.IsNullOrWhiteSpace(requestBody))
+        {
+            using var requestDocument = JsonDocument.Parse(requestBody);
+            if (requestDocument.RootElement.TryGetProperty("protected", out var protectedProperty) &&
+                requestDocument.RootElement.TryGetProperty("payload", out var payloadProperty) &&
+                requestDocument.RootElement.TryGetProperty("signature", out var signatureProperty))
+            {
+                AcmeState.SignedPayload = new JwsPayload
+                {
+                    Protected = protectedProperty.GetString(),
+                    Payload = payloadProperty.GetString(),
+                    Signature = signatureProperty.GetString()
+                };
+            }
+        }
+    }
+
+    private void StoreExchange(AcmeExchange exchange)
+    {
+        AcmeState.Response = exchange.Response;
+        AcmeState.ResponseBytes = exchange.ResponseBytes;
+        AcmeState.RawRequestBody = exchange.RequestBody;
+        AcmeState.RequestContentType = exchange.RequestContentType;
+        using var requestDocument = JsonDocument.Parse(exchange.RequestBody);
+        AcmeState.SignedPayload = new JwsPayload
+        {
+            Protected = requestDocument.RootElement.GetProperty("protected").GetString(),
+            Payload = requestDocument.RootElement.GetProperty("payload").GetString(),
+            Signature = requestDocument.RootElement.GetProperty("signature").GetString()
+        };
+        Assert.NotNull(AcmeState.SignedPayload);
+
+        using var protectedHeader = JsonDocument.Parse(Base64UrlEncoder.Decode(AcmeState.SignedPayload!.Protected));
+        AcmeState.RequestNonce = protectedHeader.RootElement.TryGetProperty("nonce", out var nonceProperty)
+            ? nonceProperty.GetString()
+            : null;
     }
 
     private sealed class AcmeConformanceState
@@ -593,6 +906,8 @@ public partial class CertificateServerFeatures
         public Uri? AccountUrl { get; set; }
 
         public Uri? OrdersUrl { get; set; }
+
+        public string? RequestContentType { get; set; }
 
         public IList<string>? ExpectedContacts { get; set; }
 
@@ -645,7 +960,13 @@ public partial class CertificateServerFeatures
                 _ = clonedResponse.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
             }
 
-            Exchanges.Add(new AcmeExchange(request.Method, request.RequestUri!, requestBody, clonedResponse, responseBytes));
+            Exchanges.Add(new AcmeExchange(
+                request.Method,
+                request.RequestUri!,
+                requestBody,
+                request.Content?.Headers.ContentType?.MediaType,
+                clonedResponse,
+                responseBytes));
 
             var replacementContent = new ByteArrayContent(responseBytes);
             foreach (var header in response.Content.Headers)
@@ -663,6 +984,7 @@ public partial class CertificateServerFeatures
         HttpMethod Method,
         Uri RequestUri,
         string RequestBody,
+        string? RequestContentType,
         HttpResponseMessage Response,
         byte[] ResponseBytes);
 }

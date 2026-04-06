@@ -7,6 +7,7 @@ using Abstractions.RequestServices;
 using OpenCertServer.Acme.Abstractions.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Routing;
 
 public sealed class ValidateAcmeRequestFilter : IEndpointFilter
 {
@@ -31,7 +32,10 @@ public sealed class ValidateAcmeRequestFilter : IEndpointFilter
         }
 
         var acmeHeader = payload.ToAcmeHeader();
+        var endpointName = context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName;
         await _validationService.ValidateRequestAsync(payload, acmeHeader, context.HttpContext.Request.GetDisplayUrl(),
+            context.HttpContext.Request.ContentType,
+            endpointName,
             context.HttpContext.RequestAborted).ConfigureAwait(false);
         return await next(context).ConfigureAwait(false);
     }
