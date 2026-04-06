@@ -205,6 +205,7 @@ They are intentionally written before adding step implementations so they can dr
               | ES384        |
               | ES512        |
 
+        @acme-item4
         Scenario: RFC 8555 Section 7.4 requires new orders to create pending authorizations
             When the client creates a new order
             Then the response MUST use status code 201
@@ -215,6 +216,7 @@ They are intentionally written before adding step implementations so they can dr
             And the order object MUST contain a finalize URL
             And the order object status MUST initially be "pending"
 
+        @acme-item4
         Scenario: RFC 8555 Section 7.1.3 defines the order object fields and certificate link timing
             When the client fetches an order
             Then the order object MUST contain its status
@@ -223,6 +225,12 @@ They are intentionally written before adding step implementations so they can dr
             And the order object MUST reflect any accepted notAfter value
             And the certificate URL MUST be absent until the order becomes "valid"
             And if the order becomes "invalid" the order object MUST include an error object
+
+        @acme-item4
+        Scenario: RFC 8555 Section 7.4 requires malformed new-order requests to be rejected
+            When the client submits a new-order request without identifiers
+            Then the ACME server MUST reject the request
+            And the ACME server MUST reject the request with the "malformed" ACME error type
 
         Scenario: RFC 8555 Section 7.4 requires order URLs to be retrievable with POST-as-GET
             When the client fetches an existing order by its order URL
@@ -298,27 +306,47 @@ They are intentionally written before adding step implementations so they can dr
 
     Rule: Finalization and certificate issuance
 
+        @acme-item4
         Scenario: RFC 8555 Section 7.4 requires the order to become ready before finalization
             When not all authorizations for an order are valid
             Then the ACME server MUST NOT finalize the order
             And the order MUST remain "pending" or become "invalid"
 
+        @acme-item4
         Scenario: RFC 8555 Section 7.4 requires CSR submission to the finalize URL
             When the client finalizes a ready order
             Then the request body MUST contain a base64url-encoded CSR
             And the ACME server MUST verify that the identifiers requested in the CSR match the order's identifiers
             And the ACME server MUST reject a malformed or unacceptable CSR
 
+        @acme-item4
+        Scenario: RFC 8555 Section 7.4 requires CSRs without subjectAltName entries to be rejected
+            When the client finalizes a ready order with a CSR that has no subjectAltName extension
+            Then the ACME server MUST reject the request with the "badCSR" ACME error type
+
+        @acme-item4
+        Scenario: RFC 8555 Section 7.4 requires CSR identifiers to match the order exactly
+            When the client finalizes a ready order with a CSR whose identifiers do not exactly match the order
+            Then the ACME server MUST reject the request with the "badCSR" ACME error type
+
+        @acme-item4
         Scenario: RFC 8555 Section 7.4 allows successful finalization to return processing or valid
             When the ACME server accepts a CSR for a ready order
             Then the response MUST return the order object
             And the order status MUST become either "processing" or "valid"
             And if issuance is not complete the ACME server MAY include a Retry-After header
 
+        @acme-item4
         Scenario: RFC 8555 Section 7.4 requires orders that cannot be issued to become invalid
             When certificate issuance fails after finalization
             Then the ACME server MUST mark the order "invalid"
             And the order object MUST contain an error object explaining the failure
+
+        @acme-item4
+        Scenario: RFC 8555 Sections 7.1.3 and 7.4 require accepted notBefore and notAfter values to be enforced during issuance
+            When the client finalizes a ready order with accepted notBefore and notAfter values
+            Then the issued certificate MUST honor the accepted notBefore value
+            And the issued certificate MUST honor the accepted notAfter value
 
     Rule: Certificate retrieval
 

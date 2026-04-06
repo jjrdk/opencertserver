@@ -18,6 +18,8 @@ public interface ICertificateAuthority
     /// <param name="profileName">The name of the profile to use for signing the request.</param>
     /// <param name="requestor">The identity of the requestor.</param>
     /// <param name="reenrollingFrom">The certificate to reenroll from, if applicable.</param>
+    /// <param name="notBefore">The requested not-before date/time, if any.</param>
+    /// <param name="notAfter">The requested not-after date/time, if any.</param>
     /// <param name="cancellationToken">The cancellation token to use for the operation.</param>
     /// <returns>The response containing the signed certificate.</returns>
     Task<SignCertificateResponse> SignCertificateRequest(
@@ -25,6 +27,8 @@ public interface ICertificateAuthority
         string? profileName = null,
         ClaimsIdentity? requestor = null,
         X509Certificate2? reenrollingFrom = null,
+        DateTimeOffset? notBefore = null,
+        DateTimeOffset? notAfter = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -34,6 +38,8 @@ public interface ICertificateAuthority
     /// <param name="profileName">The name of the profile to use for signing the request.</param>
     /// <param name="requestor">The identity of the requestor.</param>
     /// <param name="reenrollingFrom">The certificate to reenroll from, if applicable.</param>
+    /// <param name="notBefore">The requested not-before date/time, if any.</param>
+    /// <param name="notAfter">The requested not-after date/time, if any.</param>
     /// <param name="cancellationToken">The cancellation token to use for the operation.</param>
     /// <returns>The response containing the signed certificate.</returns>
     Task<SignCertificateResponse> SignCertificateRequestPem(
@@ -41,6 +47,8 @@ public interface ICertificateAuthority
         string? profileName = null,
         ClaimsIdentity? requestor = null,
         X509Certificate2? reenrollingFrom = null,
+        DateTimeOffset? notBefore = null,
+        DateTimeOffset? notAfter = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

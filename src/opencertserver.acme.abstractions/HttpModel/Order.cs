@@ -38,14 +38,11 @@ public sealed class Order
 
         Authorizations = [..authorizationUrls];
 
-        switch (model.Status)
+        Finalize = finalizeUrl;
+
+        if (model.Status == OrderStatus.Valid)
         {
-            case OrderStatus.Ready:
-                Finalize = finalizeUrl;
-                break;
-            case OrderStatus.Valid:
-                Certificate = certificateUrl;
-                break;
+            Certificate = certificateUrl;
         }
 
         if (model.Error != null)

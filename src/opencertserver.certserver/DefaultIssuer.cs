@@ -20,6 +20,8 @@ internal sealed class DefaultIssuer : IIssueCertificates
         string? profile,
         string csr,
         IEnumerable<Identifier> identifiers,
+        DateTimeOffset? notBefore,
+        DateTimeOffset? notAfter,
         CancellationToken cancellationToken)
     {
         await Task.Yield();
@@ -28,7 +30,10 @@ internal sealed class DefaultIssuer : IIssueCertificates
             csr,
             profile,
             new System.Security.Claims.ClaimsIdentity(
-                identifiers.Select(i => new System.Security.Claims.Claim(i.Type, i.Value)), "acme"), cancellationToken: cancellationToken);
+                identifiers.Select(i => new System.Security.Claims.Claim(i.Type, i.Value)), "acme"),
+            notBefore: notBefore,
+            notAfter: notAfter,
+            cancellationToken: cancellationToken);
         return cert switch
         {
             SignCertificateResponse.Success success => (
