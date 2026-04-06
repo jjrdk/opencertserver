@@ -47,4 +47,3 @@ Recommended implementation order:
 1. Add optional `/fullcmc` support if desired.
 2. Add optional certificate-less TLS mutual authentication support if desired.
 3. Extend any future optional scenarios beyond the currently passing rollover coverage if desired.
-
