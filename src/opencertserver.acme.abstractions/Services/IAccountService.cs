@@ -36,6 +36,28 @@ public interface IAccountService
     Task<Account?> FindAccount(JsonWebKey jwk, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Updates an existing ACME account.
+    /// </summary>
+    /// <param name="account">The account to update.</param>
+    /// <param name="contact">The replacement contact URIs.</param>
+    /// <param name="termsOfServiceAgreed">Whether the account agrees to the terms of service.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The updated account object.</returns>
+    Task<Account> UpdateAccount(
+        Account account,
+        IEnumerable<string>? contact,
+        bool termsOfServiceAgreed,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deactivates an existing ACME account.
+    /// </summary>
+    /// <param name="account">The account to deactivate.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The deactivated account object.</returns>
+    Task<Account> DeactivateAccount(Account account, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Loads an account by its account ID.
     /// </summary>
     /// <param name="accountId">The account ID.</param>

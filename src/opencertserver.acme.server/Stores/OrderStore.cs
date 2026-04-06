@@ -147,4 +147,29 @@ public sealed class OrderStore : StoreBase, IStoreOrders
 
         return result.AsReadOnly();
     }
+
+    public Task<IReadOnlyList<string>> GetOrderIds(string accountId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(accountId) || !IdentifierRegex().IsMatch(accountId))
+        {
+            throw new MalformedRequestException("AccountId does not match expected format.");
+        }
+
+        var ownerDirectory = Path.Combine(Options.Value.AccountPath, accountId, "orders");
+        if (!Directory.Exists(ownerDirectory))
+        {
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var orderIds = Directory.EnumerateFiles(ownerDirectory)
+            .Select(Path.GetFileName)
+            .Where(static x => !string.IsNullOrWhiteSpace(x))
+            .Cast<string>()
+            .ToList()
+            .AsReadOnly();
+
+        return Task.FromResult<IReadOnlyList<string>>(orderIds);
+    }
 }
