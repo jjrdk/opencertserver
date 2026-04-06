@@ -1,5 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Abstractions.IssuanceServices;
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Model;
@@ -15,11 +16,15 @@ public interface IIssueCertificates
     /// <param name="profile">The certificate profile to use, or null for default.</param>
     /// <param name="csr">The PEM or DER-encoded certificate signing request.</param>
     /// <param name="identifiers">The identifiers to include in the certificate.</param>
+    /// <param name="notBefore">The requested not-before date/time, if accepted for the order.</param>
+    /// <param name="notAfter">The requested not-after date/time, if accepted for the order.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>A tuple containing the issued certificate (as bytes) and an optional error.</returns>
     Task<(byte[]? certificate, AcmeError? error)> IssueCertificate(
         string? profile,
         string csr,
         IEnumerable<Identifier> identifiers,
+        DateTimeOffset? notBefore,
+        DateTimeOffset? notAfter,
         CancellationToken cancellationToken);
 }

@@ -122,6 +122,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         string? profileName = null,
         ClaimsIdentity? requestor = null,
         X509Certificate2? reenrollingFrom = null,
+        DateTimeOffset? notBefore = null,
+        DateTimeOffset? notAfter = null,
         CancellationToken cancellationToken = default)
     {
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
@@ -174,11 +176,19 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             ECDsa ecdsa => X509SignatureGenerator.CreateForECDsa(ecdsa),
             _ => throw new NotSupportedException()
         };
+
+        var effectiveNotBefore = notBefore?.ToUniversalTime() ?? DateTimeOffset.UtcNow.Date;
+        var effectiveNotAfter = notAfter?.ToUniversalTime() ?? effectiveNotBefore.Add(profile.CertificateValidity);
+        if (effectiveNotAfter <= effectiveNotBefore)
+        {
+            return new SignCertificateResponse.Error("Requested certificate validity window is invalid.");
+        }
+
         var cert = request.Create(
             profile.CertificateChain[0].SubjectName,
             x509SignatureGenerator,
-            DateTimeOffset.UtcNow.Date,
-            DateTimeOffset.UtcNow.Date.Add(profile.CertificateValidity),
+            effectiveNotBefore,
+            effectiveNotAfter,
             BitConverter.GetBytes(DateTimeOffset.UtcNow.Ticks));
 
         using var chain = new X509Chain();
@@ -222,6 +232,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         string? profileName = null,
         ClaimsIdentity? requestor = null,
         X509Certificate2? reenrollingFrom = null,
+        DateTimeOffset? notBefore = null,
+        DateTimeOffset? notAfter = null,
         CancellationToken cancellationToken = default)
     {
         var hasPem = PemEncoding.TryFind(request, out var fields);
@@ -236,7 +248,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             csr = Convert.FromBase64CharArray(r.ToArray(), 0, r.Length);
         }
 
-        return await SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, cancellationToken).ConfigureAwait(false);
+        return await SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, notBefore, notAfter, cancellationToken).ConfigureAwait(false);
     }
 
     private Task<SignCertificateResponse> SignCertificateRequest(
@@ -244,6 +256,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         string? profileName = null,
         ClaimsIdentity? requestor = null,
         X509Certificate2? reenrollingFrom = null,
+        DateTimeOffset? notBefore = null,
+        DateTimeOffset? notAfter = null,
         CancellationToken cancellationToken = default)
     {
         var csr = CertificateRequest.LoadSigningRequest(
@@ -252,7 +266,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
             RSASignaturePadding.Pss);
 
-        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, cancellationToken);
+        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, notBefore, notAfter, cancellationToken);
     }
 
     /// <inheritdoc />
