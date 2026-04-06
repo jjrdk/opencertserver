@@ -78,6 +78,33 @@ Covered scenarios:
 - `RFC 8555 Section 7.3.2 allows account deactivation`
 - `RFC 8555 Section 7.3 requires the account orders list resource`
 
+### Item 3 focused run
+
+```zsh
+dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "Category=acme-item3"
+```
+
+Verified in this workspace:
+- Total: `13`
+- Passed: `13`
+- Failed: `0`
+- Skipped: `0`
+
+Covered scenarios:
+- `RFC 8555 Sections 6.2 6.3 and 6.5 require ACME POST bodies to be signed JWS objects`
+- `RFC 8555 Section 6.2 requires ACME POST requests to use the application jose+json media type`
+- `RFC 8555 Section 6.3 requires the protected header URL to match the request URL`
+- `RFC 8555 Section 6.2 forbids non-empty payloads on POST-as-GET requests`
+- `RFC 8555 Section 6.5 distinguishes account-creation requests from existing-account requests`
+- `RFC 8555 Section 6.5 requires newAccount requests to use a jwk rather than a kid`
+- `RFC 8555 Section 6.5 requires existing-account requests to use a kid rather than a jwk`
+- `RFC 8555 Section 6.5 requires unknown kids to be rejected as accountDoesNotExist`
+- `RFC 8555 Section 6.5 requires unsupported signature algorithms to be rejected`
+- `RFC 8555 Section 7.4 allows the core certificate flow for supported account key algorithms` (`RS256`)
+- `RFC 8555 Section 7.4 allows the core certificate flow for supported account key algorithms` (`ES256`)
+- `RFC 8555 Section 7.4 allows the core certificate flow for supported account key algorithms` (`ES384`)
+- `RFC 8555 Section 7.4 allows the core certificate flow for supported account key algorithms` (`ES512`)
+
 ### ACME smoke regression run
 
 ```zsh
@@ -106,15 +133,16 @@ This confirms the existing ACME happy-path issuance scenarios still pass after t
    - `src/opencertserver.acme.server/Endpoints/AccountEndpoints.cs` now implements `onlyReturnExisting`, account retrieval/update/deactivation, and `/account/{accountId}/orders`, and emits absolute HTTPS account/order URLs.
    - `tests/opencertserver.certserver.tests/StepDefinitions/AcmeConformance.cs` now implements the focused item 2 BDD scenarios, all of which are passing in this workspace.
 
+3. **Tighten ACME JWS and POST-as-GET request validation.**
+   - Fixed in this workspace.
+   - `src/opencertserver.acme.server/RequestServices/DefaultRequestValidationService.cs` now enforces `application/jose+json`, supports the RFC key algorithms used by the test client (`RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`), requires `jwk` on `newAccount`, requires `kid` on existing-account resources, rejects non-empty payloads on retrieval-only POST-as-GET endpoints, and maps unknown `kid` values to `accountDoesNotExist`.
+   - `src/opencertserver.acme.server/Filters/ValidateAcmeRequestFilter.cs` now passes endpoint identity and request media type into the shared validator.
+   - `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature` and `tests/opencertserver.certserver.tests/StepDefinitions/AcmeConformance.cs` now implement the focused item 3 conformance scenarios, all of which are passing in this workspace.
+
 ## Current non-conformance list
 
 The items below are the ACME counterpart to the EST non-conformance tracking list.
 They are intended to be actionable, removable one by one, and backed by the detailed analysis in the sections that follow.
-
-3. **Tighten ACME JWS and POST-as-GET request validation.**
-   - The server validates nonce, URL, signature, and `jwk`/`kid` exclusivity, but it does not explicitly enforce `application/jose+json`, endpoint-specific `jwk` versus `kid` rules, or empty payloads for POST-as-GET.
-   - Supported algorithms are currently limited to `RS256` and `ES256`, which is narrower than the client library capability already present in `CertesSlim`.
-   - Primary touchpoints: `src/opencertserver.acme.server/RequestServices/DefaultRequestValidationService.cs`, `src/opencertserver.acme.server/Filters/ValidateAcmeRequestFilter.cs`.
 
 4. **Complete order metadata and strict finalization validation.**
    - Orders do not currently populate `Expires`.
@@ -255,38 +283,21 @@ The request-validation pipeline is wired by:
 What is already checked:
 
 - POST requests are expected to bind to `JwsPayload`.
+- ACME POST requests must use `application/jose+json`.
+- flattened-JWS required members (`protected`, `payload`, `signature`) are validated before endpoint logic runs.
 - `url` in the protected header must match the request URL.
 - `nonce` must be present and known.
 - `jwk` and `kid` are mutually exclusive.
 - one of `jwk` or `kid` must be present.
+- `newAccount` requests must use `jwk`, while existing-account resources must use `kid`.
+- retrieval-only POST-as-GET resources reject non-empty JWS payloads.
+- `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, and `ES512` are accepted.
 - the JWS signature is verified against the supplied JWK or the stored account key.
+- unknown `kid` values are rejected with `accountDoesNotExist`.
 
 ### Gaps and bugs found
 
-1. **Only `RS256` and `ES256` are accepted.**
-   - `_supportedAlgs` in `DefaultRequestValidationService.cs` is hardcoded to `["RS256", "ES256"]`.
-   - That is narrower than the algorithms already present in `CertesSlim.Json.JwsSigner`.
-   - It is also likely to break the existing `AcmeFeature.feature` example rows for `ES384` and `ES512` if those are executed against the current server.
-
-2. **No explicit enforcement of `application/jose+json`.**
-   - I found no content-type validation in the request pipeline.
-   - RFC 8555 requires the ACME POST body format and media type.
-
-3. **No explicit POST-as-GET payload enforcement.**
-   - Retrieval endpoints currently accept a `JwsPayload`, but do not verify that the payload is the empty string.
-   - That means non-empty POST-as-GET requests appear to be accepted when they should be rejected.
-
-4. **No endpoint-specific `jwk` versus `kid` enforcement beyond mutual exclusion.**
-   - RFC 8555 requires `jwk` on `newAccount` and `keyChange`, and `kid` on existing-account resources.
-   - The current validator only enforces “one or the other”, not “the correct one for this endpoint”.
-
-5. **Unknown `kid` handling is not RFC-shaped.**
-   - `ValidateSignatureAsync` converts a missing account lookup into `MalformedRequestException("KID could not be found.")`.
-   - The server should return an ACME error document with the appropriate problem type, not a generic malformed flow.
-
-6. **There is no verification that the JWS body is a valid flattened JWS beyond model binding.**
-   - The envelope shape is assumed from deserialization into `JwsPayload`.
-   - Additional ACME/JWS constraints are not explicitly enforced.
+No remaining item-3 request-validation gaps are currently tracked in this workspace.
 
 ---
 
@@ -506,9 +517,8 @@ What works:
    - RFC 8555 allows alternate chains via `Link: ...;rel="alternate"`.
    - The server does not currently emit alternate chain links.
 
-2. **Certificate retrieval still depends on the broader ACME POST response gaps.**
-   - fresh nonce behavior is missing;
-   - problem-document behavior is missing for retrieval errors.
+2. **Certificate retrieval now participates in the centralized ACME POST response behavior.**
+   - fresh `Replay-Nonce` handling and ACME problem-document shaping are provided by the shared ACME response filter.
 
 ---
 
@@ -562,17 +572,17 @@ It proves:
 
 ### Gaps and bugs found
 
-1. **Current ACME coverage is smoke-level, not conformance-level.**
-   - There are no existing executable scenarios for:
-     - nonce replay rejection;
-     - ACME problem documents;
-     - account update/deactivation;
-     - account order listing;
-     - POST-as-GET rejection rules;
+1. **Current ACME coverage is improving from smoke-level toward conformance-level.**
+   - Focused executable scenarios now cover:
+     - nonce replay rejection and ACME problem documents;
+     - account update/deactivation and account order listing;
+     - request media-type enforcement, key-identifier rules, unsupported-algorithm rejection, and POST-as-GET rejection rules.
+   - Focused executable scenarios are still missing for:
      - revocation;
      - key rollover;
      - wildcard order behavior;
-     - exact CSR identifier matching.
+     - exact CSR identifier matching;
+     - authorization deactivation and validation timestamps.
 
 2. **The new `AcmeConformance.feature` is intentionally broader than the current implementation.**
    - It provides the requirement inventory before any step implementations are added.
@@ -603,8 +613,6 @@ The major RFC 8555 gaps are captured in the numbered non-conformance list above.
 
 In short, the current implementation is a functioning ACME happy-path server, but it still needs:
 
-- complete account lifecycle support;
-- stricter JWS and POST-as-GET enforcement;
 - stricter order/finalization validation;
 - full authorization/challenge semantics;
 - revocation support;
