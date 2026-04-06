@@ -16,7 +16,7 @@ public sealed class Authorization
     {
         {
             AuthorizationStatus.Pending,
-            [AuthorizationStatus.Invalid, AuthorizationStatus.Expired, AuthorizationStatus.Valid]
+            [AuthorizationStatus.Invalid, AuthorizationStatus.Expired, AuthorizationStatus.Valid, AuthorizationStatus.Deactivated]
         },
         {
             AuthorizationStatus.Valid,

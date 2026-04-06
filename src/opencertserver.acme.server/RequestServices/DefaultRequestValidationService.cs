@@ -48,7 +48,6 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
     [
         "OrderList",
         "GetOrder",
-        "GetAuthorization",
         "GetCertificate"
     ];
 
