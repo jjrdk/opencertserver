@@ -64,7 +64,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         string profileName,
         X500DistinguishedName distinguishedName,
         TimeSpan certificateValidity,
-        BigInteger? crlNumber = null)
+        BigInteger? crlNumber = null,
+        TimeSpan ocspFreshnessWindow = default)
     {
         var (key, cert) = CreateSelfSignedRsaCert(
             distinguishedName,
@@ -84,7 +85,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             CertificateChain = [cert],
             PublishedCertificateChain = publishedCertificates,
             CertificateValidity = certificateValidity,
-            CrlNumber = crlNumber ?? BigInteger.Zero
+            CrlNumber = crlNumber ?? BigInteger.Zero,
+            OcspFreshnessWindow = ocspFreshnessWindow == TimeSpan.Zero ? TimeSpan.FromHours(1) : ocspFreshnessWindow
         };
     }
 
@@ -92,7 +94,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         string profileName,
         X500DistinguishedName distinguishedName,
         TimeSpan certificateValidity,
-        BigInteger? crlNumber = null)
+        BigInteger? crlNumber = null,
+        TimeSpan ocspFreshnessWindow = default)
     {
         var (key, cert) = CreateSelfSignedEcDsaCert(
             distinguishedName,
@@ -112,7 +115,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             CertificateChain = [cert],
             PublishedCertificateChain = publishedCertificates,
             CertificateValidity = certificateValidity,
-            CrlNumber = crlNumber ?? BigInteger.Zero
+            CrlNumber = crlNumber ?? BigInteger.Zero,
+            OcspFreshnessWindow = ocspFreshnessWindow == TimeSpan.Zero ? TimeSpan.FromHours(1) : ocspFreshnessWindow
         };
     }
 

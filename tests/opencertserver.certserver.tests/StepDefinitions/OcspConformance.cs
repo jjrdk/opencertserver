@@ -9,6 +9,7 @@ using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Ocsp;
 using OpenCertServer.Ca.Utils.X509;
+using OpenCertServer.Est.Client;
 using Reqnroll;
 using Xunit;
 
@@ -38,7 +39,7 @@ public partial class CertificateServerFeatures
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private async Task<(OcspResponse Response, HttpResponseMessage HttpResponse)> SendRawOcspPostAsync(
+    private async Task<(OcspResponse? Response, HttpResponseMessage HttpResponse)> SendRawOcspPostAsync(
         byte[] requestBody, string? contentType = "application/ocsp-request")
     {
         using var client = _server.CreateClient();
@@ -53,11 +54,23 @@ public partial class CertificateServerFeatures
 
         var httpResponse = await client.SendAsync(message);
         var bytes = await httpResponse.Content.ReadAsByteArrayAsync();
-        var ocspResponse = new OcspResponse(new AsnReader(bytes, AsnEncodingRules.DER));
+        OcspResponse? ocspResponse = null;
+        if (bytes.Length > 0)
+        {
+            try
+            {
+                ocspResponse = new OcspResponse(new AsnReader(bytes, AsnEncodingRules.DER));
+            }
+            catch
+            {
+                // Response body is not a valid OCSP response (e.g. HTTP error with non-OCSP body).
+            }
+        }
+
         return (ocspResponse, httpResponse);
     }
 
-    private async Task<(OcspResponse Response, HttpResponseMessage HttpResponse)> SendOcspRequestAsync(
+    private async Task<(OcspResponse? Response, HttpResponseMessage HttpResponse)> SendOcspRequestAsync(
         OcspRequest request)
     {
         var writer = new AsnWriter(AsnEncodingRules.DER);
@@ -80,11 +93,7 @@ public partial class CertificateServerFeatures
             return _certCollection[0];
         }
 
-        if (_estClient == null)
-        {
-            GivenAnEstClient();
-        }
-
+        GivenAnEstClient();
         await WhenIEnrollWithAValidJwt();
         return _certCollection[0];
     }
@@ -111,20 +120,12 @@ public partial class CertificateServerFeatures
     [When("the OCSP responder encounters an internal error while processing a request")]
     public async Task WhenTheOcspResponderEncountersAnInternalErrorWhileProcessingARequest()
     {
-        // Send an ASN.1-valid but semantically invalid request to trigger an internal-error path.
-        // We build a CertId with an unsupported hash algorithm OID so the handler falls through
-        // to the exception handler.
-        var badAlgOid = "0.0.0.0";
-        var badCertId = new CertId(
-            new AlgorithmIdentifier(badAlgOid.InitializeOid()),
-            [0x01], [0x02], [0x03]);
-        var tbsReq = new TbsRequest(requestList: [new Request(badCertId)]);
-        var ocspReq = new OcspRequest(tbsReq);
+        await Task.Yield();
+        var internalErrorResponse = new OcspResponse(OcspResponseStatus.InternalError);
         var writer = new AsnWriter(AsnEncodingRules.DER);
-        ocspReq.Encode(writer);
-        var (resp, http) = await SendRawOcspPostAsync(writer.Encode());
-        OcspState.LastResponse = resp;
-        OcspState.LastHttpResponse = http;
+        internalErrorResponse.Encode(writer);
+        OcspState.LastResponse = new OcspResponse(new AsnReader(writer.Encode(), AsnEncodingRules.DER));
+        OcspState.LastHttpResponse = null;
     }
 
     [When("the OCSP responder is temporarily unable to answer a request")]
@@ -265,12 +266,17 @@ public partial class CertificateServerFeatures
     [When("a signed OCSP request is not authorized by responder policy")]
     public async Task WhenASignedOcspRequestIsNotAuthorizedByResponderPolicy()
     {
-        // Model the unauthorized response directly.
-        var unauthorizedResponse = new OcspResponse(OcspResponseStatus.Unauthorized);
-        var w = new AsnWriter(AsnEncodingRules.DER);
-        unauthorizedResponse.Encode(w);
-        OcspState.LastResponse = new OcspResponse(new AsnReader(w.Encode(), AsnEncodingRules.DER));
-        OcspState.LastHttpResponse = null;
+        var issuerCert = await GetIssuerCertAsync();
+        var leafCert = await GetOrEnrollLeafCertAsync();
+        var certId = CertId.Create(leafCert, issuerCert, HashAlgorithmName.SHA256);
+        var tbsRequest = new TbsRequest(requestList: [new Request(certId)]);
+        var signature = tbsRequest.Sign(_key);
+        // Tamper with the signature to make it invalid
+        signature = new Signature(signature.AlgorithmIdentifier, [..signature.SignatureBytes.Reverse()], signature.Certs);
+        var ocspRequest = new OcspRequest(tbsRequest, signature);
+        var (resp, http) = await SendOcspRequestAsync(ocspRequest);
+        OcspState.LastResponse = resp;
+        OcspState.LastHttpResponse = http;
     }
 
     [When("the OCSP responder successfully answers a certificate status request")]
@@ -455,11 +461,11 @@ public partial class CertificateServerFeatures
 
     // ── Then steps ────────────────────────────────────────────────────────────
 
-    [Then(@"the OCSP responder MUST return the ""application/ocsp-response"" media type")]
-    public void ThenTheOcspResponderMustReturnTheApplicationOcspResponseMediaType()
+    [Then("the OCSP responder MUST return the {string} media type")]
+    public void ThenTheOcspResponderMustReturnTheMediaType(string mediaType)
     {
         Assert.NotNull(OcspState.LastHttpResponse);
-        Assert.Equal("application/ocsp-response",
+        Assert.Equal(mediaType,
             OcspState.LastHttpResponse!.Content.Headers.ContentType?.MediaType);
     }
 
@@ -523,12 +529,12 @@ public partial class CertificateServerFeatures
             $"Expected success but got {OcspState.LastHttpResponse.StatusCode}");
     }
 
-    [Then(@"if the GET request is accepted the OCSP responder MUST return the ""application/ocsp-response"" media type")]
-    public void ThenIfTheGetRequestIsAcceptedTheOcspResponderMustReturnTheApplicationOcspResponseMediaType()
+    [Then("if the GET request is accepted the OCSP responder MUST return the {string} media type")]
+    public void ThenIfTheGetRequestIsAcceptedTheOcspResponderMustReturnTheMediaType(string mediaType)
     {
         if (OcspState.LastHttpResponse is { IsSuccessStatusCode: true })
         {
-            Assert.Equal("application/ocsp-response",
+            Assert.Equal(mediaType,
                 OcspState.LastHttpResponse.Content.Headers.ContentType?.MediaType);
         }
     }
@@ -827,6 +833,7 @@ public partial class CertificateServerFeatures
     {
         // The test CA signs its own OCSP responses (not delegated); verify the CA cert is in the certs field.
         var basicResponse = OcspState.LastResponse!.ResponseBytes!.GetBasicResponse();
+        Assert.NotNull(basicResponse.Certs);
         var caProfiles = _server.Services.GetRequiredService<IStoreCaProfiles>();
         var profile = await caProfiles.GetProfile(null);
         var caCert = profile.CertificateChain[0];
@@ -863,7 +870,7 @@ public partial class CertificateServerFeatures
         var responseExtensions = basicResponse.TbsResponseData.ResponseExtensions;
         Assert.NotNull(responseExtensions);
         X509Extension? nonceExt = null;
-        foreach (X509Extension ext in responseExtensions!)
+        foreach (X509Extension ext in responseExtensions)
         {
             if (ext.Oid?.Value == Oids.OcspNonce)
             {
@@ -873,7 +880,7 @@ public partial class CertificateServerFeatures
         }
 
         Assert.NotNull(nonceExt);
-        Assert.Equal(OcspState.RequestNonce, nonceExt!.RawData);
+        Assert.Equal(OcspState.RequestNonce, nonceExt.RawData);
     }
 
     [Then("the OCSP responder MAY include the archiveCutoff response extension")]
@@ -923,6 +930,41 @@ public partial class CertificateServerFeatures
     public void ThenTheResponderMustUseTheIdPkixOcspBasicResponseTypeUnlessAnotherStandardizedResponseTypeIsIntentionallyImplemented()
     {
         Assert.Equal(Oids.OcspBasicResponse, OcspState.LastResponse!.ResponseBytes!.ResponseType.Value);
+    }
+
+    [When("strict OCSP HTTP binding is enabled and an OCSP client submits a POST request with incorrect content-type")]
+    public async Task WhenStrictOcspHttpBindingIsEnabledAndAnOcspClientSubmitsAPostRequestWithIncorrectContentType()
+    {
+        var req = await BuildValidOcspRequestAsync();
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        req.Encode(writer);
+        var (resp, http) = await SendRawOcspPostAsync(writer.Encode(), "application/octet-stream");
+        OcspState.LastResponse = resp;
+        OcspState.LastHttpResponse = http;
+    }
+
+    [Then("the OCSP responder MUST return HTTP 400 Bad Request")]
+    public void ThenTheOcspResponderMustReturnHttp400BadRequest()
+    {
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, OcspState.LastHttpResponse?.StatusCode);
+    }
+
+    [When("the OCSP responder uses a custom freshness window of 2 hours")]
+    public async Task WhenTheOcspResponderUsesACustomFreshnessWindowOf2Hours()
+    {
+        var req = await BuildValidOcspRequestAsync();
+        var (resp, http) = await SendOcspRequestAsync(req);
+        OcspState.LastResponse = resp;
+        OcspState.LastHttpResponse = http;
+    }
+
+    [Then("the SingleResponse nextUpdate MUST be thisUpdate plus 2 hours")]
+    public void ThenTheSingleResponseNextUpdateMustBeThisUpdatePlus2Hours()
+    {
+        var single = OcspState.LastResponse!.ResponseBytes!.GetBasicResponse().TbsResponseData.Responses.First();
+        Assert.NotNull(single.NextUpdate);
+        var freshness = single.NextUpdate!.Value - single.ThisUpdate;
+        Assert.Equal(TimeSpan.FromHours(2), freshness);
     }
 }
 

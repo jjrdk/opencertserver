@@ -34,6 +34,11 @@ They are intentionally written before adding step implementations so they can dr
             Then the OCSP responder MAY accept the GET request
             And if the GET request is accepted the OCSP responder MUST return the "application/ocsp-response" media type
 
+        @strict-ocsp
+        Scenario: Strict OCSP HTTP binding enforces application/ocsp-request content-type for POST requests
+            When strict OCSP HTTP binding is enabled and an OCSP client submits a POST request with incorrect content-type
+            Then the OCSP responder MUST return HTTP 400 Bad Request
+
     Rule: OCSP request syntax and request processing
 
         Scenario: RFC 6960 defines an OCSP request as a TBSRequest with one or more certificate requests
@@ -140,6 +145,11 @@ They are intentionally written before adding step implementations so they can dr
             When the OCSP responder returns certificate status information
             Then the responder MUST base the response on current revocation information according to local freshness policy
 
+        @custom-ocsp-freshness
+        Scenario: OCSP responder freshness policy is configurable
+            When the OCSP responder uses a custom freshness window of 2 hours
+            Then the SingleResponse nextUpdate MUST be thisUpdate plus 2 hours
+
     Rule: Authorized responder and signature verification requirements
 
         Scenario: RFC 6960 requires successful OCSP responses to be signed by an authorized responder
@@ -186,4 +196,3 @@ They are intentionally written before adding step implementations so they can dr
         Scenario: RFC 6960 requires an unauthorized response when the server refuses service to the client or target domain
             When responder policy refuses to answer a status request
             Then the OCSP responder MAY return the OCSP response status "unauthorized"
-

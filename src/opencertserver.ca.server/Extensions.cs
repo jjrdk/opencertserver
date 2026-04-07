@@ -41,6 +41,7 @@ public static class Extensions
         {
             services.AddSingleton(configuration);
             services.AddSingleton(configuration.Profiles);
+            services.AddSingleton<IValidateOcspRequest, OcspRequestSignatureValidator>();
             return services.AddSingleton<ICertificateAuthority>(sp =>
             {
                 return new CertificateAuthority(
@@ -61,6 +62,8 @@ public static class Extensions
         /// <param name="caIssuersUrls">The known CA issuer URLs.</param>
         /// <param name="certificateValidity">The duration of the issued certificates.</param>
         /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
+        /// <param name="strictOcspHttpBinding">Whether to enforce strict OCSP HTTP binding, including content-type validation for POST requests.</param>
+        /// <param name="ocspFreshnessWindow">The OCSP freshness window for responses.</param>
         /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
         public IServiceCollection AddSelfSignedCertificateAuthority(
             X500DistinguishedName distinguishedName,
@@ -68,7 +71,9 @@ public static class Extensions
             string[]? crlUrls = null,
             string[]? caIssuersUrls = null,
             TimeSpan certificateValidity = default,
-            IValidateX509Chains? chainValidation = null)
+            IValidateX509Chains? chainValidation = null,
+            bool strictOcspHttpBinding = false,
+            TimeSpan ocspFreshnessWindow = default)
         {
             var config = new CaConfiguration(
                 new CaProfileSet(
@@ -77,18 +82,22 @@ public static class Extensions
                         "default",
                         distinguishedName,
                         certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
-                        BigInteger.Zero),
+                        BigInteger.Zero,
+                        ocspFreshnessWindow == TimeSpan.Zero ? TimeSpan.FromHours(1) : ocspFreshnessWindow),
                     CertificateAuthority.CreateSelfSignedEcdsa(
                         "ecdsa",
                         distinguishedName,
                         certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
-                        BigInteger.Zero)
+                        BigInteger.Zero,
+                        ocspFreshnessWindow == TimeSpan.Zero ? TimeSpan.FromHours(1) : ocspFreshnessWindow)
                 ),
                 ocspUrls ?? [],
                 crlUrls ?? [],
-                caIssuersUrls ?? []);
+                caIssuersUrls ?? [],
+                strictOcspHttpBinding);
             services.AddSingleton(config);
             services.AddSingleton(config.Profiles);
+            services.AddSingleton<IValidateOcspRequest, OcspRequestSignatureValidator>();
             return services.AddSingleton<ICertificateAuthority>(sp =>
             {
                 var certificateAuthority = new CertificateAuthority(
