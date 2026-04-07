@@ -1,16 +1,12 @@
-﻿using CertesSlim.Acme;
+﻿namespace CertesSlim;
+
+using CertesSlim.Acme;
 using CertesSlim.Acme.Resource;
 using CertesSlim.Extensions;
 using CertesSlim.Json;
 using Microsoft.IdentityModel.Tokens;
-using Directory = CertesSlim.Acme.Resource.Directory;
 using Identifier = CertesSlim.Acme.Resource.Identifier;
 using IdentifierType = CertesSlim.Acme.Resource.IdentifierType;
-
-namespace CertesSlim;
-
-using Identifier = Identifier;
-using Resource_Directory = Directory;
 
 /// <summary>
 /// Represents the context for ACME operations.
@@ -19,7 +15,7 @@ using Resource_Directory = Directory;
 public class AcmeContext : IAcmeContext
 {
     private const string DefaultKeyType = SecurityAlgorithms.EcdsaSha256;
-    private Resource_Directory? _directory;
+    private Directory? _directory;
     private IAccountContext? _accountContext;
 
     /// <summary>
@@ -146,11 +142,11 @@ public class AcmeContext : IAcmeContext
     /// <returns>
     /// The ACME directory.
     /// </returns>
-    public async Task<Resource_Directory> GetDirectory()
+    public async Task<Directory> GetDirectory()
     {
         if (_directory == null)
         {
-            var resp = await HttpClient.Get<Resource_Directory>(DirectoryUri).ConfigureAwait(false);
+            var resp = await HttpClient.Get<Directory>(DirectoryUri).ConfigureAwait(false);
             _directory = resp.Resource;
         }
 
