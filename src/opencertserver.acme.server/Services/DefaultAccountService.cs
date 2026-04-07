@@ -66,6 +66,22 @@ public sealed class DefaultAccountService : IAccountService
         return account;
     }
 
+    public async Task<Account> ChangeKey(Account account, JsonWebKey newKey, CancellationToken cancellationToken = default)
+    {
+        ValidateAccount(account);
+        ArgumentNullException.ThrowIfNull(newKey);
+
+        var existingAccount = await _accountStore.FindAccount(newKey, cancellationToken).ConfigureAwait(false);
+        if (existingAccount != null && !string.Equals(existingAccount.AccountId, account.AccountId, StringComparison.Ordinal))
+        {
+            throw new MalformedRequestException("The proposed account key is already associated with another ACME account.");
+        }
+
+        account.ReplaceKey(newKey);
+        await _accountStore.SaveAccount(account, cancellationToken).ConfigureAwait(false);
+        return account;
+    }
+
     public async Task<Account> FromRequest(AcmeHeader header, CancellationToken cancellationToken)
     {
         //TODO: Get accountId from Kid?

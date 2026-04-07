@@ -164,6 +164,16 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
             return;
         }
 
+        if (string.Equals(endpointName, "KeyChange", StringComparison.Ordinal))
+        {
+            if (header.Jwk == null || header.Kid != null)
+            {
+                throw new MalformedRequestException("keyChange requests must be signed with a JWK and must not contain a Kid.");
+            }
+
+            return;
+        }
+
         if (endpointName != null && KidOnlyEndpoints.Contains(endpointName) && (header.Kid == null || header.Jwk != null))
         {
             throw new MalformedRequestException("Existing-account ACME requests must be signed with a Kid and must not contain a JWK.");
