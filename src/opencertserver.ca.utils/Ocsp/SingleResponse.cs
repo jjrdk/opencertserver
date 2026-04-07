@@ -1,6 +1,7 @@
 namespace OpenCertServer.Ca.Utils.Ocsp;
 
 using System.Formats.Asn1;
+using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils.X509;
 
 /// <summary>
@@ -25,13 +26,15 @@ public class SingleResponse : IAsnValue
         CertId certId,
         (CertificateStatus, RevokedInfo?) certStatus,
         DateTimeOffset thisUpdate,
-        DateTimeOffset? nextUpdate = null)
+        DateTimeOffset? nextUpdate = null,
+        X509ExtensionCollection? singleExtensions = null)
     {
         CertId = certId;
         CertStatus = certStatus.Item1;
         RevokedInfo = certStatus.Item2;
         ThisUpdate = thisUpdate;
         NextUpdate = nextUpdate;
+        SingleExtensions = singleExtensions;
     }
 
     /// <summary>
@@ -42,7 +45,12 @@ public class SingleResponse : IAsnValue
         var sequenceReader = reader.ReadSequence();
         CertId = new CertId(sequenceReader);
         var certStatusTag = sequenceReader.PeekTag();
-        if (certStatusTag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1)))
+        if (certStatusTag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
+        {
+            CertStatus = CertificateStatus.Good;
+            sequenceReader.ReadNull(new Asn1Tag(TagClass.ContextSpecific, 0));
+        }
+        else if (certStatusTag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1)))
         {
             CertStatus = CertificateStatus.Revoked;
             RevokedInfo = new RevokedInfo(sequenceReader, certStatusTag);
@@ -54,14 +62,24 @@ public class SingleResponse : IAsnValue
         }
         else
         {
-            CertStatus = CertificateStatus.Good;
-            sequenceReader.ReadNull();
+            CertStatus = CertificateStatus.Unknown;
+            sequenceReader.ReadEncodedValue();
         }
 
         ThisUpdate = sequenceReader.ReadGeneralizedTime();
         if (sequenceReader.HasData && sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
         {
             NextUpdate = sequenceReader.ReadGeneralizedTime(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+        }
+
+        if (sequenceReader.HasData && sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
+        {
+            var extReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true));
+            SingleExtensions = [];
+            while (extReader.HasData)
+            {
+                SingleExtensions.Add(extReader.DecodeExtension());
+            }
         }
     }
 
@@ -91,6 +109,11 @@ public class SingleResponse : IAsnValue
     public DateTimeOffset? NextUpdate { get; }
 
     /// <summary>
+    /// Gets the optional per-certificate extensions in this single response.
+    /// </summary>
+    public X509ExtensionCollection? SingleExtensions { get; }
+
+    /// <summary>
     /// Executes the Encode operation.
     /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
@@ -100,7 +123,7 @@ public class SingleResponse : IAsnValue
         switch (CertStatus)
         {
             case CertificateStatus.Good:
-                writer.WriteNull();
+                writer.WriteNull(new Asn1Tag(TagClass.ContextSpecific, 0));
                 break;
             case CertificateStatus.Revoked:
                 RevokedInfo!.Encode(writer, new Asn1Tag(TagClass.ContextSpecific, 1));
@@ -117,6 +140,18 @@ public class SingleResponse : IAsnValue
         {
             writer.WriteGeneralizedTime(NextUpdate.Value, false, new Asn1Tag(TagClass.ContextSpecific, 0, true));
         }
+
+        if (SingleExtensions is { Count: > 0 })
+        {
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
+            {
+                foreach (var ext in SingleExtensions)
+                {
+                    ext.Encode(writer);
+                }
+            }
+        }
+
         writer.PopSequence(tag);
     }
 }

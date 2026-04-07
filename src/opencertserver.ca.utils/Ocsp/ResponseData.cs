@@ -1,6 +1,7 @@
 namespace OpenCertServer.Ca.Utils.Ocsp;
 
 using System.Formats.Asn1;
+using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils.X509;
 
 /// <summary>
@@ -24,12 +25,14 @@ public class ResponseData : IAsnValue
         TypeVersion version,
         IResponderId responderId,
         DateTimeOffset producedAt,
-        IEnumerable<SingleResponse> responses)
+        IEnumerable<SingleResponse> responses,
+        X509ExtensionCollection? responseExtensions = null)
     {
         Version = version;
         ResponderId = responderId;
         ProducedAt = producedAt;
         Responses = responses.ToArray().AsReadOnly();
+        ResponseExtensions = responseExtensions;
     }
 
     /// <summary>
@@ -61,6 +64,16 @@ public class ResponseData : IAsnValue
         }
 
         Responses = responses.AsReadOnly();
+
+        if (sequenceReader.HasData && sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
+        {
+            var extReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true));
+            ResponseExtensions = [];
+            while (extReader.HasData)
+            {
+                ResponseExtensions.Add(extReader.DecodeExtension());
+            }
+        }
     }
 
     /// <summary>
@@ -84,6 +97,11 @@ public class ResponseData : IAsnValue
     public IReadOnlyCollection<SingleResponse> Responses { get; }
 
     /// <summary>
+    /// Gets the optional response-level extensions.
+    /// </summary>
+    public X509ExtensionCollection? ResponseExtensions { get; }
+
+    /// <summary>
     /// Executes the Encode operation.
     /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
@@ -103,6 +121,18 @@ public class ResponseData : IAsnValue
         }
 
         writer.PopSequence(new Asn1Tag(UniversalTagNumber.Sequence));
+
+        if (ResponseExtensions is { Count: > 0 })
+        {
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
+            {
+                foreach (var ext in ResponseExtensions)
+                {
+                    ext.Encode(writer);
+                }
+            }
+        }
+
         writer.PopSequence(tag);
     }
 }
