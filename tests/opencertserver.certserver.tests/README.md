@@ -1,49 +1,105 @@
 # `opencertserver.certserver.tests`
 
-## EST conformance suite
+This test project contains the executable server-side conformance coverage for the certificate server.
+The feature files are intended to be used in a TDD style:
 
-The project now contains an executable RFC-driven EST conformance suite in `Features/EstConformance.feature`.
-
-It is intended to be used in a TDD style:
 - the scenarios are fully bound and executable;
-- passing scenarios describe behavior the current implementation already satisfies;
-- failing scenarios identify concrete EST non-conformance in the current implementation rather than missing step definitions.
+- passing scenarios document behavior the current implementation already satisfies;
+- failing scenarios identify concrete protocol gaps rather than missing step definitions.
 
-## Focused run
+This README is the primary conformance overview for the project-level test harness.
+
+## Conformance suites
+
+### EST conformance
+
+Primary files:
+
+- `Features/EstConformance.feature`
+- `StepDefinitions/EstConformance.cs`
+- `StepDefinitions/EstEnrollment.cs`
+- `StepDefinitions/CertificateServerFeatures.cs`
+
+Focused run:
 
 ```zsh
 dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "FullyQualifiedName~EstConformance"
 ```
 
-## Latest focused run result
+Implemented and exercised coverage includes:
 
-Verified in this workspace:
-- Total: `65`
-- Passed: `61`
-- Failed: `0`
-- Skipped: `4`
+- mandatory EST `/simpleenroll` and `/simplereenroll` route support;
+- authenticated enrollment and re-enrollment flows used by the in-memory test harness;
+- RFC 7030 enrollment and re-enrollment response semantics, including authorization, renewal, and rekey handling;
+- `/csrattrs` authentication, status-code handling, RFC 8951 base64 updates, and RFC 9908 template and legacy requirements covered by the current harness;
+- `/serverkeygen` request and response handling, including base64 private-key delivery, `Content-Transfer-Encoding` tolerance, multipart responses, and encrypted key-delivery request validation;
+- request-shape validation for enrollment endpoints;
+- template-driven subject/key checks supported by the current fixture loader.
 
-The skipped scenarios are the conditional/optional cases that are not implemented in the current server build, such as `/fullcmc` and certificate-less TLS mutual authentication.
+Current scope notes:
 
-## Failing tests and current non-conformance
+- optional and conditional EST scenarios remain intentionally dependent on server configuration and available feature support;
+- the current test server configuration does not enable optional `/fullcmc` support or certificate-less TLS mutual authentication;
+- future TDD work can extend the suite by enabling additional optional EST capabilities rather than by filling in missing bindings.
 
-The focused EST conformance scenarios currently pass in this workspace. The remaining skipped scenarios are optional or conditional features that are not implemented in this test server configuration, such as `/fullcmc` and certificate-less TLS mutual authentication.
+### ACME conformance
 
-## Scenarios currently passing
+Primary files:
 
-Representative passing areas from the focused run:
-- mandatory `/simpleenroll` and `/simplereenroll` route support;
-- basic authenticated EST enrollment and re-enrollment happy paths already covered by the existing test harness;
-- RFC 7030 simple enrollment and re-enrollment response semantics, including manual authorization, renewal, and rekey handling;
-- `/csrattrs` authentication, status codes, RFC 8951 base64 encoding, client parsing, and RFC 9908 template/legacy requirement scenarios;
-- RFC 8951 request/response base64 updates for `/csrattrs` and `/serverkeygen`, including base64 private-key delivery, Content-Transfer-Encoding tolerance, and encrypted key-delivery request validation;
-- several request-shape checks for simple enrollment;
-- multipart response presence for `/serverkeygen`;
-- some RFC 9908 template subject/key presence checks where the current test loader can generate a simple template.
+- `Features/AcmeConformance.feature`
+- `Features/AcmeFeature.feature`
+- `StepDefinitions/AcmeConformance.cs`
+- `StepDefinitions/CertificateServerFeatures.cs`
+- `StepDefinitions/TestAcmeIssuer.cs`
+- `StepDefinitions/TestAcmeHttp01ChallengeValidator.cs`
+- `StepDefinitions/TestAcmeDns01ChallengeValidator.cs`
 
-## Notes for future TDD work
+Focused conformance run:
 
-Recommended implementation order:
-1. Add optional `/fullcmc` support if desired.
-2. Add optional certificate-less TLS mutual authentication support if desired.
-3. Extend any future optional scenarios beyond the currently passing rollover coverage if desired.
+```zsh
+dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "FullyQualifiedName~AcmeConformance"
+```
+
+Happy-path smoke run:
+
+```zsh
+dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "DisplayName~Can complete certificate flow"
+```
+
+Implemented and exercised coverage includes:
+
+- directory discovery, index links, replay nonces, anti-replay behavior, and ACME problem-document shaping;
+- ACME JWS envelope validation, request media-type enforcement, supported signature-algorithm handling, and POST-as-GET behavior;
+- account creation, `onlyReturnExisting`, account retrieval and update, deactivation, and account order listing;
+- order creation and retrieval, authorization/challenge resource exposure, strict CSR validation, invalid-order propagation, and issuance-time `notBefore` / `notAfter` enforcement;
+- challenge acknowledgement flow, authorization deactivation, embedded ACME error objects, and `http-01` / `dns-01` validation semantics;
+- certificate retrieval, including PEM certificate-chain responses for valid orders;
+- account key rollover via `keyChange`, including replacement-key authorization behavior;
+- certificate revocation via `revokeCert`, including both issuing-account and certificate-key authorization paths.
+
+Primary implementation touchpoints exercised by the suite include:
+
+- `src/opencertserver.acme.server/AcmeRegistration.cs`
+- `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs`
+- `src/opencertserver.acme.server/Endpoints/NonceEndpoints.cs`
+- `src/opencertserver.acme.server/Endpoints/AccountEndpoints.cs`
+- `src/opencertserver.acme.server/Endpoints/OrderEndpoints.cs`
+- `src/opencertserver.acme.server/Endpoints/RevocationEndpoints.cs`
+- `src/opencertserver.acme.server/Filters/AcmeProtocolResponseFilter.cs`
+- `src/opencertserver.acme.server/Filters/ValidateAcmeRequestFilter.cs`
+- `src/opencertserver.acme.server/RequestServices/DefaultRequestValidationService.cs`
+- `src/opencertserver.acme.server/Services/DefaultAccountService.cs`
+- `src/opencertserver.acme.server/Services/DefaultOrderService.cs`
+- `src/opencertserver.acme.server/Services/DefaultRevocationService.cs`
+- `src/opencertserver.acme.server/Workers/ValidationWorker.cs`
+- `src/opencertserver.certserver/DefaultCsrValidator.cs`
+- `src/opencertserver.certserver/DefaultIssuer.cs`
+
+Current scope notes:
+
+- the ACME conformance suite runs against the in-memory test harness in `StepDefinitions/CertificateServerFeatures.cs`, 
+  so transport-level HTTPS and TLS assertions remain bounded by `TestServer` behavior;
+- conditional ACME behaviors such as terms-of-service enforcement, external account binding, and alternate certificate 
+  chains depend on runtime configuration and supported server features;
+- `Features/AcmeFeature.feature` remains the quick smoke suite, while `Features/AcmeConformance.feature` is the broader 
+  RFC 8555 behavior inventory.
