@@ -103,3 +103,32 @@ Current scope notes:
   chains depend on runtime configuration and supported server features;
 - `Features/AcmeFeature.feature` remains the quick smoke suite, while `Features/AcmeConformance.feature` is the broader 
   RFC 8555 behavior inventory.
+
+### OCSP conformance
+
+Primary files:
+
+- `Features/OcspFeature.feature`
+- `Features/OcspConformance.feature`
+- `StepDefinitions/Ocsp.cs`
+- `StepDefinitions/CertificateServerFeatures.cs`
+- `OcspConformance.md`
+
+Existing smoke run:
+
+```zsh
+dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "FullyQualifiedName~OcspFeature"
+```
+
+Current suite layout:
+
+- `Features/OcspFeature.feature` is the existing OCSP smoke suite for basic good, revoked, and unknown certificate-state checks;
+- `Features/OcspConformance.feature` is the RFC 6960 requirement inventory and currently contains scenarios only;
+- `OcspConformance.md` records the current implementation assessment, gaps, and numbered follow-up tasks.
+
+Current scope notes:
+
+- the OCSP responder is currently exposed through the certificate authority server endpoint at `/ca/ocsp`;
+- the current OCSP review covers both responder behavior in `src/opencertserver.ca.server` and the ASN.1 OCSP structures in `src/opencertserver.ca.utils/Ocsp`;
+- the OCSP conformance feature is intentionally added before bindings so future work can implement responder requirements in TDD order.
+
