@@ -422,6 +422,23 @@ public partial class CertificateServerFeatures
         await RefreshCurrentAuthorizationAndChallengeAsync().ConfigureAwait(false);
     }
 
+    [Given("the ACME server implements the \"keyChange\" resource")]
+    public async Task GivenTheAcmeServerImplementsTheKeyChangeResource()
+    {
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
+        await FetchAcmeDirectoryAsync().ConfigureAwait(false);
+        Assert.NotNull(AcmeState.KeyChangeUrl);
+    }
+
+    [When("the client requests account key rollover")]
+    [When("account key rollover succeeds")]
+    public async Task WhenTheClientRequestsAccountKeyRollover()
+    {
+        await EnsureKeyChangeResourceAvailableAsync().ConfigureAwait(false);
+        await RequestAccountKeyRolloverAsync().ConfigureAwait(false);
+        Assert.Equal(HttpStatusCode.OK, AcmeState.Response?.StatusCode);
+    }
+
     [When("the client creates a new order")]
     public async Task WhenTheClientCreatesANewOrder()
     {
@@ -975,6 +992,100 @@ public partial class CertificateServerFeatures
             "Expected the challenge or authorization object to expose a validation error.");
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These conformance tests deserialize small JWK fragments in the normal test runtime only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
+    [Then("the outer JWS MUST be signed by the new account key")]
+    public void ThenTheOuterJwsMustBeSignedByTheNewAccountKey()
+    {
+        Assert.NotNull(AcmeState.Key);
+        using var protectedHeader = ParseProtectedHeader();
+        Assert.True(protectedHeader.RootElement.TryGetProperty("jwk", out var jwkProperty));
+        var outerJwk = JsonSerializer.Deserialize<JsonWebKey>(jwkProperty.GetRawText())
+                       ?? throw new Xunit.Sdk.XunitException("Could not deserialize the outer keyChange JWK.");
+        Assert.Equal(GetJwkThumbprint(AcmeState.Key!.JsonWebKey), GetJwkThumbprint(outerJwk));
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These conformance tests deserialize small JWK fragments in the normal test runtime only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
+    [Then("the inner JWS MUST be signed by the old account key")]
+    public void ThenTheInnerJwsMustBeSignedByTheOldAccountKey()
+    {
+        Assert.NotNull(AcmeState.PreviousAccountKey);
+        using var innerProtectedHeader = ParseInnerProtectedHeader();
+        Assert.True(innerProtectedHeader.RootElement.TryGetProperty("jwk", out var jwkProperty));
+        var innerJwk = JsonSerializer.Deserialize<JsonWebKey>(jwkProperty.GetRawText())
+                       ?? throw new Xunit.Sdk.XunitException("Could not deserialize the inner keyChange JWK.");
+        Assert.Equal(GetJwkThumbprint(AcmeState.PreviousAccountKey!.JsonWebKey), GetJwkThumbprint(innerJwk));
+    }
+
+    [Then("the inner payload MUST identify the same account URL as the outer request")]
+    public void ThenTheInnerPayloadMustIdentifyTheSameAccountUrlAsTheOuterRequest()
+    {
+        Assert.NotNull(AcmeState.AccountUrl);
+        using var innerPayload = ParseInnerKeyChangePayload();
+        var account = innerPayload.RootElement.GetProperty("account").GetString();
+        Assert.Equal(AcmeState.AccountUrl!.ToString(), account);
+    }
+
+    [Then("the ACME server MUST verify that the old key currently controls the account")]
+    public async Task ThenTheAcmeServerMustVerifyThatTheOldKeyCurrentlyControlsTheAccount()
+    {
+        Assert.NotNull(AcmeState.AccountUrl);
+        var unrelatedOldKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        var unrelatedNewKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha384);
+
+        await SendKeyChangeRequestAsync(
+            AcmeState.AccountUrl!,
+            unrelatedNewKey,
+            unrelatedOldKey,
+            unrelatedOldKey.JsonWebKey).ConfigureAwait(false);
+
+        Assert.True((int)(AcmeState.Response?.StatusCode ?? 0) >= 400,
+            $"Expected key rollover with an unrelated old key to be rejected, but got {(int?)AcmeState.Response?.StatusCode}.");
+    }
+
+    [Then("the ACME server MUST reject attempts to roll an account key to a key already in use by another account")]
+    public async Task ThenTheAcmeServerMustRejectAttemptsToRollAnAccountKeyToAKeyAlreadyInUseByAnotherAccount()
+    {
+        Assert.NotNull(AcmeState.AccountUrl);
+        var duplicateKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        _ = await CreateDetachedAccountAsync(duplicateKey).ConfigureAwait(false);
+
+        await SendKeyChangeRequestAsync(
+            AcmeState.AccountUrl!,
+            duplicateKey,
+            AcmeState.Key!,
+            AcmeState.Key!.JsonWebKey).ConfigureAwait(false);
+
+        Assert.True((int)(AcmeState.Response?.StatusCode ?? 0) >= 400,
+            $"Expected key rollover to a key already in use to be rejected, but got {(int?)AcmeState.Response?.StatusCode}.");
+    }
+
+    [Then("subsequent requests signed with the new key MUST be accepted")]
+    public async Task ThenSubsequentRequestsSignedWithTheNewKeyMustBeAccepted()
+    {
+        Assert.NotNull(AcmeState.Key);
+        Assert.NotNull(AcmeState.AccountUrl);
+
+        await SendAccountPostAsGetAsync(AcmeState.Key!).ConfigureAwait(false);
+        Assert.Equal(HttpStatusCode.OK, AcmeState.Response?.StatusCode);
+    }
+
+    [Then("subsequent requests signed only with the old key MUST be rejected")]
+    public async Task ThenSubsequentRequestsSignedOnlyWithTheOldKeyMustBeRejected()
+    {
+        Assert.NotNull(AcmeState.PreviousAccountKey);
+        Assert.NotNull(AcmeState.AccountUrl);
+
+        await SendAccountPostAsGetAsync(AcmeState.PreviousAccountKey!).ConfigureAwait(false);
+        Assert.True((int)(AcmeState.Response?.StatusCode ?? 0) >= 400,
+            $"Expected requests signed with the old account key to be rejected, but got {(int?)AcmeState.Response?.StatusCode}.");
+    }
+
     [Then("the response MUST include the order URL in the Location header")]
     public void ThenTheResponseMustIncludeTheOrderUrlInTheLocationHeader()
     {
@@ -1289,6 +1400,97 @@ public partial class CertificateServerFeatures
         AcmeState.OrdersUrl = AcmeState.AccountResponse?.Orders;
     }
 
+    private async Task EnsureKeyChangeResourceAvailableAsync()
+    {
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
+        if (AcmeState.KeyChangeUrl != null)
+        {
+            return;
+        }
+
+        await FetchAcmeDirectoryAsync().ConfigureAwait(false);
+        Assert.NotNull(AcmeState.KeyChangeUrl);
+    }
+
+    private async Task FetchAcmeDirectoryAsync()
+    {
+        await SendRawAcmeRequestAsync(HttpMethod.Get, "/directory", null, null).ConfigureAwait(false);
+        Assert.NotNull(AcmeState.ResponseBytes);
+
+        using var document = JsonDocument.Parse(AcmeState.ResponseBytes!);
+        if (document.RootElement.TryGetProperty("keyChange", out var keyChangeProperty) &&
+            !string.IsNullOrWhiteSpace(keyChangeProperty.GetString()))
+        {
+            AcmeState.KeyChangeUrl = new Uri(keyChangeProperty.GetString()!, UriKind.Absolute);
+        }
+    }
+
+    private async Task RequestAccountKeyRolloverAsync()
+    {
+        await EnsureKeyChangeResourceAvailableAsync().ConfigureAwait(false);
+        AcmeState.PreviousAccountKey = AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+
+        var newKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha384);
+        await SendKeyChangeRequestAsync(
+            GetAccountLocation(),
+            newKey,
+            AcmeState.PreviousAccountKey,
+            AcmeState.PreviousAccountKey.JsonWebKey).ConfigureAwait(false);
+
+        AcmeState.Key = newKey;
+        AcmeState.AccountResponse = DeserializeAccountResponse();
+        AcmeState.AccountUrl = AcmeState.Response?.Headers.Location ?? AcmeState.AccountUrl;
+        AcmeState.OrdersUrl = AcmeState.AccountResponse?.Orders ?? AcmeState.OrdersUrl;
+    }
+
+    private async Task SendKeyChangeRequestAsync(
+        Uri accountUrl,
+        IKey newKey,
+        IKey innerSigningKey,
+        JsonWebKey advertisedOldKey)
+    {
+        await EnsureKeyChangeResourceAvailableAsync().ConfigureAwait(false);
+
+        var keyChangeUrl = AcmeState.KeyChangeUrl!;
+        var innerPayload = CreateSignedPayload(
+            innerSigningKey,
+            new
+            {
+                account = accountUrl,
+                oldKey = advertisedOldKey
+            },
+            keyChangeUrl,
+            nonce: null);
+
+        var outerPayload = CreateSignedPayload(
+            newKey,
+            innerPayload,
+            keyChangeUrl,
+            await GetFreshNonceAsync().ConfigureAwait(false));
+
+        await SendAcmeRequestAsync(HttpMethod.Post, keyChangeUrl.ToString(), outerPayload).ConfigureAwait(false);
+    }
+
+    private async Task SendAccountPostAsGetAsync(IKey signingKey)
+    {
+        Assert.NotNull(AcmeState.AccountUrl);
+        var signedPayload = CreateSignedPayload(
+            signingKey,
+            (object?)null,
+            AcmeState.AccountUrl!,
+            await GetFreshNonceAsync().ConfigureAwait(false),
+            kid: AcmeState.AccountUrl);
+
+        await SendAcmeRequestAsync(HttpMethod.Post, AcmeState.AccountUrl!.ToString(), signedPayload).ConfigureAwait(false);
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These conformance tests serialize small detached account requests in the normal test runtime only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
+    private async Task<Uri> CreateDetachedAccountAsync(IKey key)
+        => await CreateAdditionalAccountAsync(key).ConfigureAwait(false);
+
     private async Task SendReplayNonceFailureAsync()
     {
         await SendSuccessfulNewAccountRequestAsync();
@@ -1363,6 +1565,29 @@ public partial class CertificateServerFeatures
     {
         Assert.NotNull(AcmeState.SignedPayload);
         return JsonDocument.Parse(Base64UrlEncoder.Decode(AcmeState.SignedPayload!.Payload));
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These conformance tests deserialize nested JWS payloads in the normal test runtime only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
+    private JwsPayload ParseInnerSignedPayload()
+    {
+        Assert.NotNull(AcmeState.SignedPayload);
+        return JsonSerializer.Deserialize<JwsPayload>(Base64UrlEncoder.Decode(AcmeState.SignedPayload!.Payload))
+               ?? throw new Xunit.Sdk.XunitException("Could not deserialize the nested keyChange JWS payload.");
+    }
+
+    private JsonDocument ParseInnerProtectedHeader()
+    {
+        var payload = ParseInnerSignedPayload();
+        return JsonDocument.Parse(Base64UrlEncoder.Decode(payload.Protected));
+    }
+
+    private JsonDocument ParseInnerKeyChangePayload()
+    {
+        var payload = ParseInnerSignedPayload();
+        return JsonDocument.Parse(Base64UrlEncoder.Decode(payload.Payload));
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026",
@@ -1907,26 +2132,40 @@ public partial class CertificateServerFeatures
         IKey key,
         TPayload payload,
         Uri requestUrl,
-        string nonce,
+        string? nonce,
         Uri? kid = null,
         string? algOverride = null)
     {
         var alg = algOverride ?? ToJwsAlgorithm(key.Algorithm);
         object protectedHeader = kid == null
-            ? new
-            {
-                alg,
-                jwk = key.JsonWebKey,
-                nonce,
-                url = requestUrl
-            }
-            : new
-            {
-                alg,
-                kid,
-                nonce,
-                url = requestUrl
-            };
+            ? nonce == null
+                ? new
+                {
+                    alg,
+                    jwk = key.JsonWebKey,
+                    url = requestUrl
+                }
+                : new
+                {
+                    alg,
+                    jwk = key.JsonWebKey,
+                    nonce,
+                    url = requestUrl
+                }
+            : nonce == null
+                ? new
+                {
+                    alg,
+                    kid,
+                    url = requestUrl
+                }
+                : new
+                {
+                    alg,
+                    kid,
+                    nonce,
+                    url = requestUrl
+                };
 
         var protectedHeaderJson = JsonSerializer.Serialize(protectedHeader);
         var payloadJson = payload == null ? string.Empty : JsonSerializer.Serialize(payload);
@@ -1961,6 +2200,9 @@ public partial class CertificateServerFeatures
             SecurityAlgorithms.RsaSha512 => "RS512",
             _ => throw new ArgumentException($"Unsupported algorithm '{algorithm}'.", nameof(algorithm))
         };
+
+    private static string GetJwkThumbprint(JsonWebKey jwk)
+        => Base64UrlEncoder.Encode(jwk.ComputeJwkThumbprint());
 
     [UnconditionalSuppressMessage("Trimming", "IL2026",
         Justification = "These conformance tests build small JSON payloads at runtime in the test host only.")]
@@ -2050,6 +2292,8 @@ public partial class CertificateServerFeatures
 
         public Uri? ChallengeUrl { get; set; }
 
+        public Uri? KeyChangeUrl { get; set; }
+
         public string? RequestContentType { get; set; }
 
         public IList<string>? ExpectedContacts { get; set; }
@@ -2077,6 +2321,8 @@ public partial class CertificateServerFeatures
         public IKey? Key { get; set; }
 
         public IKey? UnknownKey { get; set; }
+
+        public IKey? PreviousAccountKey { get; set; }
 
         public AcmeCertificateChain? IssuedCertificateChain { get; set; }
     }

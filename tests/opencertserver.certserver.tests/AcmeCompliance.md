@@ -151,6 +151,22 @@ Covered scenarios:
 - `RFC 8555 Section 8.4 defines dns-01 validation`
 - `RFC 8555 Section 7.5 requires failed challenge validation to invalidate the authorization`
 
+### Item 6 focused run
+
+```zsh
+dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "Category=acme-item6"
+```
+
+Verified in this workspace:
+- Total: `2`
+- Passed: `2`
+- Failed: `0`
+- Skipped: `0`
+
+Covered scenarios:
+- `RFC 8555 Section 7.3.5 defines account key rollover when the server supports it`
+- `RFC 8555 Section 7.3.5 requires the new key to authorize subsequent requests`
+
 ### ACME smoke regression run
 
 ```zsh
@@ -200,6 +216,12 @@ This confirms the existing ACME happy-path issuance scenarios still pass after t
    - `src/opencertserver.acme.server/Services/TokenChallengeValidator.cs`, `src/opencertserver.acme.server/Services/Http01ChallengeValidator.cs`, and `src/opencertserver.acme.server/Services/Dns01ChallengeValidator.cs` now normalize embedded challenge-validation errors to ACME problem URNs.
    - `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature` and `tests/opencertserver.certserver.tests/StepDefinitions/AcmeConformance.cs` now implement the focused item 5 scenarios, all of which are passing in this workspace.
 
+6. **Implement account key rollover and advertise it in the directory.**
+   - Fixed in this workspace.
+   - `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs` now advertises the `keyChange` resource, and `src/opencertserver.acme.server/Endpoints/AccountEndpoints.cs` now exposes `/key-change` with RFC 8555 nested-JWS validation.
+   - `src/opencertserver.acme.server/RequestServices/DefaultRequestValidationService.cs` now treats `keyChange` as an outer JWK-signed ACME request, and `src/opencertserver.acme.server/Services/DefaultAccountService.cs` together with `src/opencertserver.acme.abstractions/Model/Account.cs` now replace the persisted account key while rejecting rollover to a key already bound to another account.
+   - `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature` and `tests/opencertserver.certserver.tests/StepDefinitions/AcmeConformance.cs` now implement the focused item 6 scenarios, all of which are passing in this workspace.
+
 ## Current non-conformance list
 
 The items below are the ACME counterpart to the EST non-conformance tracking list.
@@ -208,10 +230,6 @@ They are intended to be actionable, removable one by one, and backed by the deta
 5. **Implement certificate revocation and advertise it in the directory.**
    - The client library already has revocation support, but the server does not expose `revokeCert`, a revocation endpoint, or the associated authorization rules.
    - Primary touchpoints: `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs` and new server-side revocation endpoint/service code.
-
-6. **Implement account key rollover and advertise it in the directory.**
-   - The client library already has `ChangeKey(...)`, but the server has no `keyChange` route, no nested-JWS verification logic, and no account-key replacement flow.
-   - Primary touchpoints: `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs`, `src/opencertserver.acme.server/Endpoints/AccountEndpoints.cs` or a dedicated key-change endpoint, `src/opencertserver.acme.server/Services/DefaultAccountService.cs`, and account storage.
 
 ---
 
@@ -232,6 +250,7 @@ The registered ACME routes currently include:
 - `POST /new-account`
 - `POST /account/{accountId}`
 - `POST /account/{accountId}/orders`
+- `POST /key-change`
 - `POST /new-order`
 - `POST /order/{orderId}`
 - `POST /order/{orderId}/auth/{authId}`
@@ -253,21 +272,18 @@ This is defined in:
    - There is no `/revoke-cert` endpoint in `src/opencertserver.acme.server`.
    - RFC 8555 revocation support is therefore absent.
 
-2. **`keyChange` is not implemented.**
-   - `DirectoryEndpoints.cs` attempts `GetUrl("KeyChange")`, but there is no route named `KeyChange`.
-   - There is no `/key-change` endpoint.
-   - RFC 8555 account key rollover is therefore absent.
-
-3. **Account management surface is now implemented for the core RFC 8555 lifecycle.**
+2. **Account management surface is now implemented for the core RFC 8555 lifecycle.**
    - `POST /account/{accountId}` now supports POST-as-GET retrieval, updates, and deactivation.
    - `POST /account/{accountId}/orders` now returns the account’s order URLs.
+   - `POST /key-change` now supports nested-JWS account key rollover.
 
-4. **The directory advertises only part of the RFC 8555 surface.**
+3. **The directory advertises only part of the RFC 8555 surface.**
    - `newNonce`, `newAccount`, and `newOrder` are present.
    - `newAuthz` is omitted, which is acceptable for RFC 8555.
-   - `revokeCert` and `keyChange` are absent because the features are absent.
+   - `keyChange` is now advertised.
+   - `revokeCert` remains absent because revocation is still absent.
 
-5. **Account URLs are now emitted as absolute HTTPS URLs.**
+4. **Account URLs are now emitted as absolute HTTPS URLs.**
    - `AccountEndpoints.cs` now uses absolute URI generation for the `Location` header, the account resource URL, and the embedded `orders` URL.
 
 ---
@@ -339,6 +355,7 @@ What is already checked:
 - `jwk` and `kid` are mutually exclusive.
 - one of `jwk` or `kid` must be present.
 - `newAccount` requests must use `jwk`, while existing-account resources must use `kid`.
+- `keyChange` requests must use an outer `jwk` rather than a `kid`.
 - retrieval-only POST-as-GET resources reject non-empty JWS payloads.
 - `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, and `ES512` are accepted.
 - the JWS signature is verified against the supplied JWK or the stored account key.
@@ -510,7 +527,7 @@ What works:
 
 ### Gaps and bugs found
 
-No additional finalization-specific gaps are currently tracked in this workspace beyond the remaining revocation/key-rollover feature areas.
+No additional finalization-specific gaps are currently tracked in this workspace beyond the remaining revocation feature area.
 
 ---
 
@@ -561,14 +578,26 @@ This is a cleanly identifiable missing RFC 8555 feature area.
 
 Client-side support exists in `src/CertesSlim/AcmeContext.cs` via `ChangeKey(...)`.
 
+Server-side support now exists in:
+
+- `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs`
+- `src/opencertserver.acme.server/Endpoints/AccountEndpoints.cs`
+- `src/opencertserver.acme.server/RequestServices/DefaultRequestValidationService.cs`
+- `src/opencertserver.acme.server/Services/DefaultAccountService.cs`
+- `src/opencertserver.acme.abstractions/Model/Account.cs`
+
+What works:
+
+- the directory now advertises `keyChange`;
+- `/key-change` accepts the RFC 8555 outer JWS signed by the new key;
+- the nested JWS must be signed by the old key and identify the same account URL;
+- the server verifies that the old key currently controls the account;
+- the server rejects rollover to a key already in use by another account;
+- subsequent requests signed with the new key are accepted, while requests signed only with the old key are rejected.
+
 ### Gaps and bugs found
 
-1. **Server-side key rollover is completely missing.**
-   - No `keyChange` endpoint.
-   - No nested-JWS verification logic.
-   - No account-key replacement logic in `DefaultAccountService` or storage.
-
-This is another cleanly identifiable missing RFC 8555 feature area.
+No remaining account-key-rollover gaps are currently tracked in this workspace.
 
 ---
 
@@ -591,12 +620,12 @@ It proves:
    - Focused executable scenarios now cover:
      - nonce replay rejection and ACME problem documents;
      - account update/deactivation and account order listing;
+     - account key rollover and post-rollover authorization with the replacement key;
      - request media-type enforcement, key-identifier rules, unsupported-algorithm rejection, and POST-as-GET rejection rules;
      - order metadata, malformed new-order handling, strict CSR validation, invalid-order propagation, and `notBefore` / `notAfter` issuance enforcement;
      - authorization deactivation, challenge validation timestamps, challenge acknowledgement flow, and embedded challenge/order ACME problem URNs.
    - Focused executable scenarios are still missing for:
      - revocation;
-     - key rollover;
      - wildcard order behavior.
 
 2. **The new `AcmeConformance.feature` is intentionally broader than the current implementation.**
@@ -628,8 +657,7 @@ The major RFC 8555 gaps are captured in the numbered non-conformance list above.
 
 In short, the current implementation is a functioning ACME server for the currently exercised account, order, authorization, challenge, finalization, and certificate-download flows, but it still needs:
 
-- revocation support;
-- key rollover support.
+- revocation support.
 
 ### Practical implementation touchpoints for the next phase
 
@@ -637,9 +665,7 @@ When the project moves from inventory to implementation, the highest-value files
 
 - `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs`
 - new server-side revocation endpoint/service code under `src/opencertserver.acme.server`
-- `src/opencertserver.acme.server/Endpoints/AccountEndpoints.cs` or a dedicated key-change endpoint
-- `src/opencertserver.acme.server/Services/DefaultAccountService.cs`
-- account storage abstractions/implementations used by the ACME server
+- the issuance/account ownership data available through the ACME order/account stores
 
-The centralized ACME response layer added in this workspace already provides the core problem-document and replay-nonce behavior, so the next phase can focus on the remaining revocation and key-rollover protocol surface.
+The centralized ACME response layer added in this workspace already provides the core problem-document and replay-nonce behavior, so the next phase can focus on the remaining revocation protocol surface.
 

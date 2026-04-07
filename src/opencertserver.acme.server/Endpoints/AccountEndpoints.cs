@@ -1,8 +1,10 @@
+using System.Text;
 using System.Text.Json;
 using CertesSlim.Acme.Resource;
 using CertesSlim.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.IdentityModel.Tokens;
@@ -63,6 +65,67 @@ public static class AccountEndpoints
             var createdAccountUrl = GetAccountUrl(context, links, createdAccount.AccountId);
             return Results.Created(createdAccountUrl, createdAccountResponse);
         }).WithName("NewAccount");
+
+        endpoints.MapPost("/key-change", async (
+            HttpContext context,
+            JwsPayload payload,
+            IAccountService accountService,
+            LinkGenerator links,
+            CancellationToken cancellationToken) =>
+        {
+            var outerHeader = payload.ToAcmeHeader();
+            var newKey = outerHeader.Jwk ?? throw new MalformedRequestException("The outer keyChange request must contain a JWK.");
+
+            var nestedPayload = payload.ToPayload<JwsPayload>();
+            ValidateNestedJwsEnvelope(nestedPayload);
+            var innerPayload = nestedPayload!;
+
+            var nestedHeader = innerPayload.ToAcmeHeader();
+            if (nestedHeader.Jwk == null || nestedHeader.Kid != null)
+            {
+                throw new MalformedRequestException("The inner keyChange request must be signed with a JWK and must not contain a Kid.");
+            }
+
+            if (!string.Equals(nestedHeader.Url, context.Request.GetDisplayUrl(), StringComparison.Ordinal))
+            {
+                throw new NotAuthorizedException();
+            }
+
+            VerifyNestedSignature(innerPayload, nestedHeader.Jwk, nestedHeader.Alg);
+
+            var keyChange = innerPayload.ToPayload<KeyChangeRequest>();
+            if (keyChange?.Account == null || keyChange.OldKey == null)
+            {
+                throw new MalformedRequestException("The keyChange request payload was empty or malformed.");
+            }
+
+            if (!KeysMatch(nestedHeader.Jwk, keyChange.OldKey))
+            {
+                throw new NotAuthorizedException();
+            }
+
+            var accountId = GetAccountId(keyChange.Account);
+            var account = await accountService.LoadAccount(accountId, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+            {
+                throw new NotFoundException();
+            }
+
+            var accountUrl = GetAccountUrl(context, links, account.AccountId);
+            if (!Uri.TryCreate(accountUrl, UriKind.Absolute, out var expectedAccountUrl) || keyChange.Account != expectedAccountUrl)
+            {
+                throw new MalformedRequestException("The nested keyChange request must identify the current account URL.");
+            }
+
+            if (!KeysMatch(account.Jwk, keyChange.OldKey))
+            {
+                throw new NotAuthorizedException();
+            }
+
+            account = await accountService.ChangeKey(account, newKey, cancellationToken).ConfigureAwait(false);
+            context.Response.Headers.Location = accountUrl;
+            return Results.Ok(CreateAccountResponse(context, links, account));
+        }).WithName("KeyChange");
 
         endpoints.MapMethods("/account/{accountId}", ["POST", "PUT"], [AcmeLocation("Account")] async (
             HttpContext context,
@@ -157,6 +220,55 @@ public static class AccountEndpoints
 
     private static bool IsPostAsGet(JwsPayload payload)
         => string.IsNullOrEmpty(payload.Payload);
+
+    private static void ValidateNestedJwsEnvelope(JwsPayload? payload)
+    {
+        if (payload == null)
+        {
+            throw new MalformedRequestException("The nested keyChange request was missing.");
+        }
+
+        if (string.IsNullOrWhiteSpace(payload.Protected) || payload.Payload == null || string.IsNullOrWhiteSpace(payload.Signature))
+        {
+            throw new MalformedRequestException("The nested keyChange request must be a flattened JWS object.");
+        }
+    }
+
+    private static void VerifyNestedSignature(JwsPayload payload, JsonWebKey jwk, string? algorithm)
+    {
+        if (string.IsNullOrWhiteSpace(algorithm))
+        {
+            throw new MalformedRequestException("The nested keyChange protected header must contain an algorithm.");
+        }
+
+        try
+        {
+            using var signatureProvider = new AsymmetricSignatureProvider(jwk, algorithm);
+            var plainText = Encoding.UTF8.GetBytes($"{payload.Protected}.{payload.Payload ?? string.Empty}");
+            var signature = Base64UrlEncoder.DecodeBytes(payload.Signature);
+            if (!signatureProvider.Verify(plainText, signature))
+            {
+                throw new MalformedRequestException("The nested keyChange signature could not be verified.");
+            }
+        }
+        catch (ArgumentException)
+        {
+            throw new BadSignatureAlgorithmException();
+        }
+        catch (NotSupportedException)
+        {
+            throw new BadSignatureAlgorithmException();
+        }
+    }
+
+    private static string GetAccountId(Uri accountUrl)
+        => accountUrl.Segments.Last().TrimEnd('/');
+
+    private static bool KeysMatch(JsonWebKey left, JsonWebKey right)
+        => string.Equals(
+            Base64UrlEncoder.Encode(left.ComputeJwkThumbprint()),
+            Base64UrlEncoder.Encode(right.ComputeJwkThumbprint()),
+            StringComparison.Ordinal);
 
     private static void ValidateAccountRoute(string accountId, Abstractions.Model.Account account)
     {

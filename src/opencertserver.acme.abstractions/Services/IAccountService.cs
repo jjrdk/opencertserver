@@ -58,6 +58,15 @@ public interface IAccountService
     Task<Account> DeactivateAccount(Account account, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Replaces the signing key for an existing ACME account.
+    /// </summary>
+    /// <param name="account">The account to update.</param>
+    /// <param name="newKey">The replacement account key.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The updated account object.</returns>
+    Task<Account> ChangeKey(Account account, JsonWebKey newKey, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Loads an account by its account ID.
     /// </summary>
     /// <param name="accountId">The account ID.</param>
