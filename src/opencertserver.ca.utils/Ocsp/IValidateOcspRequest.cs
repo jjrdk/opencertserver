@@ -8,5 +8,9 @@ namespace OpenCertServer.Ca.Utils.Ocsp;
 /// </summary>
 public interface IValidateOcspRequest
 {
-    Task<string?> Validate(OcspRequest request);
+    /// <summary>
+    /// Validates the OCSP request. Returns null when the request is valid, or the appropriate
+    /// <see cref="OcspResponseStatus"/> error code when the request must be rejected.
+    /// </summary>
+    Task<OcspResponseStatus?> Validate(OcspRequest request);
 }
