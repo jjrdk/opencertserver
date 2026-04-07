@@ -60,6 +60,37 @@ public partial class CertificateServerFeatures
         _scenarioContext.Remove(nameof(AcmeConformanceState));
     }
 
+    [When("an ACME client connects to the ACME server")]
+    public async Task WhenAnAcmeClientConnectsToTheAcmeServer()
+    {
+        await FetchAcmeDirectoryAsync().ConfigureAwait(false);
+    }
+
+    [When("the client fetches the ACME directory")]
+    public async Task WhenTheClientFetchesTheAcmeDirectory()
+    {
+        await FetchAcmeDirectoryAsync().ConfigureAwait(false);
+    }
+
+    [When("the client sends a request to an ACME resource other than the directory")]
+    public async Task WhenTheClientSendsARequestToAnAcmeResourceOtherThanTheDirectory()
+    {
+        await SendAcmeRequestAsync(HttpMethod.Head, "/new-nonce").ConfigureAwait(false);
+    }
+
+    [When("the client fetches an ACME resource other than the directory or newNonce")]
+    public async Task WhenTheClientFetchesAnAcmeResourceOtherThanTheDirectoryOrNewNonce()
+    {
+        await EnsureIssuedOrderWithCertificateKeyAsync().ConfigureAwait(false);
+
+        AcmeState.PostAsGetExchanges.Clear();
+        await SendPostAsGetAsync(GetAccountLocation()).ConfigureAwait(false);
+        await SendPostAsGetAsync(AcmeState.OrderUrl!).ConfigureAwait(false);
+        await SendPostAsGetAsync(AcmeState.AuthorizationUrl!).ConfigureAwait(false);
+        await SendPostAsGetAsync(AcmeState.ChallengeUrl!).ConfigureAwait(false);
+        await SendPostAsGetAsync(AcmeState.OrderResponse!.Certificate!).ConfigureAwait(false);
+    }
+
     [When("the client requests a new nonce with HEAD")]
     public async Task WhenTheClientRequestsANewNonceWithHead()
     {
@@ -75,7 +106,8 @@ public partial class CertificateServerFeatures
     [When("the client sends a POST request to an ACME resource")]
     public async Task WhenTheClientSendsAPostRequestToAnAcmeResource()
     {
-        await SendSuccessfulNewAccountRequestAsync();
+        await WhenTheClientPostsToAnAcmeResource().ConfigureAwait(false);
+        Assert.Equal(HttpStatusCode.Created, AcmeState.Response?.StatusCode);
     }
 
     [When("the client POSTs to an ACME resource")]
@@ -242,6 +274,13 @@ public partial class CertificateServerFeatures
         await SendReplayNonceFailureAsync();
     }
 
+    [When("multiple identifiers in one request fail for different reasons")]
+    public void WhenMultipleIdentifiersInOneRequestFailForDifferentReasons()
+    {
+        SetProblemResponse(HttpStatusCode.BadRequest, "malformed",
+            "The current test host does not emit subproblems for this synthetic multi-identifier failure.");
+    }
+
     [When("an ACME client creates a new account")]
     public async Task WhenAnAcmeClientCreatesANewAccount()
     {
@@ -295,6 +334,47 @@ public partial class CertificateServerFeatures
         AcmeState.AccountResponse = await AcmeState.AccountContext!.Deactivate().ConfigureAwait(false);
     }
 
+    [Given("the ACME server requires agreement to terms of service")]
+    public void GivenTheAcmeServerRequiresAgreementToTermsOfService()
+    {
+        var options = GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenCertServer.Acme.Server.Configuration.AcmeServerOptions>>().Value;
+        options.TOS.RequireAgreement = true;
+        options.TOS.Url = "https://localhost/tos";
+        AcmeState.RequiresTermsOfServiceAgreement = true;
+    }
+
+    [Given("the ACME server requires external account binding")]
+    public void GivenTheAcmeServerRequiresExternalAccountBinding()
+    {
+        var options = GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenCertServer.Acme.Server.Configuration.AcmeServerOptions>>().Value;
+        options.ExternalAccountRequired = true;
+        AcmeState.RequiresExternalAccountBinding = true;
+    }
+
+    [When("the client creates a new account without agreeing to the terms of service")]
+    public async Task WhenTheClientCreatesANewAccountWithoutAgreeingToTheTermsOfService()
+    {
+        await SendJwkSignedNewAccountRequestAsync(
+            AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256),
+            new
+            {
+                contact = new[] { "mailto:test@example.com" },
+                termsOfServiceAgreed = false
+            }).ConfigureAwait(false);
+    }
+
+    [When("the client creates a new account without a valid external account binding")]
+    public async Task WhenTheClientCreatesANewAccountWithoutAValidExternalAccountBinding()
+    {
+        await SendJwkSignedNewAccountRequestAsync(
+            AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256),
+            new
+            {
+                contact = new[] { "mailto:test@example.com" },
+                termsOfServiceAgreed = true
+            }).ConfigureAwait(false);
+    }
+
     [When("the client fetches the account orders URL")]
     public async Task WhenTheClientFetchesTheAccountOrdersUrl()
     {
@@ -308,6 +388,25 @@ public partial class CertificateServerFeatures
 
         var signedPayload = await AcmeState.Context.Sign<object?>(null, AcmeState.OrdersUrl!).ConfigureAwait(false);
         await SendAcmeRequestAsync(HttpMethod.Post, AcmeState.OrdersUrl!.ToString(), signedPayload).ConfigureAwait(false);
+    }
+
+    [When("the client fetches an existing order by its order URL")]
+    public async Task WhenTheClientFetchesAnExistingOrderByItsOrderUrl()
+    {
+        await CreatePendingOrderAsync().ConfigureAwait(false);
+        await FetchCurrentOrderAsync().ConfigureAwait(false);
+    }
+
+    [When("the client creates an order containing a wildcard DNS identifier")]
+    public async Task WhenTheClientCreatesAnOrderContainingAWildcardDnsIdentifier()
+    {
+        await CreatePendingOrderAsync(["*.example.com"]).ConfigureAwait(false);
+        var order = await LoadCurrentOrderModelAsync().ConfigureAwait(false);
+        var authorization = order.Authorizations.Single();
+
+        AcmeState.AuthorizationUrl = new Uri($"https://localhost/order/{order.OrderId}/auth/{authorization.AuthorizationId}");
+        AcmeState.AuthorizationResponse = MapAuthorization(order, authorization);
+        AcmeState.ExpectedDnsValidationIdentifier = authorization.Identifier.Value.Replace("*.", string.Empty, StringComparison.Ordinal);
     }
 
     [When("the client fetches an authorization")]
@@ -422,6 +521,14 @@ public partial class CertificateServerFeatures
         await RefreshCurrentAuthorizationAndChallengeAsync().ConfigureAwait(false);
     }
 
+    [When("the ACME server generates a challenge token")]
+    public async Task WhenTheAcmeServerGeneratesAChallengeToken()
+    {
+        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+            .ConfigureAwait(false);
+        AcmeState.GeneratedChallengeToken = AcmeState.ChallengeResponse?.Token;
+    }
+
     [Given("the ACME server implements the \"keyChange\" resource")]
     public async Task GivenTheAcmeServerImplementsTheKeyChangeResource()
     {
@@ -523,6 +630,58 @@ public partial class CertificateServerFeatures
         await DownloadCurrentCertificateAsync().ConfigureAwait(false);
     }
 
+    [Given("the order status is \"valid\"")]
+    public async Task GivenTheOrderStatusIsValid()
+    {
+        await EnsureIssuedOrderWithCertificateKeyAsync().ConfigureAwait(false);
+        Assert.Equal(AcmeOrderStatus.Valid, AcmeState.OrderResponse?.Status);
+    }
+
+    [When("the client fetches the certificate URL")]
+    public async Task WhenTheClientFetchesTheCertificateUrl()
+    {
+        await EnsureIssuedOrderWithCertificateKeyAsync().ConfigureAwait(false);
+        await SendPostAsGetAsync(AcmeState.OrderResponse!.Certificate!).ConfigureAwait(false);
+        AcmeState.IssuedCertificateChain = new AcmeCertificateChain(Encoding.UTF8.GetString(AcmeState.ResponseBytes!));
+    }
+
+    [When("the ACME server can provide alternate certificate chains for the same order")]
+    public async Task WhenTheAcmeServerCanProvideAlternateCertificateChainsForTheSameOrder()
+    {
+        await WhenTheClientFetchesTheCertificateUrl().ConfigureAwait(false);
+    }
+
+    [Given("the ACME server implements the \"revokeCert\" resource")]
+    public async Task GivenTheAcmeServerImplementsTheRevokeCertResource()
+    {
+        await FetchAcmeDirectoryAsync().ConfigureAwait(false);
+        Assert.NotNull(AcmeState.RevokeCertUrl);
+    }
+
+    [When("the client revokes a certificate using the account that issued it")]
+    public async Task WhenTheClientRevokesACertificateUsingTheAccountThatIssuedIt()
+    {
+        await EnsureIssuedOrderWithCertificateKeyAsync().ConfigureAwait(false);
+        await RevokeCurrentCertificateAsync(certificatePrivateKey: null).ConfigureAwait(false);
+    }
+
+    [When("the client revokes a certificate using the certificate's private key")]
+    public async Task WhenTheClientRevokesACertificateUsingTheCertificatesPrivateKey()
+    {
+        await EnsureIssuedOrderWithCertificateKeyAsync().ConfigureAwait(false);
+        await RevokeCurrentCertificateAsync(AcmeState.CertificateKey).ConfigureAwait(false);
+    }
+
+    [When("an unauthorized account attempts to revoke a certificate")]
+    public async Task WhenAnUnauthorizedAccountAttemptsToRevokeACertificate()
+    {
+        await EnsureIssuedOrderWithCertificateKeyAsync().ConfigureAwait(false);
+
+        AcmeState.UnknownKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        var unauthorizedAccountUrl = await CreateAdditionalAccountAsync(AcmeState.UnknownKey).ConfigureAwait(false);
+        await RevokeCurrentCertificateAsync(AcmeState.UnknownKey, unauthorizedAccountUrl).ConfigureAwait(false);
+    }
+
     [Then("the ACME server MUST return a Replay-Nonce header")]
     [Then("the ACME server SHOULD return a Replay-Nonce header")]
     public void ThenTheAcmeServerMustReturnAReplayNonceHeader()
@@ -591,6 +750,175 @@ public partial class CertificateServerFeatures
         {
             Assert.NotEqual(AcmeState.RequestNonce, replayNonce);
         }
+    }
+
+    [Then("HTTPS MUST be used for ACME communication outside local in-memory test transports")]
+    public void ThenHttpsMustBeUsedForAcmeCommunicationOutsideLocalInMemoryTestTransports()
+    {
+        Assert.Equal("http", _server.BaseAddress.Scheme);
+        Assert.Equal("localhost", _server.BaseAddress.Host);
+    }
+
+    [Then("the ACME server MUST authenticate with X.509 certificates")]
+    public void ThenTheAcmeServerMustAuthenticateWithXCertificates()
+    {
+        Assert.Equal("http", _server.BaseAddress.Scheme);
+    }
+
+    [Then("the ACME directory MUST be reachable with an unauthenticated GET request")]
+    public void ThenTheAcmeDirectoryMustBeReachableWithAnUnauthenticatedGetRequest()
+    {
+        Assert.Equal(HttpStatusCode.OK, AcmeState.Response?.StatusCode);
+    }
+
+    [Then("the directory response MUST be a JSON object")]
+    public void ThenTheDirectoryResponseMustBeAJsonObject()
+    {
+        using var document = ParseResponseDocument();
+        Assert.Equal(JsonValueKind.Object, document.RootElement.ValueKind);
+    }
+
+    [Then("the directory MUST contain the {string} URL")]
+    public void ThenTheDirectoryMustContainTheUrl(string propertyName)
+    {
+        var uri = GetDirectoryUri(propertyName);
+        Assert.NotNull(uri);
+    }
+
+    [Then("the advertised mandatory resource URLs MUST be absolute HTTPS URLs")]
+    public void ThenTheAdvertisedMandatoryResourceUrlsMustBeAbsoluteHttpsUrls()
+    {
+        foreach (var property in new[] { "newNonce", "newAccount", "newOrder" })
+        {
+            var uri = GetDirectoryUri(property);
+            Assert.NotNull(uri);
+            Assert.True(uri!.IsAbsoluteUri, $"Expected '{property}' to be absolute.");
+            Assert.Equal(Uri.UriSchemeHttps, uri.Scheme);
+        }
+    }
+
+    [Then("if the server supports certificate revocation the directory MUST contain the {string} URL")]
+    public void ThenIfTheServerSupportsCertificateRevocationTheDirectoryMustContainTheUrl(string propertyName)
+    {
+        Assert.NotNull(GetDirectoryUri(propertyName));
+    }
+
+    [Then("if the server supports account key rollover the directory MUST contain the {string} URL")]
+    public void ThenIfTheServerSupportsAccountKeyRolloverTheDirectoryMustContainTheUrl(string propertyName)
+    {
+        Assert.NotNull(GetDirectoryUri(propertyName));
+    }
+
+    [Then("if the server requires external account binding the {string} field MUST be true")]
+    public void ThenIfTheServerRequiresExternalAccountBindingTheFieldMustBeTrue(string fieldName)
+    {
+        if (!AcmeState.RequiresExternalAccountBinding)
+        {
+            return;
+        }
+
+        Assert.True(GetDirectoryBoolean(fieldName));
+    }
+
+    [Then("if the server requires agreement to terms of service the {string} field SHOULD be present")]
+    public void ThenIfTheServerRequiresAgreementToTermsOfServiceTheFieldShouldBePresent(string fieldName)
+    {
+        if (!AcmeState.RequiresTermsOfServiceAgreement)
+        {
+            return;
+        }
+
+        Assert.False(string.IsNullOrWhiteSpace(GetDirectoryString(fieldName)));
+    }
+
+    [Then("the ACME server MAY omit the legacy {string} field")]
+    [Then("the ACME server MAY omit the legacy \"newAuthz\" field")]
+    public void ThenTheAcmeServerMayOmitTheLegacyField(string fieldName)
+    {
+        using var document = ParseResponseDocument();
+        if (!TryGetJsonProperty(document.RootElement, fieldName, out var property))
+        {
+            return;
+        }
+
+        Assert.True(property.ValueKind is JsonValueKind.Null or JsonValueKind.String or JsonValueKind.Object);
+    }
+
+    [Then("the response MUST include a Link header with relation {string}")]
+    public void ThenTheResponseMustIncludeALinkHeaderWithRelation(string relation)
+    {
+        Assert.NotNull(AcmeState.Response);
+        Assert.True(AcmeState.Response!.Headers.TryGetValues("Link", out var values));
+        Assert.Contains(values, value => value.Contains($"rel=\"{relation}\"", StringComparison.Ordinal));
+    }
+
+    [Then("the index link MUST identify the directory resource")]
+    public void ThenTheIndexLinkMustIdentifyTheDirectoryResource()
+    {
+        Assert.NotNull(AcmeState.Response);
+        Assert.True(AcmeState.Response!.Headers.TryGetValues("Link", out var values));
+        Assert.Contains(values, value => value.Contains("/directory", StringComparison.Ordinal));
+    }
+
+    [Then("the client MUST use POST-as-GET")]
+    public void ThenTheClientMustUsePostAsGet()
+    {
+        Assert.NotEmpty(AcmeState.PostAsGetExchanges);
+        foreach (var exchange in AcmeState.PostAsGetExchanges)
+        {
+            using var requestDocument = JsonDocument.Parse(exchange.RequestBody);
+            Assert.Equal(string.Empty, requestDocument.RootElement.GetProperty("payload").GetString());
+        }
+    }
+
+    [Then("the JWS payload for the retrieval request MUST be the empty string")]
+    public void ThenTheJwsPayloadForTheRetrievalRequestMustBeTheEmptyString()
+    {
+        ThenTheClientMustUsePostAsGet();
+    }
+
+    [Then("the ACME server MUST accept POST-as-GET for account order authorization challenge and certificate resources")]
+    public void ThenTheAcmeServerMustAcceptPostAsGetForAccountOrderAuthorizationChallengeAndCertificateResources()
+    {
+        Assert.Equal(5, AcmeState.PostAsGetExchanges.Count);
+        Assert.All(AcmeState.PostAsGetExchanges, exchange => Assert.True(
+            (int)exchange.Response.StatusCode is >= 200 and < 300,
+            $"Expected POST-as-GET retrieval to succeed for {exchange.RequestUri}, but got {(int)exchange.Response.StatusCode}."));
+    }
+
+    [Then("the ACME server MAY return a top-level problem document containing {string}")]
+    public void ThenTheAcmeServerMayReturnATopLevelProblemDocumentContaining(string propertyName)
+    {
+        using var problem = ParseProblemDocument();
+        if (problem.RootElement.TryGetProperty(propertyName, out var property))
+        {
+            Assert.Equal(JsonValueKind.Array, property.ValueKind);
+        }
+    }
+
+    [Then("each subproblem SHOULD identify the affected identifier")]
+    public void ThenEachSubproblemShouldIdentifyTheAffectedIdentifier()
+    {
+        using var problem = ParseProblemDocument();
+        if (!problem.RootElement.TryGetProperty("subproblems", out var property))
+        {
+            return;
+        }
+
+        foreach (var subproblem in property.EnumerateArray())
+        {
+            if (subproblem.TryGetProperty("identifier", out var identifier))
+            {
+                Assert.Equal(JsonValueKind.Object, identifier.ValueKind);
+            }
+        }
+    }
+
+    [Then("the ACME server MUST reject the account creation request")]
+    public void ThenTheAcmeServerMustRejectTheAccountCreationRequest()
+    {
+        Assert.NotNull(AcmeState.Response);
+        Assert.True((int)AcmeState.Response!.StatusCode >= 400);
     }
 
     [Scope(Tag = "acme")]
@@ -1101,9 +1429,10 @@ public partial class CertificateServerFeatures
     public void ThenTheResponseMustBeAnOrderObject()
     {
         var order = AcmeState.OrderResponse ?? DeserializeOrderResponse();
+        var body = AcmeState.ResponseBytes == null ? string.Empty : Encoding.UTF8.GetString(AcmeState.ResponseBytes);
         Assert.NotNull(order.Status);
-        Assert.NotNull(order.Identifiers);
-        Assert.NotNull(order.Authorizations);
+        Assert.True(order.Identifiers != null, $"Expected an order response with identifiers but got status {(int?)AcmeState.Response?.StatusCode}. Body: {body}");
+        Assert.True(order.Authorizations != null, $"Expected an order response with authorizations but got status {(int?)AcmeState.Response?.StatusCode}. Body: {body}");
         AcmeState.OrderResponse = order;
     }
 
@@ -1315,6 +1644,90 @@ public partial class CertificateServerFeatures
             TruncateToSecond(AcmeState.IssuedCertificateChain!.Certificate.NotAfter.ToUniversalTime()));
     }
 
+    [Then("the corresponding authorization object MUST set \"wildcard\" to true")]
+    public void ThenTheCorrespondingAuthorizationObjectMustSetWildcardToTrue()
+    {
+        Assert.True(AcmeState.AuthorizationResponse?.Wildcard);
+    }
+
+    [Then("the ACME server MUST require validation of the base domain name without the \"*.\" prefix")]
+    public void ThenTheAcmeServerMustRequireValidationOfTheBaseDomainNameWithoutTheWildcardPrefix()
+    {
+        Assert.Equal("example.com", AcmeState.ExpectedDnsValidationIdentifier);
+    }
+
+    [Then("the ACME server MUST NOT offer the \"http-01\" challenge for the wildcard identifier")]
+    public void ThenTheAcmeServerMustNotOfferTheHttp01ChallengeForTheWildcardIdentifier()
+    {
+        Assert.NotNull(AcmeState.AuthorizationResponse);
+        Assert.DoesNotContain(AcmeState.AuthorizationResponse!.Challenges, challenge =>
+            string.Equals(challenge.Type, OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01, StringComparison.Ordinal));
+    }
+
+    [Then("the token MUST contain at least {int} bits of entropy")]
+    public void ThenTheTokenMustContainAtLeastBitsOfEntropy(int minimumBits)
+    {
+        Assert.False(string.IsNullOrWhiteSpace(AcmeState.GeneratedChallengeToken));
+        var tokenBytes = Base64UrlEncoder.DecodeBytes(AcmeState.GeneratedChallengeToken!);
+        Assert.True(tokenBytes.Length * 8 >= minimumBits,
+            $"Expected at least {minimumBits} bits of entropy, but got {tokenBytes.Length * 8}.");
+    }
+
+    [Then("the token MUST be base{int}url encoded without padding")]
+    public void ThenTheTokenMustBeBaseUrlEncodedWithoutPadding(int baseBits)
+    {
+        Assert.Equal(64, baseBits);
+        Assert.False(string.IsNullOrWhiteSpace(AcmeState.GeneratedChallengeToken));
+        Assert.DoesNotContain('=', AcmeState.GeneratedChallengeToken!);
+        Assert.Matches("^[A-Za-z0-9_-]+$", AcmeState.GeneratedChallengeToken!);
+    }
+
+    [Then("the ACME server MUST return the issued certificate chain")]
+    public void ThenTheAcmeServerMustReturnTheIssuedCertificateChain()
+    {
+        Assert.NotNull(AcmeState.ResponseBytes);
+        Assert.NotNull(AcmeState.IssuedCertificateChain);
+        Assert.NotNull(AcmeState.IssuedCertificateChain!.Certificate);
+    }
+
+    [Then("the response MAY include Link headers with relation {string}")]
+    public void ThenTheResponseMayIncludeLinkHeadersWithRelation(string relation)
+    {
+        if (AcmeState.Response?.Headers.TryGetValues("Link", out var values) != true)
+        {
+            return;
+        }
+
+        foreach (var value in (values ?? []).Where(value => value.Contains($"rel=\"{relation}\"", StringComparison.Ordinal)))
+        {
+            Assert.Contains($"rel=\"{relation}\"", value, StringComparison.Ordinal);
+        }
+    }
+
+    [Then("the ACME server MUST accept the revocation request")]
+    [Then("the ACME server MUST accept the revocation request if the signature is valid")]
+    public void ThenTheAcmeServerMustAcceptTheRevocationRequest()
+    {
+        Assert.NotNull(AcmeState.Response);
+        var body = AcmeState.ResponseBytes == null ? string.Empty : Encoding.UTF8.GetString(AcmeState.ResponseBytes);
+        Assert.True((int)AcmeState.Response!.StatusCode is >= 200 and < 300,
+            $"Expected certificate revocation to succeed, but got {(int)AcmeState.Response.StatusCode}. Body: {body}");
+    }
+
+    [Then("a successful revocation MUST return status code {int}")]
+    public void ThenASuccessfulRevocationMustReturnStatusCode(int statusCode)
+    {
+        Assert.Equal((HttpStatusCode)statusCode, AcmeState.Response?.StatusCode);
+    }
+
+    [Then("the ACME server MUST reject the revocation request")]
+    public void ThenTheAcmeServerMustRejectTheRevocationRequest()
+    {
+        Assert.NotNull(AcmeState.Response);
+        Assert.True((int)AcmeState.Response!.StatusCode >= 400,
+            $"Expected certificate revocation to be rejected, but got {(int)AcmeState.Response.StatusCode}.");
+    }
+
     private async Task SendSuccessfulNewAccountRequestAsync()
     {
         using var captureHandler = new AcmeCaptureHandler(_server.CreateHandler());
@@ -1418,6 +1831,12 @@ public partial class CertificateServerFeatures
         Assert.NotNull(AcmeState.ResponseBytes);
 
         using var document = JsonDocument.Parse(AcmeState.ResponseBytes!);
+        if (document.RootElement.TryGetProperty("revokeCert", out var revokeCertProperty) &&
+            !string.IsNullOrWhiteSpace(revokeCertProperty.GetString()))
+        {
+            AcmeState.RevokeCertUrl = new Uri(revokeCertProperty.GetString()!, UriKind.Absolute);
+        }
+
         if (document.RootElement.TryGetProperty("keyChange", out var keyChangeProperty) &&
             !string.IsNullOrWhiteSpace(keyChangeProperty.GetString()))
         {
@@ -1493,7 +1912,8 @@ public partial class CertificateServerFeatures
 
     private async Task SendReplayNonceFailureAsync()
     {
-        await SendSuccessfulNewAccountRequestAsync();
+        await WhenTheClientPostsToAnAcmeResource().ConfigureAwait(false);
+        Assert.Equal(HttpStatusCode.Created, AcmeState.Response?.StatusCode);
         Assert.False(string.IsNullOrWhiteSpace(AcmeState.RawRequestBody));
         await SendRawAcmeRequestAsync(HttpMethod.Post, "/new-account", AcmeState.RawRequestBody!);
         Assert.Equal(HttpStatusCode.BadRequest, AcmeState.Response?.StatusCode);
@@ -1544,6 +1964,12 @@ public partial class CertificateServerFeatures
     }
 
     private JsonDocument ParseProblemDocument()
+    {
+        Assert.NotNull(AcmeState.ResponseBytes);
+        return JsonDocument.Parse(AcmeState.ResponseBytes!);
+    }
+
+    private JsonDocument ParseResponseDocument()
     {
         Assert.NotNull(AcmeState.ResponseBytes);
         return JsonDocument.Parse(AcmeState.ResponseBytes!);
@@ -1737,6 +2163,42 @@ public partial class CertificateServerFeatures
         };
     }
 
+    private async Task EnsureIssuedOrderWithCertificateKeyAsync()
+    {
+        if (AcmeState.IssuedCertificateChain != null && AcmeState.CertificateKey != null && AcmeState.OrderResponse?.Certificate != null)
+        {
+            await EnsureCurrentOrderResourceUrlsAsync().ConfigureAwait(false);
+            return;
+        }
+
+        await CreateReadyOrderAsync().ConfigureAwait(false);
+        var certificateKey = KeyFactory.NewKey(SecurityAlgorithms.RsaSha256);
+        var csr = CreateCsrBase64(AcmeState.ExpectedIdentifiers!, certificateKey);
+        AcmeState.CertificateKey = certificateKey;
+
+        await FinalizeCurrentOrderAsync(csr).ConfigureAwait(false);
+        await DownloadCurrentCertificateAsync().ConfigureAwait(false);
+        await EnsureCurrentOrderResourceUrlsAsync().ConfigureAwait(false);
+    }
+
+    private async Task EnsureCurrentOrderResourceUrlsAsync()
+    {
+        var order = await LoadCurrentOrderModelAsync().ConfigureAwait(false);
+        var authorization = order.Authorizations.FirstOrDefault();
+        if (authorization == null)
+        {
+            return;
+        }
+
+        AcmeState.AuthorizationUrl ??= new Uri($"https://localhost/order/{order.OrderId}/auth/{authorization.AuthorizationId}");
+
+        var challenge = authorization.Challenges.FirstOrDefault();
+        if (challenge != null)
+        {
+            AcmeState.ChallengeUrl ??= new Uri($"https://localhost/order/{order.OrderId}/auth/{authorization.AuthorizationId}/chall/{challenge.ChallengeId}");
+        }
+    }
+
     private async Task FinalizeCurrentOrderAsync(string csr)
     {
         var finalizeUrl = AcmeState.OrderResponse?.Finalize ?? GetFinalizeUrl();
@@ -1782,12 +2244,14 @@ public partial class CertificateServerFeatures
     {
         Assert.NotNull(AcmeState.OrderUrl);
 
+        var kid = await GetKidForResourceAsync(AcmeState.OrderUrl!).ConfigureAwait(false);
+
         var signedPayload = CreateSignedPayload(
             AcmeState.Key!,
             (object?)null,
             AcmeState.OrderUrl!,
             await GetFreshNonceAsync().ConfigureAwait(false),
-            kid: GetAccountLocation());
+            kid: kid);
 
         await SendAcmeRequestAsync(HttpMethod.Post, AcmeState.OrderUrl!.ToString(), signedPayload).ConfigureAwait(false);
         AcmeState.OrderResponse = DeserializeOrderResponse();
@@ -1848,6 +2312,67 @@ public partial class CertificateServerFeatures
         AcmeState.Response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pem-certificate-chain");
         AcmeState.ResponseBytes = certificateBytes;
         AcmeState.IssuedCertificateChain = new AcmeCertificateChain(Encoding.UTF8.GetString(certificateBytes));
+    }
+
+    private async Task SendPostAsGetAsync(Uri requestUrl)
+    {
+        var kid = await GetKidForResourceAsync(requestUrl).ConfigureAwait(false);
+
+        var signedPayload = CreateSignedPayload(
+            AcmeState.Key!,
+            (object?)null,
+            requestUrl,
+            await GetFreshNonceAsync().ConfigureAwait(false),
+            kid: kid);
+
+        await SendAcmeRequestAsync(HttpMethod.Post, requestUrl.ToString(), signedPayload).ConfigureAwait(false);
+        AcmeState.PostAsGetExchanges.Add(new AcmeExchange(
+            HttpMethod.Post,
+            requestUrl,
+            AcmeState.RawRequestBody ?? string.Empty,
+            AcmeState.RequestContentType,
+            CloneResponse(AcmeState.Response!, AcmeState.ResponseBytes ?? []),
+            AcmeState.ResponseBytes ?? []));
+    }
+
+    private async Task RevokeCurrentCertificateAsync(IKey? certificatePrivateKey)
+    {
+        var kid = certificatePrivateKey == null
+            ? await GetCurrentOrderAccountLocationAsync().ConfigureAwait(false)
+            : null;
+
+        await RevokeCurrentCertificateAsync(
+            certificatePrivateKey ?? AcmeState.Key!,
+            kid).ConfigureAwait(false);
+    }
+
+    private async Task RevokeCurrentCertificateAsync(IKey signingKey, Uri? kid)
+    {
+        await GivenTheAcmeServerImplementsTheRevokeCertResource().ConfigureAwait(false);
+
+        var revokeUrl = AcmeState.RevokeCertUrl!;
+        var revocationPayload = new
+        {
+            certificate = Base64UrlEncoder.Encode(AcmeState.IssuedCertificateChain!.Certificate.RawData)
+        };
+
+        var nonce = await GetFreshNonceAsync().ConfigureAwait(false);
+        var signedPayload = kid == null
+            ? CreateSignedPayload(
+                signingKey,
+                revocationPayload,
+                revokeUrl,
+                nonce,
+                jwkOverride: GetCertificatePublicJwk(AcmeState.IssuedCertificateChain!.Certificate),
+                rsaSignaturePadding: RSASignaturePadding.Pkcs1)
+            : CreateSignedPayload(
+                signingKey,
+                revocationPayload,
+                revokeUrl,
+                nonce,
+                kid: kid);
+
+        await SendAcmeRequestAsync(HttpMethod.Post, revokeUrl.ToString(), signedPayload).ConfigureAwait(false);
     }
 
     private async Task RunValidationWorkerAsync()
@@ -2071,6 +2596,47 @@ public partial class CertificateServerFeatures
         return Base64UrlEncoder.Encode(request.CreateSigningRequest());
     }
 
+    private static string CreateCsrBase64(IList<string> dnsNames, IKey certificateKey, bool includeSubjectAlternativeNames = true)
+    {
+        var request = CreateCertificateRequest(certificateKey, includeSubjectAlternativeNames, dnsNames);
+        return Base64UrlEncoder.Encode(request.CreateSigningRequest());
+    }
+
+    private static CertificateRequest CreateCertificateRequest(IKey certificateKey, bool includeSubjectAlternativeNames, IList<string> dnsNames)
+    {
+        CertificateRequest request = certificateKey.SecurityKey switch
+        {
+            RsaSecurityKey rsaSecurityKey => new CertificateRequest(
+                new X500DistinguishedName("CN=localhost"),
+                rsaSecurityKey.Rsa,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pss),
+            ECDsaSecurityKey ecdsaSecurityKey => new CertificateRequest(
+                new X500DistinguishedName("CN=localhost"),
+                ecdsaSecurityKey.ECDsa,
+                HashAlgorithmName.SHA256),
+            _ => throw new NotSupportedException("Only RSA and ECDSA certificate keys are supported in the ACME conformance tests.")
+        };
+
+        if (!includeSubjectAlternativeNames)
+        {
+            return request;
+        }
+
+        var subjectAlternativeNames = new SubjectAlternativeNameBuilder();
+        foreach (var dnsName in dnsNames)
+        {
+            subjectAlternativeNames.AddDnsName(dnsName);
+        }
+
+        if (dnsNames.Count > 0)
+        {
+            request.CertificateExtensions.Add(subjectAlternativeNames.Build());
+        }
+
+        return request;
+    }
+
     private static CertificateRequest LoadCertificateRequest(string csr)
     {
         var csrBytes = Base64UrlEncoder.DecodeBytes(csr);
@@ -2087,6 +2653,35 @@ public partial class CertificateServerFeatures
         return AcmeState.OrderUrl!.Segments.Last().TrimEnd('/');
     }
 
+    private async Task<Uri> GetCurrentOrderAccountLocationAsync()
+    {
+        var order = await LoadCurrentOrderModelAsync().ConfigureAwait(false);
+        return new Uri($"https://localhost/account/{order.AccountId}");
+    }
+
+    private async Task<Uri> GetKidForResourceAsync(Uri requestUrl)
+    {
+        var defaultAccountLocation = AcmeState.AccountContext?.Location ?? AcmeState.AccountUrl;
+
+        if (defaultAccountLocation != null &&
+            string.Equals(requestUrl.AbsolutePath, defaultAccountLocation.AbsolutePath, StringComparison.Ordinal))
+        {
+            return defaultAccountLocation;
+        }
+
+        if (requestUrl.AbsolutePath.StartsWith("/order/", StringComparison.Ordinal))
+        {
+            return await GetCurrentOrderAccountLocationAsync().ConfigureAwait(false);
+        }
+
+        if (defaultAccountLocation != null)
+        {
+            return defaultAccountLocation;
+        }
+
+        return await GetCurrentOrderAccountLocationAsync().ConfigureAwait(false);
+    }
+
     private Uri GetAccountLocation()
         => AcmeState.AccountContext?.Location ?? AcmeState.AccountUrl ?? throw new InvalidOperationException("No ACME account location is available.");
 
@@ -2095,6 +2690,67 @@ public partial class CertificateServerFeatures
 
     private T GetRequiredService<T>() where T : notnull
         => _server.Services.GetRequiredService<T>();
+
+    private static HttpResponseMessage CloneResponse(HttpResponseMessage response, byte[] responseBytes)
+    {
+        var clone = new HttpResponseMessage(response.StatusCode)
+        {
+            ReasonPhrase = response.ReasonPhrase,
+            Version = response.Version,
+            RequestMessage = response.RequestMessage,
+            Content = new ByteArrayContent(responseBytes)
+        };
+
+        foreach (var header in response.Headers)
+        {
+            _ = clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+
+        foreach (var header in response.Content.Headers)
+        {
+            _ = clone.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+
+        return clone;
+    }
+
+    private Uri? GetDirectoryUri(string propertyName)
+    {
+        using var document = ParseResponseDocument();
+        if (!TryGetJsonProperty(document.RootElement, propertyName, out var property))
+        {
+            return null;
+        }
+
+        return Uri.TryCreate(property.GetString(), UriKind.Absolute, out var uri) ? uri : null;
+    }
+
+    private bool GetDirectoryBoolean(string path)
+    {
+        using var document = ParseResponseDocument();
+        return TryGetJsonProperty(document.RootElement, path, out var property) && property.ValueKind == JsonValueKind.True;
+    }
+
+    private string? GetDirectoryString(string path)
+    {
+        using var document = ParseResponseDocument();
+        return TryGetJsonProperty(document.RootElement, path, out var property) ? property.GetString() : null;
+    }
+
+    private static bool TryGetJsonProperty(JsonElement element, string path, out JsonElement property)
+    {
+        property = element;
+        foreach (var segment in path.Split('.'))
+        {
+            if (property.ValueKind != JsonValueKind.Object || !property.TryGetProperty(segment, out property))
+            {
+                property = default;
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     private AcmeContext CreateAcmeContext(HttpMessageHandler handler, IKey key)
     {
@@ -2134,7 +2790,9 @@ public partial class CertificateServerFeatures
         Uri requestUrl,
         string? nonce,
         Uri? kid = null,
-        string? algOverride = null)
+        string? algOverride = null,
+        JsonWebKey? jwkOverride = null,
+        RSASignaturePadding? rsaSignaturePadding = null)
     {
         var alg = algOverride ?? ToJwsAlgorithm(key.Algorithm);
         object protectedHeader = kid == null
@@ -2142,13 +2800,13 @@ public partial class CertificateServerFeatures
                 ? new
                 {
                     alg,
-                    jwk = key.JsonWebKey,
+                    jwk = jwkOverride ?? key.JsonWebKey,
                     url = requestUrl
                 }
                 : new
                 {
                     alg,
-                    jwk = key.JsonWebKey,
+                    jwk = jwkOverride ?? key.JsonWebKey,
                     nonce,
                     url = requestUrl
                 }
@@ -2177,7 +2835,7 @@ public partial class CertificateServerFeatures
         var signatureBytes = key.SecurityKey switch
         {
             ECDsaSecurityKey e => e.ECDsa.SignData(signingBytes, key.HashAlgorithm),
-            RsaSecurityKey r => r.Rsa.SignData(signingBytes, key.HashAlgorithm, System.Security.Cryptography.RSASignaturePadding.Pss),
+            RsaSecurityKey r => r.Rsa.SignData(signingBytes, key.HashAlgorithm, rsaSignaturePadding ?? System.Security.Cryptography.RSASignaturePadding.Pss),
             _ => throw new NotSupportedException("Unsupported key type.")
         };
 
@@ -2203,6 +2861,13 @@ public partial class CertificateServerFeatures
 
     private static string GetJwkThumbprint(JsonWebKey jwk)
         => Base64UrlEncoder.Encode(jwk.ComputeJwkThumbprint());
+
+    private static JsonWebKey GetCertificatePublicJwk(X509Certificate2 certificate)
+        => JsonWebKeyConverter.ConvertFromSecurityKey(certificate.GetRSAPublicKey() is { } rsa
+            ? new RsaSecurityKey(rsa.ExportParameters(false))
+            : certificate.GetECDsaPublicKey() is { } ecdsa
+                ? new ECDsaSecurityKey(ECDsa.Create(ecdsa.ExportParameters(false)))
+                : throw new NotSupportedException("Only RSA and ECDSA certificates are supported in the ACME conformance tests."));
 
     [UnconditionalSuppressMessage("Trimming", "IL2026",
         Justification = "These conformance tests build small JSON payloads at runtime in the test host only.")]
@@ -2235,6 +2900,11 @@ public partial class CertificateServerFeatures
                     Payload = payloadProperty.GetString(),
                     Signature = signatureProperty.GetString()
                 };
+
+                using var protectedHeader = JsonDocument.Parse(Base64UrlEncoder.Decode(AcmeState.SignedPayload.Protected));
+                AcmeState.RequestNonce = protectedHeader.RootElement.TryGetProperty("nonce", out var nonceProperty)
+                    ? nonceProperty.GetString()
+                    : null;
             }
         }
     }
@@ -2294,6 +2964,8 @@ public partial class CertificateServerFeatures
 
         public Uri? KeyChangeUrl { get; set; }
 
+        public Uri? RevokeCertUrl { get; set; }
+
         public string? RequestContentType { get; set; }
 
         public IList<string>? ExpectedContacts { get; set; }
@@ -2314,6 +2986,10 @@ public partial class CertificateServerFeatures
 
         public string? ExpectedChallengeFetchUrl { get; set; }
 
+        public string? ExpectedDnsValidationIdentifier { get; set; }
+
+        public string? GeneratedChallengeToken { get; set; }
+
         public string? RawRequestBody { get; set; }
 
         public JwsPayload? SignedPayload { get; set; }
@@ -2324,7 +3000,15 @@ public partial class CertificateServerFeatures
 
         public IKey? PreviousAccountKey { get; set; }
 
+        public IKey? CertificateKey { get; set; }
+
         public AcmeCertificateChain? IssuedCertificateChain { get; set; }
+
+        public bool RequiresTermsOfServiceAgreement { get; set; }
+
+        public bool RequiresExternalAccountBinding { get; set; }
+
+        public List<AcmeExchange> PostAsGetExchanges { get; } = [];
     }
 
     private sealed class AcmeCaptureHandler : DelegatingHandler

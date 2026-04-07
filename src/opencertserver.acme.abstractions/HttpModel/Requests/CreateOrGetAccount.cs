@@ -1,6 +1,7 @@
 ﻿namespace OpenCertServer.Acme.Abstractions.HttpModel.Requests;
 
 using System.Collections.Generic;
+using System.Text.Json;
 
 /// <summary>
 /// Represents a request to create or get an ACME account.
@@ -21,4 +22,9 @@ public sealed class CreateOrGetAccount
     /// Gets or sets a value indicating whether to only return an existing account.
     /// </summary>
     public bool OnlyReturnExisting { get; set; }
+
+    /// <summary>
+    /// Gets or sets the external account binding object when the server requires it.
+    /// </summary>
+    public JsonElement? ExternalAccountBinding { get; set; }
 }
