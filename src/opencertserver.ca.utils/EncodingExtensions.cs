@@ -126,6 +126,22 @@ public static class EncodingExtensions
         }
 
         /// <summary>
+        /// Returns a <see cref="HashAlgorithm"/> for CertID hash OIDs used in OCSP (SHA family).
+        /// Returns null for unrecognised OIDs rather than throwing, so callers can fall through.
+        /// </summary>
+        public HashAlgorithm? GetHashAlgorithmForCertId()
+        {
+            return value switch
+            {
+                Oids.Sha1 => SHA1.Create(),
+                Oids.Sha256 => SHA256.Create(),
+                Oids.Sha384 => SHA384.Create(),
+                Oids.Sha512 => SHA512.Create(),
+                _ => null
+            };
+        }
+
+        /// <summary>
         /// Executes the InitializeOid operation.
         /// </summary>
         public Oid InitializeOid(string? friendlyName = null)

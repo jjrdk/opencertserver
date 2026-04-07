@@ -161,9 +161,8 @@ public class TbsRequest : IAsnValue
         var signature = signatureGenerator.SignData(dataToSign, HashAlgorithmName.SHA256);
         var algorithmIdentifier = key switch
         {
-            RSA => new AlgorithmIdentifier(Oids.Rsa.InitializeOid(Oids.RsaFriendlyName)),
-            ECDsa ecdsa => new AlgorithmIdentifier(Oids.EcPublicKey.InitializeOid(Oids.EcPublicKeyFriendlyName),
-                ecdsa.ExportExplicitParameters(false).Curve.Oid),
+            RSA => new AlgorithmIdentifier(Oids.RsaPkcs1Sha256.InitializeOid(Oids.RsaPkcs1Sha256FriendlyName)),
+            ECDsa => new AlgorithmIdentifier(Oids.ECDsaWithSha256.InitializeOid(Oids.ECDsaWithSha256FriendlyName)),
             _ => throw new InvalidOperationException("Unsupported signing algorithm")
         };
         return new Signature(algorithmIdentifier, signature);

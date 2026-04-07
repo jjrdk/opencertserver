@@ -1,6 +1,9 @@
 using System.Formats.Asn1;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Ca.Utils;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Ocsp;
 using OpenCertServer.Ca.Utils.X509;
 using Reqnroll;
@@ -32,10 +35,11 @@ public partial class CertificateServerFeatures
     [Then("the certificate should be valid in OCSP")]
     public async Task ThenTheCertificateShouldBeValidInOcsp()
     {
+        var issuerCert = await GetIssuerCertAsync();
         using var client = _server.CreateClient();
         var tbsRequest = new TbsRequest(requestList:
         [
-            new Request(CertId.Create(_certCollection[0], HashAlgorithmName.SHA256))
+            new Request(CertId.Create(_certCollection[0], issuerCert, HashAlgorithmName.SHA256))
         ]);
         var signature = tbsRequest.Sign(_key);
         var ocspRequest = new OcspRequest(tbsRequest, signature);
@@ -50,9 +54,10 @@ public partial class CertificateServerFeatures
     [Then("the certificate should be revoked in OCSP")]
     public async Task ThenTheCertificateShouldBeRevokedInOcsp()
     {
+        var issuerCert = await GetIssuerCertAsync();
         var tbsRequest = new TbsRequest(requestList:
         [
-            new Request(CertId.Create(_certCollection[0], HashAlgorithmName.SHA256))
+            new Request(CertId.Create(_certCollection[0], issuerCert, HashAlgorithmName.SHA256))
         ]);
         var signature = tbsRequest.Sign(_key);
         var ocspRequest = new OcspRequest(tbsRequest, signature);
@@ -62,6 +67,13 @@ public partial class CertificateServerFeatures
         Assert.Single(basicResponse.TbsResponseData.Responses);
         var singleResponse = basicResponse.TbsResponseData.Responses.First();
         Assert.Equal(CertificateStatus.Revoked, singleResponse.CertStatus);
+    }
+
+    private async Task<X509Certificate2> GetIssuerCertAsync()
+    {
+        var caProfiles = _server.Services.GetRequiredService<IStoreCaProfiles>();
+        var profile = await caProfiles.GetProfile(null);
+        return profile.CertificateChain[0];
     }
 
     private async Task<OcspResponse> GetOcspResponse(OcspRequest ocspRequest)

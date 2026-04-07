@@ -30,7 +30,7 @@ public class RevokedInfo : IAsnValue
     public RevokedInfo(AsnReader reader, Asn1Tag expectedTag)
     {
         var sequenceReader = reader.ReadSequence(expectedTag);
-        RevocationTime = sequenceReader.ReadUtcTime();
+        RevocationTime = sequenceReader.ReadGeneralizedTime();
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
         {
@@ -57,7 +57,7 @@ public class RevokedInfo : IAsnValue
     {
         using (writer.PushSequence(tag))
         {
-            writer.WriteUtcTime(RevocationTime);
+            writer.WriteGeneralizedTime(RevocationTime);
             if (RevocationReason.HasValue)
             {
                 writer.WriteEnumeratedValue(RevocationReason.Value, new Asn1Tag(TagClass.ContextSpecific, 0, true));
