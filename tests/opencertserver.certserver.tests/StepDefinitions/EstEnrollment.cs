@@ -25,8 +25,15 @@ public partial class CertificateServerFeatures
     [When(@"I enroll with a valid JWT")]
     public async Task WhenIEnrollWithAValidJwt()
     {
+        EstClient? estClient = _estClient;
+        if (estClient is null)
+        {
+            GivenAnEstClient();
+            estClient = _estClient;
+        }
+
         _key = RSA.Create();
-        var (_, collection) = await _estClient.Enroll(new X500DistinguishedName("cn=test, ou=test"), _key,
+        var (_, collection) = await estClient!.Enroll(new X500DistinguishedName("cn=test, ou=test"), _key,
             X509KeyUsageFlags.DigitalSignature,
             new AuthenticationHeaderValue("Bearer", "valid-jwt"));
         _certCollection = collection!;

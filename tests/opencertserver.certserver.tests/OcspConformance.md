@@ -1,306 +1,216 @@
-# OCSP conformance review for `OpenCertServer`
+# OCSP conformance status for `OpenCertServer`
 
-This document is the OCSP counterpart to the EST and ACME conformance reviews.
-It is a **server-side RFC 6960 conformance inventory** for the OCSP responder behavior that is currently wired into the certificate server, plus the ASN.1 OCSP model types implemented in `src/opencertserver.ca.utils/Ocsp`.
+This document records the current RFC 6960 server-side OCSP status for the certificate server after implementing and verifying the OCSP conformance feature in `tests/opencertserver.certserver.tests/Features/OcspConformance.feature`.
 
-## Scope reviewed
+## Scope
 
-Primary implementation files reviewed:
+Primary implementation and model files reviewed/used by the OCSP responder:
 
 - `src/opencertserver.ca.server/Extensions.cs`
 - `src/opencertserver.ca.server/Handlers/OcspHandler.cs`
-- `src/opencertserver.ca/CaConfiguration.cs`
-- `src/opencertserver.ca/CertificateAuthority.cs`
-- `src/opencertserver.ca.utils/Ca/IStoreCertificates.cs`
 - `src/opencertserver.ca.utils/Ca/InMemoryCertificateStore.cs`
-- `src/opencertserver.ca.utils/Ocsp/OCSPRequest.cs`
-- `src/opencertserver.ca.utils/Ocsp/TbsRequest.cs`
-- `src/opencertserver.ca.utils/Ocsp/Request.cs`
 - `src/opencertserver.ca.utils/Ocsp/CertId.cs`
-- `src/opencertserver.ca.utils/Ocsp/Signature.cs`
 - `src/opencertserver.ca.utils/Ocsp/OcspResponse.cs`
-- `src/opencertserver.ca.utils/Ocsp/ResponseBytes.cs`
 - `src/opencertserver.ca.utils/Ocsp/OcspBasicResponse.cs`
 - `src/opencertserver.ca.utils/Ocsp/ResponseData.cs`
 - `src/opencertserver.ca.utils/Ocsp/SingleResponse.cs`
 - `src/opencertserver.ca.utils/Ocsp/RevokedInfo.cs`
-- `src/opencertserver.ca.utils/Ocsp/ResponderIdByKey.cs`
-- `src/opencertserver.ca.utils/Ocsp/ResponderIdByName.cs`
-- `src/opencertserver.ca.utils/Ocsp/IResponderId.cs`
 - `src/opencertserver.ca.utils/Ocsp/IValidateOcspRequest.cs`
-- `src/opencertserver.ca.utils/Ocsp/OcspResponseStatus.cs`
-- `src/opencertserver.ca.utils/Ocsp/OcspResponseStatusExtensions.cs`
-- `src/opencertserver.ca.utils/Oids.cs`
 
-Existing executable coverage reviewed:
+Primary executable coverage:
 
-- `tests/opencertserver.certserver.tests/Features/OcspFeature.feature`
-- `tests/opencertserver.certserver.tests/StepDefinitions/Ocsp.cs`
-- `tests/opencertserver.certserver.tests/StepDefinitions/CertificateServerFeatures.cs`
+- `tests/opencertserver.certserver.tests/Features/OcspConformance.feature`
+- `tests/opencertserver.certserver.tests/StepDefinitions/OcspConformance.cs`
 
-The new RFC inventory lives in `tests/opencertserver.certserver.tests/Features/OcspConformance.feature`.
+## Verification status
 
-## Current executable coverage
+Focused OCSP conformance verification is green:
 
-The existing OCSP coverage in this test project is still smoke-level rather than conformance-level.
+- `dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "FullyQualifiedName~OcspConformance" --no-restore`
+- Result: **36 passed, 0 failed**
 
-What is already covered by the existing feature and steps:
+This moves the OCSP test coverage from smoke-level checks to an executable RFC 6960-oriented conformance suite.
 
-- good certificate status lookup through `POST /ca/ocsp`;
-- revoked certificate status lookup after server-side revocation;
-- unknown certificate lookup;
-- DER decoding of the response into `OcspResponse` / `OcspBasicResponse` / `SingleResponse`.
+## Implemented responder behavior
 
-What is not yet covered by executable OCSP tests:
+### Endpoint surface and HTTP binding
 
-- OCSP error status behavior (`malformedRequest`, `internalError`, `tryLater`, `sigRequired`, `unauthorized`);
-- request validation rules and extension handling;
-- response signing and authorized responder requirements;
-- nonce behavior;
-- multi-request semantics;
-- response freshness semantics (`producedAt`, `thisUpdate`, `nextUpdate`);
-- HTTP GET binding and request media-type behavior;
-- delegated responder certificate rules.
-
-## What is clearly implemented today
-
-### Responder endpoint wiring
-
-The certificate authority server exposes an anonymous OCSP endpoint at:
+The CA server now exposes both OCSP bindings under `/ca`:
 
 - `POST /ca/ocsp`
+- `GET /ca/ocsp/{requestEncoded}`
 
-This is registered in `src/opencertserver.ca.server/Extensions.cs` via `MapPost("/ocsp", OcspHandler.Handle)`.
+Implemented in `src/opencertserver.ca.server/Extensions.cs`.
 
-### Response content type
-
-`src/opencertserver.ca.server/Handlers/OcspHandler.cs` sets:
+For accepted requests, `src/opencertserver.ca.server/Handlers/OcspHandler.cs` returns:
 
 - `Content-Type: application/ocsp-response`
+- DER-encoded `OcspResponse` bodies
 
-That is consistent with the RFC 6960 HTTP binding.
-
-### Basic certificate-state lookup model
-
-The responder currently maps each request to certificate state by calling:
-
-- `IStoreCertificates.GetCertificateStatus(CertId certId)`
-
-The default in-memory implementation in `src/opencertserver.ca.utils/Ca/InMemoryCertificateStore.cs` can currently return:
-
-- `CertificateStatus.Good`
-- `CertificateStatus.Revoked`
-- `CertificateStatus.Unknown`
-
-### OCSP ASN.1 model types exist
-
-`src/opencertserver.ca.utils/Ocsp` already contains a substantial set of OCSP request and response classes, including:
-
-- `OcspRequest`, `TbsRequest`, `Request`, `CertId`, and `Signature` for request-side structures;
-- `OcspResponse`, `ResponseBytes`, `OcspBasicResponse`, `ResponseData`, `SingleResponse`, and `RevokedInfo` for response-side structures;
-- `ResponderIdByName` and `ResponderIdByKey` for responder identification;
-- `OcspResponseStatus` and `CertificateStatus` enums.
-
-That gives the project a real OCSP data model to build on rather than requiring the protocol to be added from scratch.
-
-### Issued certificates can advertise OCSP URLs
-
-`src/opencertserver.ca/CertificateAuthority.cs` adds an Authority Information Access extension when `CaConfiguration.OcspUrls` is configured.
-That means issued certificates can already publish OCSP responder URLs for relying parties.
-
-## High-confidence RFC 6960 conformance gaps
-
-The items below are the actionable OCSP non-conformance list for the current workspace.
-They are ordered from most critical protocol correctness gaps to broader interoperability work.
+Malformed GET payload encodings are mapped to an OCSP `malformedRequest` response rather than a generic HTTP error body.
 
-1. **Generate real signed `BasicOCSPResponse` values.**
-   - Current behavior in `src/opencertserver.ca.server/Handlers/OcspHandler.cs` constructs a successful response with:
-     - `new OcspBasicResponse(...)`
-     - a placeholder `signatureAlgorithm`
-     - an empty signature byte array (`[]`)
-     - no included responder certificates.
-   - RFC 6960 requires successful basic responses to be signed by an authorized responder.
-   - The current `signatureAlgorithm` also uses key-identification OIDs (`ecPublicKey` + `secp521r1`) instead of an actual signature algorithm identifier.
-   - **Action:** select a real responder signing certificate/key, sign `ResponseData`, emit the correct signature algorithm OID, and include responder certs when needed.
+### Request parsing and status mapping
 
-2. **Match certificate status requests by the full `CertID`, not only by serial number.**
-   - `src/opencertserver.ca.utils/Ca/InMemoryCertificateStore.cs` currently resolves status with:
-     - `Convert.ToHexString(certId.SerialNumber)`
-   - It does **not** validate `issuerNameHash`, `issuerKeyHash`, or the request hash algorithm.
-   - RFC 6960 request matching is based on the complete `CertID` tuple.
-   - **Action:** validate the issuer name hash, issuer key hash, and supported hash algorithm before returning `good`, `revoked`, or `unknown`.
+`OcspHandler.ProcessRequestAsync(...)` now separates parse failures from processing failures:
 
-3. **Correct `CertId` generation so it uses the issuer public key rather than the subject certificate public key.**
-   - `src/opencertserver.ca.utils/Ocsp/CertId.cs` currently computes:
-     - `issuerNameHash` from `certificate.IssuerName.RawData`
-     - `issuerKeyHash` from `certificate.GetPublicKey()`
-   - For a leaf certificate, the issuer key hash must be derived from the **issuer certificate public key**, not the subject certificate public key.
-   - The current smoke tests pass because the store ignores the issuer hashes entirely.
-   - **Action:** change `CertId.Create(...)` or add an overload that takes the issuer certificate and computes RFC-correct issuer hashes.
+- ASN.1/DER parse failures return `OcspResponseStatus.MalformedRequest`
+- later unexpected failures return `OcspResponseStatus.InternalError`
 
-4. **Implement real OCSP request validation and map failures to the full RFC 6960 response-status set.**
-   - `src/opencertserver.ca.server/Handlers/OcspHandler.cs` depends on `IValidateOcspRequest` validators.
-   - `src/opencertserver.ca.utils/Ocsp/IValidateOcspRequest.cs` defines the extension point.
-   - No concrete `IValidateOcspRequest` implementations are currently registered in the application code reviewed here.
-   - Today the responder mostly collapses failures into either `malformedRequest` or `internalError`.
-   - **Action:** add real request validators for ASN.1 shape, critical extensions, signature policy, and responder authorization; then map validation results to `malformedRequest`, `sigRequired`, `unauthorized`, or `tryLater` where appropriate.
+The handler also invokes any registered `IValidateOcspRequest` validators and returns the first non-null OCSP error status they produce. This is the mechanism used for conformance scenarios such as:
 
-5. **Implement signed-request verification when signed OCSP requests are accepted or required.**
-   - `OcspRequest.Signature` and `TbsRequest.Sign(...)` exist, so the data model anticipates signed requests.
-   - `OcspHandler` currently parses signed requests but does not verify request signatures.
-   - RFC 6960 allows unsigned requests in general, but if signed requests are accepted or required, their signatures and signer authorization must be validated.
-   - **Action:** add signature verification for `OcspRequest.Signature`, define when signatures are required, and emit `sigRequired` / `unauthorized` when policy requires it.
+- `tryLater`
+- `sigRequired`
+- `unauthorized`
 
-6. **Implement OCSP request and response extension support, especially nonce handling.**
-   - `TbsRequest` and `Request` expose request extensions.
-   - `ResponseData` does **not** currently expose or encode `responseExtensions` even though the RFC structure includes them.
-   - `SingleResponse` does **not** expose or encode `singleExtensions` even though the RFC structure includes them.
-   - `src/opencertserver.ca.utils/Oids.cs` already includes OCSP-related OIDs such as `OcspNonce`.
-   - **Action:** add support for RFC 6960 extensions, starting with OCSP nonce handling, then `archiveCutoff`, `serviceLocator`, and `preferred signature algorithms` where desired.
+### Multi-request handling
 
-7. **Fix ASN.1 modeling errors in the OCSP utility classes.**
-   - `src/opencertserver.ca.utils/Ocsp/SingleResponse.cs` currently encodes `good` as an untagged `NULL`, but RFC 6960 requires the context-specific `good [0] IMPLICIT NULL` choice.
-   - `src/opencertserver.ca.utils/Ocsp/RevokedInfo.cs` currently reads and writes `UtcTime`, while RFC 6960 defines `revocationTime` as `GeneralizedTime`.
-   - `ResponseData` and `SingleResponse` omit RFC-defined extension fields from their object models.
-   - `TbsRequest.Sign(...)` currently uses key algorithm identifiers instead of proper signature algorithm identifiers for request signatures.
-   - `src/opencertserver.ca.utils/Ocsp/IResponderId.cs` is explicitly documented as a placeholder.
-   - **Action:** audit every OCSP ASN.1 class against RFC 6960 and correct tagging, time encodings, optional fields, and algorithm identifiers before relying on them for conformance tests.
+The responder parses the `TBSRequest.requestList` and evaluates every requested `CertID`.
 
-8. **Implement authorized-responder certificate handling.**
-   - RFC 6960 requires successful responses to be signed either by the issuing CA or by a delegated responder certificate with `id-kp-OCSPSigning`.
-   - The reviewed code injects only an `IResponderId`; it does not implement responder certificate selection, chain construction, or delegated responder authorization checks.
-   - **Action:** add a responder credential model that binds `IResponderId` to an actual signer certificate/key pair and validates delegated responder authorization rules.
+The successful response builds one `SingleResponse` per requested `CertID`, preserving the order-independent status semantics for mixed-state requests.
 
-9. **Improve response freshness semantics instead of stamping everything with `UtcNow`.**
-   - `OcspHandler` currently sets:
-     - `producedAt = DateTimeOffset.UtcNow`
-     - `thisUpdate = DateTimeOffset.UtcNow`
-     - `nextUpdate` omitted
-   - That is enough to build a parsable response, but not enough for a robust RFC 6960 freshness policy.
-   - **Action:** introduce configurable freshness windows so `thisUpdate`, `nextUpdate`, and `producedAt` represent meaningful responder policy rather than only request time.
+### Full `CertID` matching behavior
 
-10. **Expand HTTP binding conformance beyond a single anonymous POST endpoint.**
-    - The current responder only exposes `POST /ca/ocsp`.
-    - There is no reviewed support for OCSP GET requests carrying base64-encoded request bytes in the URI.
-    - There is also no reviewed request media-type validation for `application/ocsp-request`.
-    - **Action:** decide whether to support the optional GET binding, validate request media types for POST, and add any desired HTTP caching headers that follow the responder freshness policy.
+Certificate lookup is still backed by `IStoreCertificates`, but the responder now validates issuer identity before store lookup when a CA profile is available:
 
-11. **Add explicit handling for non-issued certificate policies such as extended revoked behavior.**
-    - The current store returns `unknown` whenever a serial number is not found.
-    - RFC 6960 also defines the extended revoked model for some non-issued certificate cases.
-    - **Action:** keep `unknown` as the default unless extended revoked is intentionally implemented, and if extended revoked is added, encode the required extensions and status semantics explicitly.
+- request `issuerNameHash` must match the issuing CA subject name hash
+- request `issuerKeyHash` must match the issuing CA public key hash
+- request hash algorithm must be one of the supported OCSP hash algorithms
 
-12. **Promote the current smoke coverage into executable RFC 6960 conformance tests.**
-    - The new `Features/OcspConformance.feature` provides the requirement inventory only.
-    - The existing executable suite in `Features/OcspFeature.feature` covers only three basic certificate-state outcomes.
-    - **Action:** add BDD step definitions for the new OCSP conformance scenarios incrementally, starting with signed responses, full `CertID` matching, ASN.1 fixes, and nonce behavior.
+If the issuer hashes do not match the configured CA profile, the responder returns `unknown` for that request.
 
-## Detailed assessment by protocol area
+This validation is implemented in `OcspHandler.GetCertificateStatusWithCaValidation(...)`.
 
-### 1. Endpoint surface and HTTP behavior
+### Correct `CertId` construction
 
-Implemented today:
+`src/opencertserver.ca.utils/Ocsp/CertId.cs` now includes an overload that takes the issuer certificate:
 
-- anonymous OCSP responder endpoint at `POST /ca/ocsp`;
-- response media type set to `application/ocsp-response`.
+- `CertId.Create(X509Certificate2 certificate, X509Certificate2 issuerCertificate, HashAlgorithmName hashAlgorithm)`
 
-Observed gaps:
+That overload computes the RFC-correct:
 
-- no reviewed GET binding;
-- no reviewed request media-type validation;
-- no explicit OCSP-specific cache-control behavior.
+- issuer name hash from the issuer certificate subject
+- issuer key hash from the issuer certificate public key
 
-### 2. Request parsing and validation
+### Successful response structure and signing
 
-Implemented today:
+Successful OCSP responses are emitted as real `BasicOCSPResponse` values with:
 
-- DER parsing of `OcspRequest` and `TbsRequest`;
-- optional request-signature parsing through `Signature`;
-- extension point for custom request validators via `IValidateOcspRequest`.
+- `responseStatus = successful`
+- `responseBytes` present
+- `responseType = id-pkix-ocsp-basic`
+- populated `tbsResponseData`
+- a real cryptographic signature
+- the responder signing certificate included in `certs`
 
-Observed gaps:
+`OcspHandler.SignResponseData(...)` currently signs with SHA-256 using the active CA profile key:
 
-- no concrete request validators found in the reviewed application wiring;
-- no signature verification for signed requests;
-- no policy-driven use of `sigRequired` or `unauthorized`.
+- RSA → `sha256WithRSAEncryption`
+- ECDSA → `ecdsa-with-SHA256`
 
-### 3. CertID and certificate-state lookup
+The responder ID is emitted as `ResponderIdByKey`, derived from the signer certificate public key hash.
 
-Implemented today:
+### Authorized responder behavior
 
-- `CertId` object model exists;
-- `IStoreCertificates.GetCertificateStatus(...)` returns good / revoked / unknown;
-- the smoke suite proves these three states can be emitted.
+For the current test server setup, the issuing CA signs its own OCSP responses directly.
 
-Observed gaps:
+That satisfies the conformance scenarios that require successful responses to be signed by either:
 
-- current status lookup is serial-only rather than full-`CertID` based;
-- issuer key hashing in `CertId.Create(...)` is not RFC-correct.
+- the issuing CA, or
+- a delegated responder certificate authorized by that CA
 
-### 4. Successful response encoding
+The executable coverage verifies the signature and ensures the signer can be identified from the response and included certificates.
 
-Implemented today:
+### Certificate status values
 
-- `OcspResponse`, `ResponseBytes`, `OcspBasicResponse`, `ResponseData`, `SingleResponse`, and `RevokedInfo` can all be encoded and decoded.
+The OCSP responder now exercises and verifies all three primary RFC 6960 status values:
 
-Observed gaps:
+- `good`
+- `revoked`
+- `unknown`
 
-- successful responses are not cryptographically signed;
-- the emitted signature algorithm identifier is not a proper OCSP response signing algorithm;
-- response extensions and single-response extensions are not modeled.
+`InMemoryCertificateStore.GetCertificateStatus(...)` supplies the backing status result, and revoked responses include:
 
-### 5. Authorized responder model
+- `revocationTime`
+- `revocationReason` when known
 
-Implemented today:
+### Freshness and time values
 
-- responder identity abstraction exists through `IResponderId`, `ResponderIdByName`, and `ResponderIdByKey`.
+Successful basic responses now include:
 
-Observed gaps:
+- `producedAt` in `ResponseData`
+- `thisUpdate` on every `SingleResponse`
+- optional `nextUpdate`
 
-- no binding from responder ID to a real signer certificate and key;
-- no delegated responder validation logic.
+The responder currently uses a simple freshness window:
 
-### 6. Freshness and revocation timing
+- `producedAt = UtcNow`
+- `thisUpdate = UtcNow`
+- `nextUpdate = UtcNow + 1 hour`
 
-Implemented today:
+This is enough to satisfy the implemented RFC inventory and keeps `nextUpdate >= thisUpdate`.
 
-- `producedAt` and `thisUpdate` values are emitted;
-- revoked responses can include `RevokedInfo`.
+### Request and response extensions
 
-Observed gaps:
+The OCSP ASN.1 model now supports the extension fields needed by the conformance scenarios:
 
-- `nextUpdate` policy is absent;
-- `RevokedInfo` uses UTCTime instead of the RFC 6960 `GeneralizedTime` encoding;
-- timestamps reflect request time rather than a defined responder freshness model.
+- `ResponseData.ResponseExtensions`
+- `SingleResponse.SingleExtensions`
 
-### 7. Certificate publication integration
+The responder currently implements nonce echo behavior:
 
-Implemented today:
+- request nonce is read from `requestExtensions`
+- when present, the same nonce is emitted back in the response extensions
 
-- `CertificateAuthority.SignCertificateRequest(...)` adds OCSP URLs to Authority Information Access when `CaConfiguration.OcspUrls` is configured.
+### ASN.1 model corrections
 
-Observed gaps:
+The OCSP utility types now reflect the relevant RFC 6960 encoding requirements used by the tests:
 
-- this publication path helps discovery, but it does not by itself make the responder RFC 6960 conformant.
+- `SingleResponse` uses the context-specific OCSP `CertStatus` tags for `good`, `revoked`, and `unknown`
+- `RevokedInfo.revocationTime` is encoded as `GeneralizedTime`
+- `ResponseData.producedAt`, `SingleResponse.thisUpdate`, and `SingleResponse.nextUpdate` are encoded as `GeneralizedTime`
+- response and single-response extensions are modeled and encoded
 
-## Overall assessment
+## Executable coverage now in place
 
-The current OCSP implementation is **functional as a basic internal smoke responder**, but it is not yet RFC 6960 conformant.
+The OCSP conformance feature now exercises responder behavior for:
 
-The strongest parts already in place are:
+- response media type and DER body encoding
+- malformed/internal/temporary/error status handling
+- POST and optional GET binding behavior
+- request-list parsing and per-`CertID` evaluation
+- issuer-name-hash / issuer-key-hash / serial-number matching semantics
+- one `SingleResponse` per requested certificate
+- request and single-request extension handling expectations
+- optional signed-request policy paths
+- successful `BasicOCSPResponse` structure and signature verification
+- responder ID and included certificate material
+- `good` / `revoked` / `unknown` status values
+- `producedAt`, `thisUpdate`, and `nextUpdate`
+- authorized responder/signer requirements
+- nonce echo behavior
+- multi-request mixed-status semantics
 
-- endpoint wiring;
-- a reusable OCSP ASN.1 object model;
-- good / revoked / unknown state projection from the certificate store;
-- AIA publication of OCSP URLs in issued certificates when configured.
+## Remaining follow-up items
 
-The largest protocol gaps are:
+The RFC 6960 inventory covered by `OcspConformance.feature` is now implemented and passing, but there are still some sensible follow-up improvements that are outside the current green OCSP suite:
 
-- the lack of a real signed authorized `BasicOCSPResponse`;
-- incomplete request validation and status-code mapping;
-- incorrect or incomplete ASN.1 details in several OCSP classes;
-- serial-only matching instead of full `CertID` processing;
-- missing nonce and extension support.
+1. **Implemented:** enforce `application/ocsp-request` for POST request media types if strict HTTP binding validation is desired. Added `StrictOcspHttpBinding` property to `CaConfiguration` and validation in `OcspHandler.Handle`. Tested with scenario "Strict OCSP HTTP binding enforces application/ocsp-request content-type for POST requests" that verifies 400 Bad Request is returned for incorrect content-type when strict binding is enabled.
 
-In short, the project already has enough OCSP infrastructure to support TDD-driven conformance work, but the responder still needs substantial protocol-correctness work before it can be described as RFC 6960 conformant.
+2. **Implemented:** make responder freshness policy configurable instead of always using `UtcNow` and `UtcNow + 1 hour`. Added `OcspFreshnessWindow` property to `CaProfile` with default of 1 hour. Modified `OcspHandler.ProcessRequestAsync` to use `profile.OcspFreshnessWindow`. Tested with scenario "OCSP responder freshness policy is configurable" that verifies nextUpdate is thisUpdate plus 2 hours when configured.
 
+3. **Implemented:** add a true delegated OCSP signing certificate path, rather than only the issuing-CA signer path used in tests. Added `OcspSigningCertificate` and `OcspSigningKey` properties to `CaProfile`. Modified `OcspHandler` to use delegated cert/key if available, falling back to CA cert/key. This allows production deployments to use dedicated OCSP signing certificates with proper EKU.
+
+4. **Implemented:** extend request-signature verification from policy modeling into a full production authorization flow if signed OCSP requests must be supported operationally. Created `OcspRequestSignatureValidator` that verifies TBSRequest signatures using included certificates. Registered in DI for all CA configurations. Validates RSA/ECDSA signatures and returns `unauthorized` for invalid signatures or missing certs.
+
+## Summary
+
+The OCSP responder is no longer a placeholder implementation. It now has:
+
+- real RFC-shaped OCSP request/response ASN.1 handling,
+- full per-request `CertID` evaluation,
+- signed successful `BasicOCSPResponse` messages,
+- nonce echo support,
+- GET and POST endpoint coverage,
+- executable RFC 6960 conformance coverage that is currently green.
+
+That is the current OCSP-specific status for the implemented RFC 6960 inventory in this workspace.

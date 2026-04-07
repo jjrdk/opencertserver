@@ -289,4 +289,20 @@ public record CaProfile : IDisposable
             _ => throw new NotSupportedException($"Unsupported private key algorithm '{privateKey.GetType().Name}'.")
         };
     }
+
+    /// <summary>
+    /// Gets the OCSP freshness window for responses issued by this CA profile.
+    /// </summary>
+    public TimeSpan OcspFreshnessWindow { get; init; } = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// Gets the OCSP signing certificate for delegated OCSP responses.
+    /// When set, this certificate is used to sign OCSP responses instead of the CA certificate.
+    /// </summary>
+    public X509Certificate2? OcspSigningCertificate { get; init; }
+
+    /// <summary>
+    /// Gets the private key for the OCSP signing certificate.
+    /// </summary>
+    public AsymmetricAlgorithm? OcspSigningKey { get; init; }
 }

@@ -35,6 +35,8 @@ public partial class CertificateServerFeatures
 {
     private TestServer _server = null!;
     private IAcmeClient _acmeClient = null!;
+    private bool _strictOcspHttpBinding;
+    private TimeSpan _ocspFreshnessWindow = TimeSpan.FromHours(1);
 
     [UnconditionalSuppressMessage("Trimming", "IL2111",
         Justification = "The test host registers known concrete services in the regular test runtime and is not trimmed.")]
@@ -73,7 +75,7 @@ public partial class CertificateServerFeatures
             services
                 .AddSingleton<IResponderId>(new ResponderIdByKey("test"u8.ToArray()))
                 .AddInMemoryCertificateStore()
-                .AddSelfSignedCertificateAuthority(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"])
+                .AddSelfSignedCertificateAuthority(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"], strictOcspHttpBinding: _strictOcspHttpBinding, ocspFreshnessWindow: _ocspFreshnessWindow)
                 .AddEstServer<TestCsrAttributesLoader>()
                 .AddSingleton<TestManualAuthorizationStrategy>()
                 .Replace(ServiceDescriptor.Singleton<OpenCertServer.Est.Server.Handlers.IManualAuthorizationStrategy>(sp =>
@@ -191,5 +193,17 @@ public partial class CertificateServerFeatures
          ?? throw new InvalidOperationException();
 
         Assert.Single(inventory);
+    }
+
+    [BeforeScenario("@strict-ocsp")]
+    public void EnableStrictOcspHttpBinding()
+    {
+        _strictOcspHttpBinding = true;
+    }
+
+    [BeforeScenario("@custom-ocsp-freshness")]
+    public void SetCustomOcspFreshnessWindow()
+    {
+        _ocspFreshnessWindow = TimeSpan.FromHours(2);
     }
 }

@@ -19,6 +19,13 @@ public static class OcspHandler
 
         if (HttpMethods.IsPost(context.Request.Method))
         {
+            var config = context.RequestServices.GetRequiredService<CaConfiguration>();
+            if (config.StrictOcspHttpBinding && !string.Equals(context.Request.ContentType, "application/ocsp-request", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                return;
+            }
+
             var buffer = new MemoryStream();
             await context.Request.Body.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
             requestBytes = buffer.ToArray();
@@ -79,10 +86,18 @@ public static class OcspHandler
         var caProfiles = context.RequestServices.GetService<IStoreCaProfiles>();
 
         OcspResponse ocspResponse;
+        OcspRequest request;
         try
         {
-            var request = new OcspRequest(new AsnReader(requestBytes, AsnEncodingRules.DER));
+            request = new OcspRequest(new AsnReader(requestBytes, AsnEncodingRules.DER));
+        }
+        catch (Exception)
+        {
+            return EncodeResponse(new OcspResponse(OcspResponseStatus.MalformedRequest));
+        }
 
+        try
+        {
             // Run registered validators; first non-null error status wins
             var validationResults = await Task.WhenAll(validators.Select(v => v.Validate(request)))
                 .ConfigureAwait(false);
@@ -113,7 +128,7 @@ public static class OcspHandler
             }
 
             var now = DateTimeOffset.UtcNow;
-            var nextUpdate = now.AddHours(1);
+            var nextUpdate = now.Add(profile?.OcspFreshnessWindow ?? TimeSpan.FromHours(1));
 
             var searchResults = await Task.WhenAll(
                 request.TbsRequest.RequestList.Select(r =>
@@ -130,12 +145,12 @@ public static class OcspHandler
             IResponderId responderId;
             byte[] signature;
             AlgorithmIdentifier signatureAlgorithm;
-            X509Certificate2[]? responderCerts = null;
+            X509Certificate2[] responderCerts;
 
             if (profile != null)
             {
-                var signingCert = profile.CertificateChain[0];
-                var signingKey = profile.PrivateKey;
+                var signingCert = profile.OcspSigningCertificate ?? profile.CertificateChain[0];
+                var signingKey = profile.OcspSigningKey ?? profile.PrivateKey;
 
                 using var sha1 = SHA1.Create();
                 var keyHash = sha1.ComputeHash(signingCert.GetPublicKey());

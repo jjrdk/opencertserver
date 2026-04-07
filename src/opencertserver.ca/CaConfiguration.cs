@@ -14,16 +14,19 @@ public record CaConfiguration : IDisposable
     /// <param name="ocspUrls">The URLs for OCSP responders.</param>
     /// <param name="crlUrls">The URLs for CRL distribution points.</param>
     /// <param name="caIssuersUrls">The URLs for CA issuer information.</param>
+    /// <param name="strictOcspHttpBinding">Whether to enforce strict OCSP HTTP binding, including content-type validation for POST requests.</param>
     public CaConfiguration(
         IStoreCaProfiles profiles,
         string[] ocspUrls,
         string[] crlUrls,
-        string[] caIssuersUrls)
+        string[] caIssuersUrls,
+        bool strictOcspHttpBinding = false)
     {
         Profiles = profiles;
         OcspUrls = ocspUrls;
         CrlUrls = crlUrls;
         CaIssuersUrls = caIssuersUrls;
+        StrictOcspHttpBinding = strictOcspHttpBinding;
     }
 
     public IStoreCaProfiles Profiles { get; }
@@ -31,6 +34,11 @@ public record CaConfiguration : IDisposable
     public string[] OcspUrls { get; }
     public string[] CrlUrls { get; }
     public string[] CaIssuersUrls { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether strict OCSP HTTP binding is enforced, including content-type validation for POST requests.
+    /// </summary>
+    public bool StrictOcspHttpBinding { get; }
 
     public void Dispose()
     {

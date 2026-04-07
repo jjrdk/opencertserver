@@ -509,4 +509,19 @@ public static class EncodingExtensions
             };
         }
     }
+
+    extension(string value)
+    {
+        /// <summary>
+        /// Executes the GetRsaSignaturePaddingFromOid operation.
+        /// </summary>
+        public RSASignaturePadding GetRsaSignaturePaddingFromOid()
+        {
+            return value switch
+            {
+                "1.2.840.113549.1.1.10" => RSASignaturePadding.Pss, // rsassaPss
+                _ => RSASignaturePadding.Pkcs1
+            };
+        }
+    }
 }

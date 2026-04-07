@@ -36,13 +36,11 @@ public partial class CertificateServerFeatures
     public async Task ThenTheCertificateShouldBeValidInOcsp()
     {
         var issuerCert = await GetIssuerCertAsync();
-        using var client = _server.CreateClient();
         var tbsRequest = new TbsRequest(requestList:
         [
             new Request(CertId.Create(_certCollection[0], issuerCert, HashAlgorithmName.SHA256))
         ]);
-        var signature = tbsRequest.Sign(_key);
-        var ocspRequest = new OcspRequest(tbsRequest, signature);
+        var ocspRequest = new OcspRequest(tbsRequest);
         var ocspResponse = await GetOcspResponse(ocspRequest);
         Assert.Equal(OcspResponseStatus.Successful, ocspResponse.ResponseStatus);
         var basicResponse = ocspResponse.ResponseBytes!.GetBasicResponse();
@@ -59,8 +57,7 @@ public partial class CertificateServerFeatures
         [
             new Request(CertId.Create(_certCollection[0], issuerCert, HashAlgorithmName.SHA256))
         ]);
-        var signature = tbsRequest.Sign(_key);
-        var ocspRequest = new OcspRequest(tbsRequest, signature);
+        var ocspRequest = new OcspRequest(tbsRequest);
         var ocspResponse = await GetOcspResponse(ocspRequest);
         Assert.Equal(OcspResponseStatus.Successful, ocspResponse.ResponseStatus);
         var basicResponse = ocspResponse.ResponseBytes!.GetBasicResponse();
