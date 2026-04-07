@@ -7,10 +7,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using OpenCertServer.Acme.Abstractions.Exceptions;
 using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
 using OpenCertServer.Acme.Abstractions.Services;
+using OpenCertServer.Acme.Server.Configuration;
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Filters;
 using Account = OpenCertServer.Acme.Abstractions.HttpModel.Account;
@@ -24,10 +26,12 @@ public static class AccountEndpoints
         endpoints.MapPost("/new-account", async (
             HttpContext context,
             [FromServices] IAccountService accountService,
+            [FromServices] IOptions<AcmeServerOptions> optionsAccessor,
             JwsPayload jwsPayload,
             [FromServices] LinkGenerator links,
             CancellationToken cancellationToken) =>
         {
+            var options = optionsAccessor.Value;
             var header = JsonSerializer.Deserialize<AcmeHeader>(Base64UrlEncoder.Decode(jwsPayload.Protected)!,
                 AcmeSerializerContext.Default.AcmeHeader)!;
             var payload = JsonSerializer.Deserialize<CreateOrGetAccount>(
@@ -40,6 +44,16 @@ public static class AccountEndpoints
             if (header.Jwk == null)
             {
                 throw new MalformedRequestException("Account creation requests must be signed with a JWK.");
+            }
+
+            if (!payload.OnlyReturnExisting && options.TOS.RequireAgreement && payload.TermsOfServiceAgreed != true)
+            {
+                throw new MalformedRequestException("The ACME server requires agreement to the current terms of service.");
+            }
+
+            if (!payload.OnlyReturnExisting && options.ExternalAccountRequired && !HasExternalAccountBinding(payload))
+            {
+                throw new MalformedRequestException("The ACME server requires a valid externalAccountBinding.");
             }
 
             if (payload.OnlyReturnExisting)
@@ -220,6 +234,9 @@ public static class AccountEndpoints
 
     private static bool IsPostAsGet(JwsPayload payload)
         => string.IsNullOrEmpty(payload.Payload);
+
+    private static bool HasExternalAccountBinding(CreateOrGetAccount payload)
+        => payload.ExternalAccountBinding.HasValue && payload.ExternalAccountBinding.Value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined;
 
     private static void ValidateNestedJwsEnvelope(JwsPayload? payload)
     {

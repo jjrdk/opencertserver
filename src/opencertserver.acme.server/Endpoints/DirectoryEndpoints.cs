@@ -13,7 +13,6 @@ public static class DirectoryEndpoints
         endpoints.MapGet("/directory", (HttpContext context, IOptions<AcmeServerOptions> optionsAccessor, LinkGenerator links) =>
         {
             var options = optionsAccessor.Value;
-            var req = context.Request;
 
             var directory = new OpenCertServer.Acme.Abstractions.HttpModel.Directory
             {
@@ -21,11 +20,11 @@ public static class DirectoryEndpoints
                 NewAccount = GetUrl("NewAccount"),
                 NewOrder = GetUrl("NewOrder"),
                 NewAuthz = null,
-                RevokeCert = null,
+                RevokeCert = GetUrl("RevokeCert"),
                 KeyChange = GetUrl("KeyChange"),
                 Meta = new OpenCertServer.Acme.Abstractions.HttpModel.DirectoryMetadata
                 {
-                    ExternalAccountRequired = false,
+                    ExternalAccountRequired = options.ExternalAccountRequired,
                     CAAIdentities = null,
                     TermsOfService = options.TOS.RequireAgreement ? options.TOS.Url : null,
                     Website = options.WebsiteUrl
@@ -33,8 +32,7 @@ public static class DirectoryEndpoints
             };
             return Results.Ok(directory);
 
-            // Use LinkGenerator to generate absolute URLs for endpoints
-            string? GetUrl(string routeName) => links.GetUriByName(context, routeName, values: null, scheme: req.Scheme, host: req.Host);
+            string? GetUrl(string routeName) => links.GetUriByName(context, routeName, values: null, scheme: Uri.UriSchemeHttps);
         }).WithName("Directory");
         return endpoints;
     }

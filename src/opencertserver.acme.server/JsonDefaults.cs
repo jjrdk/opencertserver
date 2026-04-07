@@ -19,6 +19,7 @@ namespace OpenCertServer.Acme.Server;
 [JsonSerializable(typeof(UpdateAuthorizationRequest))]
 [JsonSerializable(typeof(FinalizeOrderRequest))]
 [JsonSerializable(typeof(KeyChangeRequest))]
+[JsonSerializable(typeof(RevokeCertificateRequest))]
 public partial class AcmeSerializerContext : JsonSerializerContext
 {
 }
