@@ -19,7 +19,7 @@ public static class AcmeRegistration
         _ = app.MapGroup(pathBase).AddEndpointFilter<AcmeProtocolResponseFilter>()
             .AddEndpointFilter<AcmeIndexLinkFilter>()
             .AddEndpointFilter<ValidateAcmeRequestFilter>()
-            .MapDirectoryEndpoints().MapNonceEndpoints().MapAccountEndpoints().MapOrderEndpoints();
+            .MapDirectoryEndpoints().MapNonceEndpoints().MapAccountEndpoints().MapOrderEndpoints().MapRevocationEndpoints();
         return app;
     }
 }

@@ -167,6 +167,34 @@ Covered scenarios:
 - `RFC 8555 Section 7.3.5 defines account key rollover when the server supports it`
 - `RFC 8555 Section 7.3.5 requires the new key to authorize subsequent requests`
 
+### Item 7 focused run
+
+```zsh
+dotnet test tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj --filter "DisplayName~Section 7.6"
+```
+
+Verified in this workspace:
+- Total: `3`
+- Passed: `3`
+- Failed: `0`
+- Skipped: `0`
+
+Covered scenarios:
+- `RFC 8555 Section 7.6 defines certificate revocation when the server supports it`
+- `RFC 8555 Section 7.6 also allows revocation using the certificate's private key`
+- `RFC 8555 Section 7.6 requires authorization checks on revocation`
+
+### Full `AcmeConformance.feature` verification
+
+Verified in this workspace by executing every scenario in `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature` individually:
+
+- Total: `56`
+- Passed: `56`
+- Failed: `0`
+- Skipped: `0`
+
+This confirms that all currently defined ACME conformance scenarios in the feature file pass in this workspace.
+
 ### ACME smoke regression run
 
 ```zsh
@@ -222,14 +250,17 @@ This confirms the existing ACME happy-path issuance scenarios still pass after t
    - `src/opencertserver.acme.server/RequestServices/DefaultRequestValidationService.cs` now treats `keyChange` as an outer JWK-signed ACME request, and `src/opencertserver.acme.server/Services/DefaultAccountService.cs` together with `src/opencertserver.acme.abstractions/Model/Account.cs` now replace the persisted account key while rejecting rollover to a key already bound to another account.
    - `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature` and `tests/opencertserver.certserver.tests/StepDefinitions/AcmeConformance.cs` now implement the focused item 6 scenarios, all of which are passing in this workspace.
 
+7. **Implement certificate revocation and advertise it in the directory.**
+   - Fixed in this workspace.
+   - `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs`, `src/opencertserver.acme.server/AcmeRegistration.cs`, `src/opencertserver.acme.server/Endpoints/RevocationEndpoints.cs`, and `src/opencertserver.acme.server/Services/DefaultRevocationService.cs` now expose `revokeCert`, validate account-authorized and certificate-key-authorized revocation requests, and apply revocation through the CA.
+   - `tests/opencertserver.certserver.tests/Features/AcmeConformance.feature` and `tests/opencertserver.certserver.tests/StepDefinitions/AcmeConformance.cs` now implement and pass the RFC 8555 Section 7.6 revocation scenarios in this workspace.
+
 ## Current non-conformance list
 
 The items below are the ACME counterpart to the EST non-conformance tracking list.
 They are intended to be actionable, removable one by one, and backed by the detailed analysis in the sections that follow.
 
-5. **Implement certificate revocation and advertise it in the directory.**
-   - The client library already has revocation support, but the server does not expose `revokeCert`, a revocation endpoint, or the associated authorization rules.
-   - Primary touchpoints: `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs` and new server-side revocation endpoint/service code.
+- No active ACME non-conformance items remain in this workspace.
 
 ---
 
@@ -257,6 +288,7 @@ The registered ACME routes currently include:
 - `POST /order/{orderId}/auth/{authId}/chall/{challengeId}`
 - `POST /order/{orderId}/finalize`
 - `POST /order/{orderId}/certificate`
+- `POST /revoke-cert`
 
 This is defined in:
 
@@ -267,23 +299,18 @@ This is defined in:
 
 ### Gaps and bugs found
 
-1. **`revokeCert` is not implemented.**
-   - `DirectoryEndpoints.cs` sets `RevokeCert = null`.
-   - There is no `/revoke-cert` endpoint in `src/opencertserver.acme.server`.
-   - RFC 8555 revocation support is therefore absent.
-
-2. **Account management surface is now implemented for the core RFC 8555 lifecycle.**
+1. **Account management surface is now implemented for the core RFC 8555 lifecycle.**
    - `POST /account/{accountId}` now supports POST-as-GET retrieval, updates, and deactivation.
    - `POST /account/{accountId}/orders` now returns the account’s order URLs.
    - `POST /key-change` now supports nested-JWS account key rollover.
 
-3. **The directory advertises only part of the RFC 8555 surface.**
+2. **The directory now advertises the RFC 8555 resources implemented in this server.**
    - `newNonce`, `newAccount`, and `newOrder` are present.
    - `newAuthz` is omitted, which is acceptable for RFC 8555.
    - `keyChange` is now advertised.
-   - `revokeCert` remains absent because revocation is still absent.
+   - `revokeCert` is now advertised.
 
-4. **Account URLs are now emitted as absolute HTTPS URLs.**
+3. **Account URLs are now emitted as absolute HTTPS URLs.**
    - `AccountEndpoints.cs` now uses absolute URI generation for the `Location` header, the account resource URL, and the embedded `orders` URL.
 
 ---
@@ -560,15 +587,20 @@ What works:
 
 Client-side support exists in `src/CertesSlim/AcmeContext.cs` via `RevokeCertificate(...)`.
 
-### Gaps and bugs found
+Server-side support now exists in:
 
-1. **Server-side revocation is completely missing.**
-   - No `revokeCert` directory entry.
-   - No revocation endpoint.
-   - No validation path for account-authorized revocation.
-   - No validation path for certificate-key-authorized revocation.
+- `src/opencertserver.acme.server/Endpoints/DirectoryEndpoints.cs`
+- `src/opencertserver.acme.server/AcmeRegistration.cs`
+- `src/opencertserver.acme.server/Endpoints/RevocationEndpoints.cs`
+- `src/opencertserver.acme.server/Services/DefaultRevocationService.cs`
 
-This is a cleanly identifiable missing RFC 8555 feature area.
+What works:
+
+- The ACME directory advertises `revokeCert`.
+- `POST /revoke-cert` is registered and returns ACME-shaped responses through the shared protocol filter.
+- Revocation signed with the issuing account (`kid`) is accepted.
+- Revocation signed with the certificate's private key (`jwk`) is accepted.
+- Unrelated accounts are rejected from revoking certificates they do not control.
 
 ---
 
