@@ -2442,15 +2442,17 @@ They are intentionally written before adding step implementations so they can dr
         [global::Xunit.FactAttribute(DisplayName="RFC 8555 Section 7.3.5 defines account key rollover when the server supports it")]
         [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
         [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 7.3.5 defines account key rollover when the server supports it")]
+        [global::Xunit.TraitAttribute("Category", "acme-item6")]
         public async global::System.Threading.Tasks.Task RFC8555Section7_3_5DefinesAccountKeyRolloverWhenTheServerSupportsIt()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "acme-item6"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "57";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.3.5 defines account key rollover when the server supports it", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Account key rollover", null, tagsOfRule);
-#line 396
+#line 397
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2463,25 +2465,25 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 397
+#line 398
             await testRunner.GivenAsync("the ACME server implements the \"keyChange\" resource", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 398
+#line 399
             await testRunner.WhenAsync("the client requests account key rollover", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 399
+#line 400
             await testRunner.ThenAsync("the outer JWS MUST be signed by the new account key", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 400
+#line 401
             await testRunner.AndAsync("the inner JWS MUST be signed by the old account key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 401
+#line 402
             await testRunner.AndAsync("the inner payload MUST identify the same account URL as the outer request", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 402
+#line 403
             await testRunner.AndAsync("the ACME server MUST verify that the old key currently controls the account", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 403
+#line 404
             await testRunner.AndAsync("the ACME server MUST reject attempts to roll an account key to a key already in u" +
                         "se by another account", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -2492,15 +2494,17 @@ They are intentionally written before adding step implementations so they can dr
         [global::Xunit.FactAttribute(DisplayName="RFC 8555 Section 7.3.5 requires the new key to authorize subsequent requests")]
         [global::Xunit.TraitAttribute("FeatureTitle", "ACME conformance")]
         [global::Xunit.TraitAttribute("Description", "RFC 8555 Section 7.3.5 requires the new key to authorize subsequent requests")]
+        [global::Xunit.TraitAttribute("Category", "acme-item6")]
         public async global::System.Threading.Tasks.Task RFC8555Section7_3_5RequiresTheNewKeyToAuthorizeSubsequentRequests()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "acme-item6"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "58";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 8555 Section 7.3.5 requires the new key to authorize subsequent requests", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Account key rollover", null, tagsOfRule);
-#line 405
+#line 407
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2513,16 +2517,16 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 406
+#line 408
             await testRunner.GivenAsync("the ACME server implements the \"keyChange\" resource", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 407
+#line 409
             await testRunner.WhenAsync("account key rollover succeeds", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 408
+#line 410
             await testRunner.ThenAsync("subsequent requests signed with the new key MUST be accepted", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 409
+#line 411
             await testRunner.AndAsync("subsequent requests signed only with the old key MUST be rejected", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }

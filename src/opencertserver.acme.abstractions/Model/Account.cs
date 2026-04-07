@@ -40,7 +40,7 @@ using System.Linq;
         /// <summary>
         /// Gets the JSON Web Key associated with the account.
         /// </summary>
-        public JsonWebKey Jwk { get; }
+        public JsonWebKey Jwk { get; private set; }
 
         /// <summary>
         /// Gets the list of contact URIs for the account.
@@ -76,6 +76,15 @@ using System.Linq;
             {
                 Status = AccountStatus.Deactivated;
             }
+
+        /// <summary>
+        /// Replaces the account key.
+        /// </summary>
+        /// <param name="jwk">The replacement JSON Web Key.</param>
+        public void ReplaceKey(JsonWebKey jwk)
+        {
+            Jwk = jwk ?? throw new ArgumentNullException(nameof(jwk));
+        }
 
         /// <summary>
         /// Gets or sets the concurrency token for optimistic concurrency control.

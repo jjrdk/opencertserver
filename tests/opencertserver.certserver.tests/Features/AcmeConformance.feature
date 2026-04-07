@@ -393,6 +393,7 @@ They are intentionally written before adding step implementations so they can dr
 
     Rule: Account key rollover
 
+        @acme-item6
         Scenario: RFC 8555 Section 7.3.5 defines account key rollover when the server supports it
             Given the ACME server implements the "keyChange" resource
             When the client requests account key rollover
@@ -402,6 +403,7 @@ They are intentionally written before adding step implementations so they can dr
             And the ACME server MUST verify that the old key currently controls the account
             And the ACME server MUST reject attempts to roll an account key to a key already in use by another account
 
+        @acme-item6
         Scenario: RFC 8555 Section 7.3.5 requires the new key to authorize subsequent requests
             Given the ACME server implements the "keyChange" resource
             When account key rollover succeeds
