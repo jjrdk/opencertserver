@@ -110,7 +110,7 @@ internal static class SimpleEnrollHandler
                 derBytes);
             contentInfo.Encode(writer);
             var contentBytes = writer.Encode();
-            return Results.Text(contentBytes, Constants.PemMimeType);
+            return Results.Text(Convert.ToBase64String(contentBytes), Constants.PkiMimeTypeCertsOnly);
         }
 
         var error = (SignCertificateResponse.Error)newCert;

@@ -32,7 +32,7 @@ internal static class CaCertsHandler
             signedEncoded);
         contentInfo.Encode(writer);
         var contentBytes = writer.Encode();
-        return Results.Text(Convert.ToBase64String(contentBytes), Constants.PemMimeType,
+        return Results.Text(Convert.ToBase64String(contentBytes), Constants.PkiMimeTypeCertsOnly,
             statusCode: (int)HttpStatusCode.OK);
     }
 }
