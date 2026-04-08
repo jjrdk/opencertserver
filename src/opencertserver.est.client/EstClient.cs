@@ -76,7 +76,7 @@ public sealed class EstClient : IDisposable
 
         foreach (var certificate in _pendingBootstrapTrust.Certificates)
         {
-            if (_options.ExplicitTrustAnchors.Cast<X509Certificate2>()
+            if (_options.ExplicitTrustAnchors
                 .All(existing => !existing.RawData.AsSpan().SequenceEqual(certificate.RawData)))
             {
                 _options.ExplicitTrustAnchors.Add(certificate);
