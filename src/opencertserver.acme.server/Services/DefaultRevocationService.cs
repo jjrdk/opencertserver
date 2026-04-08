@@ -3,7 +3,6 @@ namespace OpenCertServer.Acme.Server.Services;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using CertesSlim.Acme;
 using CertesSlim.Acme.Resource;
 using Microsoft.IdentityModel.Tokens;
 using OpenCertServer.Acme.Abstractions.Exceptions;
@@ -121,7 +120,7 @@ public sealed class DefaultRevocationService : IRevocationService
         var pem = Encoding.UTF8.GetString(pemChain);
         var collection = new X509Certificate2Collection();
         collection.ImportFromPem(pem);
-        return collection.Cast<X509Certificate2>();
+        return collection;
     }
 
     private static bool CertificatesMatch(X509Certificate2 left, X509Certificate2 right)
