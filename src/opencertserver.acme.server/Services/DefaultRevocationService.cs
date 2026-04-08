@@ -87,7 +87,6 @@ public sealed class DefaultRevocationService : IRevocationService
     private async Task<bool> AccountOwnsCertificate(string accountId, X509Certificate2 certificate, CancellationToken cancellationToken)
     {
         var orderIds = await _orderStore.GetOrderIds(accountId, cancellationToken).ConfigureAwait(false);
-        var hasIssuedOrder = false;
         foreach (var orderId in orderIds)
         {
             var order = await _orderStore.LoadOrder(orderId, cancellationToken).ConfigureAwait(false);
@@ -95,8 +94,6 @@ public sealed class DefaultRevocationService : IRevocationService
             {
                 continue;
             }
-
-            hasIssuedOrder = true;
 
             foreach (var issuedCertificate in LoadIssuedCertificates(order.Certificate))
             {
@@ -112,7 +109,7 @@ public sealed class DefaultRevocationService : IRevocationService
             }
         }
 
-        return hasIssuedOrder;
+        return false;
     }
 
     private static IEnumerable<X509Certificate2> LoadIssuedCertificates(byte[] pemChain)
