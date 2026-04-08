@@ -122,6 +122,6 @@ internal static class SimpleReEnrollHandler
             derBytes);
         contentInfo.Encode(writer);
         var contentBytes = writer.Encode();
-        return Results.Text(contentBytes, Constants.PemMimeType);
+        return Results.Text(Convert.ToBase64String(contentBytes), Constants.PkiMimeTypeCertsOnly);
     }
 }

@@ -560,7 +560,8 @@ public sealed class EstClient : IDisposable
             return ("Error retrieving certificate", null);
         }
 
-        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        var b64 = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var bytes = b64.Base64DecodeBytes();
         var reader = new AsnReader(bytes, AsnEncodingRules.DER,
             new AsnReaderOptions { SkipSetSortOrderVerification = true });
         var contentInfo = new CmsContentInfo(reader);
@@ -632,7 +633,8 @@ public sealed class EstClient : IDisposable
             return ("Error retrieving certificate", null);
         }
 
-        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        var b64 = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var bytes = b64.Base64DecodeBytes();
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var contentInfo = new CmsContentInfo(reader);
         if (contentInfo.ContentType.Value != Oids.Pkcs7Signed)
