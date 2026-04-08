@@ -1,5 +1,6 @@
 namespace OpenCertServer.Ca.Server.Handlers;
 
+using System.Buffers.Text;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -56,7 +57,7 @@ public static class OcspHandler
         byte[] requestBytes;
         try
         {
-            requestBytes = Convert.FromBase64String(encodedRequest.Replace('-', '+').Replace('_', '/'));
+            requestBytes = Base64Url.DecodeFromChars(encodedRequest.AsSpan());
         }
         catch
         {
