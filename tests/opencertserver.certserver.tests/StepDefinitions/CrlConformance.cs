@@ -158,7 +158,6 @@ public partial class CertificateServerFeatures
     [When("a certificate is revoked with a revocation date before year 2050")]
     public void WhenACertificateIsRevokedWithARevocationDateBeforeYear2050()
     {
-        using var rsa = RSA.Create(2048);
         var serial = new byte[] { 0x01, 0x02, 0x03 };
         var revocationDate = new DateTimeOffset(2026, 4, 9, 12, 0, 0, TimeSpan.Zero);
         var revoked = new RevokedCertificate(serial, revocationDate);
@@ -171,7 +170,6 @@ public partial class CertificateServerFeatures
     [When("a certificate is revoked with a revocation date in year 2050 or later")]
     public void WhenACertificateIsRevokedWithARevocationDateInYear2050OrLater()
     {
-        using var rsa = RSA.Create(2048);
         var serial = new byte[] { 0x01, 0x02, 0x03 };
         var revocationDate = new DateTimeOffset(2050, 6, 15, 0, 0, 0, TimeSpan.Zero);
         var revoked = new RevokedCertificate(serial, revocationDate);
@@ -198,8 +196,7 @@ public partial class CertificateServerFeatures
         var deltaCrlNumber = new BigInteger(6);
         var dn = new X500DistinguishedName("CN=DeltaTestCA");
         var now = DateTimeOffset.UtcNow;
-        var deltaIndicatorExtension = new X509DeltaCrlIndicatorExtension(
-            baseCrlNumber.ToByteArray(isUnsigned: true, isBigEndian: true));
+        var deltaIndicatorExtension = new X509DeltaCrlIndicatorExtension(baseCrlNumber);
         var crlNumberExtension = new X509CrlNumberExtension(deltaCrlNumber, false);
 
         var crl = new CertificateRevocationList(
@@ -315,8 +312,7 @@ public partial class CertificateServerFeatures
         var baseCrlNumber = new BigInteger(3);
         var dn = new X500DistinguishedName("CN=RemoveFromCRLTestCA");
         var now = DateTimeOffset.UtcNow;
-        var deltaIndicator = new X509DeltaCrlIndicatorExtension(
-            baseCrlNumber.ToByteArray(isUnsigned: true, isBigEndian: true));
+        var deltaIndicator = new X509DeltaCrlIndicatorExtension(baseCrlNumber);
         var crlNumber = new X509CrlNumberExtension(new BigInteger(4), false);
         var crl = new CertificateRevocationList(
             TypeVersion.V2,
@@ -503,7 +499,7 @@ public partial class CertificateServerFeatures
         var outerAlg = certList.ReadSequence();
         var outerOid = outerAlg.ReadObjectIdentifier();
 
-        var _ = tbsReader.PeekTag(); // check version or algo
+        _ = tbsReader.PeekTag(); // check version or algo
         // skip version if present
         if (tbsReader.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
             tbsReader.ReadInteger();
@@ -515,28 +511,26 @@ public partial class CertificateServerFeatures
     [Then("the signatureAlgorithm parameters in the outer CertificateList MUST equal the signature parameters in the TBSCertList")]
     public void ThenAlgorithmParametersMustMatch()
     {
-        // For .NET-produced CRLs (the production path), parameters match by construction.
-        // We verify both have equivalent parameters by comparing the full AlgorithmIdentifier bytes.
+        // RFC 5280 §5.1.1.2: the outer and inner AlgorithmIdentifier MUST be identical (OID + parameters).
+        // We verify this by capturing the full encoded bytes of each AlgorithmIdentifier before parsing.
         var bytes = CrlState.LastCrlBytes!;
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var certList = reader.ReadSequence();
         var tbsReader = certList.ReadSequence();
-        var outerAlgBytes = certList.PeekContentBytes().ToArray(); // outer alg SEQUENCE content
-        var outerAlgSeq = certList.ReadSequence();
+
+        // Capture outer AlgorithmIdentifier encoded bytes before consuming
+        var outerAlgEncoded = certList.PeekEncodedValue().ToArray();
+        certList.ReadSequence(); // consume outer AlgorithmIdentifier
 
         if (tbsReader.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
             tbsReader.ReadInteger();
-        var innerAlgSeq = tbsReader.ReadSequence();
 
-        // Read outer OID
-        var outerOid = outerAlgSeq.ReadObjectIdentifier();
-        // Read inner OID
-        var innerOid = innerAlgSeq.ReadObjectIdentifier();
-        Assert.Equal(outerOid, innerOid);
-        // Check that both have the same remaining (parameters) content
-        var outerHasParams = outerAlgSeq.HasData;
-        var innerHasParams = innerAlgSeq.HasData;
-        Assert.Equal(outerHasParams, innerHasParams);
+        // Capture inner AlgorithmIdentifier encoded bytes before consuming
+        var innerAlgEncoded = tbsReader.PeekEncodedValue().ToArray();
+        tbsReader.ReadSequence(); // consume inner AlgorithmIdentifier
+
+        // Full AlgorithmIdentifier bytes (OID + parameters) must be identical
+        Assert.Equal(outerAlgEncoded, innerAlgEncoded);
     }
 
     [Then("the CRL signatureValue MUST be a valid cryptographic signature over the DER encoding of the TBSCertList")]

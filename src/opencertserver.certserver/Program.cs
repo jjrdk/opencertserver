@@ -91,7 +91,11 @@ internal static class Program
                 continue;
             }
 
-            crlUrls.Add(args[index + 1]);
+            if (index + 1 < args.Length)
+            {
+                crlUrls.Add(args[index + 1]);
+            }
+
             index++;
         }
 

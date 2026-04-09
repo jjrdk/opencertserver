@@ -312,7 +312,21 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
         var list = _certificateStore.GetRevocationList(cancellationToken: cancellationToken);
         var revoked = await list
-            .Select(c => new RevokedCertificate(Convert.FromHexString(c.SerialNumber), c.RevocationDate!.Value))
+            .Select(c =>
+            {
+                if (c.RevocationReason.HasValue && c.RevocationReason.Value != X509RevocationReason.Unspecified)
+                {
+                    var ext = new CertificateExtension(
+                        new Oid("2.5.29.21"),
+                        c.RevocationReason.Value,
+                        null,
+                        null,
+                        false);
+                    return new RevokedCertificate(Convert.FromHexString(c.SerialNumber), c.RevocationDate!.Value, ext);
+                }
+
+                return new RevokedCertificate(Convert.FromHexString(c.SerialNumber), c.RevocationDate!.Value);
+            })
             .ToArrayAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         var nextCrlNumber = profile.GetNextCrlNumber();

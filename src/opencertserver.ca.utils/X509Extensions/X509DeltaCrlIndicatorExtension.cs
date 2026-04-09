@@ -1,5 +1,6 @@
 namespace OpenCertServer.Ca.Utils.X509Extensions;
 
+using System.Formats.Asn1;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -14,24 +15,35 @@ public class X509DeltaCrlIndicatorExtension : X509Extension
     /// RFC 5280 §5.2.4 requires this extension to always be marked critical.
     /// </summary>
     /// <param name="crlNumber">The base CRL number this delta supplements.</param>
-    public X509DeltaCrlIndicatorExtension(ReadOnlySpan<byte> crlNumber)
-        : base(new Oid("2.5.29.27", "Delta CRL Indicator"), crlNumber, critical: true)
+    public X509DeltaCrlIndicatorExtension(BigInteger crlNumber)
+        : this(EncodeDerInteger(crlNumber), isCritical: true)
     {
     }
 
     /// <summary>
     /// Internal constructor used when loading from DER-encoded CRL (preserves encoded criticality).
     /// </summary>
-    internal X509DeltaCrlIndicatorExtension(ReadOnlySpan<byte> crlNumber, bool isCritical)
-        : base(new Oid("2.5.29.27", "Delta CRL Indicator"), crlNumber, isCritical)
+    internal X509DeltaCrlIndicatorExtension(ReadOnlySpan<byte> derEncodedInteger, bool isCritical)
+        : base(new Oid("2.5.29.27", "Delta CRL Indicator"), derEncodedInteger, isCritical)
     {
     }
 
     /// <summary>
-    /// Gets the base CRL number.
+    /// Gets the base CRL number by decoding the DER INTEGER from RawData.
     /// </summary>
     public BigInteger CrlNumber
     {
-        get { return new BigInteger(RawData, isUnsigned: true, isBigEndian: true); }
+        get
+        {
+            var reader = new AsnReader(RawData, AsnEncodingRules.DER);
+            return reader.ReadInteger();
+        }
+    }
+
+    private static byte[] EncodeDerInteger(BigInteger value)
+    {
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        writer.WriteInteger(value);
+        return writer.Encode();
     }
 }
