@@ -117,7 +117,7 @@ public class CertificateRevocationList
     /// </summary>
     public byte[] Build(HashAlgorithmName hashAlgorithmName, AsymmetricAlgorithm signingKey)
     {
-        var tbsCertList = WriteTbsCertList();
+        var tbsCertList = WriteTbsCertList(hashAlgorithmName, signingKey);
         var hashAlgo = Oids.GetSignatureAlgorithmOid(hashAlgorithmName, signingKey);
         var signature = signingKey switch
         {
@@ -130,12 +130,7 @@ public class CertificateRevocationList
         {
             // CertificateList
             writer.WriteEncodedValue(tbsCertList); // tbsCertList
-            using (writer.PushSequence())
-            {
-                // signatureAlgorithm
-                writer.WriteObjectIdentifier(hashAlgo);
-            }
-
+            WriteAlgorithmIdentifier(writer, hashAlgo, signingKey); // signatureAlgorithm
             writer.WriteBitString(signature);
         }
 
@@ -143,23 +138,99 @@ public class CertificateRevocationList
     }
 
     /// <summary>
+    /// Writes an AlgorithmIdentifier SEQUENCE with the OID and appropriate parameters.
+    /// </summary>
+    private static void WriteAlgorithmIdentifier(AsnWriter writer, string oid, AsymmetricAlgorithm key)
+    {
+        using (writer.PushSequence())
+        {
+            writer.WriteObjectIdentifier(oid);
+            switch (key)
+            {
+                case RSA when oid == "1.2.840.113549.1.1.10": // rsassa-pss: write PSS params
+                    WriteRsaPssParams(writer);
+                    break;
+                case RSA: // PKCS#1 v1.5: parameters MUST be NULL
+                    writer.WriteNull();
+                    break;
+                case ECDsa: // ECDSA: parameters absent
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Writes RSASSA-PSS-params for SHA-256 with SHA-256 MGF1, salt length 32.
+    /// </summary>
+    private static void WriteRsaPssParams(AsnWriter writer)
+    {
+        // RSASSA-PSS-params ::= SEQUENCE {
+        //   hashAlgorithm      [0] HashAlgorithm     DEFAULT sha1,
+        //   maskGenAlgorithm   [1] MaskGenAlgorithm  DEFAULT mgf1SHA1,
+        //   saltLength         [2] INTEGER           DEFAULT 20,
+        //   trailerField       [3] TrailerField       DEFAULT trailerFieldBC }
+        using (writer.PushSequence())
+        {
+            // hashAlgorithm [0] = SHA-256
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true)))
+            {
+                using (writer.PushSequence())
+                {
+                    writer.WriteObjectIdentifier("2.16.840.1.101.3.4.2.1"); // id-sha256
+                    writer.WriteNull();
+                }
+            }
+            // maskGenAlgorithm [1] = mgf1SHA256
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true)))
+            {
+                using (writer.PushSequence())
+                {
+                    writer.WriteObjectIdentifier("1.2.840.113549.1.1.8"); // id-mgf1
+                    using (writer.PushSequence())
+                    {
+                        writer.WriteObjectIdentifier("2.16.840.1.101.3.4.2.1"); // id-sha256
+                        writer.WriteNull();
+                    }
+                }
+            }
+            // saltLength [2] = 32
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 2, isConstructed: true)))
+            {
+                writer.WriteInteger(32);
+            }
+        }
+    }
+
+    /// <summary>
     /// Executes the WriteTbsCertList operation.
     /// </summary>
-    private byte[] WriteTbsCertList()
+    private byte[] WriteTbsCertList(HashAlgorithmName hashAlgorithmName, AsymmetricAlgorithm signingKey)
     {
+        // Fix 3: use actual signing key type for OID determination (not a temporary RSA placeholder)
+        var hashAlgoOid = Oids.GetSignatureAlgorithmOid(hashAlgorithmName, signingKey);
+
+        // Fix 8: auto-inject authorityKeyIdentifier if not already in extensions
+        var allExtensions = Extensions.ToList();
+        if (!allExtensions.Any(e => e.Oid?.Value == "2.5.29.35"))
+        {
+            var spki = signingKey switch
+            {
+                RSA rsa => rsa.ExportSubjectPublicKeyInfo(),
+                ECDsa ecdsa => ecdsa.ExportSubjectPublicKeyInfo(),
+                _ => throw new NotSupportedException($"Key type {signingKey.GetType()} not supported for AKI derivation.")
+            };
+            allExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(spki));
+        }
+
         var tbsCertSequenceWriter = new AsnWriter(AsnEncodingRules.DER);
         using (tbsCertSequenceWriter.PushSequence())
         {
             // TBSCertList
             tbsCertSequenceWriter.WriteInteger((int)Version); // version
-            // Write algo identifier
-            using (tbsCertSequenceWriter.PushSequence())
-            {
-                var hashAlgoOid = Oids.GetSignatureAlgorithmOid(SignatureAlgorithm, RSA.Create());
-                tbsCertSequenceWriter.WriteObjectIdentifier(hashAlgoOid);
-            }
-            // Write Distinguished Name
+            // Fix 3+4: write inner signature AlgorithmIdentifier with actual key type and correct params
+            WriteAlgorithmIdentifier(tbsCertSequenceWriter, hashAlgoOid, signingKey);
 
+            // Write Distinguished Name
             Issuer.Encode(tbsCertSequenceWriter);
 
             tbsCertSequenceWriter.WriteUtcTime(ThisUpdate);
@@ -168,23 +239,26 @@ public class CertificateRevocationList
                 tbsCertSequenceWriter.WriteUtcTime(NextUpdate.Value);
             }
 
-            // revokedCertificates
-            using (tbsCertSequenceWriter.PushSequence())
+            // Fix 7: only write revokedCertificates SEQUENCE when there are entries
+            if (RevokedCertificates.Count > 0)
             {
-                foreach (var revokedCertificate in RevokedCertificates)
+                using (tbsCertSequenceWriter.PushSequence())
                 {
-                    revokedCertificate.Encode(tbsCertSequenceWriter);
+                    foreach (var revokedCertificate in RevokedCertificates)
+                    {
+                        revokedCertificate.Encode(tbsCertSequenceWriter);
+                    }
                 }
             }
 
             // extensions
-            if (Extensions.Count > 0)
+            if (allExtensions.Count > 0)
             {
                 using (tbsCertSequenceWriter.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0)))
                 {
                     using (tbsCertSequenceWriter.PushSequence())
                     {
-                        foreach (var extension in Extensions)
+                        foreach (var extension in allExtensions)
                         {
                             extension.Encode(tbsCertSequenceWriter);
                         }
@@ -193,8 +267,7 @@ public class CertificateRevocationList
             }
         }
 
-        var tbsCertList = tbsCertSequenceWriter.Encode();
-        return tbsCertList;
+        return tbsCertSequenceWriter.Encode();
     }
 
     /// <summary>
@@ -221,7 +294,8 @@ public class CertificateRevocationList
         reader.ThrowIfNotEmpty();
         var signature = certificateList.ReadBitString(out _, Asn1Tag.PrimitiveBitString);
 
-        var signatureAlgo = algoIdentifier.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier).GetHashAlgorithmNameFromOid();
+        var outerOid = algoIdentifier.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier);
+        var signatureAlgo = outerOid.GetHashAlgorithmNameFromOid();
 
         if (issuerPublicKey != null && !issuerPublicKey.VerifySignature(tbsSpan, signature, signatureAlgo))
         {
@@ -230,8 +304,14 @@ public class CertificateRevocationList
 
         var version = tbsCertList.ReadVersion();
 
-        // Discard algorithm identifier as it is supposed to match the outer one
-        _ = tbsCertList.ReadSequence();
+        // Fix 10: read inner signatureAlgorithm and validate it matches the outer one
+        var innerAlgoSeq = tbsCertList.ReadSequence();
+        var innerOid = innerAlgoSeq.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier);
+        if (!string.Equals(innerOid, outerOid, StringComparison.Ordinal))
+        {
+            throw new CryptographicException(
+                $"CRL inner signature algorithm OID '{innerOid}' does not match outer OID '{outerOid}'. RFC 5280 §5.1.1.2 requires these to be identical.");
+        }
 
         var distinguishedName = tbsCertList.ReadDistinguishedName();
 
@@ -322,3 +402,4 @@ public class CertificateRevocationList
         return tbsSpan;
     }
 }
+

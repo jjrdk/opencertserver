@@ -25,7 +25,7 @@ public class X509CrlNumberExtension : X509Extension
     /// <param name="crlNumber">The CRL number.</param>
     /// <param name="isCritical">Sets whether the extension is critical.</param>
     public X509CrlNumberExtension(BigInteger crlNumber, bool isCritical)
-        : this(crlNumber.ToByteArray(), isCritical)
+        : this(crlNumber.ToByteArray(isUnsigned: true, isBigEndian: true), isCritical)
     {
     }
 
@@ -34,6 +34,6 @@ public class X509CrlNumberExtension : X509Extension
     /// </summary>
     public BigInteger CrlNumber
     {
-        get { return new BigInteger(RawData); }
+        get { return new BigInteger(RawData, isUnsigned: true, isBigEndian: true); }
     }
 }

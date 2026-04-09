@@ -6,7 +6,6 @@ using System.Numerics;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using Microsoft.Extensions.Logging;
 using OpenCertServer.Ca.Utils.Ca;
 using Utils;
@@ -313,14 +312,15 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         await foreach (var revoked in list.ConfigureAwait(false))
         {
             builder.AddEntry(
-                Encoding.UTF8.GetBytes(revoked.SerialNumber),
+                Convert.FromHexString(revoked.SerialNumber),
                 revoked.RevocationDate,
                 revoked.RevocationReason);
         }
 
+        var nextCrlNumber = profile.GetNextCrlNumber();
         var crl = builder.Build(
             profile.CertificateChain[0],
-            profile.CrlNumber + 1,
+            nextCrlNumber,
             DateTimeOffset.UtcNow.AddDays(7),
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pss, thisUpdate: DateTimeOffset.UtcNow);

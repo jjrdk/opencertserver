@@ -130,7 +130,7 @@ public class CertificateExtension : IAsnValue
                     CertificateIssuer!.Encode(octetWriter);
                     break;
                 case "2.5.29.24": // invalidity date
-                    octetWriter.WriteUtcTime(InvalidityDate!.Value.ToUniversalTime());
+                    octetWriter.WriteGeneralizedTime(InvalidityDate!.Value.ToUniversalTime());
                     break;
                 case "2.5.29.21": // reason code
                     octetWriter.WriteEnumeratedValue(Reason);
