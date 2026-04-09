@@ -202,6 +202,19 @@ public class CertificateRevocationList
     }
 
     /// <summary>
+    /// Computes the RFC 5280 §4.2.1.2 key identifier (SHA-1 of the public key bit string)
+    /// from a DER-encoded SubjectPublicKeyInfo.
+    /// </summary>
+    private static byte[] ComputeKeyIdentifierFromSpki(byte[] spki)
+    {
+        var reader = new AsnReader(spki, AsnEncodingRules.DER);
+        var spkiSeq = reader.ReadSequence();
+        _ = spkiSeq.ReadSequence(); // skip AlgorithmIdentifier
+        var publicKeyBits = spkiSeq.ReadBitString(out _);
+        return SHA1.HashData(publicKeyBits);
+    }
+
+    /// <summary>
     /// Executes the WriteTbsCertList operation.
     /// </summary>
     private byte[] WriteTbsCertList(HashAlgorithmName hashAlgorithmName, AsymmetricAlgorithm signingKey)
@@ -209,7 +222,7 @@ public class CertificateRevocationList
         // Fix 3: use actual signing key type for OID determination (not a temporary RSA placeholder)
         var hashAlgoOid = Oids.GetSignatureAlgorithmOid(hashAlgorithmName, signingKey);
 
-        // Fix 8: auto-inject authorityKeyIdentifier if not already in extensions
+        // Auto-inject authorityKeyIdentifier if not already in extensions
         var allExtensions = Extensions.ToList();
         if (!allExtensions.Any(e => e.Oid?.Value == "2.5.29.35"))
         {
@@ -219,7 +232,9 @@ public class CertificateRevocationList
                 ECDsa ecdsa => ecdsa.ExportSubjectPublicKeyInfo(),
                 _ => throw new NotSupportedException($"Key type {signingKey.GetType()} not supported for AKI derivation.")
             };
-            allExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(spki));
+            // Compute the SHA-1 hash of the public key bit string (RFC 5280 §4.2.1.2 method 1)
+            var keyIdentifier = ComputeKeyIdentifierFromSpki(spki);
+            allExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(keyIdentifier));
         }
 
         var tbsCertSequenceWriter = new AsnWriter(AsnEncodingRules.DER);

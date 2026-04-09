@@ -99,7 +99,8 @@ public class CrlTests
         Assert.Equal(BigInteger.One, loadedCrl.CrlNumber);
         Assert.Single(loadedCrl.RevokedCertificates);
         Assert.Equal(3, loadedCrl.RevokedCertificates.First().Extensions.Count);
-        Assert.Equal(2, loadedCrl.Extensions.Count);
+        // AKI is auto-injected by WriteTbsCertList (RFC 5280 §5.2.1), so expect 3 extensions: CRL Number + AIA + AKI
+        Assert.Equal(3, loadedCrl.Extensions.Count);
     }
 
     [Fact]

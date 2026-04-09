@@ -1,5 +1,6 @@
 namespace OpenCertServer.Ca.Utils.X509Extensions;
 
+using System.Formats.Asn1;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -11,8 +12,10 @@ public class X509CrlNumberExtension : X509Extension
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="X509CrlNumberExtension"/> class.
+    /// Called during deserialization: <paramref name="crlNumber"/> is the raw content of the
+    /// extension's OCTET STRING, which is a DER-encoded INTEGER.
     /// </summary>
-    /// <param name="crlNumber">The CRL number.</param>
+    /// <param name="crlNumber">The DER-encoded INTEGER bytes from the extension's extnValue OCTET STRING.</param>
     /// <param name="isCritical">Sets whether the extension is critical.</param>
     public X509CrlNumberExtension(ReadOnlySpan<byte> crlNumber, bool isCritical)
         : base(new Oid("2.5.29.20", "CRL Number"), crlNumber, isCritical)
@@ -25,15 +28,26 @@ public class X509CrlNumberExtension : X509Extension
     /// <param name="crlNumber">The CRL number.</param>
     /// <param name="isCritical">Sets whether the extension is critical.</param>
     public X509CrlNumberExtension(BigInteger crlNumber, bool isCritical)
-        : this(crlNumber.ToByteArray(isUnsigned: true, isBigEndian: true), isCritical)
+        : this(EncodeDerInteger(crlNumber), isCritical)
     {
     }
 
     /// <summary>
-    /// Gets the CRL number.
+    /// Gets the CRL number by decoding the DER INTEGER from RawData.
     /// </summary>
     public BigInteger CrlNumber
     {
-        get { return new BigInteger(RawData, isUnsigned: true, isBigEndian: true); }
+        get
+        {
+            var reader = new AsnReader(RawData, AsnEncodingRules.DER);
+            return reader.ReadInteger();
+        }
+    }
+
+    private static byte[] EncodeDerInteger(BigInteger value)
+    {
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        writer.WriteInteger(value);
+        return writer.Encode();
     }
 }
