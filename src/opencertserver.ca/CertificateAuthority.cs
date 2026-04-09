@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Ca.Utils.X509Extensions;
 using Utils;
 
 /// <summary>
@@ -251,7 +252,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             csr = Convert.FromBase64CharArray(r.ToArray(), 0, r.Length);
         }
 
-        return await SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, notBefore, notAfter, cancellationToken).ConfigureAwait(false);
+        return await SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, notBefore, notAfter,
+            cancellationToken).ConfigureAwait(false);
     }
 
     private Task<SignCertificateResponse> SignCertificateRequest(
@@ -269,7 +271,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
             RSASignaturePadding.Pss);
 
-        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, notBefore, notAfter, cancellationToken);
+        return SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, notBefore, notAfter,
+            cancellationToken);
     }
 
     /// <inheritdoc />
@@ -308,31 +311,31 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
     {
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
         var list = _certificateStore.GetRevocationList(cancellationToken: cancellationToken);
-        var builder = new CertificateRevocationListBuilder();
-        await foreach (var revoked in list.ConfigureAwait(false))
-        {
-            builder.AddEntry(
-                Convert.FromHexString(revoked.SerialNumber),
-                revoked.RevocationDate,
-                revoked.RevocationReason);
-        }
-
+        var revoked = await list
+            .Select(c => new RevokedCertificate(Convert.FromHexString(c.SerialNumber), c.RevocationDate!.Value))
+            .ToArrayAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
         var nextCrlNumber = profile.GetNextCrlNumber();
-        var crl = builder.Build(
-            profile.CertificateChain[0],
-            nextCrlNumber,
-            DateTimeOffset.UtcNow.AddDays(7),
+        var crl = new CertificateRevocationList(
+            TypeVersion.V2,
             HashAlgorithmName.SHA256,
-            RSASignaturePadding.Pss, thisUpdate: DateTimeOffset.UtcNow);
-        return crl;
+            profile.CertificateChain[0].SubjectName,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddDays(7),
+            revoked,
+            [new X509CrlNumberExtension(nextCrlNumber, false)]
+        );
+
+        return crl.Build(HashAlgorithmName.SHA256, profile.PrivateKey);
     }
 
     private static (RSA, X509Certificate2) CreateSelfSignedRsaCert(
         X500DistinguishedName distinguishedName,
         X509KeyUsageFlags usageFlags,
-        TimeSpan certificateValidity)
+        TimeSpan certificateValidity,
+        int keySizeBits = 3072)
     {
-        var parent = RSA.Create(3072);
+        var parent = RSA.Create(keySizeBits);
         var parentReq = new CertificateRequest(
             distinguishedName,
             parent,
@@ -488,7 +491,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             return ecdsa.ExportSubjectPublicKeyInfo();
         }
 
-        throw new NotSupportedException($"Unsupported certificate public key algorithm '{certificate.PublicKey.Oid.Value}'.");
+        throw new NotSupportedException(
+            $"Unsupported certificate public key algorithm '{certificate.PublicKey.Oid.Value}'.");
     }
 
     /// <inheritdoc/>
