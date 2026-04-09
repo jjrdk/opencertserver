@@ -41,10 +41,9 @@ public static class EncodingExtensions
         {
             return asymmetricAlgorithm switch
             {
-                RSA rsa => rsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm,
-                        RSASignaturePadding.Pkcs1) ||
-                    rsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm, RSASignaturePadding.Pss),
-                ECDsa ecdsa => ecdsa.VerifyData(data.ToArray(), signature.ToArray(), hashAlgorithm,
+                RSA rsa => rsa.VerifyData(data, signature, hashAlgorithm, RSASignaturePadding.Pkcs1) ||
+                    rsa.VerifyData(data, signature, hashAlgorithm, RSASignaturePadding.Pss),
+                ECDsa ecdsa => ecdsa.VerifyData(data, signature, hashAlgorithm,
                     DSASignatureFormat.Rfc3279DerSequence),
                 _ => throw new NotSupportedException($"Public key type {asymmetricAlgorithm.GetType()} not supported.")
             };

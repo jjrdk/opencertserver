@@ -499,7 +499,6 @@ public partial class CertificateServerFeatures
         var outerAlg = certList.ReadSequence();
         var outerOid = outerAlg.ReadObjectIdentifier();
 
-        _ = tbsReader.PeekTag(); // check version or algo
         // skip version if present
         if (tbsReader.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
             tbsReader.ReadInteger();
