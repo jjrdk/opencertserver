@@ -1,3 +1,8 @@
+---
+description: 'Guidelines for building C# applications'
+applyTo: '**/*.*'
+---
+
 # Working Instructions
 
 ## Memory
