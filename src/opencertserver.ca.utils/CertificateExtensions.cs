@@ -213,12 +213,20 @@ public static class CertificateExtensions
     private static string FormatHexLines(byte[] data, int bytesPerLine, string indent, string sep)
     {
         if (data.Length == 0) return indent + "<none>\n";
-        var hexPairs = data.Select(b => b.ToString("x2")).ToArray();
         var sb = new StringBuilder();
-        for (var i = 0; i < hexPairs.Length; i += bytesPerLine)
+        Span<char> hexBuf = stackalloc char[2];
+        for (var i = 0; i < data.Length; i += bytesPerLine)
         {
-            var slice = hexPairs.Skip(i).Take(bytesPerLine);
-            sb.AppendLine($"{indent}{string.Join(sep, slice)}");
+            var count = Math.Min(bytesPerLine, data.Length - i);
+            var slice = data.AsSpan(i, count);
+            sb.Append(indent);
+            for (var j = 0; j < slice.Length; j++)
+            {
+                if (j > 0) sb.Append(sep);
+                slice[j].TryFormat(hexBuf, out _, "x2");
+                sb.Append(hexBuf);
+            }
+            sb.AppendLine();
         }
 
         return sb.ToString();
@@ -294,21 +302,32 @@ public static class CertificateExtensions
         if (data.Length == 0) return $"{indent}<none>\n";
 
         var sb = new StringBuilder();
+        Span<char> hexBuf = stackalloc char[2];
+        Span<char> ascii = stackalloc char[16];
         var offset = 0;
         while (offset < data.Length)
         {
-            var line = data.Skip(offset).Take(16).ToArray();
-            var hex = string.Join(" ", line.Select(b => b.ToString("x2")));
-            if (line.Length > 8)
+            var count = Math.Min(16, data.Length - offset);
+            var line = data.AsSpan(offset, count);
+
+            // Build hex portion with mid-line space after 8 bytes
+            var hexBuilder = new StringBuilder(47);
+            for (var i = 0; i < line.Length; i++)
             {
-                var first = string.Join(" ", line.Take(8).Select(b => b.ToString("x2")));
-                var second = string.Join(" ", line.Skip(8).Select(b => b.ToString("x2")));
-                hex = first + " " + second;
+                if (i > 0) hexBuilder.Append(' ');
+                if (i == 8) hexBuilder.Append(' ');
+                line[i].TryFormat(hexBuf, out _, "x2");
+                hexBuilder.Append(hexBuf);
             }
 
-            var ascii = string.Concat(line.Select(b => b >= 32 && b <= 126 ? (char)b : '.'));
-            sb.AppendLine($"{indent}{offset.ToString("X4")} - {hex.PadRight(47)}   {ascii}");
-            offset += line.Length;
+            // Build ASCII portion (reuse fixed-size span)
+            for (var i = 0; i < line.Length; i++)
+            {
+                ascii[i] = line[i] >= 32 && line[i] <= 126 ? (char)line[i] : '.';
+            }
+
+            sb.AppendLine($"{indent}{offset:X4} - {hexBuilder.ToString().PadRight(47)}   {new string(ascii[..count])}");
+            offset += count;
         }
 
         return sb.ToString();

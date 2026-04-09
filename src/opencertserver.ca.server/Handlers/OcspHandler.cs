@@ -143,62 +143,51 @@ public static class OcspHandler
                 responseExtensions = [requestNonce];
             }
 
-            IResponderId responderId;
-            byte[] signature;
-            AlgorithmIdentifier signatureAlgorithm;
-            X509Certificate2[] responderCerts;
+            var singleResponses = searchResults
+                .Select(r => new SingleResponse(r.Item1, (r.Item2, r.Item3), now, nextUpdate))
+                .ToArray();
 
             if (profile != null)
             {
                 var signingCert = profile.OcspSigningCertificate ?? profile.CertificateChain[0];
                 var signingKey = profile.OcspSigningKey ?? profile.PrivateKey;
 
-                using var sha1 = SHA1.Create();
-                var keyHash = sha1.ComputeHash(signingCert.GetPublicKey());
-                responderId = new ResponderIdByKey(keyHash);
+                var keyHash = SHA1.HashData(signingCert.GetPublicKey());
+                IResponderId responderId = new ResponderIdByKey(keyHash);
 
                 var responseData = new ResponseData(
                     TypeVersion.V1,
                     responderId,
                     now,
-                    searchResults.Select(r => new SingleResponse(r.Item1, (r.Item2, r.Item3), now, nextUpdate)),
+                    singleResponses,
                     responseExtensions);
 
-                (signature, signatureAlgorithm) = SignResponseData(responseData, signingKey);
-                responderCerts = [signingCert];
+                var (signature, signatureAlgorithm) = SignResponseData(responseData, signingKey);
+
+                ocspResponse = new OcspResponse(
+                    OcspResponseStatus.Successful,
+                    new OcspBasicResponse(responseData, signatureAlgorithm, signature, [signingCert]));
             }
             else
             {
                 // Fallback: unsigned response using injected responder ID
-                responderId = context.RequestServices.GetRequiredService<IResponderId>();
+                IResponderId responderId = context.RequestServices.GetRequiredService<IResponderId>();
                 var responseData = new ResponseData(
                     TypeVersion.V1,
                     responderId,
                     now,
-                    searchResults.Select(r => new SingleResponse(r.Item1, (r.Item2, r.Item3), now, nextUpdate)),
+                    singleResponses,
                     responseExtensions);
 
-                signature = [];
-                signatureAlgorithm = new AlgorithmIdentifier(
+                var signatureAlgorithm = new AlgorithmIdentifier(
                     Oids.EcPublicKey.InitializeOid(Oids.EcPublicKeyFriendlyName),
                     Oids.secp521r1.InitializeOid(Oids.secp521r1FriendlyName));
 
                 ocspResponse = new OcspResponse(
                     OcspResponseStatus.Successful,
-                    new OcspBasicResponse(responseData, signatureAlgorithm, signature));
+                    new OcspBasicResponse(responseData, signatureAlgorithm, []));
                 return EncodeResponse(ocspResponse);
             }
-
-            var finalResponseData = new ResponseData(
-                TypeVersion.V1,
-                responderId,
-                now,
-                searchResults.Select(r => new SingleResponse(r.Item1, (r.Item2, r.Item3), now, nextUpdate)),
-                responseExtensions);
-
-            ocspResponse = new OcspResponse(
-                OcspResponseStatus.Successful,
-                new OcspBasicResponse(finalResponseData, signatureAlgorithm, signature, responderCerts));
         }
         catch (Exception)
         {

@@ -152,9 +152,10 @@ public record CaProfile : IDisposable
             cert.Dispose();
         }
 
+        var chainSet = new HashSet<X509Certificate2>(certificateChain, ReferenceEqualityComparer.Instance);
         foreach (var cert in publishedCertificateChain)
         {
-            if (certificateChain.Any(existing => ReferenceEquals(existing, cert)))
+            if (chainSet.Contains(cert))
             {
                 continue;
             }
@@ -167,9 +168,10 @@ public record CaProfile : IDisposable
         X509Certificate2Collection oldPublishedCertificates,
         X509Certificate2Collection newPublishedCertificates)
     {
+        var newSet = new HashSet<X509Certificate2>(newPublishedCertificates, ReferenceEqualityComparer.Instance);
         foreach (var cert in oldPublishedCertificates)
         {
-            if (newPublishedCertificates.Any(existing => ReferenceEquals(existing, cert)))
+            if (newSet.Contains(cert))
             {
                 continue;
             }

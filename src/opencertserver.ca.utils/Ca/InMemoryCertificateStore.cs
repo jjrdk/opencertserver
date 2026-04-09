@@ -52,21 +52,21 @@ public class InMemoryCertificateStore : IStoreCertificates
     }
 
     /// <inheritdoc />
-    public async Task<(CertId, CertificateStatus, RevokedInfo?)> GetCertificateStatus(
+    public Task<(CertId, CertificateStatus, RevokedInfo?)> GetCertificateStatus(
         CertId certId,
         CancellationToken cancellationToken = default)
     {
-        await Task.Yield();
         var found = _certificates.TryGetValue(Convert.ToHexString(certId.SerialNumber), out var certificateItem);
         if (!found)
         {
-            return (certId, CertificateStatus.Unknown, null);
+            return Task.FromResult<(CertId, CertificateStatus, RevokedInfo?)>((certId, CertificateStatus.Unknown, null));
         }
 
-        return certificateItem!.IsRevoked
+        var result = certificateItem!.IsRevoked
             ? (certId, CertificateStatus.Revoked,
-               new RevokedInfo(certificateItem.RevocationDate!.Value, certificateItem.RevocationReason))
-            : (certId, CertificateStatus.Good, null);
+               (RevokedInfo?)new RevokedInfo(certificateItem.RevocationDate!.Value, certificateItem.RevocationReason))
+            : (certId, CertificateStatus.Good, (RevokedInfo?)null);
+        return Task.FromResult(result);
     }
 
     /// <inheritdoc />
@@ -88,9 +88,9 @@ public class InMemoryCertificateStore : IStoreCertificates
         CancellationToken cancellationToken,
         params IEnumerable<ReadOnlyMemory<byte>> ids)
     {
-        var idStrings = ids.Select(i => Convert.ToHexString(i.Span));
+        var idSet = new HashSet<string>(ids.Select(i => Convert.ToHexString(i.Span)));
         return _certificates
-            .Where(x => idStrings.Contains(x.Key))
+            .Where(x => idSet.Contains(x.Key))
             .OrderBy(x => x.Key)
             .Select(x => X509Certificate2.CreateFromPem(x.Value.PublicKeyPem))
             .ToAsyncEnumerable();
@@ -101,9 +101,10 @@ public class InMemoryCertificateStore : IStoreCertificates
         IEnumerable<ReadOnlyMemory<char>> thumbprint,
         CancellationToken cancellationToken = default)
     {
-        var thumbprintStrings = thumbprint.ToArray();
+        var thumbprintSet = new HashSet<string>(thumbprint.Select(t => t.ToString()),
+            StringComparer.OrdinalIgnoreCase);
         return _certificates
-            .Where(x => thumbprintStrings.Any(t => t.Equals(x.Key.AsMemory())))
+            .Where(x => thumbprintSet.Contains(x.Key))
             .OrderBy(x => x.Key)
             .Select(x => X509Certificate2.CreateFromPem(x.Value.PublicKeyPem))
             .ToAsyncEnumerable();
