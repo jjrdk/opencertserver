@@ -130,7 +130,7 @@ public class CertificateRevocationList
         {
             // CertificateList
             writer.WriteEncodedValue(tbsCertList); // tbsCertList
-            WriteAlgorithmIdentifier(writer, hashAlgo, signingKey); // signatureAlgorithm
+            WriteAlgorithmIdentifier(writer, hashAlgo, signingKey, hashAlgorithmName); // signatureAlgorithm
             writer.WriteBitString(signature);
         }
 
@@ -140,7 +140,7 @@ public class CertificateRevocationList
     /// <summary>
     /// Writes an AlgorithmIdentifier SEQUENCE with the OID and appropriate parameters.
     /// </summary>
-    private static void WriteAlgorithmIdentifier(AsnWriter writer, string oid, AsymmetricAlgorithm key)
+    private static void WriteAlgorithmIdentifier(AsnWriter writer, string oid, AsymmetricAlgorithm key, HashAlgorithmName hashAlgorithmName)
     {
         using (writer.PushSequence())
         {
@@ -148,7 +148,7 @@ public class CertificateRevocationList
             switch (key)
             {
                 case RSA when oid == "1.2.840.113549.1.1.10": // rsassa-pss: write PSS params
-                    WriteRsaPssParams(writer);
+                    WriteRsaPssParams(writer, hashAlgorithmName);
                     break;
                 case RSA: // PKCS#1 v1.5: parameters MUST be NULL
                     writer.WriteNull();
@@ -160,27 +160,28 @@ public class CertificateRevocationList
     }
 
     /// <summary>
-    /// Writes RSASSA-PSS-params for SHA-256 with SHA-256 MGF1, salt length 32.
+    /// Writes RSASSA-PSS-params for the specified hash algorithm with matching MGF1 and salt length.
     /// </summary>
-    private static void WriteRsaPssParams(AsnWriter writer)
+    private static void WriteRsaPssParams(AsnWriter writer, HashAlgorithmName hashAlgorithmName)
     {
         // RSASSA-PSS-params ::= SEQUENCE {
         //   hashAlgorithm      [0] HashAlgorithm     DEFAULT sha1,
         //   maskGenAlgorithm   [1] MaskGenAlgorithm  DEFAULT mgf1SHA1,
         //   saltLength         [2] INTEGER           DEFAULT 20,
         //   trailerField       [3] TrailerField       DEFAULT trailerFieldBC }
+        var (hashOid, saltLength) = GetPssHashParams(hashAlgorithmName);
         using (writer.PushSequence())
         {
-            // hashAlgorithm [0] = SHA-256
+            // hashAlgorithm [0]
             using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true)))
             {
                 using (writer.PushSequence())
                 {
-                    writer.WriteObjectIdentifier("2.16.840.1.101.3.4.2.1"); // id-sha256
+                    writer.WriteObjectIdentifier(hashOid);
                     writer.WriteNull();
                 }
             }
-            // maskGenAlgorithm [1] = mgf1SHA256
+            // maskGenAlgorithm [1] = mgf1 with same hash
             using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true)))
             {
                 using (writer.PushSequence())
@@ -188,17 +189,29 @@ public class CertificateRevocationList
                     writer.WriteObjectIdentifier("1.2.840.113549.1.1.8"); // id-mgf1
                     using (writer.PushSequence())
                     {
-                        writer.WriteObjectIdentifier("2.16.840.1.101.3.4.2.1"); // id-sha256
+                        writer.WriteObjectIdentifier(hashOid);
                         writer.WriteNull();
                     }
                 }
             }
-            // saltLength [2] = 32
+            // saltLength [2]
             using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 2, isConstructed: true)))
             {
-                writer.WriteInteger(32);
+                writer.WriteInteger(saltLength);
             }
         }
+    }
+
+    private static (string Oid, int SaltLength) GetPssHashParams(HashAlgorithmName hashAlgorithmName)
+    {
+        if (hashAlgorithmName == HashAlgorithmName.SHA256)
+            return ("2.16.840.1.101.3.4.2.1", 32);
+        if (hashAlgorithmName == HashAlgorithmName.SHA384)
+            return ("2.16.840.1.101.3.4.2.2", 48);
+        if (hashAlgorithmName == HashAlgorithmName.SHA512)
+            return ("2.16.840.1.101.3.4.2.3", 64);
+        // Default to SHA-256 for any other algorithm
+        return ("2.16.840.1.101.3.4.2.1", 32);
     }
 
     /// <summary>
@@ -243,7 +256,7 @@ public class CertificateRevocationList
             // TBSCertList
             tbsCertSequenceWriter.WriteInteger((int)Version); // version
             // Fix 3+4: write inner signature AlgorithmIdentifier with actual key type and correct params
-            WriteAlgorithmIdentifier(tbsCertSequenceWriter, hashAlgoOid, signingKey);
+            WriteAlgorithmIdentifier(tbsCertSequenceWriter, hashAlgoOid, signingKey, hashAlgorithmName);
 
             // Write Distinguished Name
             Issuer.Encode(tbsCertSequenceWriter);
@@ -305,6 +318,8 @@ public class CertificateRevocationList
         var reader = new AsnReader(crl, AsnEncodingRules.DER);
         var certificateList = reader.ReadSequence();
         var tbsCertList = certificateList.ReadSequence();
+        // Capture outer AlgorithmIdentifier bytes before consuming for RFC 5280 §5.1.1.2 comparison
+        var outerAlgEncoded = certificateList.PeekEncodedValue().ToArray();
         var algoIdentifier = certificateList.ReadSequence();
         reader.ThrowIfNotEmpty();
         var signature = certificateList.ReadBitString(out _, Asn1Tag.PrimitiveBitString);
@@ -319,13 +334,14 @@ public class CertificateRevocationList
 
         var version = tbsCertList.ReadVersion();
 
-        // Fix 10: read inner signatureAlgorithm and validate it matches the outer one
+        // RFC 5280 §5.1.1.2: read inner signatureAlgorithm and verify it is identical (OID + parameters)
+        var innerAlgEncoded = tbsCertList.PeekEncodedValue().ToArray();
         var innerAlgoSeq = tbsCertList.ReadSequence();
         var innerOid = innerAlgoSeq.ReadObjectIdentifier(Asn1Tag.ObjectIdentifier);
-        if (!string.Equals(innerOid, outerOid, StringComparison.Ordinal))
+        if (!outerAlgEncoded.AsSpan().SequenceEqual(innerAlgEncoded))
         {
             throw new CryptographicException(
-                $"CRL inner signature algorithm OID '{innerOid}' does not match outer OID '{outerOid}'. RFC 5280 §5.1.1.2 requires these to be identical.");
+                $"CRL inner signature algorithm '{innerOid}' does not match outer algorithm '{outerOid}'. RFC 5280 §5.1.1.2 requires these to be identical.");
         }
 
         var distinguishedName = tbsCertList.ReadDistinguishedName();

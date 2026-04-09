@@ -10,6 +10,7 @@ using System.Security.Cryptography.X509Certificates;
 public record CaProfile : IDisposable
 {
     private BigInteger _crlNumber;
+    private readonly object _crlNumberLock = new();
     private AsymmetricAlgorithm _privateKey = null!;
     private X509Certificate2Collection _certificateChain = [];
     private X509Certificate2Collection _publishedCertificateChain = [];
@@ -67,8 +68,11 @@ public record CaProfile : IDisposable
     /// <returns>The next CRL number</returns>
     public BigInteger GetNextCrlNumber()
     {
-        _crlNumber += BigInteger.One;
-        return CrlNumber;
+        lock (_crlNumberLock)
+        {
+            _crlNumber += BigInteger.One;
+            return _crlNumber;
+        }
     }
 
     /// <summary>
