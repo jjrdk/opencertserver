@@ -56,6 +56,7 @@ internal static class Program
         var index = 0;
         List<string> ocspUrls = ["http://localhost:6001/ocsp"];
         List<string> caIssuerUrls = [];
+        List<string> crlUrls = [];
         while (index >= 0)
         {
             index = Array.IndexOf(args, "--ocsp", index);
@@ -81,6 +82,19 @@ internal static class Program
             index++;
         }
 
+        index = 0;
+        while (index >= 0)
+        {
+            index = Array.IndexOf(args, "--crl", index);
+            if (index < 0)
+            {
+                continue;
+            }
+
+            crlUrls.Add(args[index + 1]);
+            index++;
+        }
+
         var dn = builder.Configuration.GetSection("dn");
         if (dn.Value is not null)
         {
@@ -88,7 +102,7 @@ internal static class Program
                     new X500DistinguishedName(
                         dn.Value.StartsWith("CN=") ? dn.Value : $"CN={dn.Value}"),
                     ocspUrls.ToArray(),
-                    [],
+                    crlUrls.ToArray(),
                     caIssuerUrls.ToArray(),
                     TimeSpan.FromDays(90))
                 .AddEstServer<CsrTemplateLoader>();
@@ -116,7 +130,7 @@ internal static class Program
                     new CaConfiguration(
                         new CaProfileSet("rsa", rsaProfile, ecdsaProfile),
                         ocspUrls.ToArray(),
-                        [],
+                        crlUrls.ToArray(),
                         caIssuerUrls.ToArray()))
                 .AddEstServer<CsrTemplateLoader>();
         }

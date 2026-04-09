@@ -433,41 +433,25 @@ public static class EncodingExtensions
                 throw new CryptographicException("Invalid DER encoding for CRL extension value.");
             }
 
-            switch (extnOid.Value)
+            return extnOid.Value switch
             {
-                case "1.3.6.1.5.5.7.1.1": // Authority Information Access
-                    return new X509AuthorityInformationAccessExtension(extnValue.Span, isCritical);
-                case "2.5.29.35": // Authority Key Identifier
-                    return new X509AuthorityKeyIdentifierExtension(extnValue.Span, isCritical);
-                case "2.5.29.20": // CRL Number
-                {
-                    return new X509CrlNumberExtension(extnValue.Span, isCritical);
-                }
-                case "2.5.29.27": // Delta CRL Indicator
-                {
-                    return new X509DeltaCrlIndicatorExtension(extnValue.Span, isCritical);
-                }
-                case "2.5.29.46": // Freshest CRL
-                    return new X509FreshestCrlExtension(extnValue.Span, isCritical);
-//                    case "2.5.29.18": // Issuer Alternative Name
-//                        crlExtensionList.Add(new X509IssuerAltNameExtension(extnValue.Span, isCritical));
-//                        break;
-                case "2.5.29.28": // Issuing Distribution Point
-                    var distReader = new AsnReader(extnValue, AsnEncodingRules.DER);
-                    var distributionPoint = new DistributionPoint(distReader.ReadSequence());
-                    if (distributionPoint.DistributionPointName?.FullName?.Names.Length > 0)
-                    {
-                        return CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(
-                            distributionPoint.DistributionPointName!.FullName!.Names.Select(gn =>
-                                gn.Value.ToString()!), isCritical);
-                    }
-
-                    break;
-                default:
-                    return new X509RawExtension(extnOid, isCritical, extnValue.ToArray());
-            }
-
-            throw new CryptographicException("Unsupported CRL extension.");
+                "1.3.6.1.5.5.7.1.1" => // Authority Information Access
+                    new X509AuthorityInformationAccessExtension(extnValue.Span, isCritical),
+                "2.5.29.35" => // Authority Key Identifier
+                    new X509AuthorityKeyIdentifierExtension(extnValue.Span, isCritical),
+                "2.5.29.20" => // CRL Number
+                    new X509CrlNumberExtension(extnValue.Span, isCritical),
+                "2.5.29.27" => // Delta CRL Indicator
+                    new X509DeltaCrlIndicatorExtension(extnValue.Span, isCritical),
+                "2.5.29.46" => // Freshest CRL
+                    new X509FreshestCrlExtension(extnValue.Span, isCritical),
+                "2.5.29.18" => // Issuer Alternative Name
+                    new X509IssuerAltNameExtension(extnValue.Span, isCritical),
+                "2.5.29.28" => // Issuing Distribution Point — preserve as raw extension; IDP has a different
+                    // structure to DistributionPoint and requires its own parser.
+                    new X509RawExtension(extnOid, isCritical, extnValue.ToArray()),
+                _ => new X509RawExtension(extnOid, isCritical, extnValue.ToArray())
+            };
         }
     }
 

@@ -67,6 +67,6 @@ public partial class CertificateServerFeatures
         response.EnsureSuccessStatusCode();
         var crl = await response.Content.ReadAsByteArrayAsync();
         var builder = CertificateRevocationListBuilder.Load(crl, out _);
-        Assert.True(builder.RemoveEntry(Encoding.UTF8.GetBytes(_certCollection[0].GetSerialNumberString())));
+        Assert.True(builder.RemoveEntry(Convert.FromHexString(_certCollection[0].GetSerialNumberString())));
     }
 }
