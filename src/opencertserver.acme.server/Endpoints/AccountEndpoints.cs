@@ -82,6 +82,17 @@ public static class AccountEndpoints
                     header.Jwk,
                     requestUrl,
                     cancellationToken).ConfigureAwait(false);
+
+                // Consume the EAB key before creating the account so single-use keys
+                // cannot be raced and a failed key save does not leave an orphan account.
+                var eabStore = context.RequestServices
+                    .GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreExternalAccountKeys>();
+                var eabKey = await eabStore.LoadKey(externalAccountId, cancellationToken).ConfigureAwait(false);
+                if (eabKey != null)
+                {
+                    eabKey.MarkUsed(null);
+                    await eabStore.SaveKey(eabKey, cancellationToken).ConfigureAwait(false);
+                }
             }
 
             var createdAccount = await accountService.CreateAccount(
@@ -90,20 +101,6 @@ public static class AccountEndpoints
                 payload.TermsOfServiceAgreed == true,
                 externalAccountId,
                 cancellationToken).ConfigureAwait(false);
-
-            // Mark the EAB key as consumed now that the account has been persisted
-            if (externalAccountId != null)
-            {
-                var eabStore = context.RequestServices
-                    .GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreExternalAccountKeys>();
-                var eabKey = await eabStore.LoadKey(externalAccountId, cancellationToken).ConfigureAwait(false);
-                if (eabKey != null)
-                {
-                    eabKey.MarkUsed(createdAccount.AccountId);
-                    await eabStore.SaveKey(eabKey, cancellationToken).ConfigureAwait(false);
-                }
-            }
-
             var createdAccountResponse = CreateAccountResponse(context, links, createdAccount);
             var createdAccountUrl = GetAccountUrl(context, links, createdAccount.AccountId);
             return Results.Created(createdAccountUrl, createdAccountResponse);
