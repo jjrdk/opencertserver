@@ -117,7 +117,13 @@ public static class AccountEndpoints
             }
 
             // RFC 8555 §7.3.5: The "url" in the inner JWS protected header must match the outer request URL.
-            if (!string.Equals(nestedHeader.Url, context.Request.GetDisplayUrl(), StringComparison.Ordinal))
+            if (string.IsNullOrWhiteSpace(nestedHeader.Url))
+            {
+                throw new MalformedRequestException("The inner keyChange JWS must contain a non-empty url.");
+            }
+
+            var expectedUrl = context.Request.GetDisplayUrl();
+            if (!string.Equals(nestedHeader.Url, expectedUrl, StringComparison.Ordinal))
             {
                 throw new NotAuthorizedException();
             }
