@@ -18,6 +18,7 @@ using System.Linq;
         /// <param name="jwk">The JSON Web Key for the account.</param>
         /// <param name="contacts">The contact URIs for the account.</param>
         /// <param name="tosAccepted">The date/time the terms of service were accepted, or null if not accepted.</param>
+        /// <param name="externalAccountId">The external account to bind to.</param>
         public Account(JsonWebKey jwk, IEnumerable<string>? contacts, DateTimeOffset? tosAccepted, string? externalAccountId = null)
         {
             AccountId = GuidString.NewValue();

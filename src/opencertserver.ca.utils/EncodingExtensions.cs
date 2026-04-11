@@ -267,7 +267,7 @@ public static class EncodingExtensions
                 [0x55, 0x04, 0x0A] => Oids.Organization.InitializeOid(Oids.OrganizationFriendlyName),
                 [0x55, 0x04, 0x0B] => Oids.OrganizationalUnit.InitializeOid(Oids.OrganizationalUnitFriendlyName),
                 [0x55, 0x1D, 0x14] => Oids.CrlNumber.InitializeOid(Oids.CrlNumberFriendlyName),
-                _ => null,
+                _ => null
             };
 
             if (ret is not null)

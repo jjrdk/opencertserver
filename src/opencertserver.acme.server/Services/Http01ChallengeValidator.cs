@@ -13,7 +13,7 @@ using Microsoft.IdentityModel.Tokens;
 
 public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidateHttp01Challenges
 {
-    private List<IPNetwork> _prohibitedRanges =
+    private readonly List<IPNetwork> _prohibitedRanges =
     [
         IPNetwork.Parse("127.0.0.0/8"),
         IPNetwork.Parse("::1/128"),
@@ -46,18 +46,16 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
         CancellationToken cancellationToken)
     {
         var resolvedIps = await Task.WhenAll(
-            Dns.GetHostAddressesAsync(challenge.Authorization.Identifier.Value, cancellationToken)).ConfigureAwait(false);
-        foreach (var ip in resolvedIps.SelectMany(i => i))
+                Dns.GetHostAddressesAsync(challenge.Authorization.Identifier.Value, cancellationToken))
+            .ConfigureAwait(false);
+        if (resolvedIps.SelectMany(i => i).Any(ip => _prohibitedRanges.Any(r => r.Contains(ip))))
         {
-            if (_prohibitedRanges.Any(r => r.Contains(ip)))
-            {
-                return (
-                    null,
-                    new AcmeError(
-                        "rejectedIdentifier",
-                        "Challenge target resolves to prohibited address range.",
-                        challenge.Authorization.Identifier));
-            }
+            return (
+                null,
+                new AcmeError(
+                    "rejectedIdentifier",
+                    "Challenge target resolves to prohibited address range.",
+                    challenge.Authorization.Identifier));
         }
 
         var challengeUrl =

@@ -1,3 +1,5 @@
+namespace OpenCertServer.Acme.Server.Endpoints;
+
 using CertesSlim.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -10,8 +12,6 @@ using OpenCertServer.Acme.Abstractions.Services;
 using OpenCertServer.Acme.Server.Configuration;
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Filters;
-
-namespace OpenCertServer.Acme.Server.Endpoints;
 
 public static class OrderEndpoints
 {
@@ -32,7 +32,7 @@ public static class OrderEndpoints
             // RFC 8555 §7.3.3: if the server requires ToS agreement and the ToS have been updated
             // since the account last agreed, reject newOrder with userActionRequired.
             var tosOptions = optionsAccessor.Value.TOS;
-            if (tosOptions.RequireAgreement && tosOptions.LastUpdate.HasValue)
+            if (tosOptions is { RequireAgreement: true, LastUpdate: not null })
             {
                 if (string.IsNullOrWhiteSpace(tosOptions.Url))
                 {
@@ -85,7 +85,11 @@ public static class OrderEndpoints
         {
             var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
             var order = await orderService.GetOrderAsync(account, orderId, cancellationToken).ConfigureAwait(false);
-            if (order == null) return Results.NotFound();
+            if (order == null)
+            {
+                return Results.NotFound();
+            }
+
             GetOrderUrls(context, links, order, out var authorizationUrls, out var finalizeUrl, out var certificateUrl);
             var orderResponse =
                 new OpenCertServer.Acme.Abstractions.HttpModel.Order(order, authorizationUrls, finalizeUrl,
@@ -105,9 +109,16 @@ public static class OrderEndpoints
         {
             var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
             var order = await orderService.GetOrderAsync(account, orderId, cancellationToken).ConfigureAwait(false);
-            if (order == null) return Results.NotFound();
+            if (order == null)
+            {
+                return Results.NotFound();
+            }
+
             var authZ = order.GetAuthorization(authId);
-            if (authZ == null) return Results.NotFound();
+            if (authZ == null)
+            {
+                return Results.NotFound();
+            }
 
             if (!IsPostAsGet(payload))
             {
@@ -144,10 +155,17 @@ public static class OrderEndpoints
             if (IsPostAsGet(payload))
             {
                 var order = await orderService.GetOrderAsync(account, orderId, cancellationToken).ConfigureAwait(false);
-                if (order == null) return Results.NotFound();
+                if (order == null)
+                {
+                    return Results.NotFound();
+                }
+
                 var authorization = order.GetAuthorization(authId);
                 var currentChallenge = authorization?.GetChallenge(challengeId);
-                if (currentChallenge == null) return Results.NotFound();
+                if (currentChallenge == null)
+                {
+                    return Results.NotFound();
+                }
 
                 return Results.Ok(new OpenCertServer.Acme.Abstractions.HttpModel.Challenge(
                     currentChallenge,
@@ -156,7 +174,11 @@ public static class OrderEndpoints
 
             var processedChallenge =
                 await orderService.ProcessChallenge(account, orderId, authId, challengeId, cancellationToken).ConfigureAwait(false);
-            if (processedChallenge == null) return Results.NotFound();
+            if (processedChallenge == null)
+            {
+                return Results.NotFound();
+            }
+
             var challengeResponse =
                 new OpenCertServer.Acme.Abstractions.HttpModel.Challenge(processedChallenge,
                     GetChallengeUrl(context, links, processedChallenge));

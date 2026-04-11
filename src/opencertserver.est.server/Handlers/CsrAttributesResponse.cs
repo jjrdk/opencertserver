@@ -11,7 +11,7 @@ public sealed class CsrAttributesResponse
     /// <summary>
     /// Initializes a new instance of the <see cref="CsrAttributesResponse"/> class.
     /// </summary>
-    public CsrAttributesResponse(HttpStatusCode statusCode, CsrAttributes? attributes = null)
+    private CsrAttributesResponse(HttpStatusCode statusCode, CsrAttributes? attributes = null)
     {
         StatusCode = statusCode;
         Attributes = attributes;

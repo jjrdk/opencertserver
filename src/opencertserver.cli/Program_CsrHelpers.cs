@@ -149,7 +149,10 @@ internal static partial class Program
             {
                 basicCaVal = true;
                 var pathLen = PromptForInput(writer, reader, "Path length constraint (empty for none): ");
-                if (int.TryParse(pathLen, out var pathLenVal)) basicPathLenVal = pathLenVal;
+                if (int.TryParse(pathLen, out var pathLenVal))
+                {
+                    basicPathLenVal = pathLenVal;
+                }
             }
         }
 
@@ -209,7 +212,7 @@ internal static partial class Program
             writer.WriteLine("Key usage was requested but no valid flags were parsed, skipping extension.");
         }
 
-        if (input.HasEnhancedKeyUsage && input.EnhancedKeyUsageOids.Count > 0)
+        if (input is { HasEnhancedKeyUsage: true, EnhancedKeyUsageOids.Count: > 0 })
         {
             request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(input.EnhancedKeyUsageOids, false));
         }

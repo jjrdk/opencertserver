@@ -27,7 +27,7 @@ public static class CertificateExtensions
 
             // Version
             var version = cert.Version;
-            sb.AppendLine($"\t\tVersion: {version} (0x{(version - 1):x})");
+            sb.AppendLine($"\t\tVersion: {version} (0x{version - 1:x})");
 
             // Serial Number
             sb.AppendLine("\t\tSerial Number:");
@@ -69,7 +69,7 @@ public static class CertificateExtensions
                     var rsaParams = rsa.ExportParameters(false);
                     var modulus = rsaParams.Modulus;
                     var exponent = rsaParams.Exponent;
-                    if (modulus != null && modulus.Length > 0)
+                    if (modulus is { Length: > 0 })
                     {
                         var bits = (modulus.Length - LeadingZeroCount(modulus)) * 8;
                         sb.AppendLine($"\t\t\t\tRSA Public-Key: ({bits} bit)");
@@ -77,7 +77,7 @@ public static class CertificateExtensions
                         sb.Append(FormatHexLines(modulus, 16, "\t\t\t\t\t", ":"));
                     }
 
-                    if (exponent != null && exponent.Length > 0)
+                    if (exponent is { Length: > 0 })
                     {
                         var expHex = "0x" + BitConverter.ToString(exponent).Replace("-", "");
                         string expStr;
@@ -175,7 +175,10 @@ public static class CertificateExtensions
     {
         var raw = name.Name;
         var parts = raw.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).ToArray();
-        if (parts.Length == 0) return indent + "<empty>\n";
+        if (parts.Length == 0)
+        {
+            return indent + "<empty>\n";
+        }
 
         var sb = new StringBuilder();
         foreach (var part in parts)
@@ -212,7 +215,11 @@ public static class CertificateExtensions
     /// </summary>
     private static string FormatHexLines(byte[] data, int bytesPerLine, string indent, string sep)
     {
-        if (data.Length == 0) return indent + "<none>\n";
+        if (data.Length == 0)
+        {
+            return indent + "<none>\n";
+        }
+
         var sb = new StringBuilder();
         Span<char> hexBuf = stackalloc char[2];
         for (var i = 0; i < data.Length; i += bytesPerLine)
@@ -222,7 +229,11 @@ public static class CertificateExtensions
             sb.Append(indent);
             for (var j = 0; j < slice.Length; j++)
             {
-                if (j > 0) sb.Append(sep);
+                if (j > 0)
+                {
+                    sb.Append(sep);
+                }
+
                 slice[j].TryFormat(hexBuf, out _, "x2");
                 sb.Append(hexBuf);
             }
@@ -248,16 +259,56 @@ public static class CertificateExtensions
     private static ReadOnlySpan<string> KeyUsageNames(X509KeyUsageFlags flags)
     {
         var list = new List<string>();
-        if (flags.HasFlag(X509KeyUsageFlags.DigitalSignature)) list.Add("Digital Signature");
-        if (flags.HasFlag(X509KeyUsageFlags.NonRepudiation)) list.Add("Non Repudiation");
-        if (flags.HasFlag(X509KeyUsageFlags.KeyEncipherment)) list.Add("Key Encipherment");
-        if (flags.HasFlag(X509KeyUsageFlags.DataEncipherment)) list.Add("Data Encipherment");
-        if (flags.HasFlag(X509KeyUsageFlags.KeyAgreement)) list.Add("Key Agreement");
-        if (flags.HasFlag(X509KeyUsageFlags.KeyCertSign)) list.Add("Key Cert Sign");
-        if (flags.HasFlag(X509KeyUsageFlags.CrlSign)) list.Add("CRL Sign");
-        if (flags.HasFlag(X509KeyUsageFlags.EncipherOnly)) list.Add("Encipher Only");
-        if (flags.HasFlag(X509KeyUsageFlags.DecipherOnly)) list.Add("Decipher Only");
-        if (list.Count == 0) list.Add("<none>");
+        if (flags.HasFlag(X509KeyUsageFlags.DigitalSignature))
+        {
+            list.Add("Digital Signature");
+        }
+
+        if (flags.HasFlag(X509KeyUsageFlags.NonRepudiation))
+        {
+            list.Add("Non Repudiation");
+        }
+
+        if (flags.HasFlag(X509KeyUsageFlags.KeyEncipherment))
+        {
+            list.Add("Key Encipherment");
+        }
+
+        if (flags.HasFlag(X509KeyUsageFlags.DataEncipherment))
+        {
+            list.Add("Data Encipherment");
+        }
+
+        if (flags.HasFlag(X509KeyUsageFlags.KeyAgreement))
+        {
+            list.Add("Key Agreement");
+        }
+
+        if (flags.HasFlag(X509KeyUsageFlags.KeyCertSign))
+        {
+            list.Add("Key Cert Sign");
+        }
+
+        if (flags.HasFlag(X509KeyUsageFlags.CrlSign))
+        {
+            list.Add("CRL Sign");
+        }
+
+        if (flags.HasFlag(X509KeyUsageFlags.EncipherOnly))
+        {
+            list.Add("Encipher Only");
+        }
+
+        if (flags.HasFlag(X509KeyUsageFlags.DecipherOnly))
+        {
+            list.Add("Decipher Only");
+        }
+
+        if (list.Count == 0)
+        {
+            list.Add("<none>");
+        }
+
         return CollectionsMarshal.AsSpan(list);
     }
 
@@ -266,8 +317,16 @@ public static class CertificateExtensions
     /// </summary>
     private static string OidFriendlyName(Oid? o)
     {
-        if (o == null) return "<unknown>";
-        if (!string.IsNullOrEmpty(o.FriendlyName)) return o.FriendlyName;
+        if (o == null)
+        {
+            return "<unknown>";
+        }
+
+        if (!string.IsNullOrEmpty(o.FriendlyName))
+        {
+            return o.FriendlyName;
+        }
+
         if (!string.IsNullOrEmpty(o.Value))
         {
             return o.Value switch
@@ -299,7 +358,10 @@ public static class CertificateExtensions
     /// </summary>
     private static string FormatHexDumpWithOffsets(byte[] data, string indent)
     {
-        if (data.Length == 0) return $"{indent}<none>\n";
+        if (data.Length == 0)
+        {
+            return $"{indent}<none>\n";
+        }
 
         var sb = new StringBuilder();
         Span<char> hexBuf = stackalloc char[2];
@@ -314,8 +376,16 @@ public static class CertificateExtensions
             var hexBuilder = new StringBuilder(47);
             for (var i = 0; i < line.Length; i++)
             {
-                if (i > 0) hexBuilder.Append(' ');
-                if (i == 8) hexBuilder.Append(' ');
+                if (i > 0)
+                {
+                    hexBuilder.Append(' ');
+                }
+
+                if (i == 8)
+                {
+                    hexBuilder.Append(' ');
+                }
+
                 line[i].TryFormat(hexBuf, out _, "x2");
                 hexBuilder.Append(hexBuf);
             }

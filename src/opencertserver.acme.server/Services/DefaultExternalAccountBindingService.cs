@@ -59,8 +59,8 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
                 "The externalAccountBinding 'protected' field could not be base64url-decoded.");
         }
 
-        string alg = string.Empty;
-        string kid = string.Empty;
+        var alg = string.Empty;
+        var kid = string.Empty;
         JsonDocument protectedDoc;
         try
         {
@@ -223,12 +223,36 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
     {
         // Build a JsonWebKey from the element's properties
         var jwk = new JsonWebKey();
-        if (element.TryGetProperty("kty", out var kty)) jwk.Kty = kty.GetString();
-        if (element.TryGetProperty("crv", out var crv)) jwk.Crv = crv.GetString();
-        if (element.TryGetProperty("x", out var x)) jwk.X = x.GetString();
-        if (element.TryGetProperty("y", out var y)) jwk.Y = y.GetString();
-        if (element.TryGetProperty("n", out var n)) jwk.N = n.GetString();
-        if (element.TryGetProperty("e", out var e)) jwk.E = e.GetString();
+        if (element.TryGetProperty("kty", out var kty))
+        {
+            jwk.Kty = kty.GetString();
+        }
+
+        if (element.TryGetProperty("crv", out var crv))
+        {
+            jwk.Crv = crv.GetString();
+        }
+
+        if (element.TryGetProperty("x", out var x))
+        {
+            jwk.X = x.GetString();
+        }
+
+        if (element.TryGetProperty("y", out var y))
+        {
+            jwk.Y = y.GetString();
+        }
+
+        if (element.TryGetProperty("n", out var n))
+        {
+            jwk.N = n.GetString();
+        }
+
+        if (element.TryGetProperty("e", out var e))
+        {
+            jwk.E = e.GetString();
+        }
+
         return jwk;
     }
 

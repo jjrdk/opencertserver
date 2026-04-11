@@ -16,7 +16,7 @@ public abstract class TimedHostedService : IHostedService, IDisposable
     private readonly SemaphoreSlim _interlock;
     private readonly CancellationTokenSource _cancellationTokenSource;
 
-    public TimedHostedService(IServiceProvider services, ILogger<TimedHostedService> logger)
+    protected TimedHostedService(IServiceProvider services, ILogger<TimedHostedService> logger)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _logger = logger;
@@ -27,11 +27,13 @@ public abstract class TimedHostedService : IHostedService, IDisposable
 
     public Task StartAsync(CancellationToken stoppingToken)
     {
-        if (EnableService)
+        if (!EnableService)
         {
-            _logger.LogInformation("Timed Hosted Service running");
-            _timer = new Timer(DoWorkCallback, null, TimeSpan.FromSeconds(15), TimerInterval);
+            return Task.CompletedTask;
         }
+
+        _logger.LogInformation("Timed Hosted Service running");
+        _timer = new Timer(DoWorkCallback, null, TimeSpan.FromSeconds(15), TimerInterval);
 
         return Task.CompletedTask;
     }

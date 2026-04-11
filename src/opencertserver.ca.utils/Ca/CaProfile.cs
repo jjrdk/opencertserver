@@ -153,13 +153,8 @@ public record CaProfile : IDisposable
         }
 
         var chainSet = new HashSet<X509Certificate2>(certificateChain, ReferenceEqualityComparer.Instance);
-        foreach (var cert in publishedCertificateChain)
+        foreach (var cert in publishedCertificateChain.Where(cert => !chainSet.Contains(cert)))
         {
-            if (chainSet.Contains(cert))
-            {
-                continue;
-            }
-
             cert.Dispose();
         }
     }
@@ -169,20 +164,16 @@ public record CaProfile : IDisposable
         X509Certificate2Collection newPublishedCertificates)
     {
         var newSet = new HashSet<X509Certificate2>(newPublishedCertificates, ReferenceEqualityComparer.Instance);
-        foreach (var cert in oldPublishedCertificates)
+        foreach (var cert in oldPublishedCertificates.Where(cert => !newSet.Contains(cert)))
         {
-            if (newSet.Contains(cert))
-            {
-                continue;
-            }
-
             cert.Dispose();
         }
     }
 
     private static void AddUniqueCertificate(X509Certificate2Collection collection, X509Certificate2 certificate)
     {
-        if (collection.Any(existing => string.Equals(existing.Thumbprint, certificate.Thumbprint, StringComparison.OrdinalIgnoreCase)))
+        if (collection.Any(existing =>
+            string.Equals(existing.Thumbprint, certificate.Thumbprint, StringComparison.OrdinalIgnoreCase)))
         {
             return;
         }
@@ -196,7 +187,8 @@ public record CaProfile : IDisposable
         var privateKeyPublicKey = ExportSubjectPublicKeyInfo(privateKey);
         if (!certificatePublicKey.AsSpan().SequenceEqual(privateKeyPublicKey))
         {
-            throw new ArgumentException("The provided certificate does not match the provided private key.", nameof(privateKey));
+            throw new ArgumentException("The provided certificate does not match the provided private key.",
+                nameof(privateKey));
         }
 
         var basicConstraints = certificate.Extensions.OfType<X509BasicConstraintsExtension>().SingleOrDefault();
@@ -283,7 +275,8 @@ public record CaProfile : IDisposable
             return ecdsa.ExportSubjectPublicKeyInfo();
         }
 
-        throw new NotSupportedException($"Unsupported certificate public key algorithm '{certificate.PublicKey.Oid.Value}'.");
+        throw new NotSupportedException(
+            $"Unsupported certificate public key algorithm '{certificate.PublicKey.Oid.Value}'.");
     }
 
     private static byte[] ExportSubjectPublicKeyInfo(AsymmetricAlgorithm privateKey)

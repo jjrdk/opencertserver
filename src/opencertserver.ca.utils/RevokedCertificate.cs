@@ -49,9 +49,14 @@ public class RevokedCertificate : IAsnValue
         {
             writer.WriteInteger(Serial);
             if (RevocationTime.Year < 2050)
+            {
                 writer.WriteUtcTime(RevocationTime);
+            }
             else
+            {
                 writer.WriteGeneralizedTime(RevocationTime);
+            }
+
             if (Extensions.Count > 0)
             {
                 using (writer.PushSequence())

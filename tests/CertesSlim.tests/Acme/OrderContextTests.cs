@@ -11,9 +11,9 @@ namespace CertesSlim.Tests.Acme;
 
 public class OrderContextTests
 {
-    private Uri _location = new("http://acme.d/order/101");
-    private IAcmeContext _contextMock = Substitute.For<IAcmeContext>();
-    private IAcmeHttpClient _httpClientMock = Substitute.For<IAcmeHttpClient>();
+    private readonly Uri _location = new("http://acme.d/order/101");
+    private readonly IAcmeContext _contextMock = Substitute.For<IAcmeContext>();
+    private readonly IAcmeHttpClient _httpClientMock = Substitute.For<IAcmeHttpClient>();
 
     [Fact]
     public async Task CanLoadAuthorizations()
@@ -36,7 +36,7 @@ public class OrderContextTests
         _contextMock.HttpClient.Returns(_httpClientMock);
         _contextMock.Sign(Arg.Any<object>(), Arg.Any<Uri>()).Returns(expectedPayload);
         _httpClientMock.Post<Order, JwsPayload>(_location, Arg.Any<JwsPayload>())
-            .Returns(new AcmeHttpResponse<Order>(_location, order, default, default));
+            .Returns(new AcmeHttpResponse<Order>(_location, order, null, null));
 
         var ctx = new OrderContext(_contextMock, _location);
         var authzs = await ctx.Authorizations();
@@ -44,7 +44,7 @@ public class OrderContextTests
 
         // check the context returns empty list instead of null
         _httpClientMock.Post<Order, JwsPayload>(_location, Arg.Any<JwsPayload>())
-            .Returns(new AcmeHttpResponse<Order>(_location, new Order(), default, default));
+            .Returns(new AcmeHttpResponse<Order>(_location, new Order(), null, null));
         authzs = await ctx.Authorizations();
         Assert.Empty(authzs);
     }

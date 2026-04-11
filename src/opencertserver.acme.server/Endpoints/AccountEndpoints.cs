@@ -1,3 +1,5 @@
+namespace OpenCertServer.Acme.Server.Endpoints;
+
 using System.Text;
 using System.Text.Json;
 using CertesSlim.Acme.Resource;
@@ -18,47 +20,186 @@ using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Filters;
 using Account = OpenCertServer.Acme.Abstractions.HttpModel.Account;
 
-namespace OpenCertServer.Acme.Server.Endpoints;
-
 public static class AccountEndpoints
 {
     public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/new-account", async (
-            HttpContext context,
-            [FromServices] IAccountService accountService,
-            [FromServices] IOptions<AcmeServerOptions> optionsAccessor,
-            [FromServices] IExternalAccountBindingService eabService,
-            JwsPayload jwsPayload,
-            [FromServices] LinkGenerator links,
-            CancellationToken cancellationToken) =>
+        endpoints.MapPost("/new-account", NewAccountHandler).WithName("NewAccount");
+
+        endpoints.MapPost("/key-change", KeyChangeHandler).WithName("KeyChange");
+
+        endpoints.MapMethods(
+                "/account/{accountId}",
+                [HttpMethods.Post, HttpMethods.Put],
+                AccountIdHandler)
+            .WithName("Account").AddEndpointFilter<AcmeLocationFilter>();
+
+        endpoints.MapPost("/account/{accountId}/orders", AccounterOrdersHandler).WithName("OrderList");
+
+        return endpoints;
+    }
+
+    private static async Task<IResult> AccounterOrdersHandler(HttpContext context, string accountId, JwsPayload payload, IOrderService orderService, IAccountService accountService, LinkGenerator links, CancellationToken cancellationToken)
+    {
+        var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken)
+            .ConfigureAwait(false);
+        ValidateAccountRoute(accountId, account);
+
+        var orderIds = await orderService.GetOrderIds(account, cancellationToken).ConfigureAwait(false);
+        var orders = orderIds.Select(orderId => new Uri(GetOrderUrl(context, links, orderId)))
+            .ToList();
+
+        return Results.Ok(new { orders });
+    }
+
+    [AcmeLocation("Account")]
+    private static async Task<IResult> AccountIdHandler(
+        HttpContext context,
+        string accountId,
+        JwsPayload payload,
+        IAccountService accountService,
+        LinkGenerator links,
+        CancellationToken cancellationToken)
+    {
+        var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
+        ValidateAccountRoute(accountId, account);
+
+        if (IsPostAsGet(payload))
         {
-            var options = optionsAccessor.Value;
-            var header = JsonSerializer.Deserialize<AcmeHeader>(Base64UrlEncoder.Decode(jwsPayload.Protected)!,
-                AcmeSerializerContext.Default.AcmeHeader)!;
-            var payload = JsonSerializer.Deserialize<CreateOrGetAccount>(
-                Base64UrlEncoder.Decode(jwsPayload.Payload), AcmeSerializerContext.Default.CreateOrGetAccount)!;
-            if (payload == null)
-            {
-                throw new MalformedRequestException("Payload was empty or could not be read.");
-            }
+            return Results.Ok(CreateAccountResponse(context, links, account));
+        }
 
-            if (header.Jwk == null)
-            {
-                throw new MalformedRequestException("Account creation requests must be signed with a JWK.");
-            }
+        var request = payload.ToPayload<UpdateAccountRequest>();
+        if (request == null)
+        {
+            throw new MalformedRequestException("Payload was empty or could not be read.");
+        }
 
-            if (!payload.OnlyReturnExisting && options.TOS.RequireAgreement && payload.TermsOfServiceAgreed != true)
-            {
+        if (request.Status == AccountStatus.Deactivated)
+        {
+            account = await accountService.DeactivateAccount(account, cancellationToken).ConfigureAwait(false);
+            return Results.Ok(CreateAccountResponse(context, links, account));
+        }
+
+        if (request.Status.HasValue && request.Status != AccountStatus.Valid)
+        {
+            throw new ConflictRequestException(request.Status.Value);
+        }
+
+        var updatedAccount = await accountService.UpdateAccount(account, request.Contact ?? account.Contacts,
+            request.TermsOfServiceAgreed == true, cancellationToken).ConfigureAwait(false);
+        return Results.Ok(CreateAccountResponse(context, links, updatedAccount));
+    }
+
+    private static async Task<IResult> KeyChangeHandler(
+        HttpContext context,
+        JwsPayload payload,
+        IAccountService accountService,
+        LinkGenerator links,
+        CancellationToken cancellationToken)
+    {
+        // RFC 8555 §7.3.5: The outer JWS is signed by the CURRENT (old) account key and
+        // must identify the account with a "kid" header parameter.
+        // The request validation middleware has already verified the outer signature via kid.
+        var outerHeader = payload.ToAcmeHeader();
+        if (outerHeader.Kid == null)
+        {
+            throw new MalformedRequestException("The outer keyChange request must identify the account with a Kid.");
+        }
+
+        var account = await accountService.FromRequest(outerHeader, cancellationToken).ConfigureAwait(false);
+
+        // RFC 8555 §7.3.5: The inner JWS is signed by the NEW key and must carry the new
+        // key in its "jwk" header parameter (no "kid" is permitted in the inner JWS).
+        var nestedPayload = payload.ToPayload<JwsPayload>();
+        ValidateNestedJwsEnvelope(nestedPayload);
+        var innerPayload = nestedPayload!;
+
+        var nestedHeader = innerPayload.ToAcmeHeader();
+        if (nestedHeader.Jwk == null || nestedHeader.Kid != null)
+        {
+            throw new MalformedRequestException(
+                "The inner keyChange request must be signed with a JWK (the new key) and must not contain a Kid.");
+        }
+
+        // RFC 8555 §7.3.5: The inner JWS must NOT contain a nonce.
+        if (!string.IsNullOrWhiteSpace(nestedHeader.Nonce))
+        {
+            throw new MalformedRequestException("The inner keyChange JWS must not contain a nonce.");
+        }
+
+        // RFC 8555 §7.3.5: The "url" in the inner JWS protected header must match the outer request URL.
+        if (string.IsNullOrWhiteSpace(nestedHeader.Url))
+        {
+            throw new MalformedRequestException("The inner keyChange JWS must contain a non-empty url.");
+        }
+
+        var expectedUrl = context.Request.GetDisplayUrl();
+        if (!string.Equals(nestedHeader.Url, expectedUrl, StringComparison.Ordinal))
+        {
+            throw new NotAuthorizedException();
+        }
+
+        // Verify the inner JWS using the new key carried in the inner "jwk" header.
+        var newKey = nestedHeader.Jwk;
+        VerifyNestedSignature(innerPayload, newKey, nestedHeader.Alg);
+
+        var keyChange = innerPayload.ToPayload<KeyChangeRequest>();
+        if (keyChange?.Account == null || keyChange.OldKey == null)
+        {
+            throw new MalformedRequestException("The keyChange request payload was empty or malformed.");
+        }
+
+        // RFC 8555 §7.3.5: The "account" field in the inner payload must match the account URL.
+        var accountUrl = GetAccountUrl(context, links, account.AccountId);
+        if (!Uri.TryCreate(accountUrl, UriKind.Absolute, out var expectedAccountUrl) ||
+            keyChange.Account != expectedAccountUrl)
+        {
+            throw new MalformedRequestException("The nested keyChange request must identify the current account URL.");
+        }
+
+        // RFC 8555 §7.3.5: The "oldKey" field must match the account's current key.
+        if (!KeysMatch(account.Jwk, keyChange.OldKey))
+        {
+            throw new NotAuthorizedException();
+        }
+
+        account = await accountService.ChangeKey(account, newKey, cancellationToken).ConfigureAwait(false);
+        context.Response.Headers.Location = accountUrl;
+        return Results.Ok(CreateAccountResponse(context, links, account));
+    }
+
+    private static async Task<IResult> NewAccountHandler(
+        HttpContext context,
+        [FromServices] IAccountService accountService,
+        [FromServices] IOptions<AcmeServerOptions> optionsAccessor,
+        [FromServices] IExternalAccountBindingService eabService,
+        JwsPayload jwsPayload,
+        [FromServices] LinkGenerator links,
+        CancellationToken cancellationToken)
+    {
+        var options = optionsAccessor.Value;
+        var header = JsonSerializer.Deserialize<AcmeHeader>(Base64UrlEncoder.Decode(jwsPayload.Protected)!,
+            AcmeSerializerContext.Default.AcmeHeader)!;
+        var payload = JsonSerializer.Deserialize<CreateOrGetAccount>(Base64UrlEncoder.Decode(jwsPayload.Payload),
+            AcmeSerializerContext.Default.CreateOrGetAccount)!;
+        if (payload == null)
+        {
+            throw new MalformedRequestException("Payload was empty or could not be read.");
+        }
+
+        if (header.Jwk == null)
+        {
+            throw new MalformedRequestException("Account creation requests must be signed with a JWK.");
+        }
+
+        switch (payload.OnlyReturnExisting)
+        {
+            case false when options.TOS.RequireAgreement && payload.TermsOfServiceAgreed != true:
                 throw new MalformedRequestException("The ACME server requires agreement to the current terms of service.");
-            }
-
-            if (!payload.OnlyReturnExisting && options.ExternalAccountRequired && !HasExternalAccountBinding(payload))
-            {
+            case false when options.ExternalAccountRequired && !HasExternalAccountBinding(payload):
                 throw new MalformedRequestException("The ACME server requires a valid externalAccountBinding.");
-            }
-
-            if (payload.OnlyReturnExisting)
+            case true:
             {
                 var account = await accountService.FindAccount(header.Jwk, cancellationToken).ConfigureAwait(false);
                 if (account == null)
@@ -71,182 +212,40 @@ public static class AccountEndpoints
                 var accountResponse = CreateAccountResponse(context, links, account);
                 return Results.Ok(accountResponse);
             }
+        }
 
-            // Validate EAB when present (required or voluntary)
-            string? externalAccountId = null;
-            if (HasExternalAccountBinding(payload))
-            {
-                var requestUrl = context.Request.GetDisplayUrl();
-                externalAccountId = await eabService.ValidateAsync(
-                    payload.ExternalAccountBinding!.Value,
-                    header.Jwk,
-                    requestUrl,
-                    cancellationToken).ConfigureAwait(false);
-
-                // Consume the EAB key before creating the account so single-use keys
-                // cannot be raced and a failed key save does not leave an orphan account.
-                var eabStore = context.RequestServices
-                    .GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreExternalAccountKeys>();
-                var eabKey = await eabStore.LoadKey(externalAccountId, cancellationToken).ConfigureAwait(false);
-                if (eabKey != null)
-                {
-                    eabKey.MarkUsed(null);
-                    await eabStore.SaveKey(eabKey, cancellationToken).ConfigureAwait(false);
-                }
-            }
-
-            var createdAccount = await accountService.CreateAccount(
-                header.Jwk,
-                payload.Contact,
-                payload.TermsOfServiceAgreed == true,
-                externalAccountId,
-                cancellationToken).ConfigureAwait(false);
-            var createdAccountResponse = CreateAccountResponse(context, links, createdAccount);
-            var createdAccountUrl = GetAccountUrl(context, links, createdAccount.AccountId);
-            return Results.Created(createdAccountUrl, createdAccountResponse);
-        }).WithName("NewAccount");
-
-        endpoints.MapPost("/key-change", async (
-            HttpContext context,
-            JwsPayload payload,
-            IAccountService accountService,
-            LinkGenerator links,
-            CancellationToken cancellationToken) =>
+        // Validate EAB when present (required or voluntary)
+        string? externalAccountId = null;
+        if (HasExternalAccountBinding(payload))
         {
-            // RFC 8555 §7.3.5: The outer JWS is signed by the CURRENT (old) account key and
-            // must identify the account with a "kid" header parameter.
-            // The request validation middleware has already verified the outer signature via kid.
-            var outerHeader = payload.ToAcmeHeader();
-            if (outerHeader.Kid == null)
+            var requestUrl = context.Request.GetDisplayUrl();
+            externalAccountId = await eabService
+                .ValidateAsync(payload.ExternalAccountBinding!.Value, header.Jwk, requestUrl, cancellationToken)
+                .ConfigureAwait(false);
+
+            // Consume the EAB key before creating the account so single-use keys
+            // cannot be raced and a failed key save does not leave an orphan account.
+            var eabStore = context.RequestServices
+                .GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreExternalAccountKeys>();
+            var eabKey = await eabStore.LoadKey(externalAccountId, cancellationToken).ConfigureAwait(false);
+            if (eabKey != null)
             {
-                throw new MalformedRequestException("The outer keyChange request must identify the account with a Kid.");
+                eabKey.MarkUsed(null);
+                await eabStore.SaveKey(eabKey, cancellationToken).ConfigureAwait(false);
             }
+        }
 
-            var account = await accountService.FromRequest(outerHeader, cancellationToken).ConfigureAwait(false);
-
-            // RFC 8555 §7.3.5: The inner JWS is signed by the NEW key and must carry the new
-            // key in its "jwk" header parameter (no "kid" is permitted in the inner JWS).
-            var nestedPayload = payload.ToPayload<JwsPayload>();
-            ValidateNestedJwsEnvelope(nestedPayload);
-            var innerPayload = nestedPayload!;
-
-            var nestedHeader = innerPayload.ToAcmeHeader();
-            if (nestedHeader.Jwk == null || nestedHeader.Kid != null)
-            {
-                throw new MalformedRequestException("The inner keyChange request must be signed with a JWK (the new key) and must not contain a Kid.");
-            }
-
-            // RFC 8555 §7.3.5: The inner JWS must NOT contain a nonce.
-            if (!string.IsNullOrWhiteSpace(nestedHeader.Nonce))
-            {
-                throw new MalformedRequestException("The inner keyChange JWS must not contain a nonce.");
-            }
-
-            // RFC 8555 §7.3.5: The "url" in the inner JWS protected header must match the outer request URL.
-            if (string.IsNullOrWhiteSpace(nestedHeader.Url))
-            {
-                throw new MalformedRequestException("The inner keyChange JWS must contain a non-empty url.");
-            }
-
-            var expectedUrl = context.Request.GetDisplayUrl();
-            if (!string.Equals(nestedHeader.Url, expectedUrl, StringComparison.Ordinal))
-            {
-                throw new NotAuthorizedException();
-            }
-
-            // Verify the inner JWS using the new key carried in the inner "jwk" header.
-            var newKey = nestedHeader.Jwk;
-            VerifyNestedSignature(innerPayload, newKey, nestedHeader.Alg);
-
-            var keyChange = innerPayload.ToPayload<KeyChangeRequest>();
-            if (keyChange?.Account == null || keyChange.OldKey == null)
-            {
-                throw new MalformedRequestException("The keyChange request payload was empty or malformed.");
-            }
-
-            // RFC 8555 §7.3.5: The "account" field in the inner payload must match the account URL.
-            var accountUrl = GetAccountUrl(context, links, account.AccountId);
-            if (!Uri.TryCreate(accountUrl, UriKind.Absolute, out var expectedAccountUrl) || keyChange.Account != expectedAccountUrl)
-            {
-                throw new MalformedRequestException("The nested keyChange request must identify the current account URL.");
-            }
-
-            // RFC 8555 §7.3.5: The "oldKey" field must match the account's current key.
-            if (!KeysMatch(account.Jwk, keyChange.OldKey))
-            {
-                throw new NotAuthorizedException();
-            }
-
-            account = await accountService.ChangeKey(account, newKey, cancellationToken).ConfigureAwait(false);
-            context.Response.Headers.Location = accountUrl;
-            return Results.Ok(CreateAccountResponse(context, links, account));
-        }).WithName("KeyChange");
-
-        endpoints.MapMethods("/account/{accountId}", ["POST", "PUT"], [AcmeLocation("Account")] async (
-            HttpContext context,
-            string accountId,
-            JwsPayload payload,
-            IAccountService accountService,
-            LinkGenerator links,
-            CancellationToken cancellationToken) =>
-        {
-            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
-            ValidateAccountRoute(accountId, account);
-
-            if (IsPostAsGet(payload))
-            {
-                return Results.Ok(CreateAccountResponse(context, links, account));
-            }
-
-            var request = payload.ToPayload<UpdateAccountRequest>();
-            if (request == null)
-            {
-                throw new MalformedRequestException("Payload was empty or could not be read.");
-            }
-
-            if (request.Status == AccountStatus.Deactivated)
-            {
-                account = await accountService.DeactivateAccount(account, cancellationToken).ConfigureAwait(false);
-                return Results.Ok(CreateAccountResponse(context, links, account));
-            }
-
-            if (request.Status.HasValue && request.Status != AccountStatus.Valid)
-            {
-                throw new ConflictRequestException(request.Status.Value);
-            }
-
-            var updatedAccount = await accountService.UpdateAccount(
-                account,
-                request.Contact ?? account.Contacts,
-                request.TermsOfServiceAgreed == true,
-                cancellationToken).ConfigureAwait(false);
-            return Results.Ok(CreateAccountResponse(context, links, updatedAccount));
-        }).WithName("Account").AddEndpointFilter<AcmeLocationFilter>();
-
-        endpoints.MapPost("/account/{accountId}/orders", async (
-            HttpContext context,
-            string accountId,
-            JwsPayload payload,
-            IOrderService orderService,
-            IAccountService accountService,
-            LinkGenerator links,
-            CancellationToken cancellationToken) =>
-        {
-            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
-            ValidateAccountRoute(accountId, account);
-
-            var orderIds = await orderService.GetOrderIds(account, cancellationToken).ConfigureAwait(false);
-            var orders = orderIds
-                .Select(orderId => new Uri(GetOrderUrl(context, links, orderId)))
-                .ToList();
-
-            return Results.Ok(new { orders });
-        }).WithName("OrderList");
-
-        return endpoints;
+        var createdAccount = await accountService.CreateAccount(header.Jwk, payload.Contact,
+            payload.TermsOfServiceAgreed == true, externalAccountId, cancellationToken).ConfigureAwait(false);
+        var createdAccountResponse = CreateAccountResponse(context, links, createdAccount);
+        var createdAccountUrl = GetAccountUrl(context, links, createdAccount.AccountId);
+        return Results.Created(createdAccountUrl, createdAccountResponse);
     }
 
-    private static Account CreateAccountResponse(HttpContext context, LinkGenerator links, Abstractions.Model.Account account)
+    private static Account CreateAccountResponse(
+        HttpContext context,
+        LinkGenerator links,
+        Abstractions.Model.Account account)
     {
         var ordersUrl = GetOrdersUrl(context, links, account.AccountId);
         return new Account(account, ordersUrl);
@@ -277,7 +276,7 @@ public static class AccountEndpoints
         => string.IsNullOrEmpty(payload.Payload);
 
     private static bool HasExternalAccountBinding(CreateOrGetAccount payload)
-        => payload.ExternalAccountBinding.HasValue && payload.ExternalAccountBinding.Value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined;
+        => payload.ExternalAccountBinding is { ValueKind: not JsonValueKind.Null and not JsonValueKind.Undefined };
 
     private static void ValidateNestedJwsEnvelope(JwsPayload? payload)
     {
@@ -286,7 +285,8 @@ public static class AccountEndpoints
             throw new MalformedRequestException("The nested keyChange request was missing.");
         }
 
-        if (string.IsNullOrWhiteSpace(payload.Protected) || payload.Payload == null || string.IsNullOrWhiteSpace(payload.Signature))
+        if (string.IsNullOrWhiteSpace(payload.Protected) || payload.Payload == null ||
+            string.IsNullOrWhiteSpace(payload.Signature))
         {
             throw new MalformedRequestException("The nested keyChange request must be a flattened JWS object.");
         }

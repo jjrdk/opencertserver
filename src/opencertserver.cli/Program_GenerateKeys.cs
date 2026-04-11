@@ -51,7 +51,7 @@ internal static partial class Program
             privateKeyOutOption,
             publicKeyOutOption,
             rsaKeySizeOption,
-            ecdsaCurveOption,
+            ecdsaCurveOption
         };
         cmd.SetAction(GenerateKeys);
 

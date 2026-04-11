@@ -314,18 +314,18 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
         var revoked = await list
             .Select(c =>
             {
-                if (c.RevocationReason.HasValue && c.RevocationReason.Value != X509RevocationReason.Unspecified)
+                if (!c.RevocationReason.HasValue || c.RevocationReason.Value == X509RevocationReason.Unspecified)
                 {
-                    var ext = new CertificateExtension(
-                        new Oid("2.5.29.21"),
-                        c.RevocationReason.Value,
-                        null,
-                        null,
-                        false);
-                    return new RevokedCertificate(Convert.FromHexString(c.SerialNumber), c.RevocationDate!.Value, ext);
+                    return new RevokedCertificate(Convert.FromHexString(c.SerialNumber), c.RevocationDate!.Value);
                 }
 
-                return new RevokedCertificate(Convert.FromHexString(c.SerialNumber), c.RevocationDate!.Value);
+                var ext = new CertificateExtension(
+                    new Oid("2.5.29.21"),
+                    c.RevocationReason.Value,
+                    null,
+                    null,
+                    false);
+                return new RevokedCertificate(Convert.FromHexString(c.SerialNumber), c.RevocationDate!.Value, ext);
             })
             .ToArrayAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
@@ -551,7 +551,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             _logger = logger;
         }
 
-        public async Task<string?> Validate(
+        public Task<string?> Validate(
             CertificateRequest request,
             string? profile,
             ClaimsIdentity? requestor,
@@ -561,10 +561,12 @@ public sealed partial class CertificateAuthority : ICertificateAuthority, IDispo
             if (request.SubjectName.Format(true)
                 .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
                 .Any(x => x.StartsWith("CN=")))
-                return null;
+            {
+                return Task.FromResult<string?>(null);
+            }
 
             LogDistinguishedNameNameDoesNotContainACommonNameCnAttribute(request.SubjectName.Format(false));
-            return "Subject name must contain a Common Name (CN) attribute";
+            return Task.FromResult<string?>("Subject name must contain a Common Name (CN) attribute");
         }
 
         [LoggerMessage(LogLevel.Error, "{DistinguishedName} name does not contain a Common Name (CN) attribute")]

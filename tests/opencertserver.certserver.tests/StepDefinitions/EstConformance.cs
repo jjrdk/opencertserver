@@ -71,8 +71,10 @@ public partial class CertificateServerFeatures
         }
     }
 
-    private static string RepositoryRoot =>
-        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+    private static string RepositoryRoot
+    {
+        get { return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../")); }
+    }
 
     [BeforeScenario("@est")]
     public void ResetEstConformanceState()

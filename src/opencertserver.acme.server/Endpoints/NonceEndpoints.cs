@@ -1,10 +1,10 @@
+namespace OpenCertServer.Acme.Server.Endpoints;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using OpenCertServer.Acme.Abstractions.Services;
-
-namespace OpenCertServer.Acme.Server.Endpoints;
 
 public static partial class NonceEndpoints
 {

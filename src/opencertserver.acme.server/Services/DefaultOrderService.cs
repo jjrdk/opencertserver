@@ -43,7 +43,7 @@ public sealed class DefaultOrderService : IOrderService
     {
         ValidateAccount(account);
 
-        if (notBefore.HasValue && notAfter.HasValue && notAfter <= notBefore)
+        if (notAfter <= notBefore)
         {
             throw new MalformedRequestException("The requested validity window is invalid.");
         }
@@ -219,11 +219,6 @@ public sealed class DefaultOrderService : IOrderService
             throw new ConflictRequestException(expectedStatus.Value, order.Status);
         }
 
-        if (order.AccountId != account.AccountId)
-        {
-            throw new NotAllowedException();
-        }
-
-        return order;
+        return order.AccountId != account.AccountId ? throw new NotAllowedException() : order;
     }
 }

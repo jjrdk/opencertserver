@@ -15,5 +15,8 @@ public sealed class BadCsrException : AcmeException
     }
 
     /// <inheritdoc />
-    public override string ErrorType => "badCSR";
+    public override string ErrorType
+    {
+        get { return "badCSR"; }
+    }
 }

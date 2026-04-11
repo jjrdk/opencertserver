@@ -11,9 +11,9 @@ namespace CertesSlim.Tests.Acme;
 
 public class AuthorizationContextTests
 {
-    private Uri _location = new("http://acme.d/authz/101");
-    private IAcmeContext _contextMock = Substitute.For<IAcmeContext>();
-    private IAcmeHttpClient _httpClientMock = Substitute.For<IAcmeHttpClient>();
+    private readonly Uri _location = new("http://acme.d/authz/101");
+    private readonly IAcmeContext _contextMock = Substitute.For<IAcmeContext>();
+    private readonly IAcmeHttpClient _httpClientMock = Substitute.For<IAcmeHttpClient>();
 
     [Fact]
     public async Task CanLoadChallenges()
@@ -46,7 +46,7 @@ public class AuthorizationContextTests
         _contextMock.Sign(Arg.Any<object>(), _location).Returns(expectedPayload);
         _contextMock.HttpClient.Returns(_httpClientMock);
         _httpClientMock.Post<Authorization, JwsPayload>(_location, Arg.Any<JwsPayload>())
-            .Returns(new AcmeHttpResponse<Authorization>(_location, authz, default, default));
+            .Returns(new AcmeHttpResponse<Authorization>(_location, authz, null, null));
 
         var ctx = new AuthorizationContext(_contextMock, _location);
         var challenges = await ctx.Challenges();
@@ -54,7 +54,7 @@ public class AuthorizationContextTests
 
         // check the context returns empty list instead of null
         _httpClientMock.Post<Authorization, JwsPayload>(_location, Arg.Any<JwsPayload>())
-            .Returns(new AcmeHttpResponse<Authorization>(_location, new Authorization(), default, default));
+            .Returns(new AcmeHttpResponse<Authorization>(_location, new Authorization(), null, null));
         challenges = await ctx.Challenges();
         Assert.Empty(challenges);
     }

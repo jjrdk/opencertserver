@@ -14,6 +14,9 @@ public sealed class AccountDoesNotExistException : AcmeException
     }
 
     /// <inheritdoc />
-    public override string ErrorType => "accountDoesNotExist";
+    public override string ErrorType
+    {
+        get { return "accountDoesNotExist"; }
+    }
 }
 

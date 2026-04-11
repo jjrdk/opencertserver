@@ -28,7 +28,7 @@ internal sealed class DefaultManualAuthorizationStrategy : IManualAuthorizationS
         out TimeSpan retryAfter,
         out string? message)
     {
-        retryAfter = default;
+        retryAfter = TimeSpan.Zero;
         message = null;
         return false;
     }

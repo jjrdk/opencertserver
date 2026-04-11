@@ -11,13 +11,6 @@ using System.Linq;
 public sealed class AcmeError
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="AcmeError"/> class for deserialization.
-    /// </summary>
-    private AcmeError()
-    {
-    }
-
-    /// <summary>
     /// Initializes a new instance of the <see cref="AcmeError"/> class with the specified type, detail, identifier, and subproblems.
     /// </summary>
     /// <param name="type">The error type URN or short name (will be normalized to a URN if needed).</param>
@@ -32,7 +25,7 @@ public sealed class AcmeError
     {
         Type = type;
 
-        if (!type.Contains(":"))
+        if (!type.Contains(':'))
         {
             Type = "urn:ietf:params:acme:error:" + type;
         }

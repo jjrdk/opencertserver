@@ -2069,7 +2069,7 @@ public partial class CertificateServerFeatures
 
     private async Task EnsureAccountCreatedAsync()
     {
-        if (AcmeState.AccountContext != null && AcmeState.Context != null)
+        if (AcmeState is { AccountContext: not null, Context: not null })
         {
             return;
         }
@@ -2444,7 +2444,7 @@ public partial class CertificateServerFeatures
 
     private async Task EnsureIssuedOrderWithCertificateKeyAsync()
     {
-        if (AcmeState.IssuedCertificateChain != null && AcmeState.CertificateKey != null && AcmeState.OrderResponse?.Certificate != null)
+        if (AcmeState is { IssuedCertificateChain: not null, CertificateKey: not null } && AcmeState.OrderResponse?.Certificate != null)
         {
             await EnsureCurrentOrderResourceUrlsAsync().ConfigureAwait(false);
             return;
@@ -2883,7 +2883,7 @@ public partial class CertificateServerFeatures
 
     private static CertificateRequest CreateCertificateRequest(IKey certificateKey, bool includeSubjectAlternativeNames, IList<string> dnsNames)
     {
-        CertificateRequest request = certificateKey.SecurityKey switch
+        var request = certificateKey.SecurityKey switch
         {
             RsaSecurityKey rsaSecurityKey => new CertificateRequest(
                 new X500DistinguishedName("CN=localhost"),
@@ -2965,7 +2965,7 @@ public partial class CertificateServerFeatures
         => AcmeState.AccountContext?.Location ?? AcmeState.AccountUrl ?? throw new InvalidOperationException("No ACME account location is available.");
 
     private static DateTime TruncateToSecond(DateTime value)
-        => new(value.Ticks - (value.Ticks % TimeSpan.TicksPerSecond), value.Kind);
+        => new(value.Ticks - value.Ticks % TimeSpan.TicksPerSecond, value.Kind);
 
     private T GetRequiredService<T>() where T : notnull
         => _server.Services.GetRequiredService<T>();

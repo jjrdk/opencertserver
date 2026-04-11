@@ -60,14 +60,10 @@ public sealed class OcspRequestSignatureValidator : IValidateOcspRequest
             return Task.FromResult<OcspResponseStatus?>(OcspResponseStatus.Unauthorized);
         }
 
-        if (!signatureValid)
-        {
-            return Task.FromResult<OcspResponseStatus?>(OcspResponseStatus.Unauthorized);
-        }
-
-        // Optionally, validate the signer certificate (e.g., check EKU, chain, etc.).
-        // For now, just accept if signature is valid.
-
-        return Task.FromResult<OcspResponseStatus?>(null);
+        return !signatureValid
+            ? Task.FromResult<OcspResponseStatus?>(OcspResponseStatus.Unauthorized)
+            // Optionally, validate the signer certificate (e.g., check EKU, chain, etc.).
+            // For now, just accept if signature is valid.
+            : Task.FromResult<OcspResponseStatus?>(null);
     }
 }

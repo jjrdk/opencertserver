@@ -5,7 +5,7 @@ using Abstractions.Storage;
 
 internal sealed class InMemoryNonceStore : INonceStore
 {
-    private readonly HashSet<Nonce> _nonces = new();
+    private readonly HashSet<Nonce> _nonces = [];
 
     /// <inheritdoc />
     public Task SaveNonceAsync(Nonce nonce, CancellationToken cancellationToken)

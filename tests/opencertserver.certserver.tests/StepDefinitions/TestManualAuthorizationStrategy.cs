@@ -17,7 +17,7 @@ internal sealed class TestManualAuthorizationStrategy : IManualAuthorizationStra
     {
         if (!RequireManualAuthorization)
         {
-            retryAfter = default;
+            retryAfter = TimeSpan.Zero;
             message = null;
             return false;
         }

@@ -27,7 +27,10 @@ public sealed class DefaultRevocationService : IRevocationService
         _certificateAuthority = certificateAuthority;
     }
 
-    public async Task RevokeCertificate(AcmeHeader header, RevokeCertificateRequest request, CancellationToken cancellationToken)
+    public async Task RevokeCertificate(
+        AcmeHeader header,
+        RevokeCertificateRequest request,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(header);
         ArgumentNullException.ThrowIfNull(request);
@@ -37,7 +40,8 @@ public sealed class DefaultRevocationService : IRevocationService
         if (header.Kid != null)
         {
             var account = await _accountService.FromRequest(header, cancellationToken).ConfigureAwait(false);
-            var accountOwnsCertificate = await AccountOwnsCertificate(account.AccountId, certificate, cancellationToken).ConfigureAwait(false);
+            var accountOwnsCertificate = await AccountOwnsCertificate(account.AccountId, certificate, cancellationToken)
+                .ConfigureAwait(false);
             if (!accountOwnsCertificate)
             {
                 throw new NotAuthorizedException();
@@ -84,7 +88,10 @@ public sealed class DefaultRevocationService : IRevocationService
         }
     }
 
-    private async Task<bool> AccountOwnsCertificate(string accountId, X509Certificate2 certificate, CancellationToken cancellationToken)
+    private async Task<bool> AccountOwnsCertificate(
+        string accountId,
+        X509Certificate2 certificate,
+        CancellationToken cancellationToken)
     {
         var orderIds = await _orderStore.GetOrderIds(accountId, cancellationToken).ConfigureAwait(false);
         foreach (var orderId in orderIds)
@@ -95,12 +102,10 @@ public sealed class DefaultRevocationService : IRevocationService
                 continue;
             }
 
-            foreach (var issuedCertificate in LoadIssuedCertificates(order.Certificate))
+            if (LoadIssuedCertificates(order.Certificate)
+                .Any(issuedCertificate => CertificatesMatch(issuedCertificate, certificate)))
             {
-                if (CertificatesMatch(issuedCertificate, certificate))
-                {
-                    return true;
-                }
+                return true;
             }
 
             if (CertificateMatchesOrder(order, certificate))
@@ -123,11 +128,13 @@ public sealed class DefaultRevocationService : IRevocationService
     private static bool CertificatesMatch(X509Certificate2 left, X509Certificate2 right)
     {
         return string.Equals(left.SerialNumber, right.SerialNumber, StringComparison.OrdinalIgnoreCase)
-               || left.RawDataMemory.Span.SequenceEqual(right.RawDataMemory.Span)
-               || string.Equals(left.Thumbprint, right.Thumbprint, StringComparison.OrdinalIgnoreCase);
+         || left.RawDataMemory.Span.SequenceEqual(right.RawDataMemory.Span)
+         || string.Equals(left.Thumbprint, right.Thumbprint, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool CertificateMatchesOrder(OpenCertServer.Acme.Abstractions.Model.Order order, X509Certificate2 certificate)
+    private static bool CertificateMatchesOrder(
+        OpenCertServer.Acme.Abstractions.Model.Order order,
+        X509Certificate2 certificate)
     {
         if (string.IsNullOrWhiteSpace(order.CertificateSigningRequest))
         {
@@ -201,9 +208,3 @@ public sealed class DefaultRevocationService : IRevocationService
         throw new NotSupportedException("Only RSA and ECDSA certificates are supported for ACME revocation.");
     }
 }
-
-
-
-
-
-

@@ -88,7 +88,10 @@ public sealed class CsrAttributes : IAsnValue
     /// <summary>
     /// Gets a value indicating whether any CSR attribute elements are present.
     /// </summary>
-    public bool HasValues => ObjectIdentifiers.Count > 0 || Attributes.Count > 0 || Templates.Count > 0;
+    public bool HasValues
+    {
+        get { return ObjectIdentifiers.Count > 0 || Attributes.Count > 0 || Templates.Count > 0; }
+    }
 
     /// <summary>
     /// Returns the first template, if any.

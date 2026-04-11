@@ -73,11 +73,11 @@ public class AcmeContextTests
         var certData = "cert"u8.ToArray();
 
         httpClientMock.Get<Directory>(directoryUri)
-            .Returns(new AcmeHttpResponse<Directory>(directoryUri, MockDirectoryV2, default, default));
+            .Returns(new AcmeHttpResponse<Directory>(directoryUri, MockDirectoryV2, null, null));
         httpClientMock.ConsumeNonce().Returns("nonce");
 
         httpClientMock.Post<string, object>(MockDirectoryV2.RevokeCert, Arg.Any<object>())
-            .Returns(new AcmeHttpResponse<string>(default, default, default, default));
+            .Returns(new AcmeHttpResponse<string>(null, null, null, null));
 
         var certKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
 

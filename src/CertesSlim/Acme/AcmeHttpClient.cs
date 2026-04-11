@@ -46,7 +46,7 @@ public class AcmeHttpClient : IAcmeHttpClient
     /// </value>
     private HttpClient Http
     {
-        get => _http.Value;
+        get { return _http.Value; }
     }
 
     /// <summary>
@@ -240,7 +240,7 @@ public class AcmeHttpClient : IAcmeHttpClient
 
     private async Task FetchNonce()
     {
-        _newNonceUri = _newNonceUri ?? (await Get<Directory>(_directoryUri).ConfigureAwait(false)).Resource.NewNonce;
+        _newNonceUri ??= (await Get<Directory>(_directoryUri).ConfigureAwait(false)).Resource.NewNonce;
 
         var msg = new HttpRequestMessage
         {
