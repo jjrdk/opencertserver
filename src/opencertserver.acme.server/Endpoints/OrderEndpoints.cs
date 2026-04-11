@@ -2,10 +2,12 @@ using CertesSlim.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Options;
 using OpenCertServer.Acme.Abstractions.Exceptions;
 using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
 using OpenCertServer.Acme.Abstractions.Model;
 using OpenCertServer.Acme.Abstractions.Services;
+using OpenCertServer.Acme.Server.Configuration;
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Filters;
 
@@ -21,10 +23,25 @@ public static class OrderEndpoints
             IAccountService accountService,
             JwsPayload payload,
             LinkGenerator links,
+            IOptions<AcmeServerOptions> optionsAccessor,
             CancellationToken cancellationToken) =>
         {
             var header = payload.ToAcmeHeader();
             var account = await accountService.FromRequest(header, cancellationToken).ConfigureAwait(false);
+
+            // RFC 8555 §7.3.3: if the server requires ToS agreement and the ToS have been updated
+            // since the account last agreed, reject newOrder with userActionRequired.
+            var tosOptions = optionsAccessor.Value.TOS;
+            if (tosOptions.RequireAgreement && tosOptions.LastUpdate.HasValue)
+            {
+                if (account.TosAccepted == null || account.TosAccepted.Value < tosOptions.LastUpdate.Value)
+                {
+                    throw new UserActionRequiredException(
+                        "The server's terms of service have been updated. Please agree to the current terms of service before creating new orders.",
+                        tosOptions.Url);
+                }
+            }
+
             var orderRequest = payload.ToPayload<CreateOrderRequest>();
             if (orderRequest?.Identifiers == null || orderRequest.Identifiers.Count == 0)
             {

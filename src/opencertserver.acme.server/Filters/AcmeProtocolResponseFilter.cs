@@ -58,6 +58,13 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
             await NonceEndpoints.EnsureReplayNonceHeaderAsync(httpContext, _nonceService, _logger).ConfigureAwait(false);
         }
 
+        // RFC 8555 §7.3.3: when the server rejects a request because the terms of service have
+        // changed, the response MUST include a Link header pointing to the new terms of service.
+        if (exception is UserActionRequiredException { TosUrl: { } tosUrl })
+        {
+            httpContext.Response.Headers.Append("Link", $"<{tosUrl}>; rel=\"terms-of-service\"");
+        }
+
         var problem = new AcmeError($"{exception.UrnBase}:{exception.ErrorType}", exception.Message)
         {
             Status = statusCode
@@ -78,6 +85,7 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
             NotFoundException => StatusCodes.Status404NotFound,
             NotAllowedException => StatusCodes.Status403Forbidden,
             NotAuthorizedException => StatusCodes.Status403Forbidden,
+            UserActionRequiredException => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status400BadRequest
         };
     }
