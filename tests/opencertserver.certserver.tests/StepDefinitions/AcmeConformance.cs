@@ -1924,7 +1924,8 @@ public partial class CertificateServerFeatures
     }
 
     private async Task SendSuccessfulNewAccountRequestAsync()
-    {        using var captureHandler = new AcmeCaptureHandler(_server.CreateHandler());
+    {
+        using var captureHandler = new AcmeCaptureHandler(_server.CreateHandler());
         var capturedContext = CreateAcmeContext(captureHandler, AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256));
 
         _ = await capturedContext.NewAccount(["mailto:test@example.com"], true).ConfigureAwait(false);
