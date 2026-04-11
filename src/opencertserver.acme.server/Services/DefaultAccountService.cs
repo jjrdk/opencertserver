@@ -26,9 +26,10 @@ public sealed class DefaultAccountService : IAccountService
         JsonWebKey jwk,
         IEnumerable<string>? contacts = null,
         bool termsOfServiceAgreed = false,
+        string? externalAccountId = null,
         CancellationToken cancellationToken = default)
     {
-        var newAccount = new Account(jwk, contacts, termsOfServiceAgreed ? DateTimeOffset.UtcNow : null);
+        var newAccount = new Account(jwk, contacts, termsOfServiceAgreed ? DateTimeOffset.UtcNow : null, externalAccountId);
 
         await _accountStore.SaveAccount(newAccount, cancellationToken).ConfigureAwait(false);
         return newAccount;

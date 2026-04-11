@@ -11,6 +11,7 @@ namespace OpenCertServer.Acme.Server;
     WriteIndented = false,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(Account))]
+[JsonSerializable(typeof(ExternalAccountKey))]
 [JsonSerializable(typeof(AcmeHeader))]
 [JsonSerializable(typeof(JwsPayload))]
 [JsonSerializable(typeof(CreateOrGetAccount))]

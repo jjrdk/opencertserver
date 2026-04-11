@@ -29,6 +29,7 @@ public static class ServiceCollectionExtensions
             services.AddScoped<IAccountService, DefaultAccountService>();
             services.AddScoped<IOrderService, DefaultOrderService>();
             services.AddScoped<IRevocationService, DefaultRevocationService>();
+            services.AddScoped<IExternalAccountBindingService, DefaultExternalAccountBindingService>();
 
             services.AddScoped<IAuthorizationFactory, DefaultAuthorizationFactory>();
 
@@ -78,6 +79,7 @@ public static class ServiceCollectionExtensions
             services.AddScoped<INonceStore, NonceStore>();
             services.AddScoped<IStoreAccounts, AccountStore>();
             services.AddScoped<IStoreOrders, OrderStore>();
+            services.AddScoped<IStoreExternalAccountKeys, ExternalAccountKeyStore>();
 
             services.AddOptions<FileStoreOptions>()
                 .Bind(configuration.GetSection(sectionName));
@@ -90,6 +92,7 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<INonceStore, InMemoryNonceStore>();
             services.AddSingleton<IStoreAccounts, InMemoryAccountStore>();
             services.AddSingleton<IStoreOrders, InMemoryOrderStore>();
+            services.AddSingleton<IStoreExternalAccountKeys, InMemoryExternalAccountKeyStore>();
 
             return services;
         }
