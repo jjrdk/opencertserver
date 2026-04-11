@@ -532,6 +532,65 @@ public partial class CertificateServerFeatures
         AcmeState.GeneratedChallengeToken = AcmeState.ChallengeResponse?.Token;
     }
 
+    // RFC 8555 §7.3.3 – Terms of service changes
+
+    [When("the terms of service are subsequently updated on the server")]
+    public void WhenTheTermsOfServiceAreSubsequentlyUpdatedOnTheServer()
+    {
+        var options = GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenCertServer.Acme.Server.Configuration.AcmeServerOptions>>().Value;
+        options.TOS.RequireAgreement = true;
+        options.TOS.Url ??= "https://localhost/tos";
+        // Set LastUpdate to now. The account under test has TosAccepted = null (not agreed
+        // during creation) so the null-check in the order endpoint will always trigger,
+        // independently of the exact timestamp. After a client re-agrees the freshly
+        // recorded TosAccepted will be greater than this LastUpdate value.
+        options.TOS.LastUpdate = DateTimeOffset.UtcNow;
+        AcmeState.RequiresTermsOfServiceAgreement = true;
+    }
+
+    [When("the client attempts to create a new order without re-agreeing to the updated terms")]
+    public async Task WhenTheClientAttemptsToCreateANewOrderWithoutReAgreeingToTheUpdatedTerms()
+    {
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
+        await SendKidSignedRequestAsync(
+            "/new-order",
+            new { identifiers = new[] { new { type = "dns", value = "localhost" } } })
+            .ConfigureAwait(false);
+    }
+
+    [When("the client re-agrees to the updated terms of service by updating the account")]
+    public async Task WhenTheClientReAgreesToTheUpdatedTermsOfServiceByUpdatingTheAccount()
+    {
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
+        var accountLocation = GetAccountLocation();
+        var signedPayload = CreateSignedPayload(
+            AcmeState.Key!,
+            new { termsOfServiceAgreed = true },
+            accountLocation,
+            await GetFreshNonceAsync().ConfigureAwait(false),
+            kid: accountLocation);
+        await SendAcmeRequestAsync(HttpMethod.Post, accountLocation.ToString(), signedPayload).ConfigureAwait(false);
+        AcmeState.AccountResponse = DeserializeAccountResponse();
+    }
+
+    [Then("the ACME server MUST accept the updated terms of service agreement")]
+    public void ThenTheAcmeServerMustAcceptTheUpdatedTermsOfServiceAgreement()
+    {
+        Assert.Equal(System.Net.HttpStatusCode.OK, AcmeState.Response?.StatusCode);
+        Assert.NotNull(AcmeState.AccountResponse);
+        Assert.Equal(AcmeAccountStatus.Valid, AcmeState.AccountResponse!.Status);
+    }
+
+    [Then("subsequent order creation requests MUST succeed")]
+    public async Task ThenSubsequentOrderCreationRequestsMustSucceed()
+    {
+        await SendKidSignedRequestAsync(
+            "/new-order",
+            new { identifiers = new[] { new { type = "dns", value = "localhost" } } })
+            .ConfigureAwait(false);
+        Assert.Equal(System.Net.HttpStatusCode.Created, AcmeState.Response?.StatusCode);
+    }
+
     [Given("the ACME server implements the \"keyChange\" resource")]
     public async Task GivenTheAcmeServerImplementsTheKeyChangeResource()
     {
