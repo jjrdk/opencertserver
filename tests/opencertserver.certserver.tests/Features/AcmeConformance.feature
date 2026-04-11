@@ -391,6 +391,24 @@ They are intentionally written before adding step implementations so they can dr
             When an unauthorized account attempts to revoke a certificate
             Then the ACME server MUST reject the revocation request
 
+    Rule: Terms of service changes
+
+        @acme-item2
+        Scenario: RFC 8555 Section 7.3.3 requires the server to reject new orders when terms of service have changed since the account last agreed
+            When an ACME client creates a new account
+            And the terms of service are subsequently updated on the server
+            And the client attempts to create a new order without re-agreeing to the updated terms
+            Then the ACME server MUST reject the request with the "userActionRequired" ACME error type
+            And the response MUST include a Link header with relation "terms-of-service"
+
+        @acme-item2
+        Scenario: RFC 8555 Section 7.3.3 allows clients to re-agree to updated terms of service via account update
+            When an ACME client creates a new account
+            And the terms of service are subsequently updated on the server
+            And the client re-agrees to the updated terms of service by updating the account
+            Then the ACME server MUST accept the updated terms of service agreement
+            And subsequent order creation requests MUST succeed
+
     Rule: Account key rollover
 
         @acme-item6

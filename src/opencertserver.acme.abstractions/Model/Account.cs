@@ -63,10 +63,12 @@ using System.Linq;
 
             /// <summary>
             /// Records acceptance of the current terms of service.
+            /// Always updates the acceptance timestamp so that re-agreement after a ToS update
+            /// is properly recorded (RFC 8555 §7.3.3).
             /// </summary>
             public void AgreeToTermsOfService()
             {
-                TosAccepted ??= DateTimeOffset.UtcNow;
+                TosAccepted = DateTimeOffset.UtcNow;
             }
 
             /// <summary>
