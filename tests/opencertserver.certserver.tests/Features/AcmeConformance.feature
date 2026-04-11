@@ -444,8 +444,8 @@ They are intentionally written before adding step implementations so they can dr
         Scenario: RFC 8555 Section 7.3.5 defines account key rollover when the server supports it
             Given the ACME server implements the "keyChange" resource
             When the client requests account key rollover
-            Then the outer JWS MUST be signed by the new account key
-            And the inner JWS MUST be signed by the old account key
+            Then the outer JWS MUST be signed by the old account key
+            And the inner JWS MUST be signed by the new account key
             And the inner payload MUST identify the same account URL as the outer request
             And the ACME server MUST verify that the old key currently controls the account
             And the ACME server MUST reject attempts to roll an account key to a key already in use by another account
