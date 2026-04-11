@@ -37,6 +37,10 @@ public sealed class ExternalAccountKeyStore : StoreBase, IStoreExternalAccountKe
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(key);
 
+        if (string.IsNullOrWhiteSpace(key.KeyId) || !IdentifierRegex().IsMatch(key.KeyId))
+        {
+            throw new ArgumentException("KeyId must be a non-empty valid identifier.", nameof(key));
+        }
         var keyPath = GetPath(key.KeyId);
         Directory.CreateDirectory(Path.GetDirectoryName(keyPath)!);
 
