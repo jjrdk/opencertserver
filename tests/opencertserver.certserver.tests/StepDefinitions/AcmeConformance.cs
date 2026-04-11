@@ -535,16 +535,18 @@ public partial class CertificateServerFeatures
     // RFC 8555 §7.3.3 – Terms of service changes
 
     [When("the terms of service are subsequently updated on the server")]
-    public void WhenTheTermsOfServiceAreSubsequentlyUpdatedOnTheServer()
+    public async Task WhenTheTermsOfServiceAreSubsequentlyUpdatedOnTheServer()
     {
         var options = GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenCertServer.Acme.Server.Configuration.AcmeServerOptions>>().Value;
+        var account = await LoadCurrentAccountModelAsync().ConfigureAwait(false);
         options.TOS.RequireAgreement = true;
         options.TOS.Url ??= "https://localhost/tos";
-        // Set LastUpdate to now. The account under test has TosAccepted = null (not agreed
-        // during creation) so the null-check in the order endpoint will always trigger,
-        // independently of the exact timestamp. After a client re-agrees the freshly
-        // recorded TosAccepted will be greater than this LastUpdate value.
-        options.TOS.LastUpdate = DateTimeOffset.UtcNow;
+        // The account under test is typically created with ToS already agreed, so make the
+        // simulated server-side update strictly later than the stored TosAccepted value.
+        // This keeps the rejection deterministic and avoids clock-resolution timing issues.
+        options.TOS.LastUpdate = account.TosAccepted.HasValue
+            ? account.TosAccepted.Value.AddTicks(1)
+            : DateTimeOffset.UtcNow;
         AcmeState.RequiresTermsOfServiceAgreement = true;
     }
 
