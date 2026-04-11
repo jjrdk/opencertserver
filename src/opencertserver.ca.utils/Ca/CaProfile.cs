@@ -10,7 +10,7 @@ using System.Security.Cryptography.X509Certificates;
 public record CaProfile : IDisposable
 {
     private BigInteger _crlNumber;
-    private readonly object _crlNumberLock = new();
+    private readonly Lock _crlNumberLock = new();
     private AsymmetricAlgorithm _privateKey = null!;
     private X509Certificate2Collection _certificateChain = [];
     private X509Certificate2Collection _publishedCertificateChain = [];
