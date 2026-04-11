@@ -2472,10 +2472,10 @@ They are intentionally written before adding step implementations so they can dr
             await testRunner.WhenAsync("the client requests account key rollover", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 400
-            await testRunner.ThenAsync("the outer JWS MUST be signed by the new account key", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+            await testRunner.ThenAsync("the outer JWS MUST be signed by the old account key", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 401
-            await testRunner.AndAsync("the inner JWS MUST be signed by the old account key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+            await testRunner.AndAsync("the inner JWS MUST be signed by the new account key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 402
             await testRunner.AndAsync("the inner payload MUST identify the same account URL as the outer request", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");

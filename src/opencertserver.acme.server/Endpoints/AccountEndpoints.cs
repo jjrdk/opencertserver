@@ -87,9 +87,19 @@ public static class AccountEndpoints
             LinkGenerator links,
             CancellationToken cancellationToken) =>
         {
+            // RFC 8555 §7.3.5: The outer JWS is signed by the CURRENT (old) account key and
+            // must identify the account with a "kid" header parameter.
+            // The request validation middleware has already verified the outer signature via kid.
             var outerHeader = payload.ToAcmeHeader();
-            var newKey = outerHeader.Jwk ?? throw new MalformedRequestException("The outer keyChange request must contain a JWK.");
+            if (outerHeader.Kid == null)
+            {
+                throw new MalformedRequestException("The outer keyChange request must identify the account with a Kid.");
+            }
 
+            var account = await accountService.FromRequest(outerHeader, cancellationToken).ConfigureAwait(false);
+
+            // RFC 8555 §7.3.5: The inner JWS is signed by the NEW key and must carry the new
+            // key in its "jwk" header parameter (no "kid" is permitted in the inner JWS).
             var nestedPayload = payload.ToPayload<JwsPayload>();
             ValidateNestedJwsEnvelope(nestedPayload);
             var innerPayload = nestedPayload!;
@@ -97,15 +107,24 @@ public static class AccountEndpoints
             var nestedHeader = innerPayload.ToAcmeHeader();
             if (nestedHeader.Jwk == null || nestedHeader.Kid != null)
             {
-                throw new MalformedRequestException("The inner keyChange request must be signed with a JWK and must not contain a Kid.");
+                throw new MalformedRequestException("The inner keyChange request must be signed with a JWK (the new key) and must not contain a Kid.");
             }
 
+            // RFC 8555 §7.3.5: The inner JWS must NOT contain a nonce.
+            if (!string.IsNullOrWhiteSpace(nestedHeader.Nonce))
+            {
+                throw new MalformedRequestException("The inner keyChange JWS must not contain a nonce.");
+            }
+
+            // RFC 8555 §7.3.5: The "url" in the inner JWS protected header must match the outer request URL.
             if (!string.Equals(nestedHeader.Url, context.Request.GetDisplayUrl(), StringComparison.Ordinal))
             {
                 throw new NotAuthorizedException();
             }
 
-            VerifyNestedSignature(innerPayload, nestedHeader.Jwk, nestedHeader.Alg);
+            // Verify the inner JWS using the new key carried in the inner "jwk" header.
+            var newKey = nestedHeader.Jwk;
+            VerifyNestedSignature(innerPayload, newKey, nestedHeader.Alg);
 
             var keyChange = innerPayload.ToPayload<KeyChangeRequest>();
             if (keyChange?.Account == null || keyChange.OldKey == null)
@@ -113,24 +132,14 @@ public static class AccountEndpoints
                 throw new MalformedRequestException("The keyChange request payload was empty or malformed.");
             }
 
-            if (!KeysMatch(nestedHeader.Jwk, keyChange.OldKey))
-            {
-                throw new NotAuthorizedException();
-            }
-
-            var accountId = GetAccountId(keyChange.Account);
-            var account = await accountService.LoadAccount(accountId, cancellationToken).ConfigureAwait(false);
-            if (account == null)
-            {
-                throw new NotFoundException();
-            }
-
+            // RFC 8555 §7.3.5: The "account" field in the inner payload must match the account URL.
             var accountUrl = GetAccountUrl(context, links, account.AccountId);
             if (!Uri.TryCreate(accountUrl, UriKind.Absolute, out var expectedAccountUrl) || keyChange.Account != expectedAccountUrl)
             {
                 throw new MalformedRequestException("The nested keyChange request must identify the current account URL.");
             }
 
+            // RFC 8555 §7.3.5: The "oldKey" field must match the account's current key.
             if (!KeysMatch(account.Jwk, keyChange.OldKey))
             {
                 throw new NotAuthorizedException();
@@ -278,8 +287,6 @@ public static class AccountEndpoints
         }
     }
 
-    private static string GetAccountId(Uri accountUrl)
-        => accountUrl.Segments.Last().TrimEnd('/');
 
     private static bool KeysMatch(JsonWebKey left, JsonWebKey right)
         => string.Equals(

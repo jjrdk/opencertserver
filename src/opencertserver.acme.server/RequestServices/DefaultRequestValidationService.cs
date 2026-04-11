@@ -41,7 +41,8 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
         "GetAuthorization",
         "AcceptChallenge",
         "FinalizeOrder",
-        "GetCertificate"
+        "GetCertificate",
+        "KeyChange"
     ];
 
     private static readonly HashSet<string> EmptyPayloadOnlyEndpoints =
@@ -161,15 +162,6 @@ public sealed class DefaultRequestValidationService : IRequestValidationService
                 throw new MalformedRequestException("newAccount requests must be signed with a JWK and must not contain a Kid.");
             }
 
-            return;
-        }
-
-        if (string.Equals(endpointName, "KeyChange", StringComparison.Ordinal))
-        {
-            if (header.Jwk == null || header.Kid != null)
-            {
-                throw new MalformedRequestException("keyChange requests must be signed with a JWK and must not contain a Kid.");
-            }
 
             return;
         }
