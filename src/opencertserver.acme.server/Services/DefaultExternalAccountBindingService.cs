@@ -66,7 +66,7 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
         {
             protectedDoc = JsonDocument.Parse(protectedJson);
         }
-        catch
+        catch (JsonException)
         {
             throw new ExternalAccountBindingException(
                 "The externalAccountBinding 'protected' field could not be parsed as JSON.");

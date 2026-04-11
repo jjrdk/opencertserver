@@ -46,7 +46,7 @@ public sealed class ExternalAccountKey : IVersioned
     /// Marks this key as used and records which account it was bound to.
     /// </summary>
     /// <param name="accountId">The account identifier.</param>
-    public void MarkUsed(string accountId)
+    public void MarkUsed(string? accountId)
     {
         IsUsed = true;
         BoundAccountId = accountId;
