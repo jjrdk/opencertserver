@@ -19,12 +19,16 @@ public interface IAccountService
     /// <param name="jwk">The JSON Web Key for the account.</param>
     /// <param name="contact">The contact URIs for the account.</param>
     /// <param name="termsOfServiceAgreed">Whether the terms of service have been agreed to.</param>
+    /// <param name="externalAccountId">
+    /// The external account key identifier that was bound to this account, or null.
+    /// </param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The created account object.</returns>
     Task<Account> CreateAccount(
         JsonWebKey jwk,
         IEnumerable<string>? contact = null,
         bool termsOfServiceAgreed = false,
+        string? externalAccountId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

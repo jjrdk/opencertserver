@@ -12,6 +12,9 @@ using CertesSlim.Acme;
 using CertesSlim.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using OpenCertServer.Acme.Abstractions.Model;
+using OpenCertServer.Acme.Abstractions.Services;
+using OpenCertServer.Acme.Abstractions.Storage;
 using Reqnroll;
 using Xunit;
 using AcmeAccount = CertesSlim.Acme.Resource.Account;
@@ -1739,6 +1742,198 @@ public partial class CertificateServerFeatures
             $"Expected certificate revocation to be rejected, but got {(int)AcmeState.Response.StatusCode}.");
     }
 
+    // ──────────────────────── EAB step definitions ────────────────────────
+
+    [Given(@"the ACME server has a provisioned external account key ""(.+)""")]
+    public async Task GivenTheAcmeServerHasAProvisionedExternalAccountKey(string keyId)
+    {
+        var store = GetRequiredService<IStoreExternalAccountKeys>();
+        var macKey = Base64UrlEncoder.Encode(
+            SHA256.HashData(Encoding.UTF8.GetBytes($"test-mac-key-for-{keyId}")));
+        var eabKey = new ExternalAccountKey(keyId, macKey, "HS256");
+        await store.SaveKey(eabKey, CancellationToken.None).ConfigureAwait(false);
+        AcmeState.CurrentEabKeyId = keyId;
+        AcmeState.CurrentEabMacKey = macKey;
+    }
+
+    [When(@"the client creates a new account with a valid external account binding for key ""(.+)""")]
+    public async Task WhenTheClientCreatesANewAccountWithAValidExternalAccountBindingForKey(string keyId)
+    {
+        AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        var requestUrl = "http://localhost/new-account";
+        var eabJws = CreateEabJws(keyId, AcmeState.CurrentEabMacKey!, "HS256", AcmeState.Key.JsonWebKey, requestUrl);
+
+        await SendJwkSignedNewAccountRequestAsync(AcmeState.Key, new
+        {
+            contact = new[] { "mailto:eab@example.com" },
+            termsOfServiceAgreed = true,
+            externalAccountBinding = eabJws
+        }).ConfigureAwait(false);
+    }
+
+    [When(@"the client creates a new account with an invalid EAB HMAC signature for key ""(.+)""")]
+    public async Task WhenTheClientCreatesANewAccountWithAnInvalidEabHmacSignatureForKey(string keyId)
+    {
+        AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        var requestUrl = "http://localhost/new-account";
+        var eabJws = CreateEabJws(keyId, Base64UrlEncoder.Encode(new byte[32]), "HS256",
+            AcmeState.Key.JsonWebKey, requestUrl);
+
+        await SendJwkSignedNewAccountRequestAsync(AcmeState.Key, new
+        {
+            contact = new[] { "mailto:eab@example.com" },
+            termsOfServiceAgreed = true,
+            externalAccountBinding = eabJws
+        }).ConfigureAwait(false);
+    }
+
+    [When(@"the client creates a new account with an EAB url mismatch for key ""(.+)""")]
+    public async Task WhenTheClientCreatesANewAccountWithAnEabUrlMismatchForKey(string keyId)
+    {
+        AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        var eabJws = CreateEabJws(keyId, AcmeState.CurrentEabMacKey!, "HS256",
+            AcmeState.Key.JsonWebKey, "http://localhost/wrong-url");
+
+        await SendJwkSignedNewAccountRequestAsync(AcmeState.Key, new
+        {
+            contact = new[] { "mailto:eab@example.com" },
+            termsOfServiceAgreed = true,
+            externalAccountBinding = eabJws
+        }).ConfigureAwait(false);
+    }
+
+    [When(@"the client creates a new account with an EAB payload that is not the account JWK for key ""(.+)""")]
+    public async Task WhenTheClientCreatesANewAccountWithAnEabPayloadThatIsNotTheAccountJwkForKey(string keyId)
+    {
+        AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        var differentKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        var requestUrl = "http://localhost/new-account";
+        var eabJws = CreateEabJws(keyId, AcmeState.CurrentEabMacKey!, "HS256",
+            differentKey.JsonWebKey, requestUrl);
+
+        await SendJwkSignedNewAccountRequestAsync(AcmeState.Key, new
+        {
+            contact = new[] { "mailto:eab@example.com" },
+            termsOfServiceAgreed = true,
+            externalAccountBinding = eabJws
+        }).ConfigureAwait(false);
+    }
+
+    [When(@"the client successfully creates a new account with external account key ""(.+)""")]
+    public async Task WhenTheClientSuccessfullyCreatesANewAccountWithExternalAccountKey(string keyId)
+    {
+        AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        var requestUrl = "http://localhost/new-account";
+        var eabJws = CreateEabJws(keyId, AcmeState.CurrentEabMacKey!, "HS256", AcmeState.Key.JsonWebKey, requestUrl);
+
+        await SendJwkSignedNewAccountRequestAsync(AcmeState.Key, new
+        {
+            contact = new[] { "mailto:eab@example.com" },
+            termsOfServiceAgreed = true,
+            externalAccountBinding = eabJws
+        }).ConfigureAwait(false);
+
+        Assert.Equal(HttpStatusCode.Created, AcmeState.Response?.StatusCode);
+        AcmeState.AccountResponse = DeserializeAccountResponse();
+        AcmeState.AccountUrl = AcmeState.Response?.Headers.Location;
+    }
+
+    [When(@"the client attempts to create another account reusing external account key ""(.+)""")]
+    public async Task WhenTheClientAttemptsToCreateAnotherAccountReusingExternalAccountKey(string keyId)
+    {
+        var newKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        var requestUrl = "http://localhost/new-account";
+        var eabJws = CreateEabJws(keyId, AcmeState.CurrentEabMacKey!, "HS256", newKey.JsonWebKey, requestUrl);
+
+        await SendJwkSignedNewAccountRequestAsync(newKey, new
+        {
+            contact = new[] { "mailto:eab2@example.com" },
+            termsOfServiceAgreed = true,
+            externalAccountBinding = eabJws
+        }).ConfigureAwait(false);
+    }
+
+    [Then(@"the account MUST be linked to external account key ""(.+)""")]
+    public async Task ThenTheAccountMustBeLinkedToExternalAccountKey(string keyId)
+    {
+        Assert.NotNull(AcmeState.Response?.Headers.Location);
+        var accountId = AcmeState.Response!.Headers.Location!.Segments.Last().TrimEnd('/');
+        var account = await GetRequiredService<IStoreAccounts>()
+            .LoadAccount(accountId, CancellationToken.None)
+            .ConfigureAwait(false);
+
+        Assert.NotNull(account);
+        Assert.Equal(keyId, account!.ExternalAccountId);
+    }
+
+    [When(@"the server checks whether external account key ""(.+)"" is active")]
+    public async Task WhenTheServerChecksWhetherExternalAccountKeyIsActive(string keyId)
+    {
+        var eabService = GetRequiredService<IExternalAccountBindingService>();
+        AcmeState.EabKeyIsActive = await eabService.HasActiveKeyAsync(keyId, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    [Then("the external account key MUST be reported as active")]
+    public void ThenTheExternalAccountKeyMustBeReportedAsActive()
+    {
+        Assert.True(AcmeState.EabKeyIsActive, "Expected the external account key to be active, but it was not.");
+    }
+
+    [Then("the external account key MUST be reported as no longer active")]
+    public void ThenTheExternalAccountKeyMustBeReportedAsNoLongerActive()
+    {
+        Assert.False(AcmeState.EabKeyIsActive, "Expected the external account key to be inactive (consumed), but it was still active.");
+    }
+
+    // ──────────────────────── EAB helpers ────────────────────────
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "These EAB tests build small JWS payloads at runtime in the non-AOT test host only.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "These EAB tests run in the regular test runtime and do not target AOT publishing.")]
+    private static object CreateEabJws(
+        string keyId,
+        string macKeyBase64Url,
+        string algorithm,
+        JsonWebKey accountJwk,
+        string requestUrl)
+    {
+        var protectedHeader = new
+        {
+            alg = algorithm,
+            kid = keyId,
+            url = requestUrl
+        };
+
+        var protectedJson = JsonSerializer.Serialize(protectedHeader);
+        var protectedEncoded = Base64UrlEncoder.Encode(Encoding.UTF8.GetBytes(protectedJson));
+
+        var payloadJson = JsonSerializer.Serialize(accountJwk);
+        var payloadEncoded = Base64UrlEncoder.Encode(Encoding.UTF8.GetBytes(payloadJson));
+
+        var macKeyBytes = Base64UrlEncoder.DecodeBytes(macKeyBase64Url);
+        var signingInput = Encoding.ASCII.GetBytes($"{protectedEncoded}.{payloadEncoded}");
+
+        byte[] signature;
+        using (var hmac = algorithm.ToUpperInvariant() switch
+        {
+            "HS256" => (HMAC)new HMACSHA256(macKeyBytes),
+            "HS384" => new HMACSHA384(macKeyBytes),
+            "HS512" => new HMACSHA512(macKeyBytes),
+            _ => throw new NotSupportedException($"Unsupported HMAC algorithm: {algorithm}")
+        })
+        {
+            signature = hmac.ComputeHash(signingInput);
+        }
+
+        return new
+        {
+            @protected = protectedEncoded,
+            payload = payloadEncoded,
+            signature = Base64UrlEncoder.Encode(signature)
+        };
+    }
+
     private async Task SendSuccessfulNewAccountRequestAsync()
     {
         using var captureHandler = new AcmeCaptureHandler(_server.CreateHandler());
@@ -3030,6 +3225,12 @@ public partial class CertificateServerFeatures
         public bool RequiresTermsOfServiceAgreement { get; set; }
 
         public bool RequiresExternalAccountBinding { get; set; }
+
+        public string? CurrentEabKeyId { get; set; }
+
+        public string? CurrentEabMacKey { get; set; }
+
+        public bool EabKeyIsActive { get; set; }
 
         public List<AcmeExchange> PostAsGetExchanges { get; } = [];
     }

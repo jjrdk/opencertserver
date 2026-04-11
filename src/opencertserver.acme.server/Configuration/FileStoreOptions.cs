@@ -21,6 +21,11 @@ public sealed class FileStoreOptions
         get { return Path.Combine(BasePath, "Orders"); }
     }
 
+    public string ExternalAccountKeyPath
+    {
+        get { return Path.Combine(BasePath, "ExternalAccountKeys"); }
+    }
+
     public string WorkingPath
     {
         get { return Path.Combine(BasePath, "_work"); }
