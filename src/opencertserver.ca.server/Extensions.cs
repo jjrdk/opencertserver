@@ -42,14 +42,33 @@ public static class Extensions
             services.AddSingleton(configuration);
             services.AddSingleton(configuration.Profiles);
             services.AddSingleton<IValidateOcspRequest, OcspRequestSignatureValidator>();
-            return services.AddSingleton<ICertificateAuthority>(sp =>
-            {
-                return new CertificateAuthority(
-                    configuration,
-                    sp.GetRequiredService<IStoreCertificates>(),
-                    chainValidation ?? new ValidateAll(),
-                    sp.GetRequiredService<ILogger<CertificateAuthority>>());
-            });
+            return services.AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
+                configuration,
+                sp.GetRequiredService<IStoreCertificates>(),
+                chainValidation ?? new ValidateAll(),
+                sp.GetRequiredService<ILogger<CertificateAuthority>>()));
+        }
+
+        /// <summary>
+        /// Registers a certificate authority to the service collection with the provided configuration loader and
+        /// optional chain validation function.
+        /// </summary>
+        /// <param name="configurationFactory">The configuration loader</param>
+        /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
+        /// <returns></returns>
+        public IServiceCollection AddCertificateAuthority(
+            Func<IServiceProvider, CaConfiguration> configurationFactory,
+            IValidateX509Chains? chainValidation = null)
+        {
+            services.AddSingleton(configurationFactory);
+            services.AddTransient(sp => sp.GetRequiredService<CaConfiguration>().Profiles);
+            services.AddSingleton<IValidateOcspRequest, OcspRequestSignatureValidator>();
+            return services.AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
+                sp.GetRequiredService<CaConfiguration>(),
+                sp.GetRequiredService<IStoreCertificates>(),
+                chainValidation ?? new ValidateAll(),
+                sp.GetRequiredService<ILogger<CertificateAuthority>>(),
+                sp.GetServices<IValidateCertificateRequests>().ToArray()));
         }
 
         /// <summary>
