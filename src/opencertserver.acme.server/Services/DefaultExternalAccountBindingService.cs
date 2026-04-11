@@ -59,49 +59,64 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
                 "The externalAccountBinding 'protected' field could not be base64url-decoded.");
         }
 
-        using var protectedDoc = JsonDocument.Parse(protectedJson);
-        var header = protectedDoc.RootElement;
-
-        // 2a. alg must be an HMAC algorithm
-        if (!header.TryGetProperty("alg", out var algProperty))
+        string alg = string.Empty;
+        string kid = string.Empty;
+        JsonDocument protectedDoc;
+        try
+        {
+            protectedDoc = JsonDocument.Parse(protectedJson);
+        }
+        catch
         {
             throw new ExternalAccountBindingException(
-                "The externalAccountBinding protected header must contain an 'alg' claim.");
+                "The externalAccountBinding 'protected' field could not be parsed as JSON.");
         }
 
-        var alg = algProperty.GetString() ?? string.Empty;
-        if (!SupportedMacAlgorithms.Contains(alg))
+        using (protectedDoc)
         {
-            throw new ExternalAccountBindingException(
-                $"The externalAccountBinding algorithm '{alg}' is not supported. Supported algorithms: {string.Join(", ", SupportedMacAlgorithms)}.");
-        }
+            var header = protectedDoc.RootElement;
 
-        // 2b. kid must be present
-        if (!header.TryGetProperty("kid", out var kidProperty))
-        {
-            throw new ExternalAccountBindingException(
-                "The externalAccountBinding protected header must contain a 'kid' claim.");
-        }
+            // 2a. alg must be an HMAC algorithm
+            if (!header.TryGetProperty("alg", out var algProperty))
+            {
+                throw new ExternalAccountBindingException(
+                    "The externalAccountBinding protected header must contain an 'alg' claim.");
+            }
 
-        var kid = kidProperty.GetString();
-        if (string.IsNullOrWhiteSpace(kid))
-        {
-            throw new ExternalAccountBindingException(
-                "The externalAccountBinding protected header 'kid' claim must not be empty.");
-        }
+            alg = algProperty.GetString() ?? string.Empty;
+            if (!SupportedMacAlgorithms.Contains(alg))
+            {
+                throw new ExternalAccountBindingException(
+                    $"The externalAccountBinding algorithm '{alg}' is not supported. Supported algorithms: {string.Join(", ", SupportedMacAlgorithms)}.");
+            }
 
-        // 2c. url must match the request URL
-        if (!header.TryGetProperty("url", out var urlProperty))
-        {
-            throw new ExternalAccountBindingException(
-                "The externalAccountBinding protected header must contain a 'url' claim.");
-        }
+            // 2b. kid must be present
+            if (!header.TryGetProperty("kid", out var kidProperty))
+            {
+                throw new ExternalAccountBindingException(
+                    "The externalAccountBinding protected header must contain a 'kid' claim.");
+            }
 
-        var eabUrl = urlProperty.GetString();
-        if (!string.Equals(eabUrl, requestUrl, StringComparison.Ordinal))
-        {
-            throw new ExternalAccountBindingException(
-                $"The externalAccountBinding 'url' claim '{eabUrl}' does not match the request URL '{requestUrl}'.");
+            kid = kidProperty.GetString() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(kid))
+            {
+                throw new ExternalAccountBindingException(
+                    "The externalAccountBinding protected header 'kid' claim must not be empty.");
+            }
+
+            // 2c. url must match the request URL
+            if (!header.TryGetProperty("url", out var urlProperty))
+            {
+                throw new ExternalAccountBindingException(
+                    "The externalAccountBinding protected header must contain a 'url' claim.");
+            }
+
+            var eabUrl = urlProperty.GetString();
+            if (!string.Equals(eabUrl, requestUrl, StringComparison.Ordinal))
+            {
+                throw new ExternalAccountBindingException(
+                    $"The externalAccountBinding 'url' claim '{eabUrl}' does not match the request URL '{requestUrl}'.");
+            }
         }
 
         // 3. Look up the external account key
