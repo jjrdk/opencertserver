@@ -29,12 +29,9 @@ public class CaProfileSet : IStoreCaProfiles
     /// <inheritdoc />
     public Task<CaProfile> GetProfile(string? name, CancellationToken cancellationToken = default)
     {
-        if (name == null)
-        {
-            return Task.FromResult(_profiles[_defaultProfile]);
-        }
-
-        return Task.FromResult(_profiles.TryGetValue(name, out var profile) ? profile : _profiles[_defaultProfile]);
+        return name == null
+            ? Task.FromResult(_profiles[_defaultProfile])
+            : Task.FromResult(_profiles.TryGetValue(name, out var profile) ? profile : _profiles[_defaultProfile]);
     }
 
     /// <inheritdoc />

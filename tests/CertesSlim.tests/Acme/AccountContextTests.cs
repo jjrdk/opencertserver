@@ -11,9 +11,9 @@ namespace CertesSlim.Tests.Acme;
 
 public class AccountContextTests
 {
-    private Uri _location = new("http://acme.d/account/101");
-    private IAcmeContext _contextMock = Substitute.For<IAcmeContext>();
-    private IAcmeHttpClient _httpClientMock = Substitute.For<IAcmeHttpClient>();
+    private readonly Uri _location = new("http://acme.d/account/101");
+    private readonly IAcmeContext _contextMock = Substitute.For<IAcmeContext>();
+    private readonly IAcmeHttpClient _httpClientMock = Substitute.For<IAcmeHttpClient>();
 
     [Fact]
     public async Task CanDeactivateAccount()

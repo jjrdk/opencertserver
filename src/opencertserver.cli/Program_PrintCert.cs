@@ -28,7 +28,6 @@ internal static partial class Program
         }
         try
         {
-            var p = Path.GetFullPath(certPath);
             if (string.IsNullOrWhiteSpace(certPath) || !File.Exists(certPath))
             {
                 Console.WriteLine("Certificate file is required and must exist (--cert path).\n");
@@ -52,11 +51,7 @@ internal static partial class Program
                 }
             }
 
-            if (certBytes == null)
-            {
-                // Try to treat as raw DER
-                certBytes = File.ReadAllBytes(certPath);
-            }
+            certBytes ??= File.ReadAllBytes(certPath);
 
             if (certBytes.Length == 0)
             {

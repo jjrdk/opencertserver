@@ -16,6 +16,9 @@ public class ExternalAccountBindingException : AcmeException
     { }
 
     /// <inheritdoc />
-    public override string ErrorType => "externalAccountRequired";
+    public override string ErrorType
+    {
+        get { return "externalAccountRequired"; }
+    }
 }
 

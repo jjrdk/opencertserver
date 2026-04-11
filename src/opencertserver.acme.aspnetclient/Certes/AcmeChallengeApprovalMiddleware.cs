@@ -12,12 +12,12 @@ public sealed class AcmeChallengeApprovalMiddleware : ILetsEncryptChallengeAppro
     private static readonly PathString MagicPrefixSegments = new(MagicPrefix);
 
     private readonly RequestDelegate _next;
-    private readonly ILogger<ILetsEncryptChallengeApprovalMiddleware> _logger;
+    private readonly ILogger<AcmeChallengeApprovalMiddleware> _logger;
     private readonly IPersistenceService _persistenceService;
 
     public AcmeChallengeApprovalMiddleware(
         RequestDelegate next,
-        ILogger<ILetsEncryptChallengeApprovalMiddleware> logger,
+        ILogger<AcmeChallengeApprovalMiddleware> logger,
         IPersistenceService persistenceService)
     {
         _next = next;
@@ -36,7 +36,7 @@ public sealed class AcmeChallengeApprovalMiddleware : ILetsEncryptChallengeAppro
     {
         var path = context.Request.Path.ToString();
         _logger.LogDebug(
-            "Challenge invoked: {challengePath} by {IpAddress}",
+            "Challenge invoked: {ChallengePath} by {IpAddress}",
             path,
             context.Connection.RemoteIpAddress);
 
@@ -46,7 +46,7 @@ public sealed class AcmeChallengeApprovalMiddleware : ILetsEncryptChallengeAppro
         if (matchingChallenge == null)
         {
             _logger.LogInformation(
-                "The given challenge did not match {challengePath} among {allChallenges}",
+                "The given challenge did not match {ChallengePath} among {AllChallenges}",
                 path,
                 allChallenges);
             await _next(context).ConfigureAwait(false);

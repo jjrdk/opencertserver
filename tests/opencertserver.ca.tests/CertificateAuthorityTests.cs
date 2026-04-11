@@ -71,9 +71,9 @@ public sealed class CertificateAuthorityTests : IDisposable
         var req = CreateCertificateRequest(rsa);
         var bytes = req.CreateSigningRequest();
         var cert =
-            (await _authority.SignCertificateRequestPem(
+            await _authority.SignCertificateRequestPem(
                 PemEncoding.WriteString("CERTIFICATE REQUEST", bytes),
-                cancellationToken: CancellationToken.None)) as SignCertificateResponse.Success;
+                cancellationToken: CancellationToken.None) as SignCertificateResponse.Success;
 
         Assert.Equal(GetParts(req.SubjectName), GetParts(cert!.Certificate.SubjectName));
 

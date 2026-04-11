@@ -15,8 +15,8 @@ public class CsrInfo
     /// </value>
     public string? CountryName
     {
-        get => _data.GetValueOrDefault("C");
-        set => _data["C"] = value ?? throw new ArgumentNullException(nameof(value));
+        get { return _data.GetValueOrDefault("C"); }
+        set { _data["C"] = value ?? throw new ArgumentNullException(nameof(value)); }
     }
 
     /// <summary>
@@ -27,8 +27,8 @@ public class CsrInfo
     /// </value>
     public string? State
     {
-        get => _data.GetValueOrDefault("ST");
-        set => _data["ST"] = value ?? throw new ArgumentNullException(nameof(value));
+        get { return _data.GetValueOrDefault("ST"); }
+        set { _data["ST"] = value ?? throw new ArgumentNullException(nameof(value)); }
     }
 
     /// <summary>
@@ -39,8 +39,8 @@ public class CsrInfo
     /// </value>
     public string? Locality
     {
-        get => _data.GetValueOrDefault("L");
-        set => _data["L"] = value ?? throw new ArgumentNullException(nameof(value));
+        get { return _data.GetValueOrDefault("L"); }
+        set { _data["L"] = value ?? throw new ArgumentNullException(nameof(value)); }
     }
 
     /// <summary>
@@ -51,8 +51,8 @@ public class CsrInfo
     /// </value>
     public string? Organization
     {
-        get => _data.GetValueOrDefault("O");
-        set => _data["O"] = value ?? throw new ArgumentNullException(nameof(value));
+        get { return _data.GetValueOrDefault("O"); }
+        set { _data["O"] = value ?? throw new ArgumentNullException(nameof(value)); }
     }
 
     /// <summary>
@@ -63,8 +63,8 @@ public class CsrInfo
     /// </value>
     public string? OrganizationUnit
     {
-        get => _data.GetValueOrDefault("OU");
-        set => _data["OU"] = value ?? throw new ArgumentNullException(nameof(value));
+        get { return _data.GetValueOrDefault("OU"); }
+        set { _data["OU"] = value ?? throw new ArgumentNullException(nameof(value)); }
     }
 
     /// <summary>
@@ -76,8 +76,8 @@ public class CsrInfo
     /// </value>
     public string? CommonName
     {
-        get => _data.GetValueOrDefault("CN");
-        set => _data["CN"] = value ?? throw new ArgumentNullException(nameof(value));
+        get { return _data.GetValueOrDefault("CN"); }
+        set { _data["CN"] = value ?? throw new ArgumentNullException(nameof(value)); }
     }
 
     /// <summary>
@@ -88,6 +88,6 @@ public class CsrInfo
     /// </value>
     internal IEnumerable<(string name, string value)> Fields
     {
-        get => _data.Select(p => (p.Key, p.Value));
+        get { return _data.Select(p => (p.Key, p.Value)); }
     }
 }

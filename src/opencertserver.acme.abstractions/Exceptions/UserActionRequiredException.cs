@@ -29,6 +29,9 @@ public sealed class UserActionRequiredException : AcmeException
     public string? TosUrl { get; }
 
     /// <inheritdoc/>
-    public override string ErrorType => "userActionRequired";
+    public override string ErrorType
+    {
+        get { return "userActionRequired"; }
+    }
 }
 

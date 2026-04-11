@@ -18,13 +18,4 @@ public class X509IssuerAltNameExtension : X509Extension
         : base(new Oid(Oids.IssuerAltName, "Issuer Alt Name"), rawData, isCritical)
     {
     }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="X509IssuerAltNameExtension"/> class.
-    /// </summary>
-    /// <param name="rawData">The raw extension data.</param>
-    public X509IssuerAltNameExtension(ReadOnlySpan<byte> rawData)
-        : base(new Oid(Oids.IssuerAltName, "Issuer Alt Name"), rawData, false)
-    {
-    }
 }

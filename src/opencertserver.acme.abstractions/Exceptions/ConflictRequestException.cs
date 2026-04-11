@@ -35,22 +35,6 @@ public sealed class ConflictRequestException : MalformedRequestException
     { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ConflictRequestException"/> class for an order with a conflicting status.
-    /// </summary>
-    /// <param name="attemptedStatus">The attempted order status.</param>
-    public ConflictRequestException(OrderStatus attemptedStatus)
-        : this("order", $"{attemptedStatus}")
-    { }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ConflictRequestException"/> class for an authorization with a conflicting status.
-    /// </summary>
-    /// <param name="attemptedStatus">The attempted authorization status.</param>
-    public ConflictRequestException(AuthorizationStatus attemptedStatus)
-        : this("authorization", $"{attemptedStatus}")
-    { }
-
-    /// <summary>
     /// Initializes a new instance of the <see cref="ConflictRequestException"/> class for a challenge with a conflicting status.
     /// </summary>
     /// <param name="attemptedStatus">The attempted challenge status.</param>
@@ -74,23 +58,5 @@ public sealed class ConflictRequestException : MalformedRequestException
     /// <param name="actualStatus">The actual order status.</param>
     public ConflictRequestException(OrderStatus expectedStatus, OrderStatus actualStatus)
         : this("order", $"{expectedStatus}", $"{actualStatus}")
-    { }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ConflictRequestException"/> class for an authorization with expected and actual statuses.
-    /// </summary>
-    /// <param name="expectedStatus">The expected authorization status.</param>
-    /// <param name="actualStatus">The actual authorization status.</param>
-    public ConflictRequestException(AuthorizationStatus expectedStatus, AuthorizationStatus actualStatus)
-        : this("authorization", $"{expectedStatus}", $"{actualStatus}")
-    { }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ConflictRequestException"/> class for a challenge with expected and actual statuses.
-    /// </summary>
-    /// <param name="expectedStatus">The expected challenge status.</param>
-    /// <param name="actualStatus">The actual challenge status.</param>
-    public ConflictRequestException(ChallengeStatus expectedStatus, ChallengeStatus actualStatus)
-        : this("challenge", $"{expectedStatus}", $"{actualStatus}")
     { }
 }

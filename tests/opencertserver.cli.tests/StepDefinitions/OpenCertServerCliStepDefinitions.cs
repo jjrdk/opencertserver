@@ -111,7 +111,11 @@ namespace opencertserver.cli.tests.StepDefinitions
 
         private static string[] SplitArguments(string commandLine)
         {
-            if (string.IsNullOrEmpty(commandLine)) return Array.Empty<string>();
+            if (string.IsNullOrEmpty(commandLine))
+            {
+                return Array.Empty<string>();
+            }
+
             var args = new List<string>();
             var current = new System.Text.StringBuilder();
             var inQuotes = false;
@@ -137,7 +141,11 @@ namespace opencertserver.cli.tests.StepDefinitions
                 }
             }
 
-            if (current.Length > 0) args.Add(current.ToString());
+            if (current.Length > 0)
+            {
+                args.Add(current.ToString());
+            }
+
             return args.ToArray();
         }
 
@@ -157,7 +165,11 @@ namespace opencertserver.cli.tests.StepDefinitions
                     // collect subsequent tokens that are values until next token that starts with --
                     while (i < tokens.Length && !tokens[i].StartsWith("--"))
                     {
-                        if (sb.Length > 0) sb.Append(' ');
+                        if (sb.Length > 0)
+                        {
+                            sb.Append(' ');
+                        }
+
                         sb.Append(tokens[i]);
                         i++;
                     }

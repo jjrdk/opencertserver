@@ -37,14 +37,6 @@ public class AttributeTypeValue : IAsnValue
     /// <summary>
     /// Initializes a new instance of the <see cref="AttributeTypeValue"/> class.
     /// </summary>
-    /// <param name="rawData">The raw data to read.</param>
-    public AttributeTypeValue(ReadOnlyMemory<byte> rawData) : this(new AsnReader(rawData, AsnEncodingRules.DER))
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AttributeTypeValue"/> class.
-    /// </summary>
     /// <param name="reader">The <see cref="AsnReader"/> to read the content from.</param>
     public AttributeTypeValue(AsnReader reader)
     {

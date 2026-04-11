@@ -869,7 +869,7 @@ public partial class CertificateServerFeatures
         var responseExtensions = basicResponse.TbsResponseData.ResponseExtensions;
         Assert.NotNull(responseExtensions);
         X509Extension? nonceExt = null;
-        foreach (X509Extension ext in responseExtensions)
+        foreach (var ext in responseExtensions)
         {
             if (ext.Oid?.Value == Oids.OcspNonce)
             {

@@ -30,7 +30,6 @@ public sealed class EstClient : IDisposable
     private HttpMessageHandler _messageHandler;
     private HttpClient _messageClient;
     private readonly AsyncLocal<HttpRequestMessage?> _activeRequest = new();
-    private EstBootstrapTrust? _pendingBootstrapTrust;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EstClient"/> class.
@@ -62,28 +61,25 @@ public sealed class EstClient : IDisposable
     /// <summary>
     /// Gets the pending trust material retrieved during EST bootstrap.
     /// </summary>
-    public EstBootstrapTrust? PendingBootstrapTrust => _pendingBootstrapTrust;
+    public EstBootstrapTrust? PendingBootstrapTrust { get; private set; }
 
     /// <summary>
     /// Accepts the pending EST bootstrap trust material for subsequent explicit trust validation.
     /// </summary>
     public void AcceptBootstrapTrust()
     {
-        if (_pendingBootstrapTrust == null)
+        if (PendingBootstrapTrust == null)
         {
             throw new InvalidOperationException("No pending EST bootstrap trust is available to accept.");
         }
 
-        foreach (var certificate in _pendingBootstrapTrust.Certificates)
+        foreach (var certificate in PendingBootstrapTrust.Certificates.Where(certificate => _options.ExplicitTrustAnchors
+            .All(existing => !existing.RawData.AsSpan().SequenceEqual(certificate.RawData))))
         {
-            if (_options.ExplicitTrustAnchors
-                .All(existing => !existing.RawData.AsSpan().SequenceEqual(certificate.RawData)))
-            {
-                _options.ExplicitTrustAnchors.Add(certificate);
-            }
+            _options.ExplicitTrustAnchors.Add(certificate);
         }
 
-        _pendingBootstrapTrust = null;
+        PendingBootstrapTrust = null;
         ResetTransportSession();
     }
 
@@ -92,7 +88,7 @@ public sealed class EstClient : IDisposable
     /// </summary>
     public void RejectBootstrapTrust()
     {
-        _pendingBootstrapTrust = null;
+        PendingBootstrapTrust = null;
     }
 
     /// <summary>
@@ -260,7 +256,7 @@ public sealed class EstClient : IDisposable
         }
     }
 
-    private void ConfigureRedirectHandling(HttpMessageHandler handler)
+    private static void ConfigureRedirectHandling(HttpMessageHandler handler)
     {
         switch (handler)
         {
@@ -318,7 +314,7 @@ public sealed class EstClient : IDisposable
         if (!options.AllowBootstrapCaCertsWithoutTrustedServer ||
             options.TrustAnchorMode != EstTrustAnchorMode.ExplicitOnly ||
             options.ExplicitTrustAnchors.Count != 0 ||
-            _pendingBootstrapTrust != null)
+            PendingBootstrapTrust != null)
         {
             return false;
         }
@@ -357,16 +353,14 @@ public sealed class EstClient : IDisposable
             return;
         }
 
-        _pendingBootstrapTrust = new EstBootstrapTrust(requestUri, certificates);
+        PendingBootstrapTrust = new EstBootstrapTrust(requestUri, certificates);
     }
 
     private bool ShouldCaptureBootstrapTrust(Uri requestUri)
     {
-        return _options.AllowBootstrapCaCertsWithoutTrustedServer &&
-               _options.TrustAnchorMode == EstTrustAnchorMode.ExplicitOnly &&
-               _options.ExplicitTrustAnchors.Count == 0 &&
-               _pendingBootstrapTrust == null &&
-               IsBootstrapPath(requestUri.AbsolutePath);
+        return _options is { AllowBootstrapCaCertsWithoutTrustedServer: true, TrustAnchorMode: EstTrustAnchorMode.ExplicitOnly, ExplicitTrustAnchors.Count: 0 } &&
+            PendingBootstrapTrust == null &&
+            IsBootstrapPath(requestUri.AbsolutePath);
     }
 
     private void EnsureBootstrapRequestAllowed(
@@ -376,7 +370,7 @@ public sealed class EstClient : IDisposable
     {
         var path = request.RequestUri?.AbsolutePath ?? string.Empty;
 
-        if (_pendingBootstrapTrust != null)
+        if (PendingBootstrapTrust != null)
         {
             throw new InvalidOperationException(
                 "EST bootstrap trust is pending. No other EST protocol exchange is allowed until the trust response is accepted and a new TLS session is established.");
@@ -404,9 +398,7 @@ public sealed class EstClient : IDisposable
 
     private bool IsBootstrapProvisioningRequired()
     {
-        return _options.AllowBootstrapCaCertsWithoutTrustedServer &&
-               _options.TrustAnchorMode == EstTrustAnchorMode.ExplicitOnly &&
-               _options.ExplicitTrustAnchors.Count == 0;
+        return _options is { AllowBootstrapCaCertsWithoutTrustedServer: true, TrustAnchorMode: EstTrustAnchorMode.ExplicitOnly, ExplicitTrustAnchors.Count: 0 };
     }
 
     private static bool IsBootstrapPath(string path)
@@ -418,7 +410,7 @@ public sealed class EstClient : IDisposable
                  path.EndsWith("/fullcmc", StringComparison.Ordinal)));
     }
 
-    private bool BuildChainWithExplicitTrustAnchors(X509Certificate2 certificate, EstClientOptions options)
+    private static bool BuildChainWithExplicitTrustAnchors(X509Certificate2 certificate, EstClientOptions options)
     {
         using var chain = new X509Chain();
         chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;

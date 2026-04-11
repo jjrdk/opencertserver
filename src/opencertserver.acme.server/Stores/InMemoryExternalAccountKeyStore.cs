@@ -29,7 +29,7 @@ internal sealed class InMemoryExternalAccountKeyStore : IStoreExternalAccountKey
     public Task<ExternalAccountKey?> FindActiveKey(string keyId, CancellationToken cancellationToken)
     {
         _ = _keys.TryGetValue(keyId, out var key);
-        ExternalAccountKey? result = key?.IsUsed == false ? key : null;
+        var result = key?.IsUsed == false ? key : null;
         return Task.FromResult(result);
     }
 }

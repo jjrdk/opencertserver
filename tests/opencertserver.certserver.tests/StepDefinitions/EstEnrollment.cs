@@ -25,7 +25,7 @@ public partial class CertificateServerFeatures
     [When(@"I enroll with a valid JWT")]
     public async Task WhenIEnrollWithAValidJwt()
     {
-        EstClient? estClient = _estClient;
+        var estClient = _estClient;
         if (estClient is null)
         {
             GivenAnEstClient();

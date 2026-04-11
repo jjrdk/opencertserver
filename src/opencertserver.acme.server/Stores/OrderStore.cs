@@ -158,7 +158,7 @@ public sealed class OrderStore : StoreBase, IStoreOrders
         var ownerDirectory = Path.Combine(Options.Value.AccountPath, accountId, "orders");
         if (!Directory.Exists(ownerDirectory))
         {
-            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+            return Task.FromResult<IReadOnlyList<string>>([]);
         }
 
         cancellationToken.ThrowIfCancellationRequested();

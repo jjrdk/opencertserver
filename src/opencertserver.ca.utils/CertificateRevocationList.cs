@@ -140,7 +140,11 @@ public class CertificateRevocationList
     /// <summary>
     /// Writes an AlgorithmIdentifier SEQUENCE with the OID and appropriate parameters.
     /// </summary>
-    private static void WriteAlgorithmIdentifier(AsnWriter writer, string oid, AsymmetricAlgorithm key, HashAlgorithmName hashAlgorithmName)
+    private static void WriteAlgorithmIdentifier(
+        AsnWriter writer,
+        string oid,
+        AsymmetricAlgorithm key,
+        HashAlgorithmName hashAlgorithmName)
     {
         using (writer.PushSequence())
         {
@@ -181,6 +185,7 @@ public class CertificateRevocationList
                     writer.WriteNull();
                 }
             }
+
             // maskGenAlgorithm [1] = mgf1 with same hash
             using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true)))
             {
@@ -194,6 +199,7 @@ public class CertificateRevocationList
                     }
                 }
             }
+
             // saltLength [2]
             using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 2, isConstructed: true)))
             {
@@ -205,13 +211,19 @@ public class CertificateRevocationList
     private static (string Oid, int SaltLength) GetPssHashParams(HashAlgorithmName hashAlgorithmName)
     {
         if (hashAlgorithmName == HashAlgorithmName.SHA256)
+        {
             return ("2.16.840.1.101.3.4.2.1", 32);
+        }
+
         if (hashAlgorithmName == HashAlgorithmName.SHA384)
+        {
             return ("2.16.840.1.101.3.4.2.2", 48);
-        if (hashAlgorithmName == HashAlgorithmName.SHA512)
-            return ("2.16.840.1.101.3.4.2.3", 64);
-        // Default to SHA-256 for any other algorithm
-        return ("2.16.840.1.101.3.4.2.1", 32);
+        }
+
+        return hashAlgorithmName == HashAlgorithmName.SHA512
+            ? ("2.16.840.1.101.3.4.2.3", 64)
+            // Default to SHA-256 for any other algorithm
+            : ("2.16.840.1.101.3.4.2.1", 32);
     }
 
     /// <summary>
@@ -237,13 +249,14 @@ public class CertificateRevocationList
 
         // Auto-inject authorityKeyIdentifier if not already in extensions
         var allExtensions = Extensions.ToList();
-        if (!allExtensions.Any(e => e.Oid?.Value == "2.5.29.35"))
+        if (allExtensions.All(e => e.Oid?.Value != "2.5.29.35"))
         {
             var spki = signingKey switch
             {
                 RSA rsa => rsa.ExportSubjectPublicKeyInfo(),
                 ECDsa ecdsa => ecdsa.ExportSubjectPublicKeyInfo(),
-                _ => throw new NotSupportedException($"Key type {signingKey.GetType()} not supported for AKI derivation.")
+                _ => throw new NotSupportedException(
+                    $"Key type {signingKey.GetType()} not supported for AKI derivation.")
             };
             // Compute the SHA-1 hash of the public key bit string (RFC 5280 §4.2.1.2 method 1)
             var keyIdentifier = ComputeKeyIdentifierFromSpki(spki);
@@ -406,7 +419,10 @@ public class CertificateRevocationList
         // 3. Read signatureValue (BIT STRING)
         var signatureValue = certificateList.ReadBitString(out var unusedBits, Asn1Tag.ConstructedBitString);
         if (unusedBits != 0)
+        {
             throw new CryptographicException("Signature BIT STRING has unused bits != 0");
+        }
+
         certificateList.ThrowIfNotEmpty();
 
         // Remove leading zero if present (some implementations add it)
@@ -433,4 +449,3 @@ public class CertificateRevocationList
         return tbsSpan;
     }
 }
-

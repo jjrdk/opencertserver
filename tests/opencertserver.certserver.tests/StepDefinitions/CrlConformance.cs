@@ -22,7 +22,10 @@ public partial class CertificateServerFeatures
         {
             if (_scenarioContext.TryGetValue(nameof(CrlConformanceState), out var value) &&
                 value is CrlConformanceState state)
+            {
                 return state;
+            }
+
             state = new CrlConformanceState();
             _scenarioContext[nameof(CrlConformanceState)] = state;
             return state;
@@ -367,8 +370,8 @@ public partial class CertificateServerFeatures
         var certIssuerExt = new CertificateExtension(
             new Oid("2.5.29.29"),
             null, delegatedIssuerDn, null, isCritical: true);
-        var entry1 = new RevokedCertificate(new byte[] { 0x01 }, now.AddDays(-10), certIssuerExt);
-        var entry2 = new RevokedCertificate(new byte[] { 0x02 }, now.AddDays(-5));
+        var entry1 = new RevokedCertificate([0x01], now.AddDays(-10), certIssuerExt);
+        var entry2 = new RevokedCertificate([0x02], now.AddDays(-5));
         var crl = new CertificateRevocationList(
             TypeVersion.V2,
             HashAlgorithmName.SHA256,
@@ -421,7 +424,9 @@ public partial class CertificateServerFeatures
         var response = await client.GetAsync("ca/crl");
         CrlState.LastHttpResponse = response;
         if (response.IsSuccessStatusCode)
+        {
             CrlState.LastCrlBytes = await response.Content.ReadAsByteArrayAsync();
+        }
     }
 
     [When("an HTTP GET request is made to the CRL endpoint for a named CA profile")]
@@ -501,7 +506,10 @@ public partial class CertificateServerFeatures
 
         // skip version if present
         if (tbsReader.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
+        {
             tbsReader.ReadInteger();
+        }
+
         var innerAlg = tbsReader.ReadSequence();
         var innerOid = innerAlg.ReadObjectIdentifier();
         Assert.Equal(outerOid, innerOid);
@@ -522,7 +530,9 @@ public partial class CertificateServerFeatures
         certList.ReadSequence(); // consume outer AlgorithmIdentifier
 
         if (tbsReader.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
+        {
             tbsReader.ReadInteger();
+        }
 
         // Capture inner AlgorithmIdentifier encoded bytes before consuming
         var innerAlgEncoded = tbsReader.PeekEncodedValue().ToArray();
@@ -600,7 +610,11 @@ public partial class CertificateServerFeatures
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var certList = reader.ReadSequence();
         var tbs = certList.ReadSequence();
-        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer)) tbs.ReadInteger();
+        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
+        {
+            tbs.ReadInteger();
+        }
+
         _ = tbs.ReadSequence(); // algorithm
         // issuer is next — must be a SEQUENCE
         Assert.True(tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Sequence));
@@ -613,7 +627,11 @@ public partial class CertificateServerFeatures
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var certList = reader.ReadSequence();
         var tbs = certList.ReadSequence();
-        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer)) tbs.ReadInteger();
+        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
+        {
+            tbs.ReadInteger();
+        }
+
         _ = tbs.ReadSequence(); // algorithm
         var issuer = tbs.ReadSequence();
         Assert.True(issuer.HasData); // non-empty
@@ -637,7 +655,11 @@ public partial class CertificateServerFeatures
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var certList = reader.ReadSequence();
         var tbs = certList.ReadSequence();
-        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer)) tbs.ReadInteger();
+        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
+        {
+            tbs.ReadInteger();
+        }
+
         _ = tbs.ReadSequence(); // algorithm
         _ = tbs.ReadSequence(); // issuer
         // thisUpdate must be either UTCTime or GeneralizedTime
@@ -654,7 +676,11 @@ public partial class CertificateServerFeatures
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var certList = reader.ReadSequence();
         var tbs = certList.ReadSequence();
-        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer)) tbs.ReadInteger();
+        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
+        {
+            tbs.ReadInteger();
+        }
+
         _ = tbs.ReadSequence(); // algorithm
         _ = tbs.ReadSequence(); // issuer
         // Read thisUpdate
@@ -670,7 +696,9 @@ public partial class CertificateServerFeatures
         }
 
         if (thisUpdate.Year < 2050)
+        {
             Assert.Equal(Asn1Tag.UtcTime, tag, Asn1TagComparer.Instance);
+        }
     }
 
     [Then("thisUpdate MUST be encoded as GeneralizedTime when the date is year 2050 or later")]
@@ -680,14 +708,20 @@ public partial class CertificateServerFeatures
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var certList = reader.ReadSequence();
         var tbs = certList.ReadSequence();
-        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer)) tbs.ReadInteger();
+        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
+        {
+            tbs.ReadInteger();
+        }
+
         _ = tbs.ReadSequence(); // algorithm
         _ = tbs.ReadSequence(); // issuer
         var tag = tbs.PeekTag();
-        DateTimeOffset thisUpdate = tag.HasSameClassAndValue(Asn1Tag.UtcTime)
+        var thisUpdate = tag.HasSameClassAndValue(Asn1Tag.UtcTime)
             ? tbs.ReadUtcTime() : tbs.ReadGeneralizedTime();
         if (thisUpdate.Year >= 2050)
+        {
             Assert.Equal(Asn1Tag.GeneralizedTime, tag, Asn1TagComparer.Instance);
+        }
         // else: current year is before 2050 — test constraint is vacuously satisfied
     }
 
@@ -698,12 +732,23 @@ public partial class CertificateServerFeatures
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var certList = reader.ReadSequence();
         var tbs = certList.ReadSequence();
-        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer)) tbs.ReadInteger();
+        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
+        {
+            tbs.ReadInteger();
+        }
+
         _ = tbs.ReadSequence(); // algorithm
         _ = tbs.ReadSequence(); // issuer
         // Skip thisUpdate
-        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime)) tbs.ReadUtcTime();
-        else tbs.ReadGeneralizedTime();
+        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime))
+        {
+            tbs.ReadUtcTime();
+        }
+        else
+        {
+            tbs.ReadGeneralizedTime();
+        }
+
         // Check nextUpdate present
         var tag = tbs.PeekTag();
         Assert.True(
@@ -718,18 +763,39 @@ public partial class CertificateServerFeatures
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var certList = reader.ReadSequence();
         var tbs = certList.ReadSequence();
-        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer)) tbs.ReadInteger();
+        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
+        {
+            tbs.ReadInteger();
+        }
+
         _ = tbs.ReadSequence(); // alg
         _ = tbs.ReadSequence(); // issuer
-        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime)) tbs.ReadUtcTime();
-        else if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.GeneralizedTime)) tbs.ReadGeneralizedTime();
-        if (!tbs.HasData) return;
+        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime))
+        {
+            tbs.ReadUtcTime();
+        }
+        else if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.GeneralizedTime))
+        {
+            tbs.ReadGeneralizedTime();
+        }
+
+        if (!tbs.HasData)
+        {
+            return;
+        }
+
         var tag = tbs.PeekTag();
-        if (!tag.HasSameClassAndValue(Asn1Tag.UtcTime) && !tag.HasSameClassAndValue(Asn1Tag.GeneralizedTime)) return;
-        DateTimeOffset nextUpdate = tag.HasSameClassAndValue(Asn1Tag.UtcTime)
+        if (!tag.HasSameClassAndValue(Asn1Tag.UtcTime) && !tag.HasSameClassAndValue(Asn1Tag.GeneralizedTime))
+        {
+            return;
+        }
+
+        var nextUpdate = tag.HasSameClassAndValue(Asn1Tag.UtcTime)
             ? tbs.ReadUtcTime() : tbs.ReadGeneralizedTime();
         if (nextUpdate.Year < 2050)
+        {
             Assert.Equal(Asn1Tag.UtcTime, tag, Asn1TagComparer.Instance);
+        }
     }
 
     [Then("if nextUpdate is present it MUST be encoded as GeneralizedTime when the date is year 2050 or later")]
@@ -744,8 +810,10 @@ public partial class CertificateServerFeatures
     {
         var crl = CertificateRevocationList.Load(CrlState.LastCrlBytes!);
         if (crl.NextUpdate.HasValue)
+        {
             Assert.True(crl.NextUpdate.Value > crl.ThisUpdate,
                 "nextUpdate must be later than thisUpdate");
+        }
     }
 
     [Then("the TBSCertList revokedCertificates field MUST be absent from the encoding")]
@@ -755,16 +823,38 @@ public partial class CertificateServerFeatures
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var certList = reader.ReadSequence();
         var tbs = certList.ReadSequence();
-        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer)) tbs.ReadInteger();
+        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.Integer))
+        {
+            tbs.ReadInteger();
+        }
+
         _ = tbs.ReadSequence(); // alg
         _ = tbs.ReadSequence(); // issuer
-        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime)) tbs.ReadUtcTime();
-        else if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.GeneralizedTime)) tbs.ReadGeneralizedTime();
-        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime)) tbs.ReadUtcTime();
-        else if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.GeneralizedTime)) tbs.ReadGeneralizedTime();
+        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime))
+        {
+            tbs.ReadUtcTime();
+        }
+        else if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.GeneralizedTime))
+        {
+            tbs.ReadGeneralizedTime();
+        }
+
+        if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.UtcTime))
+        {
+            tbs.ReadUtcTime();
+        }
+        else if (tbs.PeekTag().HasSameClassAndValue(Asn1Tag.GeneralizedTime))
+        {
+            tbs.ReadGeneralizedTime();
+        }
+
         // Next tag, if present, should NOT be a plain SEQUENCE (revokedCertificates).
         // It should be [0] EXPLICIT SEQUENCE for extensions or nothing.
-        if (!tbs.HasData) return; // nothing after nextUpdate — conformant
+        if (!tbs.HasData)
+        {
+            return; // nothing after nextUpdate — conformant
+        }
+
         var nextTag = tbs.PeekTag();
         // revokedCertificates is a bare SEQUENCE; extensions are [0] context-specific
         Assert.False(nextTag.HasSameClassAndValue(Asn1Tag.Sequence),
@@ -881,7 +971,9 @@ public partial class CertificateServerFeatures
         var crl = CertificateRevocationList.Load(CrlState.LastCrlBytes!);
         var issuerAltName = crl.Extensions.FirstOrDefault(e => e.Oid?.Value == "2.5.29.18");
         if (issuerAltName != null)
+        {
             Assert.False(issuerAltName.Critical, "issuerAltName MUST NOT be critical in a CRL");
+        }
     }
 
     [Then("the CRL MUST include a cRLNumber extension")]
@@ -949,7 +1041,11 @@ public partial class CertificateServerFeatures
     {
         var crl = CertificateRevocationList.Load(CrlState.LastCrlBytes!);
         var idp = crl.Extensions.FirstOrDefault(e => e.Oid?.Value == "2.5.29.28");
-        if (idp == null) return; // no IDP extension
+        if (idp == null)
+        {
+            return; // no IDP extension
+        }
+
         // Parse the IDP content
         var reader = new AsnReader(idp.RawData, AsnEncodingRules.DER);
         var seq = reader.ReadSequence();
@@ -958,11 +1054,11 @@ public partial class CertificateServerFeatures
         {
             var tag = seq.PeekTag();
             if (tag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1)) ||
-                tag.TagValue == 1 && tag.TagClass == TagClass.ContextSpecific)
+                tag is { TagValue: 1, TagClass: TagClass.ContextSpecific })
             {
                 userCerts = seq.ReadBoolean(new Asn1Tag(TagClass.ContextSpecific, 1));
             }
-            else if (tag.TagValue == 2 && tag.TagClass == TagClass.ContextSpecific)
+            else if (tag is { TagValue: 2, TagClass: TagClass.ContextSpecific })
             {
                 caCerts = seq.ReadBoolean(new Asn1Tag(TagClass.ContextSpecific, 2));
             }
@@ -994,7 +1090,9 @@ public partial class CertificateServerFeatures
         {
             var freshest = cert.Extensions.FirstOrDefault(e => e.Oid?.Value == "2.5.29.46");
             if (freshest != null)
+            {
                 Assert.False(freshest.Critical);
+            }
         }
     }
 
@@ -1045,7 +1143,9 @@ public partial class CertificateServerFeatures
         var entry = crl.RevokedCertificates.First();
         var reasonExt = entry.Extensions.FirstOrDefault(e => e.Oid?.Value == "2.5.29.21");
         if (reasonExt != null)
+        {
             Assert.NotEqual(X509RevocationReason.Unspecified, reasonExt.Reason);
+        }
     }
 
     [Then("the CRL containing that entry MUST be a delta CRL")]
@@ -1072,7 +1172,9 @@ public partial class CertificateServerFeatures
         var entry = crl.RevokedCertificates.First();
         var invalidityExt = entry.Extensions.FirstOrDefault(e => e.Oid?.Value == "2.5.29.24");
         if (invalidityExt != null)
+        {
             Assert.False(invalidityExt.IsCritical);
+        }
     }
 
     [Then("the invalidityDate value MUST be encoded as GeneralizedTime")]
@@ -1091,7 +1193,11 @@ public partial class CertificateServerFeatures
         var outer = new AsnReader(encoded, AsnEncodingRules.DER);
         var seq = outer.ReadSequence();
         _ = seq.ReadObjectIdentifier(); // OID
-        if (seq.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean)) seq.ReadBoolean();
+        if (seq.PeekTag().HasSameClassAndValue(Asn1Tag.Boolean))
+        {
+            seq.ReadBoolean();
+        }
+
         var inner = new AsnReader(seq.ReadOctetString(), AsnEncodingRules.DER);
         var tag = inner.PeekTag();
         Assert.True(tag.HasSameClassAndValue(Asn1Tag.GeneralizedTime),
@@ -1174,7 +1280,7 @@ public partial class CertificateServerFeatures
         var firstDp = seq.ReadSequence();
         // distributionPoint [0] OPTIONAL
         var tag = firstDp.PeekTag();
-        Assert.True(tag.TagClass == TagClass.ContextSpecific && tag.TagValue == 0,
+        Assert.True(tag is { TagClass: TagClass.ContextSpecific, TagValue: 0 },
             "distributionPoint field should be present with at least one URI");
     }
 
@@ -1209,9 +1315,17 @@ public partial class CertificateServerFeatures
     public void ThenReasonsCoverAllRevocationReasons()
     {
         var cert = CrlState.IssuedCert;
-        if (cert == null) return;
+        if (cert == null)
+        {
+            return;
+        }
+
         var cdp = cert.Extensions.FirstOrDefault(e => e.Oid?.Value == "2.5.29.31");
-        if (cdp == null) return;
+        if (cdp == null)
+        {
+            return;
+        }
+
         // If no distribution point has a reasons field, all reasons are implicitly covered.
         // This is the case for the production CA which doesn't set partial reasons.
         // Verify by parsing the CDP and checking no reasons bit string is present.
@@ -1224,7 +1338,10 @@ public partial class CertificateServerFeatures
             {
                 // distributionPoint [0] - context 0
                 if (dp.PeekTag().TagClass == TagClass.ContextSpecific && dp.PeekTag().TagValue == 0)
+                {
                     dp.ReadEncodedValue();
+                }
+
                 // reasons [1] - context 1 (OPTIONAL) — if absent, all reasons covered
                 if (dp.HasData && dp.PeekTag().TagClass == TagClass.ContextSpecific && dp.PeekTag().TagValue == 1)
                 {
@@ -1262,9 +1379,17 @@ public partial class CertificateServerFeatures
     public void ThenFreshestCrlValueMustContainUri()
     {
         var cert = CrlState.IssuedCert;
-        if (cert == null) return;
+        if (cert == null)
+        {
+            return;
+        }
+
         var freshest = cert.Extensions.FirstOrDefault(e => e.Oid?.Value == "2.5.29.46");
-        if (freshest == null) return;
+        if (freshest == null)
+        {
+            return;
+        }
+
         var reader = new AsnReader(freshest.RawData, AsnEncodingRules.DER);
         var seq = reader.ReadSequence();
         Assert.True(seq.HasData, "freshestCRL must contain at least one distribution point URI");

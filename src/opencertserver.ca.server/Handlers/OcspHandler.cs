@@ -21,7 +21,8 @@ public static class OcspHandler
         if (HttpMethods.IsPost(context.Request.Method))
         {
             var config = context.RequestServices.GetRequiredService<CaConfiguration>();
-            if (config.StrictOcspHttpBinding && !string.Equals(context.Request.ContentType, "application/ocsp-request", StringComparison.OrdinalIgnoreCase))
+            if (config.StrictOcspHttpBinding && !string.Equals(context.Request.ContentType, "application/ocsp-request",
+                StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 return;
@@ -118,13 +119,10 @@ public static class OcspHandler
             X509Extension? requestNonce = null;
             if (request.TbsRequest.RequestExtensions != null)
             {
-                foreach (X509Extension ext in request.TbsRequest.RequestExtensions)
+                foreach (var ext in request.TbsRequest.RequestExtensions.Where(ext => ext.Oid?.Value == Oids.OcspNonce))
                 {
-                    if (ext.Oid?.Value == Oids.OcspNonce)
-                    {
-                        requestNonce = ext;
-                        break;
-                    }
+                    requestNonce = ext;
+                    break;
                 }
             }
 
@@ -132,8 +130,9 @@ public static class OcspHandler
             var nextUpdate = now.Add(profile?.OcspFreshnessWindow ?? TimeSpan.FromHours(1));
 
             var searchResults = await Task.WhenAll(
-                request.TbsRequest.RequestList.Select(r =>
-                    GetCertificateStatusWithCaValidation(r.CertIdentifier, storeCertificates, profile, cancellationToken)))
+                    request.TbsRequest.RequestList.Select(r =>
+                        GetCertificateStatusWithCaValidation(r.CertIdentifier, storeCertificates, profile,
+                            cancellationToken)))
                 .ConfigureAwait(false);
 
             // Build response extensions (include nonce echo if present)
@@ -171,7 +170,7 @@ public static class OcspHandler
             else
             {
                 // Fallback: unsigned response using injected responder ID
-                IResponderId responderId = context.RequestServices.GetRequiredService<IResponderId>();
+                var responderId = context.RequestServices.GetRequiredService<IResponderId>();
                 var responseData = new ResponseData(
                     TypeVersion.V1,
                     responderId,

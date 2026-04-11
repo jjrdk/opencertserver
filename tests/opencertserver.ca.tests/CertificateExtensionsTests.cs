@@ -13,10 +13,10 @@ namespace OpenCertServer.Ca.Tests
         [InlineData("ECDsa")]
         public void PrintCertificate_IncludesExpectedSections(string algo)
         {
-            AsymmetricAlgorithm key = algo == "RSA" ? RSA.Create(2048) : (AsymmetricAlgorithm)ECDsa.Create(ECCurve.NamedCurves.nistP256);
+            var key = algo == "RSA" ? RSA.Create(2048) : (AsymmetricAlgorithm)ECDsa.Create(ECCurve.NamedCurves.nistP256);
 
             var subject = "CN=example.test,O=TestOrg,OU=Unit,L=City,ST=State,C=US,E=admin@example.com";
-            CertificateRequest req = algo == "RSA"
+            var req = algo == "RSA"
                 ? new CertificateRequest(new X500DistinguishedName(subject), (RSA)key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
                 : new CertificateRequest(new X500DistinguishedName(subject), (ECDsa)key, HashAlgorithmName.SHA256);
 

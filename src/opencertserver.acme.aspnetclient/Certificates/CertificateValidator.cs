@@ -32,7 +32,7 @@ public sealed class CertificateValidator : IValidateCertificates
 
             _logger.LogTrace("Validating cert UntilExpiry {UntilExpiry}, AfterIssue {AfterIssue} - {Certificate}",
                 _options.TimeUntilExpiryBeforeRenewal, _options.TimeAfterIssueDateBeforeRenewal, certificate);
-                    
+
             if (_options.TimeUntilExpiryBeforeRenewal != null && certificate.NotAfter - now < _options.TimeUntilExpiryBeforeRenewal)
             {
                 return false;
@@ -43,12 +43,7 @@ public sealed class CertificateValidator : IValidateCertificates
                 return false;
             }
 
-            if (certificate.NotBefore > now || certificate.NotAfter < now)
-            {
-                return false;
-            }
-
-            return true;
+            return certificate.NotBefore <= now && certificate.NotAfter >= now;
         }
         catch (CryptographicException exc)
         {

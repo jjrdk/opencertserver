@@ -48,7 +48,10 @@ internal class ChallengeContext : EntityContext<Challenge>, IChallengeContext
     /// <value>
     /// The key authorization string.
     /// </value>
-    public string KeyAuthz => Context.AccountKey.KeyAuthorization(Token);
+    public string KeyAuthz
+    {
+        get { return Context.AccountKey.KeyAuthorization(Token); }
+    }
 
     /// <summary>
     /// Acknowledges the ACME server the challenge is ready for validation.

@@ -30,15 +30,6 @@ public class RelativeDistinguishedName : IAsnValue
     /// <summary>
     /// Initializes a new instance of the <see cref="RelativeDistinguishedName"/> class.
     /// </summary>
-    /// <param name="rawData">The raw DER encoded data.</param>
-    public RelativeDistinguishedName(ReadOnlyMemory<byte> rawData)
-        : this(new AsnReader(rawData, AsnEncodingRules.DER))
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="RelativeDistinguishedName"/> class.
-    /// </summary>
     /// <param name="reader">The <see cref="AsnReader"/> to read content from.</param>
     public RelativeDistinguishedName(AsnReader reader)
     {

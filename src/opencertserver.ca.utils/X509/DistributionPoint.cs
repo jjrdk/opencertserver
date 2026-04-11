@@ -34,15 +34,6 @@ public class DistributionPoint : IAsnValue
     /// <summary>
     /// Initializes a new instance of the <see cref="DistributionPoint"/> class.
     /// </summary>
-    /// <param name="encoded">The raw DER encoded data.</param>
-    public DistributionPoint(ReadOnlyMemory<byte> encoded)
-        : this(new AsnReader(encoded.ToArray(), AsnEncodingRules.DER))
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DistributionPoint"/> class.
-    /// </summary>
     /// <param name="reader">The <see cref="AsnReader"/> to read content from.</param>
     public DistributionPoint(AsnReader reader)
     {

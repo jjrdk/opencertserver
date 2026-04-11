@@ -35,7 +35,7 @@ public class Request : IAsnValue
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
         {
             var extReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
-            SingleRequestExtensions = new X509ExtensionCollection();
+            SingleRequestExtensions = [];
             while (extReader.HasData)
             {
                 var ext = extReader.DecodeExtension();
