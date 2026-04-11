@@ -1324,30 +1324,37 @@ public partial class CertificateServerFeatures
         Justification = "These conformance tests deserialize small JWK fragments in the normal test runtime only.")]
     [UnconditionalSuppressMessage("AOT", "IL3050",
         Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
-    [Then("the outer JWS MUST be signed by the new account key")]
-    public void ThenTheOuterJwsMustBeSignedByTheNewAccountKey()
+    [Then("the outer JWS MUST be signed by the old account key")]
+    public void ThenTheOuterJwsMustBeSignedByTheOldAccountKey()
     {
-        Assert.NotNull(AcmeState.Key);
+        // Per RFC 8555 §7.3.5, the outer keyChange JWS is signed by the OLD (current) account key
+        // and identifies the account via a "kid" header parameter (the account URL), NOT via "jwk".
+        Assert.NotNull(AcmeState.PreviousAccountKey);
         using var protectedHeader = ParseProtectedHeader();
-        Assert.True(protectedHeader.RootElement.TryGetProperty("jwk", out var jwkProperty));
-        var outerJwk = JsonSerializer.Deserialize<JsonWebKey>(jwkProperty.GetRawText())
-                       ?? throw new Xunit.Sdk.XunitException("Could not deserialize the outer keyChange JWK.");
-        Assert.Equal(GetJwkThumbprint(AcmeState.Key!.JsonWebKey), GetJwkThumbprint(outerJwk));
+        Assert.True(protectedHeader.RootElement.TryGetProperty("kid", out var kidProperty),
+            "The outer keyChange JWS protected header must contain a 'kid' identifying the current account.");
+        Assert.False(string.IsNullOrWhiteSpace(kidProperty.GetString()),
+            "The 'kid' in the outer keyChange JWS protected header must not be empty.");
+        Assert.False(protectedHeader.RootElement.TryGetProperty("jwk", out _),
+            "The outer keyChange JWS protected header must not contain a 'jwk'; the account is identified by 'kid'.");
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026",
         Justification = "These conformance tests deserialize small JWK fragments in the normal test runtime only.")]
     [UnconditionalSuppressMessage("AOT", "IL3050",
         Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
-    [Then("the inner JWS MUST be signed by the old account key")]
-    public void ThenTheInnerJwsMustBeSignedByTheOldAccountKey()
+    [Then("the inner JWS MUST be signed by the new account key")]
+    public void ThenTheInnerJwsMustBeSignedByTheNewAccountKey()
     {
-        Assert.NotNull(AcmeState.PreviousAccountKey);
+        // Per RFC 8555 §7.3.5, the inner keyChange JWS is signed by the NEW key and carries
+        // the new key in its "jwk" header parameter.
+        Assert.NotNull(AcmeState.Key);
         using var innerProtectedHeader = ParseInnerProtectedHeader();
-        Assert.True(innerProtectedHeader.RootElement.TryGetProperty("jwk", out var jwkProperty));
+        Assert.True(innerProtectedHeader.RootElement.TryGetProperty("jwk", out var jwkProperty),
+            "The inner keyChange JWS protected header must contain a 'jwk' with the new account key.");
         var innerJwk = JsonSerializer.Deserialize<JsonWebKey>(jwkProperty.GetRawText())
                        ?? throw new Xunit.Sdk.XunitException("Could not deserialize the inner keyChange JWK.");
-        Assert.Equal(GetJwkThumbprint(AcmeState.PreviousAccountKey!.JsonWebKey), GetJwkThumbprint(innerJwk));
+        Assert.Equal(GetJwkThumbprint(AcmeState.Key!.JsonWebKey), GetJwkThumbprint(innerJwk));
     }
 
     [Then("the inner payload MUST identify the same account URL as the outer request")]
@@ -1366,10 +1373,12 @@ public partial class CertificateServerFeatures
         var unrelatedOldKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
         var unrelatedNewKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha384);
 
+        // RFC 8555 §7.3.5: outer is signed by the current account key (kid); inner advertises an
+        // unrelated oldKey that does NOT match the account's actual key → server must reject.
         await SendKeyChangeRequestAsync(
             AcmeState.AccountUrl!,
             unrelatedNewKey,
-            unrelatedOldKey,
+            AcmeState.Key!,
             unrelatedOldKey.JsonWebKey).ConfigureAwait(false);
 
         Assert.True((int)(AcmeState.Response?.StatusCode ?? 0) >= 400,
@@ -1383,6 +1392,8 @@ public partial class CertificateServerFeatures
         var duplicateKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
         _ = await CreateDetachedAccountAsync(duplicateKey).ConfigureAwait(false);
 
+        // RFC 8555 §7.3.5: outer signed by current account key (kid); inner signed by the duplicate new key
+        // (already in use by another account) → server must reject.
         await SendKeyChangeRequestAsync(
             AcmeState.AccountUrl!,
             duplicateKey,
@@ -1850,6 +1861,7 @@ public partial class CertificateServerFeatures
         AcmeState.PreviousAccountKey = AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
 
         var newKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha384);
+        // RFC 8555 §7.3.5: outer is signed by the OLD (current) key with kid; inner is signed by the NEW key with jwk.
         await SendKeyChangeRequestAsync(
             GetAccountLocation(),
             newKey,
@@ -1862,17 +1874,26 @@ public partial class CertificateServerFeatures
         AcmeState.OrdersUrl = AcmeState.AccountResponse?.Orders ?? AcmeState.OrdersUrl;
     }
 
+    /// <summary>
+    /// Sends an ACME key-change request following RFC 8555 §7.3.5.
+    /// </summary>
+    /// <param name="accountUrl">The URL of the account whose key is being rolled.</param>
+    /// <param name="newKey">The new account key. Signs the inner JWS and appears in its "jwk" header.</param>
+    /// <param name="outerSigningKey">The current (old) account key. Signs the outer JWS using a "kid" header.</param>
+    /// <param name="advertisedOldKey">The old key JWK that is placed in the inner payload as "oldKey".</param>
     private async Task SendKeyChangeRequestAsync(
         Uri accountUrl,
         IKey newKey,
-        IKey innerSigningKey,
+        IKey outerSigningKey,
         JsonWebKey advertisedOldKey)
     {
         await EnsureKeyChangeResourceAvailableAsync().ConfigureAwait(false);
 
         var keyChangeUrl = AcmeState.KeyChangeUrl!;
+
+        // RFC 8555 §7.3.5: inner JWS – signed by the NEW key, carries new key in "jwk", no nonce.
         var innerPayload = CreateSignedPayload(
-            innerSigningKey,
+            newKey,
             new
             {
                 account = accountUrl,
@@ -1881,11 +1902,13 @@ public partial class CertificateServerFeatures
             keyChangeUrl,
             nonce: null);
 
+        // RFC 8555 §7.3.5: outer JWS – signed by the OLD (current) key, carries account URL as "kid", has nonce.
         var outerPayload = CreateSignedPayload(
-            newKey,
+            outerSigningKey,
             innerPayload,
             keyChangeUrl,
-            await GetFreshNonceAsync().ConfigureAwait(false));
+            await GetFreshNonceAsync().ConfigureAwait(false),
+            kid: accountUrl);
 
         await SendAcmeRequestAsync(HttpMethod.Post, keyChangeUrl.ToString(), outerPayload).ConfigureAwait(false);
     }
