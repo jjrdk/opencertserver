@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using OpenCertServer.Acme.Abstractions.Exceptions;
@@ -27,6 +28,7 @@ public static class AccountEndpoints
             HttpContext context,
             [FromServices] IAccountService accountService,
             [FromServices] IOptions<AcmeServerOptions> optionsAccessor,
+            [FromServices] IExternalAccountBindingService eabService,
             JwsPayload jwsPayload,
             [FromServices] LinkGenerator links,
             CancellationToken cancellationToken) =>
@@ -70,11 +72,38 @@ public static class AccountEndpoints
                 return Results.Ok(accountResponse);
             }
 
+            // Validate EAB when present (required or voluntary)
+            string? externalAccountId = null;
+            if (HasExternalAccountBinding(payload))
+            {
+                var requestUrl = context.Request.GetDisplayUrl();
+                externalAccountId = await eabService.ValidateAsync(
+                    payload.ExternalAccountBinding!.Value,
+                    header.Jwk,
+                    requestUrl,
+                    cancellationToken).ConfigureAwait(false);
+            }
+
             var createdAccount = await accountService.CreateAccount(
                 header.Jwk,
                 payload.Contact,
                 payload.TermsOfServiceAgreed == true,
+                externalAccountId,
                 cancellationToken).ConfigureAwait(false);
+
+            // Mark the EAB key as consumed now that the account has been persisted
+            if (externalAccountId != null)
+            {
+                var eabStore = context.RequestServices
+                    .GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreExternalAccountKeys>();
+                var eabKey = await eabStore.LoadKey(externalAccountId, cancellationToken).ConfigureAwait(false);
+                if (eabKey != null)
+                {
+                    eabKey.MarkUsed(createdAccount.AccountId);
+                    await eabStore.SaveKey(eabKey, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
             var createdAccountResponse = CreateAccountResponse(context, links, createdAccount);
             var createdAccountUrl = GetAccountUrl(context, links, createdAccount.AccountId);
             return Results.Created(createdAccountUrl, createdAccountResponse);

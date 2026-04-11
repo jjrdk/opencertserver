@@ -18,14 +18,21 @@ using System.Linq;
         /// <param name="jwk">The JSON Web Key for the account.</param>
         /// <param name="contacts">The contact URIs for the account.</param>
         /// <param name="tosAccepted">The date/time the terms of service were accepted, or null if not accepted.</param>
-        public Account(JsonWebKey jwk, IEnumerable<string>? contacts, DateTimeOffset? tosAccepted)
+        public Account(JsonWebKey jwk, IEnumerable<string>? contacts, DateTimeOffset? tosAccepted, string? externalAccountId = null)
         {
             AccountId = GuidString.NewValue();
 
             Jwk = jwk;
             Contacts = contacts?.ToList();
             TosAccepted = tosAccepted;
+            ExternalAccountId = externalAccountId;
         }
+
+        /// <summary>
+        /// Gets the external account key identifier bound to this account during creation,
+        /// or null if the account was not created with an external account binding.
+        /// </summary>
+        public string? ExternalAccountId { get; }
 
         /// <summary>
         /// Gets the unique account identifier.

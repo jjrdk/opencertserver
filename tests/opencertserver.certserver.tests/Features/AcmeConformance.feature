@@ -190,6 +190,53 @@ They are intentionally written before adding step implementations so they can dr
             When the client creates a new account without a valid external account binding
             Then the ACME server MUST reject the account creation request
 
+    Rule: External Account Binding (RFC 8555 §7.3.4)
+
+        @acme-eab
+        Scenario: RFC 8555 Section 7.3.4 allows creating an account with a valid external account binding
+            Given the ACME server has a provisioned external account key "test-eab-key-1"
+            When the client creates a new account with a valid external account binding for key "test-eab-key-1"
+            Then the response MUST use status code 201
+            And the account MUST be linked to external account key "test-eab-key-1"
+
+        @acme-eab
+        Scenario: RFC 8555 Section 7.3.4 requires the EAB HMAC signature to be valid
+            Given the ACME server requires external account binding
+            And the ACME server has a provisioned external account key "test-eab-key-2"
+            When the client creates a new account with an invalid EAB HMAC signature for key "test-eab-key-2"
+            Then the ACME server MUST reject the account creation request
+
+        @acme-eab
+        Scenario: RFC 8555 Section 7.3.4 requires the EAB protected header url to match the newAccount URL
+            Given the ACME server requires external account binding
+            And the ACME server has a provisioned external account key "test-eab-key-3"
+            When the client creates a new account with an EAB url mismatch for key "test-eab-key-3"
+            Then the ACME server MUST reject the account creation request
+
+        @acme-eab
+        Scenario: RFC 8555 Section 7.3.4 requires the EAB payload to be the account JWK
+            Given the ACME server requires external account binding
+            And the ACME server has a provisioned external account key "test-eab-key-4"
+            When the client creates a new account with an EAB payload that is not the account JWK for key "test-eab-key-4"
+            Then the ACME server MUST reject the account creation request
+
+        @acme-eab
+        Scenario: RFC 8555 Section 7.3.4 prohibits reuse of an external account key
+            Given the ACME server requires external account binding
+            And the ACME server has a provisioned external account key "test-eab-key-5"
+            When the client successfully creates a new account with external account key "test-eab-key-5"
+            And the client attempts to create another account reusing external account key "test-eab-key-5"
+            Then the ACME server MUST reject the account creation request
+
+        @acme-eab
+        Scenario: RFC 8555 Section 7.3.4 allows checking for an active external account key
+            Given the ACME server has a provisioned external account key "test-eab-key-6"
+            When the server checks whether external account key "test-eab-key-6" is active
+            Then the external account key MUST be reported as active
+            When the client successfully creates a new account with external account key "test-eab-key-6"
+            And the server checks whether external account key "test-eab-key-6" is active
+            Then the external account key MUST be reported as no longer active
+
     Rule: Orders and order objects
 
         @acme-item3
