@@ -34,6 +34,12 @@ public static class OrderEndpoints
             var tosOptions = optionsAccessor.Value.TOS;
             if (tosOptions.RequireAgreement && tosOptions.LastUpdate.HasValue)
             {
+                if (string.IsNullOrWhiteSpace(tosOptions.Url))
+                {
+                    throw new System.InvalidOperationException(
+                        "ACME server configuration is invalid: TOS.Url must be configured when TOS agreement is required and TOS.LastUpdate is set.");
+                }
+
                 if (account.TosAccepted == null || account.TosAccepted.Value < tosOptions.LastUpdate.Value)
                 {
                     throw new UserActionRequiredException(
