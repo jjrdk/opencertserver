@@ -354,7 +354,7 @@ public sealed class SymCipher : IDisposable
                     XorEngine.Xor(res, src).CopyTo(iv, 0);
                     break;
                 case CipherMode.ECB:
-                    break;
+                    throw new ArgumentException("Decrypt: ECB mode is not supported for security reasons");
                 case CipherMode.CTS:
                     throw new ArgumentException("Decrypt: Unsupported symmetric mode");
             }
