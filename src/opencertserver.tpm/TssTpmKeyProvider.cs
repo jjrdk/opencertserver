@@ -304,10 +304,26 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
 
     private static TpmAlgId ToTpmAlgId(HashAlgorithmName hashAlgorithm)
     {
-        if (hashAlgorithm == HashAlgorithmName.SHA256) return TpmAlgId.Sha256;
-        if (hashAlgorithm == HashAlgorithmName.SHA384) return TpmAlgId.Sha384;
-        if (hashAlgorithm == HashAlgorithmName.SHA512) return TpmAlgId.Sha512;
-        if (hashAlgorithm == HashAlgorithmName.SHA1)   return TpmAlgId.Sha1;
+        if (hashAlgorithm == HashAlgorithmName.SHA256)
+        {
+            return TpmAlgId.Sha256;
+        }
+
+        if (hashAlgorithm == HashAlgorithmName.SHA384)
+        {
+            return TpmAlgId.Sha384;
+        }
+
+        if (hashAlgorithm == HashAlgorithmName.SHA512)
+        {
+            return TpmAlgId.Sha512;
+        }
+
+        if (hashAlgorithm == HashAlgorithmName.SHA1)
+        {
+            return TpmAlgId.Sha1;
+        }
+
         throw new NotSupportedException($"Hash algorithm '{hashAlgorithm.Name}' is not supported by this TPM provider.");
     }
 

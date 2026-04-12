@@ -252,7 +252,11 @@ public sealed class TpmKeyProvisioningSteps : IDisposable
 
     private void EnsureProvider()
     {
-        if (_provider != null) return;
+        if (_provider != null)
+        {
+            return;
+        }
+
         _provider = new TssTpmKeyProvider(GetContainerOptions());
     }
 

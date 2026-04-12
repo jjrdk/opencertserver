@@ -104,7 +104,9 @@ public sealed class TpmCaProfileFactory : IDisposable
     public void Dispose()
     {
         if (_ownsKeyProvider)
+        {
             _keyProvider.Dispose();
+        }
     }
 
     // -----------------------------------------------------------------
