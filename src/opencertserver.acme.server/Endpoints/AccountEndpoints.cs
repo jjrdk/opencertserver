@@ -63,15 +63,16 @@ public static class AccountEndpoints
     {
         // RFC 8555 §7.3.6: The server MUST still allow clients to access the account
         // in a read-only manner (POST-as-GET) even after deactivation.
-        // Load the account without status validation so that POST-as-GET can succeed
-        // regardless of account status; status is validated below for mutating operations.
-        var account = await accountService.LoadAccount(accountId, cancellationToken).ConfigureAwait(false);
+        // Bind the authenticated account from the JWS kid header and verify it matches
+        // the route parameter before loading, to prevent privilege escalation.
+        var authenticatedAccountId = payload.ToAcmeHeader().GetAccountId();
+        ValidateAccountRoute(accountId, authenticatedAccountId);
+
+        var account = await accountService.LoadAccount(authenticatedAccountId, cancellationToken).ConfigureAwait(false);
         if (account == null)
         {
             throw new NotFoundException();
         }
-
-        ValidateAccountRoute(accountId, account);
 
         if (IsPostAsGet(payload))
         {
@@ -342,11 +343,14 @@ public static class AccountEndpoints
             Base64UrlEncoder.Encode(right.ComputeJwkThumbprint()),
             StringComparison.Ordinal);
 
-    private static void ValidateAccountRoute(string accountId, Abstractions.Model.Account account)
+    private static void ValidateAccountRoute(string routeAccountId, string authenticatedAccountId)
     {
-        if (!string.Equals(account.AccountId, accountId, StringComparison.Ordinal))
+        if (!string.Equals(authenticatedAccountId, routeAccountId, StringComparison.Ordinal))
         {
             throw new NotAllowedException();
         }
     }
+
+    private static void ValidateAccountRoute(string routeAccountId, Abstractions.Model.Account account)
+        => ValidateAccountRoute(routeAccountId, account.AccountId);
 }
