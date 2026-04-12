@@ -103,16 +103,8 @@ public sealed class SymCipher : IDisposable
                 }
                 break;
             case TpmAlgId.Tdes:
-                // DES and __3DES are not supported in TPM 2.0 rev. < 1.32
-                alg = new TripleDESCryptoServiceProvider();
-                alg.Mode = mode;
-                if (mode == CipherMode.CFB)
-                {
-                    feedbackSize = 8;
-                }
-
-                limitedSupport = true;
-                break;
+                // TripleDES is deprecated/weak; treat as unsupported.
+                return null;
             default:
                 //throw new ArgumentException("Unsupported symmetric algorithm " + symDef.Algorithm);
                 return null;
