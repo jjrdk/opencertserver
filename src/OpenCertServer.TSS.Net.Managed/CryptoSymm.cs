@@ -1,4 +1,4 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
@@ -9,37 +9,35 @@ using System.Security.Cryptography;
 namespace OpenCertServer.Tpm2Lib;
 
 /// <summary>
-/// A helper class for doing symmetric cryptography based on 
+/// A helper class for doing symmetric cryptography based on
 /// TPM structure definitions.
 /// </summary>
 public sealed class SymCipher : IDisposable
 {
-    public bool LimitedSupport = false;
-
     // .Net crypto object implementing the symmetric algorithm
-    private readonly SymmetricAlgorithm Alg;
+    private readonly SymmetricAlgorithm _alg;
 
     // The block cipher mode requested by the user.
     // Since various .Net SDKs do not support some widely used block modes (e.g. CFB),
-    // this class emulates them by using Alg in ECB mode. 
-    private readonly CipherMode Mode;
+    // this class emulates them by using Alg in ECB mode.
+    private readonly CipherMode _mode;
 
-    public byte[] KeyData { get { return Alg.Key; } }
+    public byte[] KeyData { get { return _alg.Key; } }
 
     /// <summary>
     /// Block size in bytes.
     /// </summary>
-    public int BlockSize { get { return Alg.BlockSize / 8; } }
+    public int BlockSize { get { return _alg.BlockSize / 8; } }
 
     /// <summary>
     /// Initialization vector size in bytes.
     /// </summary>
-    public int IVSize { get { return Alg.IV.Length; } }
+    public int IvSize { get { return _alg.IV.Length; } }
 
     private SymCipher(SymmetricAlgorithm alg, CipherMode mode)
     {
-        Alg = alg;
-        Mode = mode;
+        _alg = alg;
+        _mode = mode;
     }
 
     /// <summary>
@@ -47,7 +45,7 @@ public sealed class SymCipher : IDisposable
     /// </summary>
     public static implicit operator byte[] (SymCipher sym)
     {
-        return sym == null ? null : sym.KeyData;
+        return sym?.KeyData;
     }
 
     public static int GetBlockSize(SymDefObject symDef)
@@ -84,13 +82,13 @@ public sealed class SymCipher : IDisposable
         }
 
         var mode = GetCipherMode(symDef.Mode);
-        if (mode == CipherMode_None)
+        if (mode == CipherModeNone)
         {
             return null;
         }
 
         SymmetricAlgorithm alg = null; // = new RijndaelManaged();
-        var limitedSupport = false;
+//        var limitedSupport = false;
         var feedbackSize = 0;
 
         switch (symDef.Algorithm) {
@@ -146,11 +144,11 @@ public sealed class SymCipher : IDisposable
         }
 
         var symCipher = new SymCipher(alg, mode);
-        symCipher.LimitedSupport = limitedSupport;
+//        symCipher.LimitedSupport = limitedSupport;
         return symCipher;
     } // Create()
 
-    const CipherMode CipherMode_None = (CipherMode)0;
+    const CipherMode CipherModeNone = (CipherMode)0;
 
     public static CipherMode GetCipherMode(TpmAlgId cipherMode)
     {
@@ -166,22 +164,9 @@ public sealed class SymCipher : IDisposable
                 throw new ArgumentException("GetCipherMode: ECB mode is insecure and not supported");
             case TpmAlgId.Ctr:
                 // CTR in .NET requires you to manage your own counter.
-                return CipherMode_None;
+                return CipherModeNone;
             default:
                 throw new ArgumentException("GetCipherMode: Unsupported cipher mode");
-        }
-    }
-
-    public static SymCipher CreateFromPublicParms(IPublicParmsUnion parms)
-    {
-        switch (parms.GetUnionSelector())
-        {
-            case TpmAlgId.Rsa:
-                return Create((parms as RsaParms).symmetric);
-            case TpmAlgId.Ecc:
-                return Create((parms as EccParms).symmetric);
-            default:
-                throw new ArgumentException("CreateFromPublicParms: Unsupported algorithm");
         }
     }
 
@@ -203,7 +188,7 @@ public sealed class SymCipher : IDisposable
         }
     }
 
-    private static void EncryptCFB(byte[] paddedData, byte[] iv, ICryptoTransform enc)
+    private static void EncryptCfb(byte[] paddedData, byte[] iv, ICryptoTransform enc)
     {
         for (var i = 0; i < paddedData.Length; i += iv.Length)
         {
@@ -233,16 +218,16 @@ public sealed class SymCipher : IDisposable
         // AddZeroToEnd makes a copy of the data buffer. This is important
         // because the crypto helpers in this file operate in place.
         var paddedData = Globs.AddZeroToEnd(data, paddingNeeded);
-        var externalIV = iv != null && iv.Length > 0;
-        if (externalIV)
+        var externalIv = iv != null && iv.Length > 0;
+        if (externalIv)
         {
-            Alg.IV = iv;
+            _alg.IV = iv;
         }
 
-        var enc = Alg.CreateEncryptor();
-        if (Mode == CipherMode.CFB)
+        var enc = _alg.CreateEncryptor();
+        if (_mode == CipherMode.CFB)
         {
-            EncryptCFB(paddedData, Alg.IV, enc);
+            EncryptCfb(paddedData, _alg.IV, enc);
         }
         else
         {
@@ -255,7 +240,7 @@ public sealed class SymCipher : IDisposable
             }
         }
 
-        if (externalIV)
+        if (externalIv)
         {
             var src = data;
             var res = paddedData;
@@ -265,7 +250,7 @@ public sealed class SymCipher : IDisposable
                 res = Globs.CopyData(paddedData, res.Length - iv.Length, iv.Length);
             }
 
-            switch(Mode)
+            switch(_mode)
             {
                 case CipherMode.CBC:
                 case CipherMode.CFB:
@@ -283,7 +268,7 @@ public sealed class SymCipher : IDisposable
         return unpadded == 0 ? paddedData : Globs.CopyData(paddedData, 0, data.Length);
     }
 
-    private static void DecryptCFB(byte[] paddedData, byte[] iv, ICryptoTransform enc)
+    private static void DecryptCfb(byte[] paddedData, byte[] iv, ICryptoTransform enc)
     {
         var tempOut = new byte[iv.Length];
         for (var i = 0; i < paddedData.Length; i += iv.Length)
@@ -310,21 +295,21 @@ public sealed class SymCipher : IDisposable
         // AddZeroToEnd makes a copy of the data buffer. This is important
         // because the crypto helpers in this file operate in place.
         var paddedData = Globs.AddZeroToEnd(data, paddingNeeded);
-        var externalIV = iv != null && iv.Length > 0;
-        if (externalIV)
+        var externalIv = iv != null && iv.Length > 0;
+        if (externalIv)
         {
-            Alg.IV = iv;
+            _alg.IV = iv;
         }
 
         byte[] tempOut = null;
-        if (Mode == CipherMode.CFB)
+        if (_mode == CipherMode.CFB)
         {
-            DecryptCFB(paddedData, Alg.IV, Alg.CreateEncryptor());
+            DecryptCfb(paddedData, _alg.IV, _alg.CreateEncryptor());
             tempOut = unpadded == 0 ? paddedData : Globs.CopyData(paddedData, 0, data.Length);
         }
         else
         {
-            var dec = Alg.CreateDecryptor();
+            var dec = _alg.CreateDecryptor();
             tempOut = new byte[data.Length];
             using (var outStream = new MemoryStream(paddedData))
             {
@@ -334,7 +319,7 @@ public sealed class SymCipher : IDisposable
             }
         }
 
-        if (externalIV)
+        if (externalIv)
         {
             var src = data;
             var res = tempOut;
@@ -344,7 +329,7 @@ public sealed class SymCipher : IDisposable
                 res = Globs.CopyData(tempOut, res.Length / iv.Length, iv.Length);
             }
 
-            switch(Mode)
+            switch(_mode)
             {
                 case CipherMode.CBC:
                 case CipherMode.CFB:
@@ -362,59 +347,8 @@ public sealed class SymCipher : IDisposable
         return tempOut;
     }
 
-    /// <summary>
-    /// De-envelope inner-wrapped duplication blob.
-    /// TODO: Move this to TpmPublic and make it fully general
-    /// </summary>
-    /// <param name="exportedPrivate"></param>
-    /// <param name="encAlg"></param>
-    /// <param name="encKey"></param>
-    /// <param name="nameAlg"></param>
-    /// <param name="name"></param>
-    /// <returns></returns>
-    public static Sensitive SensitiveFromDupBlob(TpmPrivate exportedPrivate,
-        SymDefObject encAlg, byte[] encKey,
-        TpmAlgId nameAlg, byte[] name)
-    {
-        var dupBlob = exportedPrivate.buffer;
-        byte[] sensNoLen = null;
-        using (var c = Create(encAlg, encKey))
-        {
-            byte[] innerObject = null;
-            if (c == null)
-            {
-                if (encAlg.Algorithm != TpmAlgId.Null)
-                {
-                    return null;
-                }
-
-                return Marshaller.FromTpmRepresentation<Sensitive>(Marshaller.Tpm2BToBuffer(dupBlob));
-            }
-            innerObject = c.Decrypt(dupBlob);
-
-            byte[] innerIntegrity, sensitive;
-            KDF.Split(innerObject,
-                16 + CryptoLib.DigestSize(nameAlg) * 8,
-                out innerIntegrity,
-                8 * (innerObject.Length - CryptoLib.DigestSize(nameAlg) - 2),
-                out sensitive);
-
-            var expectedInnerIntegrity = Marshaller.ToTpm2B(
-                CryptoLib.HashData(nameAlg, sensitive, name));
-
-            if (!Globs.ArraysAreEqual(expectedInnerIntegrity, innerIntegrity))
-            {
-                throw new Exception("SensitiveFromDupBlob: Bad inner integrity");
-            }
-
-            sensNoLen = Marshaller.Tpm2BToBuffer(sensitive);
-        }
-        var sens = Marshaller.FromTpmRepresentation<Sensitive>(sensNoLen);
-        return sens;
-    }
-
     public void Dispose()
     {
-        Alg.Dispose();
+        _alg.Dispose();
     }
 }

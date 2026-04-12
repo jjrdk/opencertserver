@@ -72,7 +72,7 @@ public sealed class CMac
         // CBC-MAC over all blocks
         var prev = new byte[BlockSize]; // zero IV
         using var aes = Aes.Create();
-        aes.Mode = CipherMode.ECB;
+        aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.None;
         aes.Key = _key;
 
@@ -118,7 +118,7 @@ public sealed class CMac
         var l = new byte[BlockSize];
         using (var aes = Aes.Create())
         {
-            aes.Mode = CipherMode.ECB;
+            aes.Mode = CipherMode.CBC;
             aes.Padding = PaddingMode.None;
             aes.Key = _key;
             using var enc = aes.CreateEncryptor();
