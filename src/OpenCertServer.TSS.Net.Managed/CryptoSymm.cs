@@ -317,7 +317,7 @@ public sealed class SymCipher : IDisposable
         }
 
         byte[] tempOut = null;
-        if (Alg.Mode == CipherMode.ECB && Mode == CipherMode.CFB)
+        if (Mode == CipherMode.CFB)
         {
             DecryptCFB(paddedData, Alg.IV, Alg.CreateEncryptor());
             tempOut = unpadded == 0 ? paddedData : Globs.CopyData(paddedData, 0, data.Length);
