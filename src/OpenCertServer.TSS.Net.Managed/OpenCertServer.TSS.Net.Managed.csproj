@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="../../shared.proj" />
+  <!--
+    Vendored copy of TSS.NET (https://github.com/microsoft/TSS.MSR), snapshot from 2022-04-22.
+    Source is MIT-licensed (https://github.com/microsoft/TSS.MSR/blob/master/LICENSE).
+
+    Reason for vendoring: The NuGet package "Microsoft.TSS 2.1.1" is compiled with Windows BCrypt
+    P/Invoke for its cross-platform (netstandard2.0) assembly, and the linux-x64 runtime-specific
+    assembly is x64-only (not loadable on macOS arm64). This vendored build targets net8.0 as
+    AnyCPU using only managed .NET crypto — no BCrypt dependency — and therefore works on macOS,
+    Linux, and Windows.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>OpenCertServer.TSS.Net</AssemblyName>
+    <RootNamespace>OpenCertServer.Tpm2Lib</RootNamespace>
+    <Nullable>disable</Nullable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Suppress obsolete API warnings from the vendored source -->
+    <NoWarn>$(NoWarn);SYSLIB0021;SYSLIB0022;SYSLIB0023;CS0618</NoWarn>
+    <!--
+      This is a vendored third-party library. Opt out of AOT / trimming analysis:
+      the assembly is never trimmed or AOT-compiled in our setup.
+    -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <!-- Do not include in NuGet packaging or global analysis -->
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+</Project>
+

@@ -1,0 +1,41 @@
+# Stage 1: Build the IBM Software TPM2 simulator from source
+# Force linux/amd64 so that the IBM C source compiles correctly on any host
+# (ARM64/Apple Silicon hosts run this under Docker Desktop's Rosetta 2 emulation).
+FROM --platform=linux/amd64 ubuntu:24.04 AS builder
+
+RUN apt-get update -qq \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        gcc \
+        make \
+        libssl-dev \
+        ca-certificates \
+        wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and build IBM SW TPM2 rev1682 (latest stable release)
+RUN wget -q -O /tmp/ibmtpm.tar.gz \
+        "https://github.com/kgoldman/ibmswtpm2/archive/refs/tags/rev1682.tar.gz" \
+    && mkdir -p /ibmtpm \
+    && tar -xzf /tmp/ibmtpm.tar.gz -C /ibmtpm --strip-components=1 \
+    && cd /ibmtpm/src \
+    && make
+
+# Stage 2: Minimal runtime image (also pinned to amd64 so the binary runs)
+FROM --platform=linux/amd64 ubuntu:24.04
+
+RUN apt-get update -qq \
+    && apt-get install -y --no-install-recommends libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /ibmtpm/src/tpm_server /usr/local/bin/tpm_server
+
+# Port 2321 = TPM command channel (MSSIM)
+# Port 2322 = TPM platform channel
+EXPOSE 2321 2322
+
+# tpm_server writes NVChip (non-volatile state) to the working directory
+WORKDIR /tmp/tpm-data
+
+CMD ["/usr/local/bin/tpm_server"]
+
