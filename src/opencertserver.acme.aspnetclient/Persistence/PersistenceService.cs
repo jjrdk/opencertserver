@@ -40,7 +40,9 @@ public sealed partial class PersistenceService : IPersistenceService
         X509Certificate2 certificate,
         CancellationToken cancellationToken = default)
     {
-        await PersistCertificate(CertificateType.Site, certificate.RawData, _certificatePersistenceStrategies).ConfigureAwait(false);
+        LogPersistingTypeCertificateThroughStrategies(CertificateType.Site);
+        var tasks = _certificatePersistenceStrategies.Select(x => x.PersistSiteCertificate(certificate));
+        await Task.WhenAll(tasks).ConfigureAwait(false);
         LogCertificatePersistedForLaterUse();
     }
 

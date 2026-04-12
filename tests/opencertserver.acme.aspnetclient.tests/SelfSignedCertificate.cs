@@ -8,9 +8,20 @@ public static class SelfSignedCertificate
 {
     public static X509Certificate2 Make(DateTime from, DateTime to)
     {
-        var ecdsa = ECDsa.Create(); // generate asymmetric key pair
+        using var ecdsa = ECDsa.Create();
         var req = new CertificateRequest("cn=foobar", ecdsa, HashAlgorithmName.SHA256);
-        var cert = req.CreateSelfSigned(from, to);
-        return cert;
+        return req.CreateSelfSigned(from, to);
+    }
+
+    /// <summary>
+    /// Creates a self-signed certificate with the specified CN subject and validity window.
+    /// The returned certificate has an accessible private key.
+    /// </summary>
+    public static X509Certificate2 MakeWithSubject(string subjectName, DateTimeOffset from, DateTimeOffset to)
+    {
+        using var ecdsa = ECDsa.Create();
+        var req = new CertificateRequest($"cn={subjectName}", ecdsa, HashAlgorithmName.SHA256);
+        return req.CreateSelfSigned(from, to);
     }
 }
+

@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,6 +55,38 @@ public static class RegistrationExtensions
         public IServiceCollection AddAcmeFileCertificatePersistence(string relativeFilePath = "OpenCertServerAcmeCertificate")
         {
             return services.AddAcmeCertificatePersistence(new FileCertificatePersistenceStrategy(relativeFilePath));
+        }
+
+        /// <summary>
+        /// Registers a certificate persistence strategy that stores the ACME site certificate in
+        /// the operating-system X.509 certificate store.  The certificate is stored with its
+        /// private key so it survives application restarts without a separate key file.
+        /// </summary>
+        /// <param name="subjectName">
+        /// The subject (CN) or domain name used to identify the certificate inside the store,
+        /// e.g. <c>"example.com"</c>.  Must match (or be a substring of) the certificate's
+        /// Subject field.
+        /// </param>
+        /// <param name="storeName">
+        /// The store to target.  Defaults to <see cref="StoreName.My"/> (the personal store).
+        /// </param>
+        /// <param name="storeLocation">
+        /// The store location.  Defaults to <see cref="StoreLocation.CurrentUser"/>, which
+        /// works without elevated privileges on Windows, macOS, and Linux.
+        /// </param>
+        /// <remarks>
+        /// Account keys (ACME private keys) are <em>not</em> stored in the OS certificate store.
+        /// Register an additional persistence strategy such as
+        /// <see cref="AddAcmeFileCertificatePersistence"/> or
+        /// <see cref="AddAcmeInMemoryCertificatesPersistence"/> to handle account key persistence.
+        /// </remarks>
+        public IServiceCollection AddAcmeCertificateStorePersistence(
+            string subjectName,
+            StoreName storeName = StoreName.My,
+            StoreLocation storeLocation = StoreLocation.CurrentUser)
+        {
+            return services.AddAcmeCertificatePersistence(
+                new CertificateStorePersistenceStrategy(subjectName, storeName, storeLocation));
         }
 
         public IServiceCollection AddAcmeChallengePersistence(
