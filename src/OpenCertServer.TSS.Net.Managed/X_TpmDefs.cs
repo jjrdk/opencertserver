@@ -7385,7 +7385,7 @@ public partial class KeyedhashScheme: TpmStructureBase
     /// <summary> Selects the scheme </summary>
     [MarshalAs(0, MarshalType.UnionSelector)]
     public TpmAlgId scheme {
-        get { return details != null ? details.GetUnionSelector() : TpmAlgId.Null; }
+        get { return details?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The scheme parameters </summary>
@@ -7568,7 +7568,7 @@ public partial class SigScheme: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(0, MarshalType.UnionSelector)]
     public TpmAlgId scheme {
-        get { return details != null ? details.GetUnionSelector() : TpmAlgId.Null; }
+        get { return details?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Scheme parameters </summary>
@@ -7781,7 +7781,7 @@ public partial class KdfScheme: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(0, MarshalType.UnionSelector)]
     public TpmAlgId scheme {
-        get { return details != null ? details.GetUnionSelector() : TpmAlgId.Null; }
+        get { return details?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Scheme parameters </summary>
@@ -7844,7 +7844,7 @@ public partial class AsymScheme: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(0, MarshalType.UnionSelector)]
     public TpmAlgId scheme {
-        get { return details != null ? details.GetUnionSelector() : TpmAlgId.Null; }
+        get { return details?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Scheme parameters </summary>
@@ -7891,7 +7891,7 @@ public partial class RsaScheme: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(0, MarshalType.UnionSelector)]
     public TpmAlgId scheme {
-        get { return details != null ? details.GetUnionSelector() : TpmAlgId.Null; }
+        get { return details?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Scheme parameters </summary>
@@ -7938,7 +7938,7 @@ public partial class RsaDecrypt: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(0, MarshalType.UnionSelector)]
     public TpmAlgId scheme {
-        get { return details != null ? details.GetUnionSelector() : TpmAlgId.Null; }
+        get { return details?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Scheme parameters </summary>
@@ -8123,7 +8123,7 @@ public partial class EccScheme: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(0, MarshalType.UnionSelector)]
     public TpmAlgId scheme {
-        get { return details != null ? details.GetUnionSelector() : TpmAlgId.Null; }
+        get { return details?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Scheme parameters </summary>
@@ -8187,7 +8187,7 @@ public partial class AlgorithmDetailEcc: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(2, MarshalType.UnionSelector)]
     public TpmAlgId kdfScheme {
-        get { return kdf != null ? kdf.GetUnionSelector() : TpmAlgId.Null; }
+        get { return kdf?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> If not TPM_ALG_NULL, the required KDF and hash algorithm used in secret
@@ -8201,7 +8201,7 @@ public partial class AlgorithmDetailEcc: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(4, MarshalType.UnionSelector)]
     public TpmAlgId signScheme {
-        get { return sign != null ? sign.GetUnionSelector() : TpmAlgId.Null; }
+        get { return sign?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> If not TPM_ALG_NULL, this is the mandatory signature scheme that is required
@@ -8570,7 +8570,7 @@ public partial class Signature: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(0, MarshalType.UnionSelector)]
     public TpmAlgId sigAlg {
-        get { return signature != null ? signature.GetUnionSelector() : TpmAlgId.Null; }
+        get { return signature?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> This shall be the actual signature information. </summary>
@@ -8630,7 +8630,7 @@ public partial class KeyedhashParms: TpmStructureBase, IPublicParmsUnion
     /// <summary> Selects the scheme </summary>
     [MarshalAs(0, MarshalType.UnionSelector)]
     public TpmAlgId schemeScheme {
-        get { return scheme != null ? scheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return scheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Indicates the signing method used for a keyedHash signing object. This field
@@ -8690,7 +8690,7 @@ public partial class AsymParms: TpmStructureBase, IPublicParmsUnion
     /// <summary> Scheme selector </summary>
     [MarshalAs(1, MarshalType.UnionSelector)]
     public TpmAlgId schemeScheme {
-        get { return scheme != null ? scheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return scheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> For a key with the sign attribute SET, a valid signing scheme for the key type
@@ -8769,7 +8769,7 @@ public partial class RsaParms: TpmStructureBase, IPublicParmsUnion
     /// <summary> Scheme selector </summary>
     [MarshalAs(1, MarshalType.UnionSelector)]
     public TpmAlgId schemeScheme {
-        get { return scheme != null ? scheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return scheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Scheme.scheme shall be:
@@ -8877,7 +8877,7 @@ public partial class EccParms: TpmStructureBase, IPublicParmsUnion
     /// <summary> Scheme selector </summary>
     [MarshalAs(1, MarshalType.UnionSelector)]
     public TpmAlgId schemeScheme {
-        get { return scheme != null ? scheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return scheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> If the sign attribute of the key is SET, then this shall be a valid signing scheme.
@@ -8901,7 +8901,7 @@ public partial class EccParms: TpmStructureBase, IPublicParmsUnion
     /// <summary> Scheme selector </summary>
     [MarshalAs(4, MarshalType.UnionSelector)]
     public TpmAlgId kdfScheme {
-        get { return kdf != null ? kdf.GetUnionSelector() : TpmAlgId.Null; }
+        get { return kdf?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> An optional key derivation scheme for generating a symmetric key from a Z value
@@ -11257,7 +11257,7 @@ public partial class Tpm2RsaEncryptRequest: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(2, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The padding scheme to use if scheme associated with keyHandle is
@@ -11364,7 +11364,7 @@ public partial class Tpm2RsaDecryptRequest: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(2, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The padding scheme to use if scheme associated with keyHandle is
@@ -11718,7 +11718,7 @@ public partial class Tpm2EccEncryptRequest: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(2, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The KDF to use if scheme associated with keyHandle is TPM_ALG_NULL </summary>
@@ -11822,7 +11822,7 @@ public partial class Tpm2EccDecryptRequest: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(4, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The KDF to use if scheme associated with keyHandle is TPM_ALG_NULL </summary>
@@ -12776,7 +12776,7 @@ public partial class Tpm2CertifyRequest: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(3, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Signing scheme to use if the scheme for signHandle is TPM_ALG_NULL </summary>
@@ -12843,7 +12843,7 @@ public partial class Tpm2CertifyResponse: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(1, MarshalType.UnionSelector)]
     public TpmAlgId signatureSigAlg {
-        get { return signature != null ? signature.GetUnionSelector() : TpmAlgId.Null; }
+        get { return signature?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The asymmetric signature over certifyInfo using the key referenced by
@@ -12913,7 +12913,7 @@ public partial class Tpm2CertifyCreationRequest: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(4, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Signing scheme to use if the scheme for signHandle is TPM_ALG_NULL </summary>
@@ -12988,7 +12988,7 @@ public partial class Tpm2CertifyCreationResponse: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(1, MarshalType.UnionSelector)]
     public TpmAlgId signatureSigAlg {
-        get { return signature != null ? signature.GetUnionSelector() : TpmAlgId.Null; }
+        get { return signature?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The signature over certifyInfo </summary>
@@ -13042,7 +13042,7 @@ public partial class Tpm2QuoteRequest: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(2, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Signing scheme to use if the scheme for signHandle is TPM_ALG_NULL </summary>
@@ -13104,7 +13104,7 @@ public partial class Tpm2QuoteResponse: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(1, MarshalType.UnionSelector)]
     public TpmAlgId signatureSigAlg {
-        get { return signature != null ? signature.GetUnionSelector() : TpmAlgId.Null; }
+        get { return signature?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The signature over quoted </summary>
@@ -13171,7 +13171,7 @@ public partial class Tpm2GetSessionAuditDigestRequest: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(4, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Signing scheme to use if the scheme for signHandle is TPM_ALG_NULL </summary>
@@ -13238,7 +13238,7 @@ public partial class Tpm2GetSessionAuditDigestResponse: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(1, MarshalType.UnionSelector)]
     public TpmAlgId signatureSigAlg {
-        get { return signature != null ? signature.GetUnionSelector() : TpmAlgId.Null; }
+        get { return signature?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The signature over auditInfo </summary>
@@ -13301,7 +13301,7 @@ public partial class Tpm2GetCommandAuditDigestRequest: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(3, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Signing scheme to use if the scheme for signHandle is TPM_ALG_NULL </summary>
@@ -13366,7 +13366,7 @@ public partial class Tpm2GetCommandAuditDigestResponse: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(1, MarshalType.UnionSelector)]
     public TpmAlgId signatureSigAlg {
-        get { return signature != null ? signature.GetUnionSelector() : TpmAlgId.Null; }
+        get { return signature?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The signature over auditInfo </summary>
@@ -13427,7 +13427,7 @@ public partial class Tpm2GetTimeRequest: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(3, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Signing scheme to use if the scheme for signHandle is TPM_ALG_NULL </summary>
@@ -13491,7 +13491,7 @@ public partial class Tpm2GetTimeResponse: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(1, MarshalType.UnionSelector)]
     public TpmAlgId signatureSigAlg {
-        get { return signature != null ? signature.GetUnionSelector() : TpmAlgId.Null; }
+        get { return signature?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The signature over timeInfo </summary>
@@ -13557,7 +13557,7 @@ public partial class Tpm2CertifyX509Request: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(3, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Signing scheme to use if the scheme for signHandle is TPM_ALG_NULL </summary>
@@ -13637,7 +13637,7 @@ public partial class Tpm2CertifyX509Response: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(2, MarshalType.UnionSelector)]
     public TpmAlgId signatureSigAlg {
-        get { return signature != null ? signature.GetUnionSelector() : TpmAlgId.Null; }
+        get { return signature?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The signature over tbsDigest </summary>
@@ -13843,7 +13843,7 @@ public partial class Tpm2VerifySignatureRequest: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(2, MarshalType.UnionSelector)]
     public TpmAlgId signatureSigAlg {
-        get { return signature != null ? signature.GetUnionSelector() : TpmAlgId.Null; }
+        get { return signature?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Signature to be tested </summary>
@@ -13926,7 +13926,7 @@ public partial class Tpm2SignRequest: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(2, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Signing scheme to use if the scheme for keyHandle is TPM_ALG_NULL </summary>
@@ -13987,7 +13987,7 @@ public partial class Tpm2SignResponse: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(0, MarshalType.UnionSelector)]
     public TpmAlgId signatureSigAlg {
-        get { return signature != null ? signature.GetUnionSelector() : TpmAlgId.Null; }
+        get { return signature?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The signature </summary>
@@ -14467,7 +14467,7 @@ public partial class Tpm2PolicySignedRequest: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(6, MarshalType.UnionSelector)]
     public TpmAlgId authSigAlg {
-        get { return auth != null ? auth.GetUnionSelector() : TpmAlgId.Null; }
+        get { return auth?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Signed authorization (not optional) </summary>
@@ -16040,7 +16040,7 @@ public partial class Tpm2FieldUpgradeStartRequest: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(3, MarshalType.UnionSelector)]
     public TpmAlgId manifestSignatureSigAlg {
-        get { return manifestSignature != null ? manifestSignature.GetUnionSelector() : TpmAlgId.Null; }
+        get { return manifestSignature?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Signature over fuDigest using the key associated with keyHandle (not
@@ -17234,7 +17234,7 @@ public partial class Tpm2NvCertifyRequest: TpmStructureBase
     /// <summary> Scheme selector </summary>
     [MarshalAs(4, MarshalType.UnionSelector)]
     public TpmAlgId inSchemeScheme {
-        get { return inScheme != null ? inScheme.GetUnionSelector() : TpmAlgId.Null; }
+        get { return inScheme?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> Signing scheme to use if the scheme for signHandle is TPM_ALG_NULL </summary>
@@ -17319,7 +17319,7 @@ public partial class Tpm2NvCertifyResponse: TpmStructureBase
     /// <summary> Selector of the algorithm used to construct the signature </summary>
     [MarshalAs(1, MarshalType.UnionSelector)]
     public TpmAlgId signatureSigAlg {
-        get { return signature != null ? signature.GetUnionSelector() : TpmAlgId.Null; }
+        get { return signature?.GetUnionSelector() ?? TpmAlgId.Null; }
     }
 
     /// <summary> The asymmetric signature over certifyInfo using the key referenced by

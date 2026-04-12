@@ -289,7 +289,7 @@ public abstract partial class TpmStructureBase
             if (mem.SizeLength > 0)
             {
                 var arr = mem.WireType == MarshalType.VariableLengthArray;
-                var len = arr ? (memVal == null ? 0 : ((Array)memVal).Length)
+                var len = arr ? ((Array)memVal)?.Length ?? 0
                     : Marshaller.GetTpmRepresentation(memVal).Length;
                 dbg.Trace("Sending " + (arr ? "Array " : "Struct ") + mem.Name + " of size " + len);
                 m.PutSizeTag(len, mem.SizeLength, mem.SizeName);

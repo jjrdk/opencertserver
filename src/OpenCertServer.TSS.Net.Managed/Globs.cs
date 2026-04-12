@@ -555,7 +555,7 @@ public class Globs
 
     public static T[] Concatenate<T>(T[][] fragments)
     {
-        var len = fragments.Sum(t => t != null ? t.Length : 0);
+        var len = fragments.Sum(t => t?.Length ?? 0);
         var temp = new T[len];
         var pos = 0;
         foreach (var t in fragments)

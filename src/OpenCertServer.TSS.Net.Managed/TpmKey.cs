@@ -90,8 +90,7 @@ public partial class TpmPublic
     {
         using (var verifier = AsymCryptoSystem.CreateFrom(this))
         {
-            return verifier == null ? false
-                : verifier.VerifySignatureOverData(data, sig);
+            return verifier?.VerifySignatureOverData(data, sig) ?? false;
         }
     }
 
@@ -103,8 +102,7 @@ public partial class TpmPublic
     {
         using (var verifier = AsymCryptoSystem.CreateFrom(this))
         {
-            return verifier == null ? false
-                : verifier.VerifySignatureOverHash(digest, sig);
+            return verifier?.VerifySignatureOverHash(digest, sig) ?? false;
         }
     }
 
