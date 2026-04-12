@@ -95,8 +95,12 @@ public sealed class SymCipher : IDisposable
 
         switch (symDef.Algorithm) {
             case TpmAlgId.Aes:
-                alg = new RijndaelManaged();
-                alg.Mode = mode == CipherMode.CFB ? CipherMode.ECB : mode;
+                alg = Aes.Create();
+                alg.Mode = mode;
+                if (mode == CipherMode.CFB)
+                {
+                    feedbackSize = 8;
+                }
                 break;
             case TpmAlgId.Tdes:
                 // DES and __3DES are not supported in TPM 2.0 rev. < 1.32
