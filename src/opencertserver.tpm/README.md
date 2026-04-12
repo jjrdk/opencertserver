@@ -17,7 +17,7 @@ TPM chip and **never leave it**.  Certificates are stored in the standard OS cer
 - [Configuration reference](#configuration-reference)
 - [Key rollover](#key-rollover)
 - [Architecture: the ITpmKeyProvider swap seam](#architecture-the-itmkeyprovidder-swap-seam)
-- [Migration guide: replacing Microsoft.TSS](#migration-guide-replacing-microsofttss)
+- [Migration guide: replacing the vendored TSS.Net implementation](#migration-guide-replacing-the-vendored-tssnet-implementation)
   - [Why you might need to migrate](#why-you-might-need-to-migrate)
   - [Checking for known vulnerabilities](#checking-for-known-vulnerabilities)
   - [Option A — Pkcs11Interop + tpm2-pkcs11](#option-a--pkcs11interop--tpm2-pkcs11)
@@ -78,8 +78,8 @@ sudo usermod -aG tss "$USER"
 # re-login or: newgrp tss
 ```
 
-No additional packages are required — `Microsoft.TSS` communicates with the kernel device
-directly.
+No additional packages are required — the vendored `OpenCertServer.TSS.Net.Managed` library
+communicates with the kernel device directly via `TssTpmKeyProvider`.
 
 ### Windows (production)
 
@@ -218,54 +218,57 @@ existingProfile.CloseRolloverWindow();
 │    ExportParameters()    ▲          ▲                              │
 │                          │          │                              │
 │              TssTpmKeyProvider   (your replacement)                │
-│              (Microsoft.TSS)     Pkcs11TpmKeyProvider              │
+│     (OpenCertServer.TSS.Net.Managed) Pkcs11TpmKeyProvider          │
 │                                  MockTpmKeyProvider (tests)        │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-`ITpmKeyProvider` is the **only** place that references `Microsoft.TSS`.  `TpmRsa`,
+`ITpmKeyProvider` is the **only** place that references the vendored `OpenCertServer.TSS.Net.Managed` library.  `TpmRsa`,
 `TpmEcDsa`, `TpmCaProfileFactory`, and `TpmCaExtensions` are all library-agnostic.
 Replacing the backing library requires:
 
 1. Create a class that implements `ITpmKeyProvider`.
-2. Register it instead of `TssTpmKeyProvider` (see [migration guide](#migration-guide-replacing-microsofttss)).
+2. Register it instead of `TssTpmKeyProvider` (see [migration guide](#migration-guide-replacing-the-vendored-tssnet-implementation)).
 
 ---
 
-## Migration guide: replacing Microsoft.TSS
+## Migration guide: replacing the vendored TSS.Net implementation
+
+This project already vendors a snapshot of the TSS.Net library as
+`OpenCertServer.TSS.Net.Managed` to avoid platform-specific NuGet package dependencies.
+If you need to swap this out (e.g. to consume a newer upstream version or use a different TPM
+stack entirely), the options below apply.
 
 ### Why you might need to migrate
 
 | Trigger | Action |
 |---|---|
-| CVE published against `Microsoft.TSS` | Follow [Checking for known vulnerabilities](#checking-for-known-vulnerabilities), then pick an option below |
-| Package is yanked from NuGet | [Vendor the source](#option-b--vendor-the-tssnet-source) immediately, then migrate at leisure |
-| .NET TFM upgrade breaks `Microsoft.TSS` | Test on the new TFM first; if broken, follow [Option A](#option-a--pkcs11interop--tpm2-pkcs11) |
-| Organisational policy bans unmaintained packages | [Option A](#option-a--pkcs11interop--tpm2-pkcs11) or [Option B](#option-b--vendor-the-tssnet-source) |
+| CVE found in the vendored `OpenCertServer.TSS.Net.Managed` source | Apply the upstream patch from [TSS.MSR](https://github.com/microsoft/TSS.MSR) to the vendored copy, then pick an option below if no patch is available |
+| Need a newer upstream TSS.Net version | Re-vendor from the upstream repo (see [Option B](#option-b--re-vendor-from-upstream-tssnet)) |
+| .NET TFM upgrade breaks the vendored code | Test on the new TFM first; if broken, follow [Option A](#option-a--pkcs11interop--tpm2-pkcs11) |
+| Organisational policy bans vendored copies | [Option A](#option-a--pkcs11interop--tpm2-pkcs11) or [Option B](#option-b--re-vendor-from-upstream-tssnet) |
 
 ### Checking for known vulnerabilities
 
-Run the NuGet audit tool against the project at any time:
+Inspect the vendored source against upstream advisories:
 
 ```bash
-dotnet nuget audit src/opencertserver.tpm/opencertserver.tpm.csproj
+# Compare your vendored copy against the upstream tag
+git -C external/TSS.MSR log --oneline v<current-tag>..HEAD
 ```
 
-Or use the GitHub Dependabot / OSV scanner in CI:
+Or use the GitHub Dependabot / OSV scanner in CI on the project as a whole:
 
 ```bash
 # OSV Scanner (https://google.github.io/osv-scanner/)
 osv-scanner --lockfile packages.lock.json
 ```
 
-If a CVE is found for `Microsoft.TSS`:
+If a vulnerability is found in the vendored `OpenCertServer.TSS.Net.Managed` code:
 
-1. Check whether a patched version is available on NuGet:
-   ```bash
-   dotnet package search "Microsoft.TSS"
-   ```
-2. If a fix exists, bump the version in `opencertserver.tpm.csproj` and rebuild.
-3. If no fix exists or the package is abandoned, follow one of the options below.
+1. Check whether a fix has been merged upstream in [TSS.MSR](https://github.com/microsoft/TSS.MSR).
+2. If a fix exists, apply the relevant patch to the vendored copy under `src/OpenCertServer.TSS.Net.Managed/`.
+3. If no fix exists or is insufficient, follow one of the options below.
 
 ### Option A — Pkcs11Interop + tpm2-pkcs11
 
@@ -385,28 +388,21 @@ Pass the softhsm2 library path:
 
 ---
 
-### Option B — Vendor the TSS.Net source
+### Option B — Re-vendor from upstream TSS.Net
 
-If `Microsoft.TSS` is yanked from NuGet but has no known CVEs, vendor its source into the
-repository to keep the current implementation unchanged:
+This project already uses a vendored copy (`src/OpenCertServer.TSS.Net.Managed`).  If you
+need a newer upstream revision, refresh it from the upstream repository:
 
-1. Clone the source:
+1. Clone the upstream source:
    ```bash
-   git clone https://github.com/microsoft/TSS.MSR external/TSS.MSR
+   git clone https://github.com/microsoft/TSS.MSR /tmp/TSS.MSR
    ```
-2. Add the C# project as a local reference in `opencertserver.tpm.csproj`:
-   ```xml
-   <ItemGroup>
-     <!-- Replace the NuGet reference -->
-     <!-- <PackageReference Include="Microsoft.TSS" Version="2.1.1" /> -->
-     <ProjectReference Include="../../external/TSS.MSR/TSS.Net/TSS.Net.csproj" />
-   </ItemGroup>
+2. Copy the updated C# files over the vendored copy:
+   ```bash
+   cp -r /tmp/TSS.MSR/TSS.Net/. src/OpenCertServer.TSS.Net.Managed/
    ```
-3. Track the vendored copy in git (`external/TSS.MSR/` committed).
-4. Maintain a diff from the upstream tag so security patches can be applied manually.
-
-This approach preserves zero code changes to `TssTpmKeyProvider` and is the **fastest
-emergency response** when a package is pulled from NuGet.
+3. Review and reconcile any conflicts against the local patches in `src/OpenCertServer.TSS.Net.Managed/`.
+4. Rebuild and run tests to confirm the updated copy compiles and passes.
 
 ---
 
@@ -424,7 +420,7 @@ private static extern TSS2_RC Esys_Sign(
 ```
 
 This is the lowest-level option and requires the most maintenance.  It is only recommended
-if both `Microsoft.TSS` and `Pkcs11Interop` are unavailable or unsuitable.
+if both the vendored `OpenCertServer.TSS.Net.Managed` and `Pkcs11Interop` are unavailable or unsuitable.
 
 ---
 
