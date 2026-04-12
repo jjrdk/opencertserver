@@ -37,7 +37,8 @@ public static class TpmCaExtensions
         services.AddSingleton<ITpmKeyProvider>(sp => new TssTpmKeyProvider(sp.GetRequiredService<TpmCaOptions>()));
         services.AddSingleton<TpmCaProfileFactory>(sp => new TpmCaProfileFactory(
             sp.GetRequiredService<TpmCaOptions>(),
-            sp.GetRequiredService<ITpmKeyProvider>()));
+            sp.GetRequiredService<ITpmKeyProvider>(),
+            ownsKeyProvider: false));
 
         services.AddSingleton<IStoreCaProfiles>(sp =>
         {
