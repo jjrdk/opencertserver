@@ -171,7 +171,7 @@ public sealed class SymCipher : IDisposable
             case TpmAlgId.Cbc:
                 return CipherMode.CBC;
             case TpmAlgId.Ecb:
-                return CipherMode.ECB;
+                throw new ArgumentException("GetCipherMode: ECB mode is insecure and not supported");
             case TpmAlgId.Ctr:
                 // CTR in .NET requires you to manage your own counter.
                 return CipherMode_None;
