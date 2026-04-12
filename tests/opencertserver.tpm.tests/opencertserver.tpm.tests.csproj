@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <RootNamespace>OpenCertServer.Tpm.Tests</RootNamespace>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+        <IsAotCompatible>false</IsAotCompatible>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Copy the IBM TPM2 simulator Dockerfile to the output directory so
+             TpmSimulatorContainer can build the Docker image at test startup. -->
+        <None Include="Dockerfile.tpm2sim" CopyToOutputDirectory="Always" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
+        <PackageReference Include="Reqnroll.xUnit.v3" Version="3.3.4" />
+        <PackageReference Include="Testcontainers" Version="4.7.0" />
+        <PackageReference Include="xunit.v3" Version="3.2.2" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../src/opencertserver.tpm/opencertserver.tpm.csproj" />
+        <ProjectReference Include="../../src/opencertserver.ca/opencertserver.ca.csproj" />
+        <ProjectReference Include="../../src/opencertserver.ca.utils/opencertserver.ca.utils.csproj" />
+    </ItemGroup>
+
+</Project>
+

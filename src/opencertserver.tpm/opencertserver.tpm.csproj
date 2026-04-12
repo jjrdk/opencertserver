@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <Import Project="../../shared.proj" />
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Tpm</RootNamespace>
+        <AssemblyName>opencertserver.tpm</AssemblyName>
+        <!--
+          Microsoft.TSS uses reflection-heavy serialisation and P/Invoke paths that are incompatible with AOT.
+          We deliberately opt-out here only for this project.  All other projects remain AOT-compatible.
+        -->
+        <IsAotCompatible>false</IsAotCompatible>
+        <IsTrimmable>false</IsTrimmable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!--
+          Vendored TSS.NET source (snapshot 2022-04-22, MIT-licensed).
+          The NuGet package "Microsoft.TSS 2.1.1" uses Windows BCrypt P/Invoke in its
+          netstandard2.0 fallback assembly, and its linux-x64 runtime assembly is x64-only
+          (incompatible with macOS arm64). The vendored build compiles as AnyCPU net8.0
+          using only managed crypto, so it works on macOS, Linux, and Windows.
+          Migration path: if TSS.NET ever ships a properly cross-platform NuGet package
+          (or if we switch to Pkcs11Interop), remove this project reference and add it back
+          as a PackageReference. The sole swap seam is ITpmKeyProvider.
+        -->
+        <ProjectReference Include="..\OpenCertServer.TSS.Net.Managed\OpenCertServer.TSS.Net.Managed.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
+        <ProjectReference Include="..\opencertserver.ca\opencertserver.ca.csproj" />
+        <ProjectReference Include="..\opencertserver.ca.server\opencertserver.ca.server.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="" />
+    </ItemGroup>
+
+</Project>
+
