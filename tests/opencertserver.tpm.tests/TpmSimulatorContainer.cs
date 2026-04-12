@@ -9,8 +9,9 @@ using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 
 /// <summary>
-/// Wraps an IBM Software TPM2 simulator running in an isolated Docker container.
-/// Each test scenario receives its own container so TPM state never bleeds between tests.
+/// Wraps an IBM Software TPM2 simulator running in a Docker container.
+/// One container instance is shared for the whole feature (started by <see cref="TpmContainerHooks"/>)
+/// and reused across all scenarios; TPM handle operations are idempotent so state does not bleed between scenarios.
 /// </summary>
 internal sealed class TpmSimulatorContainer : IAsyncDisposable
 {

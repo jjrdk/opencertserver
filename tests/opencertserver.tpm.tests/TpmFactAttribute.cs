@@ -6,8 +6,8 @@ using Xunit;
 
 /// <summary>
 /// A standard <see cref="FactAttribute"/> for TPM tests.
-/// Simulator connectivity is now handled by <see cref="TpmContainerHooks"/>,
-/// which starts a fresh Docker container before each scenario.
+/// Simulator lifecycle is handled by <see cref="TpmContainerHooks"/>,
+/// which starts one Docker container per feature and shares it across all scenarios in that feature.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class TpmFactAttribute : FactAttribute
