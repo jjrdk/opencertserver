@@ -240,7 +240,7 @@ public sealed class SymCipher : IDisposable
         }
 
         var enc = Alg.CreateEncryptor();
-        if (Alg.Mode == CipherMode.ECB && Mode == CipherMode.CFB)
+        if (Mode == CipherMode.CFB)
         {
             EncryptCFB(paddedData, Alg.IV, enc);
         }
