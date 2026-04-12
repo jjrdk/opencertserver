@@ -182,6 +182,19 @@ They are intentionally written before adding step implementations so they can dr
             Then the ACME server MUST deactivate the account
             And the returned account object MUST have status "deactivated"
 
+        @acme-item2
+        Scenario: RFC 8555 Section 7.3.6 requires the server to reject further operations from a deactivated account
+            When the client deactivates their account
+            And the client attempts to create a new order using the deactivated account
+            Then the ACME server MUST reject the request
+
+        @acme-item2
+        Scenario: RFC 8555 Section 7.3.6 requires the server to allow read-only access to deactivated accounts
+            When the client deactivates their account
+            And the client fetches the deactivated account using POST-as-GET
+            Then the ACME server MUST return the deactivated account object
+            And the returned account object MUST have status "deactivated"
+
         Scenario: RFC 8555 Sections 7.1.1 and 7.3 conditionally require terms-of-service and external account binding enforcement
             Given the ACME server requires agreement to terms of service
             When the client creates a new account without agreeing to the terms of service
