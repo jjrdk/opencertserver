@@ -213,6 +213,11 @@ public sealed class SymCipher : IDisposable
     /// <returns></returns>
     public byte[] Encrypt(byte[] data, byte[] iv = null)
     {
+        if (_mode == CipherMode.ECB)
+        {
+            throw new ArgumentException("Encrypt: ECB mode is insecure and not supported");
+        }
+
         var unpadded = data.Length % BlockSize;
         var paddingNeeded = unpadded == 0 ? 0 : BlockSize - unpadded;
         // AddZeroToEnd makes a copy of the data buffer. This is important
@@ -290,6 +295,11 @@ public sealed class SymCipher : IDisposable
 
     public byte[] Decrypt(byte[] data, byte[] iv = null)
     {
+        if (_mode == CipherMode.ECB)
+        {
+            throw new ArgumentException("Decrypt: ECB mode is insecure and not supported");
+        }
+
         var unpadded = data.Length % BlockSize;
         var paddingNeeded = unpadded == 0 ? 0 : BlockSize - unpadded;
         // AddZeroToEnd makes a copy of the data buffer. This is important
