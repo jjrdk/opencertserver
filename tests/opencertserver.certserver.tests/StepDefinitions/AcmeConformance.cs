@@ -337,6 +337,43 @@ public partial class CertificateServerFeatures
         AcmeState.AccountResponse = await AcmeState.AccountContext!.Deactivate().ConfigureAwait(false);
     }
 
+    // RFC 8555 §7.3.6 – post-deactivation behaviour
+
+    [When("the client deactivates their account")]
+    public async Task WhenTheClientDeactivatesTheirAccount()
+    {
+        await EnsureAccountCreatedAsync();
+        AcmeState.AccountResponse = await AcmeState.AccountContext!.Deactivate().ConfigureAwait(false);
+        Assert.Equal(AcmeAccountStatus.Deactivated, AcmeState.AccountResponse?.Status);
+    }
+
+    [When("the client attempts to create a new order using the deactivated account")]
+    public async Task WhenTheClientAttemptsToCreateANewOrderUsingTheDeactivatedAccount()
+    {
+        // The account key is still stored; sign a new-order request with the deactivated account's kid.
+        // The server MUST NOT accept this request (RFC 8555 §7.3.6).
+        await SendKidSignedRequestAsync(
+            "/new-order",
+            new { identifiers = new[] { new { type = "dns", value = "localhost" } } })
+            .ConfigureAwait(false);
+    }
+
+    [When("the client fetches the deactivated account using POST-as-GET")]
+    public async Task WhenTheClientFetchesTheDeactivatedAccountUsingPostAsGet()
+    {
+        // RFC 8555 §7.3.6: read-only access to the account resource MUST remain available.
+        var accountUrl = GetAccountLocation();
+        await SendPostAsGetAsync(accountUrl).ConfigureAwait(false);
+        AcmeState.AccountResponse = DeserializeAccountResponse();
+    }
+
+    [Then("the ACME server MUST return the deactivated account object")]
+    public void ThenTheAcmeServerMustReturnTheDeactivatedAccountObject()
+    {
+        Assert.Equal(HttpStatusCode.OK, AcmeState.Response?.StatusCode);
+        Assert.NotNull(AcmeState.AccountResponse);
+    }
+
     [Given("the ACME server requires agreement to terms of service")]
     public void GivenTheAcmeServerRequiresAgreementToTermsOfService()
     {

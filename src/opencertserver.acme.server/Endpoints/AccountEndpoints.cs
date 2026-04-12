@@ -61,12 +61,28 @@ public static class AccountEndpoints
         LinkGenerator links,
         CancellationToken cancellationToken)
     {
-        var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
+        // RFC 8555 §7.3.6: The server MUST still allow clients to access the account
+        // in a read-only manner (POST-as-GET) even after deactivation.
+        // Load the account without status validation so that POST-as-GET can succeed
+        // regardless of account status; status is validated below for mutating operations.
+        var account = await accountService.LoadAccount(accountId, cancellationToken).ConfigureAwait(false);
+        if (account == null)
+        {
+            throw new NotFoundException();
+        }
+
         ValidateAccountRoute(accountId, account);
 
         if (IsPostAsGet(payload))
         {
+            // POST-as-GET is a read-only operation – allowed even for deactivated accounts.
             return Results.Ok(CreateAccountResponse(context, links, account));
+        }
+
+        // All mutating operations require the account to be in a valid (active) state.
+        if (account.Status != AccountStatus.Valid)
+        {
+            throw new ConflictRequestException(AccountStatus.Valid, account.Status);
         }
 
         var request = payload.ToPayload<UpdateAccountRequest>();
