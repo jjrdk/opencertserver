@@ -293,9 +293,11 @@ public sealed class SymCipher : IDisposable
         }
     }
 
+    private static bool IsEcbMode(CipherMode mode) => (int)mode == 2;
+
     public byte[] Decrypt(byte[] data, byte[] iv = null)
     {
-        if (_mode == CipherMode.ECB)
+        if (IsEcbMode(_mode))
         {
             throw new ArgumentException("Decrypt: ECB mode is insecure and not supported");
         }
@@ -348,9 +350,13 @@ public sealed class SymCipher : IDisposable
                 case CipherMode.OFB:
                     XorEngine.Xor(res, src).CopyTo(iv, 0);
                     break;
-                case CipherMode.ECB:
-                    throw new ArgumentException("Decrypt: ECB mode is not supported for security reasons");
                 case CipherMode.CTS:
+                    throw new ArgumentException("Decrypt: Unsupported symmetric mode");
+                default:
+                    if (IsEcbMode(_mode))
+                    {
+                        throw new ArgumentException("Decrypt: ECB mode is not supported for security reasons");
+                    }
                     throw new ArgumentException("Decrypt: Unsupported symmetric mode");
             }
         }
