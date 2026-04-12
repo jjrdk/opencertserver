@@ -1,4 +1,4 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
@@ -27,13 +27,6 @@ public class TssException : Exception
     }
 }
 
-public class TssAssertException : TssException
-{
-    public TssAssertException()
-        : base(null)
-    {}
-}
-
 /// <summary>
 /// Represents and encapsulates TPM error codes. Generally TSS.Net propagates TPM
 /// errors as exceptions, although this behavior can be overridden with _ExpectError(),
@@ -57,9 +50,4 @@ public class TpmException : TssException
 public class TpmFailure : Exception
 {
     public TpmFailure(string errMsg) : base(errMsg) {}
-}
-
-public class EscapeException : Exception
-{
-    public EscapeException(string errMsg = "") : base(errMsg) { }
 }

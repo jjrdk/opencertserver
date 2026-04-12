@@ -391,10 +391,8 @@ public sealed class SymCipher : IDisposable
                 {
                     return null;
                 }
-                else
-                {
-                    return Marshaller.FromTpmRepresentation<Sensitive>(Marshaller.Tpm2BToBuffer(dupBlob));
-                }
+
+                return Marshaller.FromTpmRepresentation<Sensitive>(Marshaller.Tpm2BToBuffer(dupBlob));
             }
             innerObject = c.Decrypt(dupBlob);
 

@@ -446,13 +446,13 @@ public sealed class AsymCryptoSystem : IDisposable
         {
             var rsaParams = (RsaParms)_publicParms.parameters;
             var hashAlg = _publicParms.nameAlg;
-            if (rsaParams.scheme is SchemeOaep)
+            if (rsaParams.scheme is SchemeOaep oaep)
             {
-                hashAlg = (rsaParams.scheme as SchemeOaep).hashAlg;
+                hashAlg = oaep.hashAlg;
             }
-            else if (rsaParams.scheme is EncSchemeOaep)
+            else if (rsaParams.scheme is EncSchemeOaep schemeOaep)
             {
-                hashAlg = (rsaParams.scheme as EncSchemeOaep).hashAlg;
+                hashAlg = schemeOaep.hashAlg;
             }
 
             return hashAlg;

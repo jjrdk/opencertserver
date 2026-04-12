@@ -1,4 +1,4 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
@@ -28,7 +28,7 @@ public enum Behavior
     /// - do not do any command parameter validation before sending the command
     ///   to TPM (if only this is not necessary to prevent the client side code
     ///   from crashing).
-    /// The other flags override this default behavior.  
+    /// The other flags override this default behavior.
     /// </summary>
     Default = Passthrough,
 
@@ -54,7 +54,7 @@ public enum Behavior
 /// It is used in conjunction with a TPM device object (implementing Tpm2Device
 /// interface) that provides communication channel with the actual TPM device.
 /// TPM 2.0 commands map 1:1 to corresponding methods in Tpm2 (with parameter
-/// and TPM 2.0 data structures/enums translations described in x_TpmDefs.cs).  
+/// and TPM 2.0 data structures/enums translations described in x_TpmDefs.cs).
 ///
 /// Tpm2 provides a few commands with 'Ex' suffix (like Tpm2.StartAuthSessionEx).
 /// These commands provide a slightly higher level of abstraction when using the
@@ -298,7 +298,7 @@ public sealed partial class Tpm2 : IDisposable
     /// </summary>
     public TpmHelpers Helpers;
 
-    // If an ErrorHandler is registered then it is called instead 
+    // If an ErrorHandler is registered then it is called instead
     public delegate void ErrorHandler(TpmRc returnCode, TpmRc[] expectedResponses);
 
     private ErrorHandler TheErrorHandler;
@@ -328,7 +328,6 @@ public sealed partial class Tpm2 : IDisposable
         EndorsementAuth = Device.GetEndorsementAuth();
     }
 
-    #region Sessions
     /// <summary>
     /// Specify sessions in handle-order to be used during the next command invocation.
     /// The references to the attached sessions will be cleared upon command completion,
@@ -352,7 +351,6 @@ public sealed partial class Tpm2 : IDisposable
             return this;
         }
     }
-    #endregion // Sessions
 
     /// <summary>
     /// By default, Tpm2 throws an exception when an error is returned by the TPM.
@@ -361,7 +359,6 @@ public sealed partial class Tpm2 : IDisposable
     /// The installed set of expected response codes is cleared when the next TPM
     /// command completes (whether successfully of with an error).
     /// </summary>
-    #region ResponseProcessingControl
 
     /// <summary>
     /// Prevents this TPM context from throwing an exception if the next TPM command fails.
@@ -459,13 +456,13 @@ public sealed partial class Tpm2 : IDisposable
 
     private bool IsSuccessExpected()
     {
-        return OuterCommand != TpmCc.None || 
+        return OuterCommand != TpmCc.None ||
             ExpectedResponses == null || ExpectedResponses[0] == TpmRc.Success;
     }
 
     private bool AreErrorsExpected()
     {
-        return OuterCommand == TpmCc.None && ExpectedResponses != null && 
+        return OuterCommand == TpmCc.None && ExpectedResponses != null &&
             (ExpectedResponses[0] != TpmRc.Success || ExpectedResponses.Length > 1);
     }
 
@@ -519,7 +516,6 @@ public sealed partial class Tpm2 : IDisposable
     {
         return LastError == TpmRc.Success;
     }
-    #endregion // ResponseProcessingControl
 
     /// <summary>
     /// Turns on the assertion of Physical Presence for the next command.
@@ -595,8 +591,8 @@ public sealed partial class Tpm2 : IDisposable
     private byte[] CommandBytes;
 
     /// <summary>
-    /// If this property modifier is called on the TPM then the next command is not dispatched 
-    /// onto the TPM. Instead a copy of the command parameters is recorded which can be 
+    /// If this property modifier is called on the TPM then the next command is not dispatched
+    /// onto the TPM. Instead a copy of the command parameters is recorded which can be
     /// obtained by calling _GetCommandBytes()
     /// </summary>
     public Tpm2 _DoNotDispatchCommand()
@@ -619,7 +615,7 @@ public sealed partial class Tpm2 : IDisposable
     private bool AuditThisCommand;
 
     /// <summary>
-    /// Instructs this instance of Tpm2 to start collecting command audit digests (unless auditAlg is TpmAlgId.Null, 
+    /// Instructs this instance of Tpm2 to start collecting command audit digests (unless auditAlg is TpmAlgId.Null,
     /// in which case auditing is terminated.
     /// Tpm2 will accumulate the command audit digest for commands tagged with _Audit().
     /// This command should also be used to reset the audit accumulation.
@@ -658,7 +654,7 @@ public sealed partial class Tpm2 : IDisposable
     // Debugging support.
     //
     // Various callbacks allow a debugger, profiler or monitor to be informed of
-    // TPM commands and responses. They are called at different times and places 
+    // TPM commands and responses. They are called at different times and places
     // in the conversation between the application and the TPM.
     //
     public delegate void TraceCallback(byte[] inBuf, byte[] outBuf);
@@ -730,9 +726,9 @@ public sealed partial class Tpm2 : IDisposable
     }
 
     /// <summary>
-    /// Install a function to be called on every TPM command invocation.  THe callback 
+    /// Install a function to be called on every TPM command invocation.  THe callback
     /// is called for every TPM function on this device.  If the callback returns false
-    /// then standard processing occurs.  If the command returns true then the callback return 
+    /// then standard processing occurs.  If the command returns true then the callback return
     /// parameters are returned to the caller.
     /// </summary>
     /// <param name="theAction"></param>
@@ -790,7 +786,7 @@ public sealed partial class Tpm2 : IDisposable
 
     /// <summary>
     /// GetCpHash instructs Tpm2 to calculate the cpHash of the next command
-    /// rather than actually sending anything to the TPM.  
+    /// rather than actually sending anything to the TPM.
     /// The cpHash is needed for certain policy commands.
     /// THe caller should initialize cpHash.AlgId, and once a command has been
     /// issued the cpHash will be modified to contain the actual hash value.
@@ -830,9 +826,9 @@ public sealed partial class Tpm2 : IDisposable
 
     /// <summary>
     /// By default if an error returned by the TPM is not the same as the
-    /// that expected (set by _ExpectError) then this is translated into 
-    /// an exception by this library.  
-    /// If a non-null warning handler is installed then this handler is 
+    /// that expected (set by _ExpectError) then this is translated into
+    /// an exception by this library.
+    /// If a non-null warning handler is installed then this handler is
     /// invoked INSTEAD and processing is as if the error was the one
     /// expected.
     /// </summary>
@@ -851,7 +847,7 @@ public sealed partial class Tpm2 : IDisposable
     /// <summary>
     /// DispatchMethod is called by auto-generated command action code. It assembles a byte[] containing
     /// the formatted TPM command based on the params passed in explicitly, and the sessions currently attached
-    /// to the TPM object.  It processes the TPM response and converts it into an instantiation of the 
+    /// to the TPM object.  It processes the TPM response and converts it into an instantiation of the
     /// requested object.
     /// </summary>
     /// <param name="ordinal"></param>
@@ -922,7 +918,7 @@ public sealed partial class Tpm2 : IDisposable
         }
         catch (Exception e)
         {
-            var allowedToContinue = e is TpmException && IsErrorAllowed((e as TpmException).RawResponse);
+            var allowedToContinue = e is TpmException exception && IsErrorAllowed(exception.RawResponse);
 
             _ClearCommandPrelaunchContext();
             _ClearCommandContext();
@@ -1084,7 +1080,7 @@ public sealed partial class Tpm2 : IDisposable
 #endif
                 } // infinite loop
 
-                // Invoke the trace callback if installed        
+                // Invoke the trace callback if installed
                 if (TheTraceCallback != null)
                 {
                     TheTraceCallback(command, response);
@@ -1202,9 +1198,8 @@ public sealed partial class Tpm2 : IDisposable
                     UpdateHandleData(ordinal, inParms, inHandles, outParms);
                     ValidateResponseSessions(outHandles, outSessions, ordinal, resultCode, outParmsNoHandles);
 
-                    foreach (var s in Sessions) if (s is AuthSession)
+                    foreach (var s in Sessions) if (s is AuthSession sess)
                     {
-                        var sess = s as AuthSession;
                         if (sess.Attrs.HasFlag(SessionAttr.Audit) && !TpmHandle.IsNull(sess.BindObject))
                         {
                             sess.BindObject = TpmRh.Null;
@@ -1270,8 +1265,8 @@ public sealed partial class Tpm2 : IDisposable
             "[ErrorEntity={2}],[ParmNum={3}]" +
             "[ParmName={4}]",
             new object[] {
-                maskedError.ToString(), 
-                //(uint)maskedError, 
+                maskedError.ToString(),
+                //(uint)maskedError,
                 resultCodeValue,
                 errorEntity,
                 errorEntityIndex,
@@ -1386,7 +1381,7 @@ public sealed partial class Tpm2 : IDisposable
             "[ErrorEntity={2}], [ParmNum={3}]\n" +
             "[ParmName={4}]",
             [
-                LastError.ToString(), 
+                LastError.ToString(),
                 resultCodeValue,
                 errorEntity,
                 errorEntityIndex,
@@ -1706,7 +1701,7 @@ public sealed partial class Tpm2 : IDisposable
     /// sess argument into the sess object. These parameters are the ones passed
     /// to the StartAuthSession command. They are remembered by this Tpm2 object,
     /// until this method is called.
-    /// 
+    ///
     /// Note that _InitializeSession() can be used only once for the given session
     /// handle, as the associated parameters are erased from Tpm2 Object after
     /// they were copied into AuthSession object for the first time.
@@ -1817,7 +1812,7 @@ public sealed partial class Tpm2 : IDisposable
                     // command nesting level.
                     if (InjectCmdCallbackInvoked)
                     {
-                        throw new Exception("No implicit HMAC sessions allowed " + 
+                        throw new Exception("No implicit HMAC sessions allowed " +
                             "in a command injection callback");
                     }
 
@@ -1882,7 +1877,7 @@ public sealed partial class Tpm2 : IDisposable
                 // method before using this handle in the TPM command.
                 if (InjectCmdCallbackInvoked)
                 {
-                    throw new Exception("Unitialized Name property in a handle " + 
+                    throw new Exception("Unitialized Name property in a handle " +
                         "used by command injection callback");
                 }
 
@@ -2005,9 +2000,8 @@ public sealed partial class Tpm2 : IDisposable
         foreach (var s in Sessions)
         {
             var outSess = outSessions[outSessionCount++];
-            if (s is AuthSession)
+            if (s is AuthSession sess)
             {
-                var sess = (AuthSession)s;
                 sess.SetNonceTpm(outSess.nonceTpm);
                 sess.Attrs = outSess.attributes; // | SessionAttr.ContinueSession;
             }
@@ -2127,7 +2121,7 @@ public sealed partial class Tpm2 : IDisposable
     }
 
     /// <summary>
-    /// First determine whether parm enc/decryption is in effect for this command. If not 
+    /// First determine whether parm enc/decryption is in effect for this command. If not
     /// return an unmodified buffer.  If so then do the parm encryption.
     /// </summary>
     /// <param name="parms"></param>
@@ -2193,7 +2187,7 @@ public sealed partial class Tpm2 : IDisposable
     /// Updates information associated by the library with TPM entity handles upon
     /// successful completion of a command that either creates a new entity or
     /// changes the properties of an existing one.
-    /// 
+    ///
     /// Some important data associated with TPM entities cannot be retrieved from
     /// TPM either because of their sensitivity or because of substantial overhead.
     /// The information of the former kind is an auth value (for permanent handles,
@@ -2270,11 +2264,10 @@ public sealed partial class Tpm2 : IDisposable
             }
             case TpmCc.HmacStart:   // alias to TpmCc.MacStart
             {
-                if (inParms is Tpm2HmacStartRequest)
+                if (inParms is Tpm2HmacStartRequest parms)
                 {
-                    var req = (Tpm2HmacStartRequest)inParms;
                     var resp = (Tpm2HmacStartResponse)outParms;
-                    resp.handle.Auth = req.auth;
+                    resp.handle.Auth = parms.auth;
                     resp.handle.Name = null;
                 }
                 else {
@@ -2599,7 +2592,7 @@ public class CommandInfo
 public class CommandProcessor
 {
     /// <summary>
-    /// Splits a TpmStructureBase command or response, and splits it into 
+    /// Splits a TpmStructureBase command or response, and splits it into
     /// handles and the parms data
     /// </summary>
     /// <param name="s"></param>
@@ -2641,7 +2634,7 @@ public class CommandProcessor
             if (mm != null)
             {
                 var hRep = mm.Invoke(s, null);
-                handles[j] = hRep is TpmHandle ? (TpmHandle)hRep : ((TpmHandleX)hRep).Handle;
+                handles[j] = hRep is TpmHandle rep ? rep : ((TpmHandleX)hRep).Handle;
             }
         }
         // And the rest is the parms
@@ -3036,7 +3029,7 @@ public class CommandProcessor
     }
 
     /// <summary>
-    /// Interpret a HEX command string into a parsed command.  
+    /// Interpret a HEX command string into a parsed command.
     /// </summary>
     /// <param name="s"></param>
     public static string ParseCommand(string s)
@@ -3047,7 +3040,7 @@ public class CommandProcessor
     }
 
     /// <summary>
-    /// Interpret a HEX command string into a parsed command.  
+    /// Interpret a HEX command string into a parsed command.
     /// </summary>
     /// <param name="commandName"></param>
     /// <param name="s"></param>

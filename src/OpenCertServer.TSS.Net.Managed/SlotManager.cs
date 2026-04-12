@@ -208,13 +208,11 @@ public sealed class Tbs : IDisposable
             {
                 throw new Exception("Failed to make space for objects or sessions");
             }
-            else
-            {
-                // At this point everything referenced should be loaded, and
-                // there will be a free slot if needed so we can translate
-                // the input handles to the underlying handles 
-                ReplaceHandlesIn(inHandles, inSessions, neededObjects, neededSessions);
-            }
+
+            // At this point everything referenced should be loaded, and
+            // there will be a free slot if needed so we can translate
+            // the input handles to the underlying handles 
+            ReplaceHandlesIn(inHandles, inSessions, neededObjects, neededSessions);
 
             // Re-create the command using translated object and session handles
             var commandBuf = CommandProcessor.CreateCommand(commandHeader.CommandCode,

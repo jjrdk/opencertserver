@@ -31,19 +31,6 @@ public class PolicyTree
         set { PolicyHash = new TpmHash(value); }
     }
 
-    TpmHash _Digest = null;
-
-    public TpmHash Digest
-    {
-        get {
-            if (_Digest == null)
-            {
-                _Digest = GetPolicyDigest();
-            }
-
-            return _Digest; }
-    }
-
     public PolicyTree(TpmAlgId hashAlgorithm)
     {
         HashAlg = hashAlgorithm;
@@ -53,7 +40,6 @@ public class PolicyTree
     public PolicyAce SetPolicyRoot(PolicyAce root)
     {
         PolicyRoot = root;
-        _Digest = null;
         return PolicyRoot;
     }
 
@@ -61,17 +47,6 @@ public class PolicyTree
     public PolicyAce GetPolicyRoot()
     {
         return PolicyRoot;
-    }
-
-    public PolicyTree InsertPolicyRoot(PolicyAce newRoot)
-    {
-        if (PolicyRoot != null)
-        {
-            newRoot.AddNextAce(PolicyRoot);
-        }
-
-        SetPolicyRoot(newRoot);
-        return this;
     }
 
     /// <summary>
@@ -209,43 +184,6 @@ public class PolicyTree
         PolicyRoot = theRoot;
     }
 
-    /// <summary>
-    /// Create a simple policy chain (no ORs).
-    /// </summary>
-    public void Create(PolicyAce[] singlePolicyChain)
-    {
-        // ReSharper disable once RedundantExplicitArraySize
-        var arr = new PolicyAce[1][] {singlePolicyChain};
-        CreateNormalizedPolicy(arr);
-    }
-
-    /// <summary>
-    /// Sets the current policy tree to a policy branch represented by its leaf ACE.
-    /// A policy branch can be constructed by means of the following expressions:
-    ///     new TpmAce1().And(new TpmAce2()).And(new TpmAce3());
-    /// or
-    ///     new TpmAce1().AddNextAce(new TpmAce2()).AddNextAce(new TpmAce3());
-    /// </summary>
-    public void Set (PolicyAce leaf)
-    {
-        if (leaf == null)
-        {
-            PolicyRoot = null;
-            return;
-        }
-        // The construction policyTree.Set()
-        // evaluates to ace4.  We have to go back to the root.
-        if (string.IsNullOrEmpty(leaf.BranchID))
-        {
-            leaf.BranchID = "leaf";
-        }
-        do
-        {
-            PolicyRoot = leaf;
-            leaf = leaf.PreviousAce;
-        } while (leaf != null);
-    }
-
     public TpmHash GetPolicyDigest()
     {
         PolicyAce dummyAce = null;
@@ -258,11 +196,6 @@ public class PolicyTree
         CheckPolicy("", ref dummyAce);
 
         return PolicyRoot.GetPolicyDigest(PolicyHash.HashAlg);
-    }
-
-    public void ResetPolicyDigest()
-    {
-        PolicyHash = new TpmHash(PolicyHash.HashAlg);
     }
 
     internal bool AllowErrorsInPolicyEval;
@@ -343,126 +276,6 @@ public class PolicyTree
         }
     }
 
-    public PolicyAce GetAce(string nodeIdentifier)
-    {
-        return FindNodeId(PolicyRoot, nodeIdentifier);
-    }
-
-    private PolicyAce FindNodeId(PolicyAce ace, string nodeId)
-    {
-        if (ace.NodeId == nodeId)
-        {
-            return ace;
-        }
-
-        if (ace is TpmPolicyOr)
-        {
-            foreach (var branchRoot in ((TpmPolicyOr)ace).PolicyBranches)
-            {
-                var a = FindNodeId(branchRoot, nodeId);
-                if (a != null)
-                {
-                    return a;
-                }
-            }
-        }
-
-        return ace.NextAce == null ? null : FindNodeId(ace.NextAce, nodeId);
-    }
-
-    #region serialization
-
-    /// <summary>
-    /// Create a serialization of the current policy object in a stream (e.g. MemoryStream or FileStream)
-    /// </summary>
-    /// <param name="policyIdentifier"></param>
-    /// <param name="format"></param>
-    /// <param name="targetStream"></param>
-    public void Serialize(string policyIdentifier, PolicySerializationFormat format, Stream targetStream)
-    {
-        var p = new TpmPolicy(this);
-        p.Create(policyIdentifier);
-
-        switch(format)
-        {
-            case PolicySerializationFormat.Xml:
-            {
-                var ser = new DataContractSerializer(typeof(TpmPolicy));
-                ser.WriteObject(targetStream, p);
-                break;
-            }
-            case PolicySerializationFormat.Json:
-            {
-                var ser = new DataContractJsonSerializer(typeof(TpmPolicy));
-                ser.WriteObject(targetStream, p);
-                break;
-            }
-            default:
-                throw new ArgumentException("PolicyTree.Serialize: Unknown format " + format);
-        }
-        targetStream.Flush();
-    }
-
-    /// <summary>
-    /// Load a policy from a stream (MemoryStream, FileStream) in the specified format
-    /// </summary>
-    /// <param name="format"></param>
-    /// <param name="sourceStream"></param>
-    public void Deserialize(PolicySerializationFormat format, Stream sourceStream)
-    {
-        TpmPolicy pol = null;
-        switch (format)
-        {
-            case PolicySerializationFormat.Xml:
-            {
-                var ser = new DataContractSerializer(typeof(TpmPolicy));
-                pol = (TpmPolicy)ser.ReadObject(sourceStream);
-                break;
-            }
-            case PolicySerializationFormat.Json:
-            {
-                var ser = new DataContractJsonSerializer(typeof(TpmPolicy));
-                pol = (TpmPolicy)ser.ReadObject(sourceStream);
-                break;
-            }
-            default:
-                throw new ArgumentException("PolicyTree.Deserialize: Unknown format " + format);
-        }
-        pol.AssociatedPolicy = this;
-        PolicyRoot = pol.PolicyRoot;
-    }
-
-    public string SerializeToString(string policyIdentifier, PolicySerializationFormat fmt)
-    {
-        var s = new MemoryStream();
-        Serialize(policyIdentifier, fmt, s);
-        return Encoding.UTF8.GetString(s.ToArray());
-    }
-
-    public void SerializeToFile(string policyIdentifier, PolicySerializationFormat fmt, string fileName)
-    {
-        var s = SerializeToString(policyIdentifier, fmt);
-        File.WriteAllText(fileName, s);
-    }
-
-    public void DeserializeFromString(PolicySerializationFormat fmt, string stream)
-    {
-        var s = new MemoryStream(Encoding.UTF8.GetBytes(stream));
-        Deserialize(fmt, s);
-    }
-
-    public void DeserializeFromFile(PolicySerializationFormat fmt, string fileName)
-    {
-        using (var s = new FileStream(fileName, FileMode.Open))
-        {
-            Deserialize(fmt, s);
-        }
-    }
-
-    #endregion
-
-    #region callbacks
-
     //
     // Policies like PolicyCommandCode and PolicyLocality can be executed without
     // any additional support. However some policies need a key-holder to sign
@@ -477,9 +290,6 @@ public class PolicyTree
     // and this can be used to provide additional context (e.g. to distinguish
     // a request to use a corporate smartcard from a personal one).
     //
-
-    #region PolicySingedCallback
-
     public delegate ISignatureUnion SignDelegate(PolicyTree policy, TpmPolicySigned ace,
         byte[] nonceTpm,
         out TpmPublic sigVerifier);
@@ -521,10 +331,6 @@ public class PolicyTree
         return dataToSign.GetBytes();
     }
 
-    #endregion // PolicySingedCallback
-
-    #region PolicyNvCallback
-
     public delegate void PolicyNVDelegate(PolicyTree policy, TpmPolicyNV ace,
         out SessionBase authorizingSession,
         out TpmHandle authorizedEntityHandle,
@@ -550,10 +356,6 @@ public class PolicyTree
         PolicyNVCallback(this, ace, out authSession, out authHandle, out nvHandle);
     }
 
-    #endregion //PolicyNvCallback
-
-    #region PolicyActionCallback
-
     public delegate void PolicyActionDelegate(PolicyTree policy, TpmPolicyAction ace);
 
     public void SetPolicyActionCallback(PolicyActionDelegate policyActionCallback)
@@ -571,13 +373,7 @@ public class PolicyTree
         }
         PolicyActionCallback(this, ace);
     }
-
-    #endregion // PolicyActionCallback
-
-    #endregion // callbacks
 } // class PolicyTree
-
-#region TpmPolicyClass
 
 /// <summary>
 /// The PolicySerializer is a helper-class that creates and consumes a (proposed-standard)
@@ -645,11 +441,11 @@ public class TpmPolicy
     internal PolicyTree AssociatedPolicy;
 
     [MarshalAs(0)]
-    [DataMember()]
+    [DataMember]
     public string PolicyName;
 
     [MarshalAs(1)]
-    [DataMember()]
+    [DataMember]
     public TpmAlgId HashAlgorithm
     {
         get
@@ -663,7 +459,7 @@ public class TpmPolicy
     }
 
     [MarshalAs(2)]
-    [DataMember()]
+    [DataMember]
     public byte[] PolicyDigest
     {
         get
@@ -681,7 +477,7 @@ public class TpmPolicy
     }
 
     [MarshalAs(3)]
-    [DataMember()]
+    [DataMember]
     public PolicyAce[] Policy
     {
         get
@@ -758,5 +554,3 @@ public class TpmPolicy
         return root;
     }
 }
-
-#endregion

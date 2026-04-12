@@ -352,8 +352,6 @@ internal class TpmDllWrapper
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         public static extern bool SetDllDirectory(string lpPathName);
 
-        #region TpmExports
-
         [DllImport("tpm.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void _TPM_Init();
 
@@ -376,9 +374,6 @@ internal class TpmDllWrapper
         [DllImport("tpm.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void Signal_Hash_End();
 
-        #endregion
-
-        #region PlatformExports
         const string platform = "tpm.dll"; // "platform.dll";
 
         [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
@@ -416,8 +411,6 @@ internal class TpmDllWrapper
 
         [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__ClearNvAvail();
-
-        #endregion
     }
 } // class TpmDllWrapper
 
