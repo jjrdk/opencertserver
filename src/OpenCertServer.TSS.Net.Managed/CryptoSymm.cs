@@ -275,7 +275,7 @@ public sealed class SymCipher : IDisposable
                     XorEngine.Xor(res, src).CopyTo(iv, 0);
                     break;
                 case CipherMode.ECB:
-                    break;
+                    throw new ArgumentException("Encrypt: ECB mode is insecure and not supported");
                 case CipherMode.CTS:
                     throw new ArgumentException("Encrypt: Unsupported symmetric mode");
             }
