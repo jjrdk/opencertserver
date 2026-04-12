@@ -213,9 +213,11 @@ public sealed class SymCipher : IDisposable
     /// <returns></returns>
     public byte[] Encrypt(byte[] data, byte[] iv = null)
     {
-        if (_mode == CipherMode.ECB)
+        if (_mode != CipherMode.CBC &&
+            _mode != CipherMode.CFB &&
+            _mode != CipherMode.OFB)
         {
-            throw new ArgumentException("Encrypt: ECB mode is insecure and not supported");
+            throw new ArgumentException("Encrypt: Unsupported symmetric mode");
         }
 
         var unpadded = data.Length % BlockSize;
@@ -264,9 +266,7 @@ public sealed class SymCipher : IDisposable
                 case CipherMode.OFB:
                     XorEngine.Xor(res, src).CopyTo(iv, 0);
                     break;
-                case CipherMode.ECB:
-                    throw new ArgumentException("Encrypt: ECB mode is insecure and not supported");
-                case CipherMode.CTS:
+                default:
                     throw new ArgumentException("Encrypt: Unsupported symmetric mode");
             }
         }
