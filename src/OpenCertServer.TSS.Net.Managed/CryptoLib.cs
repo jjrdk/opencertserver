@@ -124,19 +124,19 @@ public static class CryptoLib
 
     public static TpmAlgId SchemeHash (ISignatureUnion sig)
     {
-        if (sig is SignatureRsa)
+        if (sig is SignatureRsa rsa)
         {
-            return (sig as SignatureRsa).hash;
+            return rsa.hash;
         }
 
-        if (sig is SignatureEcc)
+        if (sig is SignatureEcc ecc)
         {
-            return (sig as SignatureEcc).hash;
+            return ecc.hash;
         }
 
-        if (sig is TpmHash)
+        if (sig is TpmHash hash)
         {
-            return (sig as TpmHash).HashAlg;
+            return hash.HashAlg;
         }
 
         return TpmAlgId.Null;

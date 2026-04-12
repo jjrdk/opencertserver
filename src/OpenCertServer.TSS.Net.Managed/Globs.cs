@@ -1,4 +1,4 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
@@ -76,21 +76,11 @@ public class Globs
         return true;
     }
 
-    public static bool IsOneOf<T>(T val, params T[] set)
-    {
-        return set.Contains(val);
-    }
-
     public static byte[] HostToNet(object o)
     {
         return ReverseByteOrder(GetBytes(o));
     }
 
-    public static byte[] BytesFromString(string s)
-    {
-        return AddZeroToEnd(Encoding.Unicode.GetBytes(s), sizeof(char));
-    }
-        
     public static byte[] GetBytes(object o)
     {
         var t = o.GetType();
@@ -302,54 +292,12 @@ public class Globs
         throw new ArgumentException("Globs.SizeOf(): Unsupported type " + t);
     }
 
-    public static ulong GetEnumValue (Enum e)
-    {
-        var buf = new byte[sizeof(ulong)];
-        var uType = Enum.GetUnderlyingType(e.GetType());
-        buf.CopyTo(GetBytes(Convert.ChangeType(e, uType)), 0);
-        return BitConverter.ToUInt64(buf, 0);
-    }
-
-    public static object IncrementValue(object o, sbyte delta)
-    {
-        var t = o.GetType();
-        var data = GetBytes(o);
-        int s = delta;
-        for (var i = 0; s != 0 && i < data.Length; ++i )
-        {
-            s += data[i];
-            data[i] = (byte)s;
-            s >>= 8;
-        }
-        return FromBytes(t, data);
-    }
-
     // RNG used when seeded random numbers are required
 
     /// <summary>
     /// Default RNG used by the library (for nonces, and if a random auth-value is required, etc.)
     /// </summary>
     public static PRNG Rng = new PRNG();
-
-    /// <summary>
-    /// Set the PRNG seed used by the testCtx. If this routine is not called then the seed is 
-    /// extracted from the system RNG. Note that there is one RNG shared by all threads using
-    /// TPM library services, so non-determinism is to be expected in multi-threaded programs
-    /// even when the RNG is seeded.
-    /// </summary>
-    /// <param name="seed"></param>
-    public static void SetRngSeed(string seed)
-    {
-        Rng.SetRngSeed(seed);
-    }
-
-    /// <summary>
-    /// Set the tester PRNG seed to random value from the system RNG
-    /// </summary>
-    public static void SetRngRandomSeed()
-    {
-        Rng.SetRngRandomSeed();
-    }
 
     public static byte[] GetRandomBytes(int numBytes)
     {
@@ -367,26 +315,6 @@ public class Globs
           % upperBound;
     }
 
-    public static uint GetRandomUInt(uint maxVal = uint.MaxValue)
-    {
-        if (maxVal == 0)
-        {
-            return 0;
-        }
-
-        return BitConverter.ToUInt32(GetRandomBytes(4), 0) % maxVal;
-    }
-
-    public static ulong GetRandomUlong(ulong maxVal = ulong.MaxValue)
-    {
-        if (maxVal == 0)
-        {
-            return 0;
-        }
-
-        return BitConverter.ToUInt64(GetRandomBytes(8), 0) % maxVal;
-    }
-
     public static double GetRandomDouble()
     {
         var randInt = GetRandomInt(1000000);
@@ -396,19 +324,6 @@ public class Globs
     public static byte[] GetZeroBytes(int numBytes)
     {
         return new byte[numBytes];
-    }
-
-    public static byte[] ByteArray2Dto1D(byte[][] arr)
-    {
-        var len = arr.Sum(t => t.Length);
-        var retVal = new byte[len];
-        var pos = 0;
-        foreach (var t in arr)
-        {
-            t.CopyTo(retVal, pos);
-            pos += t.Length;
-        }
-        return retVal;
     }
 
     public static byte[] ByteArrayFromHex(string hexString, bool removeSpaces = false)
@@ -513,57 +428,6 @@ public class Globs
         return res;
     }
 
-    public static string FormatBytesCompact(string label, byte[] buf)
-    {
-        return FormatBytes(label, buf, 0, "");
-    }
-
-    public static string HexFromValueType(ValueType x)
-    {
-        var s = new StringBuilder();
-        if (x is ulong)
-        {
-            s.AppendFormat("{0:X16}", (uint)x);
-        }
-        if (x is uint)
-        {
-            s.AppendFormat("{0:X8}", (uint)x);
-        }
-        if (x is ushort)
-        {
-            s.AppendFormat("{0:X4}", (ushort)x);
-        }
-        if (x is byte)
-        {
-            s.AppendFormat("{0:X2}", (byte)x);
-        }
-        if (string.IsNullOrEmpty(s.ToString()))
-        {
-            throw new ArgumentException("HexFromValueType: Unsupported ValueType conversion");
-        }
-        return s.ToString();
-    }
-
-    public static string ToBinaryString(byte[] x)
-    {
-        var s = "";
-        foreach (var t in x)
-        {
-            for (var k = 0; k < 8; k++)
-            {
-                if ((t & (0x80 >> k)) != 0)
-                {
-                    s += "1";
-                }
-                else
-                {
-                    s += "0";
-                }
-            }
-        }
-        return s;
-    }
-
     public static byte[] ByteArray(int numBytes, byte val)
     {
         var x = new byte[numBytes];
@@ -572,26 +436,6 @@ public class Globs
             x[j] = val;
         }
         return x;
-    }
-
-    public static byte[] ByteArrayFromAsciiString(string s, bool zeroTerm = true)
-    {
-        var buf = Encoding.ASCII.GetBytes(s);
-        return zeroTerm ? buf.Concat(new byte[] { 0 }).ToArray() : buf;
-    }
-
-    public static uint GetEnumFieldAsUint(Enum val, int lowestBit, int highestBit)
-    {
-        var x = Convert.ToUInt32(val);
-        x = x >> lowestBit;
-        var numBits = highestBit - lowestBit;
-        uint mask = 0;
-        for (var j = 0; j <= numBits; j++)
-        {
-            mask = (mask << 1) | 1;
-        }
-        var ret = x & mask;
-        return ret;
     }
 
     private static int HexNibbleToInt(char c)
@@ -704,40 +548,9 @@ public class Globs
         return dstList;
     }
 
-    public static string RepeatChars(int count, char charToRepeat)
-    {
-        var ss = "";
-        for (var j = 0; j < count; j++)
-        {
-            ss += charToRepeat;
-        }
-        return ss;
-    }
-
     public static int Mix(int x, int y)
     {
         return (x + 1) * (y + 1);
-    }
-
-    public static int GetSizeOfValueType(object o)
-    {
-        if (o is byte)
-        {
-            return 1;
-        }
-        if (o is ushort || o is short)
-        {
-            return 2;
-        }
-        if (o is uint || o is int)
-        {
-            return 4;
-        }
-        if (o is ulong || o is long)
-        {
-            return 8;
-        }
-        throw new ArgumentException("GetSizeOfValueType: Unrecognized value type");
     }
 
     public static T[] Concatenate<T>(T[][] fragments)
@@ -789,22 +602,6 @@ public class Globs
         var y = new byte[x.Length - numBits / 8];
         Array.Copy(x, y, y.Length);
         return ShiftRightInternal(y, numBits % 8);
-    }
-
-    public static void DebugPrint(string s, object o, bool doTrace = true)
-    {
-        if (!doTrace)
-        {
-            return;
-        }
-        var bytes = o as byte[];
-
-        if (bytes != null)
-        {
-            Debug.WriteLine("{0} [{1},0x{1:x}] {2}", s, bytes.Length, HexFromByteArray(bytes));
-            return;
-        }
-        Debug.WriteLine(s + " " + o);
     }
 
     public static byte[] ReverseByteOrder(byte[] b)
@@ -875,36 +672,6 @@ public class Globs
         return true;
     }
 
-    public static string ToString<T> (IEnumerable<T> list, string separator = ", ", string emptyListDesignator = "")
-    {
-        if (list.Count() == 0)
-        {
-            return emptyListDesignator;
-        }
-        var s = "";
-        foreach (var val in list)
-        {
-            if (s.Length > 0)
-            {
-                s += separator;
-            }
-            s += val;
-        }
-        return s;
-    }
-
-    public static Type GetLengthType (int lengthSize)
-    {
-        switch(lengthSize)
-        {
-            case 1: return typeof(byte);
-            case 2: return typeof(ushort);
-            case 4: return typeof(uint);
-            case 8: return typeof(ulong);
-        }
-        throw new ArgumentException("GetLengthType: Unsupported length size " + lengthSize);
-    }
-
     public static string ToCSharpStyle (string typeName)
     {
         if (typeName.EndsWith("[]"))
@@ -929,66 +696,6 @@ public class Globs
         return typeName;
     }
 
-    public static string GetTypeName(object obj)
-    {
-        var fullName = obj.GetType().ToString();
-        return fullName.Substring(fullName.LastIndexOf('.') + 1);
-    }
-
-    /// <summary>
-    /// Returns unqualified name of the object's type or value.
-    /// </summary>
-    /// <param name="obj"></param>
-    /// <returns></returns>
-    public static string GetShortName(object obj)
-    {
-        var fullName = obj.ToString();
-        var name = fullName.Substring(fullName.LastIndexOf('.') + 1);
-        if (name.Contains(","))
-        {
-            name = name.Replace(" ", "");
-            var tokens = name.Split(new[] { ',' });
-            foreach (var token in tokens)
-            {
-                if ((uint)obj == (uint)Enum.Parse(obj.GetType(), token))
-                {
-                    return token;
-                }
-            }
-        }
-        return name;
-    }
-
-    public static string TrimEnd(string str, string substr)
-    {
-        if (str.Length < substr.Length || str.Substring(str.Length - substr.Length) != substr)
-        {
-            return str;
-        }
-        return str.Substring(0, str.Length - substr.Length);
-    }
-
-    public static string Join(string separator, params string[] items)
-    {
-        return string.Join(separator, items.Where(item => !string.IsNullOrEmpty(item)));
-    }
-
-    //
-    // Miscellaneous helpers
-    //
-
-    private static volatile int _volatileCounter;
-
-    public static void SpinLoop(int spinCount)
-    {
-        for (var i = 0; i < spinCount; ++i)
-        {
-            for (_volatileCounter = 0; _volatileCounter < 1000; ++_volatileCounter)
-            {
-            }
-        }
-    }
-
     //
     // .Net metadada processing helpers
     //
@@ -1000,13 +707,14 @@ public class Globs
     /// <returns></returns>
     public static Type GetMemberType(MemberInfo memInfo)
     {
-        if (memInfo is FieldInfo)
+        if (memInfo is FieldInfo info)
         {
-            return (memInfo as FieldInfo).FieldType;
+            return info.FieldType;
         }
-        else if (memInfo is PropertyInfo)
+
+        if (memInfo is PropertyInfo propertyInfo)
         {
-            return (memInfo as PropertyInfo).PropertyType;
+            return propertyInfo.PropertyType;
         }
         return null;
     }
@@ -1019,13 +727,14 @@ public class Globs
     /// <returns></returns>
     public static object GetMember(MemberInfo memInfo, object containingObject)
     {
-        if (memInfo is FieldInfo)
+        if (memInfo is FieldInfo info)
         {
-            return (memInfo as FieldInfo).GetValue(containingObject);
+            return info.GetValue(containingObject);
         }
-        else if (memInfo is PropertyInfo)
+
+        if (memInfo is PropertyInfo propertyInfo)
         {
-            return (memInfo as PropertyInfo).GetValue(containingObject);
+            return propertyInfo.GetValue(containingObject);
         }
         return null;
     }
@@ -1038,78 +747,19 @@ public class Globs
     /// <param name="val"></param>
     public static void SetMember(MemberInfo memInfo, object containingObject, object val)
     {
-        if (memInfo is FieldInfo)
+        if (memInfo is FieldInfo info)
         {
-            (memInfo as FieldInfo).SetValue(containingObject, val);
+            info.SetValue(containingObject, val);
         }
-        else if (memInfo is PropertyInfo)
+        else if (memInfo is PropertyInfo propertyInfo)
         {
-            (memInfo as PropertyInfo).SetValue(containingObject, val);
+            propertyInfo.SetValue(containingObject, val);
         }
         else
         {
             // Unsupported type
             Debug.Assert(false);
         }
-    }
-
-    public static A GetAttr<A>(MemberInfo memInfo) where A : class
-    {
-#if TSS_MIN_API
-            Object[] attr = memInfo.GetCustomAttributes(typeof(A), false).ToArray();
-#else
-        var attr = memInfo.GetCustomAttributes(typeof(A), false) as object[];
-#endif
-        if (attr.Length == 0)
-        {
-            return null;
-        }
-        Debug.Assert(attr.Length == 1);
-        return (A)attr[0];
-    }
-
-    public static string[] ReadAllLines(string fileName, Encoding enc = null)
-    {
-#if TSS_MIN_API
-            string t = enc == null ? File.ReadAllText(fileName)
-                                   : File.ReadAllText(fileName, enc);
-            return t.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);
-#else
-        return enc == null ? File.ReadAllLines(fileName)
-            : File.ReadAllLines(fileName, enc);
-#endif
-    }
-
-    public static void Free(ref IntPtr ptr)
-    {
-        if (ptr != IntPtr.Zero)
-        {
-            Marshal.FreeHGlobal(ptr);
-            ptr = IntPtr.Zero;
-        }
-    }
-
-    //
-    // Math helpers
-    //
-
-    public static BigInteger NewtonSqrt (BigInteger N)
-    {
-        var Y = N / 2;
-        BigInteger Yprev = 0;
-        BigInteger diff = 0;
-        do {
-            Yprev = Y;
-            Y = (Y + N / Y) / 2;
-            diff = Y - Yprev;
-        }
-        while (diff < -1 || diff > 1);
-        if (N/Y > Y)
-        {
-            Y++;
-        }
-
-        return Y;
     }
 
     /// <summary>
@@ -1234,20 +884,6 @@ public class Globs
     } // ModSqrt
 
 } // class Globs
-
-public class ByteArrayComparer : IEqualityComparer<byte[]>
-{
-    bool IEqualityComparer<byte[]>.Equals(byte[] x, byte[] y)
-    {
-        var res = x.IsEqual(y);
-        return res;
-    }
-
-    int IEqualityComparer<byte[]>.GetHashCode(byte[] obj)
-    {
-        return BitConverter.ToInt32(CryptoLib.HashData(TpmAlgId.Sha1, obj), 0);
-    }
-} // class ByteArrayComparer
 
 public static class ExtensionMethods
 {

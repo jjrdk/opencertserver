@@ -1,4 +1,4 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
@@ -301,7 +301,7 @@ public partial class TpmPublic
     /// <summary>
     /// Create activation blobs that can be passed to ActivateCredential. Two
     /// blobs are returned:
-    /// 1) encryptedSecret - symmetric key cfb-symmetrically encrypted with the 
+    /// 1) encryptedSecret - symmetric key cfb-symmetrically encrypted with the
     ///                      enveloping key;
     /// 2) credentialBlob -  the enveloping key OEAP (RSA) encrypted by the public
     ///                      part of this key. This is the return value of this
@@ -496,7 +496,7 @@ public partial class TssObject
     /// Parameter keyData is used only with symmetric or HMAC keys. If non-null
     /// on entry, it contains the key bytes supplied by the caller, otherwise the
     /// key will be randomly generated. For asymmetric keys keyData must be null.
-    /// 
+    ///
     /// Parameter authVal specifies the authorization value associated with the key.
     /// If it is null, then an random value will be used.
     /// </summary>
@@ -775,8 +775,8 @@ public partial class TssObject
         else if (pub.type == TpmAlgId.Keyedhash)
         {
             var scheme = (pub.parameters as KeyedhashParms).scheme;
-            var hashAlg = scheme is SchemeHash ? (scheme as SchemeHash).hashAlg
-                : scheme is SchemeXor  ? (scheme as SchemeXor).hashAlg
+            var hashAlg = scheme is SchemeHash hash ? hash.hashAlg
+                : scheme is SchemeXor xor  ? xor.hashAlg
                 : pub.nameAlg;
             var digestSize = CryptoLib.DigestSize(hashAlg);
 
@@ -839,8 +839,8 @@ public partial class TssObject
                 var eccParms = (EccParms)keyParms.parameters;
                 return eccParms.symmetric;
             case TpmAlgId.Symcipher:
-                return keyParms.parameters is SymcipherParms
-                    ? (keyParms.parameters as SymcipherParms).sym
+                return keyParms.parameters is SymcipherParms parms
+                    ? parms.sym
                     : keyParms.parameters as SymDefObject;
             default:
                 throw new Exception("Unsupported key type");
@@ -876,10 +876,8 @@ public partial class TssObject
             return CryptoLib.VerifyHmac(CryptoLib.SchemeHash(sig),
                 hmacKey, digest, (TpmHash)sig);
         }
-        else
-        {
-            return Public.VerifySignatureOverHash(digest, sig);
-        }
+
+        return Public.VerifySignatureOverHash(digest, sig);
     }
 
     /// <summary>

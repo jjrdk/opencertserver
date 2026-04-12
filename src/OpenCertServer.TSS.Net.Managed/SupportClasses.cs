@@ -1,4 +1,4 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
@@ -103,12 +103,6 @@ public class ByteBuf
         return res;
     }
 
-    public void Reset()
-    {
-        PutPos = 0;
-        GetPos = 0;
-    }
-
     public int GetSize()
     {
         return PutPos;
@@ -143,7 +137,7 @@ public class ByteBuf
 }
 
 /// <summary>
-/// provide implementation of a pseudo-RNG used by all TSS.Net facilities. 
+/// provide implementation of a pseudo-RNG used by all TSS.Net facilities.
 /// </summary>
 public class PRNG
 {
@@ -170,39 +164,6 @@ public class PRNG
     /// Default RNG used by the library
     /// </summary>
     private static readonly RNGCryptoServiceProvider CryptoRand = new RNGCryptoServiceProvider();
-
-    /// <summary>
-    /// Creates a copy of the current object
-    /// </summary>
-    public PRNG Clone()
-    {
-        var prng = new PRNG();
-        lock (this)
-        {
-            prng.Seed = Globs.CopyData(Seed);
-            prng.Buf = Buf.Clone();
-            prng.Round = Round;
-        }
-        return prng;
-    }
-
-    /// <summary>
-    /// Set the PRNG seed. If this routine is not called then the seed is generated
-    /// by the system RNG. Note that there is one RNG shared by all threads using
-    /// TPM library services, so non-determinism is to be expected in multi-threaded
-    /// programs even when the RNG is seeded.
-    /// </summary>
-    public void SetRngSeed(string seed)
-    {
-        lock (this)
-        {
-            Seed = seed == null ? []
-                : CryptoLib.HashData(TpmAlgId.Sha256,
-                    Encoding.UTF8.GetBytes(seed));
-            Round = 0;
-            FillRandBuf();
-        }
-    }
 
     /// <summary>
     /// Set the tester PRNG seed to random value from the system RNG
@@ -458,7 +419,7 @@ internal class TpmStructPrinter
             var elementType = o.GetType().GetElementType();
             if (elementType == typeof (byte))
             {
-                // Byte arrays as special - 
+                // Byte arrays as special -
                 var hexString = "0x" + Globs.HexFromByteArray((byte[])a, 8);
                 var typeString = string.Format("byte[{0}]", a.Length);
                 AddLine(B, "{0}@{1}#{2}", name, hexString, typeString);

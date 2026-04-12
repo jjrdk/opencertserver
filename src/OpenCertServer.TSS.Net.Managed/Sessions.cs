@@ -146,7 +146,6 @@ public class AuthSession : SessionBase
     /// and initial value of NonceTpm is returned by this command. NonceCaller
     /// and NonceTpm will then be updated correspondingly before and after each
     /// command using the session.
-    #region Session parameters
     public TpmSe       SessionType;
     public byte[]      Salt;
     public TpmHandle   BindObject;
@@ -162,8 +161,7 @@ public class AuthSession : SessionBase
     /// Hash algorithm used by this session.
     /// </summary>
     public TpmAlgId    AuthHash;
-    #endregion
-            
+
     public SessionAttr Attrs;
 
     public byte[] SessionKey;
@@ -213,13 +211,13 @@ public class AuthSession : SessionBase
         Handle = ph.Handle;
         foreach(var param in ph.Params)
         {
-            if (param is SessionAttr)
+            if (param is SessionAttr attr)
             {
-                Attrs = (SessionAttr)param;
+                Attrs = attr;
             }
-            else if (param is byte[])
+            else if (param is byte[] bytes)
             {
-                Salt = (byte[])param;
+                Salt = bytes;
             }
             else if (param != null)
             {

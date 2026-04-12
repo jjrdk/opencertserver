@@ -1,23 +1,23 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
 
 
 /*
- * This file contains classes that support the dozen-or-so TPM policy commands.  
+ * This file contains classes that support the dozen-or-so TPM policy commands.
  * The companion file Policy.cs contains the remainder of the TSS.Net support library
- * 
- * TODO: Originally TPM-policies were expressed and maintained as doubly-linked 
+ *
+ * TODO: Originally TPM-policies were expressed and maintained as doubly-linked
  * lists made into trees by arrays of sub-tree-roots in PolicyOR nodes.
- * 
- * This proved to be awkward to express (and to serialize) so we now favor an 
+ *
+ * This proved to be awkward to express (and to serialize) so we now favor an
  * array representation.  Right now the library supports both, but we should remove
  * the list-representation. This will mean that legacy tests must be re-written.
- * 
+ *
  * Additionally, we should remove the branchId as an attribute of all elements and
  * replace with the specific Branch-ID pseudo-ACE
- * 
+ *
  * */
 
 using System.Runtime.Serialization;
@@ -142,7 +142,7 @@ public abstract class PolicyAce
 
             return schemas.ToString();
         }
-#endif // __XML_SCHEMA_EXPORT__    
+#endif // __XML_SCHEMA_EXPORT__
 
     /// <summary>
     /// Set if the ACE is associated with a PolicyTree.
@@ -311,7 +311,7 @@ public class TpmPolicyOr : PolicyAce
     /// </summary>
     [XmlArray("OrBranches")]
     [XmlArrayItem("Branch")]
-    [DataMember()]
+    [DataMember]
     public PolicyAce[][] Branches
     {
         get
@@ -335,11 +335,11 @@ public class TpmPolicyOr : PolicyAce
 } // class TpmPolicyOr
 
 /// <summary>
-/// This command is used to cause conditional gating of a policy based on PCR. 
-/// This allows one group of authorizations to occur when PCRs are in one state 
-/// and a different set of authorizations when the PCRs are in a different state. 
-/// If this command is used for a trial sess, the policyHash will be 
-/// updated using the values from the command rather than the values from 
+/// This command is used to cause conditional gating of a policy based on PCR.
+/// This allows one group of authorizations to occur when PCRs are in one state
+/// and a different set of authorizations when the PCRs are in a different state.
+/// If this command is used for a trial sess, the policyHash will be
+/// updated using the values from the command rather than the values from
 /// digest of the TPM PCR.
 /// </summary>
 [DataContract]
@@ -376,7 +376,7 @@ public class TpmPolicyPcr : PolicyAce
 
     internal PcrValueCollection Pcrs;
 
-    [DataMember()]
+    [DataMember]
     public PcrValue[] PcrValues
     {
         get
@@ -391,7 +391,7 @@ public class TpmPolicyPcr : PolicyAce
 } // class TpmPolicyPcr
 
 /// <summary>
-/// This command is used to cause conditional gating of a policy based on the 
+/// This command is used to cause conditional gating of a policy based on the
 /// contents of the TPMS_TIME_INFO structure.
 /// </summary>
 [DataContract]
@@ -431,12 +431,12 @@ public class TpmPolicyCounterTimer : PolicyAce
         tpm.PolicyCounterTimer(sess, OperandB, Offset, Operation);
         return tpm._GetLastResponseCode();
     }
-        
-    [DataMember()]
+
+    [DataMember]
     public byte[] OperandB;
-    [DataMember()]
+    [DataMember]
     public ushort Offset;
-    [DataMember()]
+    [DataMember]
     public Eo Operation;
 } // class TpmPolicyCounterTimer
 
@@ -473,17 +473,17 @@ public class TpmPolicyCommand : PolicyAce
     }
 
     [MarshalAs(0)]
-    [DataMember()]
+    [DataMember]
     public TpmCc AllowedCommand;
 } // class TpmPolicyCommand
-    
+
 /// <summary>
-/// This command is used to allow a policy to be bound to a specific command 
+/// This command is used to allow a policy to be bound to a specific command
 /// and command parameters.
 /// </summary>
 public class TpmPolicyCpHash : PolicyAce
 {
-    // This command is used to allow a policy to be bound to a specific command 
+    // This command is used to allow a policy to be bound to a specific command
     // and command parameters.
     public TpmPolicyCpHash(TpmHash expectedCpHash, string branchName = "", string nodeId = null)
         : base(branchName, nodeId)
@@ -515,9 +515,9 @@ public class TpmPolicyCpHash : PolicyAce
 } // class TpmPolicyCpHash
 
 /// <summary>
-/// This command allows a policy to be bound to a specific set of handles 
-/// without being bound to the parameters of the command. This is most 
-/// useful for commands such as TPM2_Duplicate() and for TPM2_PCR_Event() 
+/// This command allows a policy to be bound to a specific set of handles
+/// without being bound to the parameters of the command. This is most
+/// useful for commands such as TPM2_Duplicate() and for TPM2_PCR_Event()
 /// when the referenced PCR requires a policy.
 /// </summary>
 public class TpmPolicyNameHash : PolicyAce
@@ -584,7 +584,7 @@ public class TpmPolicyLocality : PolicyAce
     }
 
     [MarshalAs(0)]
-    [DataMember()]
+    [DataMember]
     public LocalityAttr AllowedLocality;
 } // class TpmPolicyLocality
 
@@ -674,7 +674,7 @@ public class TpmPolicyNV : PolicyAce
 } // class TpmPolicyNV
 
 /// <summary>
-/// This command allows a policy to be bound to the authorization value of the 
+/// This command allows a policy to be bound to the authorization value of the
 /// authorized object.
 /// </summary>
 public class TpmPolicyAuthValue : PolicyAce
@@ -701,7 +701,7 @@ public class TpmPolicyAuthValue : PolicyAce
 
 /// <summary>
 /// This command allows a policy authorization session to be returned to its
-/// initial state. 
+/// initial state.
 /// </summary>
 public class TpmPolicyRestart : PolicyAce
 {
@@ -748,8 +748,8 @@ public class TpmPolicyPassword : PolicyAce
 } // class TpmPolicyPassword
 
 /// <summary>
-/// This command indicates that physical presence will need to be asserted 
-/// at the time the authorization is performed. 
+/// This command indicates that physical presence will need to be asserted
+/// at the time the authorization is performed.
 /// </summary>
 public class TpmPolicyPhysicalPresence : PolicyAce
 {
@@ -900,8 +900,8 @@ public class TpmPolicySigned : TpmPolicyWithExpiration
 } // class TpmPolicySigned
 
 /// <summary>
-/// This command includes a secret-based authorization to a policy. 
-/// The caller proves knowledge of the secret value using either a 
+/// This command includes a secret-based authorization to a policy.
+/// The caller proves knowledge of the secret value using either a
 /// password or an HMAC-based authorization session.
 /// </summary>
 public class TpmPolicySecret : TpmPolicyWithExpiration
@@ -947,8 +947,8 @@ public class TpmPolicySecret : TpmPolicyWithExpiration
 } // class TpmPolicySecret
 
 /// <summary>
-/// This command is similar to TPM2_PolicySigned() except that it takes a 
-/// ticket instead of a signed authorization. The ticket represents a 
+/// This command is similar to TPM2_PolicySigned() except that it takes a
+/// ticket instead of a signed authorization. The ticket represents a
 /// validated authorization that had an expiration time associated with it.
 /// </summary>
 public class TpmPolicyTicket : PolicyAce
@@ -1027,8 +1027,8 @@ public class TpmPolicyTicket : PolicyAce
 } // class TpmPolicyTicket
 
 /// <summary>
-/// This command allows policies to change. If a policy were static, 
-/// then it would be difficult to add users to a policy. This command lets a 
+/// This command allows policies to change. If a policy were static,
+/// then it would be difficult to add users to a policy. This command lets a
 /// policy authority sign a new policy so that it may be used in an existing policy.
 /// </summary>
 public class TpmPolicyAuthorize : PolicyAce
@@ -1060,7 +1060,7 @@ public class TpmPolicyAuthorize : PolicyAce
 
     internal override TpmHash GetPolicyDigest(TpmAlgId hashAlg)
     {
-        // Authorize results in a REPLACEMENT not an extend of the previous policy. 
+        // Authorize results in a REPLACEMENT not an extend of the previous policy.
         return PolicyUpdate(TpmHash.ZeroHash(hashAlg),
             TpmCc.PolicyAuthorize, SigKeyName, PolicyRef);
     }
@@ -1112,7 +1112,7 @@ public class TpmPolicyAuthorize : PolicyAce
 /// policy hash algorithm ID and the policyBuffer are compared to an algorithm ID
 /// and data that reside in the specified NV location. If they match, the TPM will
 /// reset sess→policyDigest to a Zero Digest. Then it will update
-/// sess→policyDigest with 
+/// sess→policyDigest with
 ///   policyDigestnew ≔ HpolicyAlg(policyDigestold || TPM_CC_PolicyAuthorizeNV || nvIndex→Name)
 ///
 /// </summary>
@@ -1134,7 +1134,7 @@ public class TpmPolicyAuthorizeNV : PolicyAce
 
     internal override TpmHash GetPolicyDigest(TpmAlgId hashAlg)
     {
-        // Authorize NV results in a REPLACEMENT not an extend of the previous policy. 
+        // Authorize NV results in a REPLACEMENT not an extend of the previous policy.
         return PolicyUpdate1(TpmHash.ZeroHash(hashAlg),
             TpmCc.PolicyAuthorizeNV, NvIndexName);
     }
@@ -1148,10 +1148,10 @@ public class TpmPolicyAuthorizeNV : PolicyAce
 
 
 /// <summary>
-/// This command allows qualification of duplication to allow duplication to a 
-/// selected new parent. If this command is used without a subsequent 
-/// TPM2_PolicyAuthorize() in the policy, then only the new parent is selected. 
-/// If a subsequent TPM2_PolicyAuthorize() is used, then both the new parent 
+/// This command allows qualification of duplication to allow duplication to a
+/// selected new parent. If this command is used without a subsequent
+/// TPM2_PolicyAuthorize() in the policy, then only the new parent is selected.
+/// If a subsequent TPM2_PolicyAuthorize() is used, then both the new parent
 /// and the object being duplicated may be specified.
 /// </summary>
 public class TpmPolicyDuplicationSelect : PolicyAce
@@ -1197,7 +1197,7 @@ public class TpmPolicyDuplicationSelect : PolicyAce
 } // TpmPolicyDuplicationSelect
 
 /// <summary>
-/// PolicyChainId is a dummy policy-ACE that allows the caller to name a chain.  PolicyChainId can 
+/// PolicyChainId is a dummy policy-ACE that allows the caller to name a chain.  PolicyChainId can
 /// only be at the leaf of a chain.
 /// </summary>
 public class TpmPolicyChainId : PolicyAce
@@ -1224,7 +1224,7 @@ public class TpmPolicyChainId : PolicyAce
     }
 
     [MarshalAs(0)]
-    [DataMember()]
+    [DataMember]
     public string BranchId
     {
         get
@@ -1280,8 +1280,8 @@ public class TpmPolicyAction : PolicyAce
 } // class TpmPolicyAction
 
 /// <summary>
-/// This command allows a policy to be bound to the TPMA_NV_WRITTEN attributes. 
-/// This is a deferred assertion.  Values are stored in the policy session 
+/// This command allows a policy to be bound to the TPMA_NV_WRITTEN attributes.
+/// This is a deferred assertion.  Values are stored in the policy session
 /// context and checked when the policy is used for authorization.
 /// </summary>
 public class TpmPolicyNvWritten : PolicyAce

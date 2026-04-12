@@ -21,7 +21,6 @@ internal class ObjectContextManager
     private ulong UseCount;
     private const int NumObjectSlots = 3;
     private const int NumSessionSlots = 3;
-    private const bool TraceStateChanges = false;
 
     internal ObjectContextManager()
     {
@@ -54,7 +53,7 @@ internal class ObjectContextManager
     /// <returns></returns>
     internal uint TbsHandleFromTpmHandle(uint tpmHandle)
     {
-        return ObjectContexts.Find(item => 
+        return ObjectContexts.Find(item =>
             ((object)item.TheTpmHandle) != null && item.TheTpmHandle.handle == tpmHandle).OwnerHandle.handle;
     }
 
@@ -139,7 +138,7 @@ internal class ObjectContextManager
             return temp;
         }
 
-        var x = ObjectContexts.Find(item => (item.Owner == caller) 
+        var x = ObjectContexts.Find(item => (item.Owner == caller)
          && item.OwnerHandle.handle == callerHandle.handle);
         return x;   // x may be null
     }
@@ -195,7 +194,7 @@ internal class ObjectContext
     internal Tbs.SlotType TheSlotType { get; set; }
 
     /// <summary>
-    /// Use count 
+    /// Use count
     /// </summary>
     internal ulong LastUseCount { get; set; }
 
