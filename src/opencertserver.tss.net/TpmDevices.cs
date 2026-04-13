@@ -459,7 +459,7 @@ public sealed class TcpTpmDevice : Tpm2Device
             return hostEntry.Result.AddressList[0];
         }
 
-        throw new Exception(string.Format("could not locate hostName: {0}", hostName));
+        throw new Exception($"could not locate hostName: {hostName}");
     }
 
     private void ConnectWorker(string hostName, int port, out NetworkStream theStream, out TcpClient theClient)

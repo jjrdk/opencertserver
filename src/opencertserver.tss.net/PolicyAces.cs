@@ -157,13 +157,13 @@ public abstract class PolicyAce
     /// <summary>
     /// Next is closer to the leaf.
     /// </summary>
-    internal PolicyAce NextAce;
+    internal PolicyAce? NextAce;
 
     /// <summary>
     /// When a policy is evaluated the caller must name the branch that they wish
     /// to attempt to satisfy. Set the branch identifier in the leaf ACE.
     /// </summary>
-    internal string BranchID = "";
+    internal string BranchID;
 
     /// <summary>
     /// Implements the first step of the policy digest update (see the PolicyUpdate()
@@ -259,7 +259,7 @@ public class TpmPolicyOr : PolicyAce
     public Tpm2bDigest[] GetPolicyHashArray(TpmAlgId hashAlg)
     {
         var numBranches = PolicyBranches.Count;
-        if (numBranches < 2 || numBranches > 8)
+        if (numBranches is < 2 or > 8)
         {
             throw new Exception("GetPolicyHashArray: Must have between 2 and 8 branches in a PolicyOr");
         }
@@ -277,7 +277,7 @@ public class TpmPolicyOr : PolicyAce
     internal override TpmHash GetPolicyDigest(TpmAlgId hashAlg)
     {
         var numBranches = PolicyBranches.Count;
-        if (numBranches < 2 || numBranches > 8)
+        if (numBranches is < 2 or > 8)
         {
             throw new Exception("GetPolicyDigest: Must have between 2 and 8 branches in a PolicyOr");
         }
@@ -1038,7 +1038,7 @@ public class TpmPolicyAuthorize : PolicyAce
         byte[] keySign, TkVerified checkTicket);
 
     [XmlIgnore]
-    public ParamsCallbackType ParamsCallback = null;
+    public ParamsCallbackType? ParamsCallback = null;
 
     public byte[] PolicyToReplace;
     public byte[] PolicyRef;
@@ -1079,10 +1079,6 @@ public class TpmPolicyAuthorize : PolicyAce
         if (ParamsCallback != null)
         {
             ParamsCallback(tpm, sess, PolicyToReplace, PolicyRef, SigKeyName, Ticket);
-        }
-        if (policy.AllowErrorsInPolicyEval)
-        {
-            tpm._AllowErrors();
         }
         tpm.PolicyAuthorize(sess, PolicyToReplace, PolicyRef, SigKeyName, Ticket);
 

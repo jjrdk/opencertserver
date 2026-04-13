@@ -94,8 +94,8 @@ public class TpmHelpers
     public static E GetEnumerator<E>(string oldName, string newName) where E : struct
     {
         E val;
-        if (   !Enum.TryParse<E>(newName, out val)
-         && !Enum.TryParse<E>(oldName, out val))
+        if (   !Enum.TryParse(newName, out val)
+         && !Enum.TryParse(oldName, out val))
         {
             throw new Exception("Invalid enumerator names " + oldName + ", "
               + newName + " for enum " + typeof(E));

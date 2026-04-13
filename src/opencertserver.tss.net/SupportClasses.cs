@@ -3,75 +3,77 @@
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
 
+namespace OpenCertServer.Tpm2Lib;
+
 using System.Security.Cryptography;
 using System.Text;
-
-namespace OpenCertServer.Tpm2Lib;
 
 public class ByteBuf
 {
     private const int DefaultSize = 1024;
-    private int PutPos;
-    private int GetPos;
-    private byte[] Buf;
+    private int _putPos;
+    private int _getPos;
+    private byte[] _buf;
 
     public ByteBuf()
     {
-        Buf = new byte[DefaultSize];
-        PutPos = 0;
-        GetPos = 0;
+        _buf = new byte[DefaultSize];
+        _putPos = 0;
+        _getPos = 0;
     }
 
     public ByteBuf(int size)
     {
-        Buf = new byte[size];
-        PutPos = 0;
-        GetPos = 0;
+        _buf = new byte[size];
+        _putPos = 0;
+        _getPos = 0;
     }
 
     public ByteBuf(byte[] x)
     {
-        Buf = x;
-        GetPos = 0;
-        PutPos = x.Length;
+        _buf = x;
+        _getPos = 0;
+        _putPos = x.Length;
     }
 
     public ByteBuf Clone()
     {
         var newBuf = new ByteBuf(GetBuffer());
-        newBuf.GetPos = GetPos;
-        newBuf.PutPos = PutPos;
+        newBuf._getPos = _getPos;
+        newBuf._putPos = _putPos;
         return newBuf;
     }
 
     public int BytesRemaining()
     {
-        return PutPos - GetPos;
+        return _putPos - _getPos;
     }
 
     public void Append(byte[] x)
     {
-        if (PutPos + x.Length > Buf.Length)
+        if (_putPos + x.Length > _buf.Length)
         {
             // Extend the array
-            var newLen = Buf.Length * 2;
-            if (newLen < PutPos + x.Length)
+            var newLen = _buf.Length * 2;
+            if (newLen < _putPos + x.Length)
             {
                 // Big input hack
-                newLen = (PutPos + x.Length) + 1024;
+                newLen = (_putPos + x.Length) + 1024;
             }
+
             var buf2 = new byte[newLen];
-            Array.Copy(Buf, buf2, Buf.Length);
-            Buf = buf2;
+            Array.Copy(_buf, buf2, _buf.Length);
+            _buf = buf2;
         }
-        Array.Copy(x, 0, Buf, PutPos, x.Length);
-        PutPos += x.Length;
+
+        Array.Copy(x, 0, _buf, _putPos, x.Length);
+        _putPos += x.Length;
     }
 
     public byte[] GetBuffer()
     {
-        var temp = new byte[PutPos];
-        Array.Copy(Buf, temp, PutPos);
+        var temp = new byte[_putPos];
+        Array.Copy(_buf, temp, _putPos);
         return temp;
     }
 
@@ -79,15 +81,16 @@ public class ByteBuf
     {
         if (pos + bytesToSet.Length > GetSize())
         {
-            throw new ArgumentOutOfRangeException("Position is not in allocated buffer");
+            throw new ArgumentOutOfRangeException(nameof(pos), "Position is not in allocated buffer");
         }
-        Array.Copy(bytesToSet, 0, Buf, pos, bytesToSet.Length);
+
+        Array.Copy(bytesToSet, 0, _buf, pos, bytesToSet.Length);
     }
 
     public byte[] GetBytesInMiddle(int startPos, int length)
     {
         var temp = new byte[length];
-        Array.Copy(Buf, startPos, temp, 0, length);
+        Array.Copy(_buf, startPos, temp, 0, length);
         return temp;
     }
 
@@ -95,22 +98,23 @@ public class ByteBuf
     {
         var res = GetBytesInMiddle(startPos, length);
         // Close the gap
-        for (var j = startPos; j < PutPos - length; j++)
+        for (var j = startPos; j < _putPos - length; j++)
         {
-            Buf[j] = Buf[j + length];
+            _buf[j] = _buf[j + length];
         }
-        PutPos -= length;
+
+        _putPos -= length;
         return res;
     }
 
     public int GetSize()
     {
-        return PutPos;
+        return _putPos;
     }
 
     public int GetGetPos()
     {
-        return GetPos;
+        return _getPos;
     }
 
     public void SetGetPos(int newGetPos)
@@ -119,19 +123,21 @@ public class ByteBuf
         {
             throw new Exception("SetGetPos: Invalid position");
         }
-        GetPos = newGetPos;
+
+        _getPos = newGetPos;
     }
 
     public byte[] Extract(int num)
     {
-        if (GetPos + num > PutPos)
+        if (_getPos + num > _putPos)
         {
             throw new ArgumentOutOfRangeException("ByteBuf exception removing "
-              + num + " bytes at position " + GetPos + " from an array of " + PutPos);
+              + num + " bytes at position " + _getPos + " from an array of " + _putPos);
         }
+
         var ret = new byte[num];
-        Array.Copy(Buf, GetPos, ret, 0, num);
-        GetPos += num;
+        Array.Copy(_buf, _getPos, ret, 0, num);
+        _getPos += num;
         return ret;
     }
 }
@@ -139,26 +145,26 @@ public class ByteBuf
 /// <summary>
 /// provide implementation of a pseudo-RNG used by all TSS.Net facilities.
 /// </summary>
-public class PRNG
+public class Prng
 {
     public const int RandMaxBytes = 1024 * 1024;
 
     /// <summary>
-    /// PRNG seed for the  for this run.  Can be set by SetRngSeed() or from
+    /// PRNG seed for this run. Can be set by SetRngSeed() or from
     /// the standard system RNG.
     /// </summary>
-    private byte[] Seed;
+    private byte[]? _seed;
 
     /// <summary>
     /// A buffer of random data that is emptied on calls to GetRandom() and filled
     /// when the buffer is empty through FillRandBuf().
     /// </summary>
-    private ByteBuf Buf = new ByteBuf();
+    private ByteBuf _buf = new ByteBuf();
 
     /// <summary>
     /// Counter for each round of buffer filling.
     /// </summary>
-    private int Round;
+    private int _round;
 
     /// <summary>
     /// Default RNG used by the library
@@ -172,14 +178,14 @@ public class PRNG
     {
         lock (this)
         {
-            if (Seed != null)
+            if (_seed != null)
             {
                 return;
             }
 
-            Seed = new byte[32];
-            CryptoRand.GetBytes(Seed);
-            Round = 0;
+            _seed = new byte[32];
+            CryptoRand.GetBytes(_seed);
+            _round = 0;
             FillRandBuf();
         }
     }
@@ -194,32 +200,35 @@ public class PRNG
         {
             throw new ArgumentException("GetRandomBytes: Too many bytes requested " + numBytes);
         }
+
         // Make sure that the RNG is properly seeded
-        if (Seed == null)
+        if (_seed == null)
         {
             SetRngRandomSeed();
         }
+
         // Fill or refill the buffer
         lock (this)
         {
             // ReSharper disable once PossibleNullReferenceException
-            if (Buf.BytesRemaining() < numBytes)
+            if (_buf.BytesRemaining() < numBytes)
             {
                 FillRandBuf();
             }
+
             // And return the data
-            return Buf.Extract(numBytes);
+            return _buf.Extract(numBytes);
         }
     }
 
     private void FillRandBuf()
     {
         // Fill the buffer with random data
-        var data = KDF.KDFa(TpmAlgId.Sha256, Seed, "RNG",
-            BitConverter.GetBytes(Round),
+        var data = KDF.KDFa(TpmAlgId.Sha256, _seed, "RNG",
+            BitConverter.GetBytes(_round),
             [], RandMaxBytes * 8);
-        Round++;
-        Buf = new ByteBuf(data);
+        _round++;
+        _buf = new ByteBuf(data);
     }
 } // PRNG
 
@@ -228,17 +237,17 @@ public class PRNG
 /// </summary>
 internal class TpmStructPrinter
 {
-    private StringBuilder B;
+    private StringBuilder _b;
 
     /// <summary>
     /// Current printing indent
     /// </summary>
-    private int Indent;
+    private int _indent;
 
     internal TpmStructPrinter()
     {
-        B = new StringBuilder();
-        Indent = 0;
+        _b = new StringBuilder();
+        _indent = 0;
     }
 
     public override string ToString()
@@ -249,9 +258,9 @@ internal class TpmStructPrinter
         var inStartSpaces = true;
         var tabNum = 0;
 
-        for (var j = 0; j < B.Length; j++)
+        for (var j = 0; j < _b.Length; j++)
         {
-            if (B[j] == '\n')
+            if (_b[j] == '\n')
             {
                 firstCharInLine = j;
                 inStartSpaces = true;
@@ -259,13 +268,15 @@ internal class TpmStructPrinter
                 numSpacesAtStart = 0;
                 continue;
             }
-            if (inStartSpaces && B[j] != ' ')
+
+            if (inStartSpaces && _b[j] != ' ')
             {
                 inStartSpaces = false;
                 firstCharInLine = j;
                 numSpacesAtStart++;
             }
-            if (B[j] == '^')
+
+            if (_b[j] == '^')
             {
                 tabNum++;
                 var tabPos = numSpacesAtStart + 0 + tabNum * 16;
@@ -275,16 +286,18 @@ internal class TpmStructPrinter
                 {
                     toInsert = new string(' ', tabPos - currentColumn);
                 }
-                B = B.Replace("^", toInsert, j, 1);
+
+                _b = _b.Replace("^", toInsert, j, 1);
             }
         }
-        return B.ToString();
+
+        return _b.ToString();
     }
 
     internal void PrintName(string name)
     {
-        B.AppendFormat("{0}\n", name);
-        Indent++;
+        _b.AppendFormat("{0}\n", name);
+        _indent++;
     }
 
     private void AddLine(StringBuilder b, string formatString, params string[] data)
@@ -308,13 +321,14 @@ internal class TpmStructPrinter
                 // Split enum OR onto multiple lines
                 dd = dd.Replace("|", "|\n" + new string(' ', firstTab + 1));
             }
+
             if (dd.Contains(".."))
             {
                 // Split hex array
                 dd = dd.Replace("..", "..\n" + new string(' ', firstTab + 2));
             }
-            data[1] = dd;
 
+            data[1] = dd;
         }
 
         // Fill it in
@@ -330,6 +344,7 @@ internal class TpmStructPrinter
             {
                 column = -1;
             }
+
             if (c == '@')
             {
                 var numSpaces = firstTab - column;
@@ -337,10 +352,12 @@ internal class TpmStructPrinter
                 {
                     numSpaces = 1;
                 }
+
                 outS += new string(' ', numSpaces);
                 column += numSpaces;
                 continue;
             }
+
             if (c == '#')
             {
                 var numSpaces = secondTab - column;
@@ -348,23 +365,26 @@ internal class TpmStructPrinter
                 {
                     numSpaces = 1;
                 }
+
                 outS += new string(' ', numSpaces);
                 column += numSpaces;
                 continue;
             }
+
             outS += c;
             column++;
         }
+
         outS += "\n";
         b.Append(outS);
     }
 
-    internal void Print(string name, string type, object o)
+    internal void Print(string name, string type, object? o)
     {
         if (o == null)
         {
             // E.g. inPrivate null SomeStruct
-            AddLine(B, "{0}@{1}#{2}", name, "null", type);
+            AddLine(_b, "{0}@{1}#{2}", name, "null", type);
             return;
         }
 
@@ -372,20 +392,21 @@ internal class TpmStructPrinter
         if (o is TpmStructureBase)
         {
             var ss = type;
-            if (ss.StartsWith("I"))
+            if (ss.StartsWith('I'))
             {
                 // If the member is an interface, also print the type of entity being dumped
                 var intType = o.GetType().ToString();
-                intType = intType.Substring(intType.LastIndexOf('.') + 1);
+                intType = intType[(intType.LastIndexOf('.') + 1)..];
 
                 type = intType;
             }
+
             // Print name and type but not the contents (printed recursively later)
-            AddLine(B, "{0}@-#{1}", name, type);
+            AddLine(_b, "{0}@-#{1}", name, type);
             // Recurse
-            Indent++;
+            _indent++;
             ((TpmStructureBase)o).ToStringInternal(this);
-            Indent--;
+            _indent--;
             return;
         }
 
@@ -396,7 +417,7 @@ internal class TpmStructPrinter
             var s = Enum.Format(en.GetType(), en, "g");
             s = s.Replace(',', '|');
             // name   Elem1|Elem2
-            AddLine(B, "{0}@{1}#{2}", name, s, type);
+            AddLine(_b, "{0}@{1}#{2}", name, s, type);
             return;
         }
 
@@ -408,43 +429,43 @@ internal class TpmStructPrinter
             var hexString = Convert.ToString(val, 16);
 
             // ReSharper disable once SpecifyACultureInStringConversionExplicitly
-            AddLine(B, "{0}@{1} (0x{2})#{3}", name, o.ToString(), hexString, type);
+            AddLine(_b, "{0}@{1} (0x{2})#{3}", name, o.ToString(), hexString, type);
             return;
         }
 
         // ReSharper disable once CanBeReplacedWithTryCastAndCheckForNull
-        if (o is Array)
+        if (o is not Array)
         {
-            var a = (Array)o;
-            var elementType = o.GetType().GetElementType();
-            if (elementType == typeof (byte))
-            {
-                // Byte arrays as special -
-                var hexString = "0x" + Globs.HexFromByteArray((byte[])a, 8);
-                var typeString = string.Format("byte[{0}]", a.Length);
-                AddLine(B, "{0}@{1}#{2}", name, hexString, typeString);
-                return;
-            }
-            // ReSharper disable once RedundantIfElseBlock
-            else
-            {
-                B.AppendFormat("{0}Array - {1}[{2}]\n", Spaces(), type, a.Length);
-                Indent++;
-                for (var j = 0; j < a.Length; j++)
-                {
-                    var elem = a.GetValue(j);
-                    // ReSharper disable once SpecifyACultureInStringConversionExplicitly
-                    Print(elem.GetType().ToString(), j.ToString(), elem);
-                }
-                Indent--;
-                return;
-            }
+            throw new NotImplementedException("Print: Unknown type " + o.GetType());
         }
-        throw new NotImplementedException("Print: Unknown type " + o.GetType());
+
+        var a = (Array)o;
+        var elementType = o.GetType().GetElementType();
+        if (elementType == typeof(byte))
+        {
+            // Byte arrays as special -
+            var hexString = "0x" + Globs.HexFromByteArray((byte[])a, 8);
+            var typeString = $"byte[{a.Length}]";
+            AddLine(_b, "{0}@{1}#{2}", name, hexString, typeString);
+        }
+        // ReSharper disable once RedundantIfElseBlock
+        else
+        {
+            _b.AppendFormat("{0}Array - {1}[{2}]\n", Spaces(), type, a.Length);
+            _indent++;
+            for (var j = 0; j < a.Length; j++)
+            {
+                var elem = a.GetValue(j);
+                // ReSharper disable once SpecifyACultureInStringConversionExplicitly
+                Print(elem.GetType().ToString(), j.ToString(), elem);
+            }
+
+            _indent--;
+        }
     }
 
     private string Spaces()
     {
-        return new string(' ', Indent * 2);
+        return new string(' ', _indent * 2);
     }
 }

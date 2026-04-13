@@ -537,7 +537,7 @@ public enum Generated : uint
     /// <summary> 0xFF TCG (FF 54 43 4716) </summary>
     [EnumMember]
     [SpecTypeName("TPM_GENERATED_VALUE")]
-    Value = unchecked ((uint)(0xff544347))
+    Value = unchecked (0xff544347)
 }
 
 [DataContract]
@@ -2036,21 +2036,21 @@ public enum ClockAdjust : sbyte
     /// <summary> Slow the Clock update rate by one coarse adjustment step. </summary>
     [EnumMember]
     [SpecTypeName("TPM_CLOCK_COARSE_SLOWER")]
-    CoarseSlower = unchecked ((sbyte)(-3)),
+    CoarseSlower = unchecked (-3),
     [Obsolete("Use ClockAdjust.CoarseSlower instead")]
     TpmClockCoarseSlower = -3,
 
     /// <summary> Slow the Clock update rate by one medium adjustment step. </summary>
     [EnumMember]
     [SpecTypeName("TPM_CLOCK_MEDIUM_SLOWER")]
-    MediumSlower = unchecked ((sbyte)(-2)),
+    MediumSlower = unchecked (-2),
     [Obsolete("Use ClockAdjust.MediumSlower instead")]
     TpmClockMediumSlower = -2,
 
     /// <summary> Slow the Clock update rate by one fine adjustment step. </summary>
     [EnumMember]
     [SpecTypeName("TPM_CLOCK_FINE_SLOWER")]
-    FineSlower = unchecked ((sbyte)(-1)),
+    FineSlower = unchecked (-1),
     [Obsolete("Use ClockAdjust.FineSlower instead")]
     TpmClockFineSlower = -1,
 
@@ -3644,7 +3644,7 @@ public enum TpmHc : uint
     /// <summary> To mask off the variable part </summary>
     [EnumMember]
     [SpecTypeName("HR_RANGE_MASK")]
-    HrRangeMask = unchecked ((uint)(0xFF000000)),
+    HrRangeMask = unchecked (0xFF000000),
 
     [EnumMember]
     [SpecTypeName("HR_SHIFT")]
@@ -3789,17 +3789,17 @@ public enum TpmHc : uint
     /// <summary> AC Handle </summary>
     [EnumMember]
     [SpecTypeName("HR_AC")]
-    HrAc = unchecked ((uint)(((uint)Ht.Ac << (int)HrShift))), // 0x90000000
+    HrAc = unchecked ((uint)Ht.Ac << (int)HrShift), // 0x90000000
 
     /// <summary> First Attached Component </summary>
     [EnumMember]
     [SpecTypeName("AC_FIRST")]
-    AcFirst = unchecked ((uint)((HrAc + 0))), // 0x90000000
+    AcFirst = unchecked (HrAc + 0), // 0x90000000
 
     /// <summary> Last Attached Component </summary>
     [EnumMember]
     [SpecTypeName("AC_LAST")]
-    AcLast = unchecked ((uint)((HrAc + 0x0000FFFF))) // 0x9000FFFF
+    AcLast = unchecked (HrAc + 0x0000FFFF) // 0x9000FFFF
 }
 
 /// <summary> This structure defines the attributes of an algorithm. </summary>
@@ -5275,7 +5275,7 @@ public partial class PcrSelect: TpmStructureBase
     [Range(MinVal = 3u /*PCR_SELECT_MIN*/, MaxVal = 3u /*PCR_SELECT_MAX*/)]
     [MarshalAs(0, MarshalType.VariableLengthArray, "sizeofSelect", 1)]
     [DataMember]
-    public byte[] pcrSelect;
+    public byte[]? pcrSelect;
 
     public PcrSelect() {}
 
@@ -5304,7 +5304,7 @@ public partial class PcrSelection: TpmStructureBase
     [Range(MinVal = 3u /*PCR_SELECT_MIN*/, MaxVal = 3u /*PCR_SELECT_MAX*/)]
     [MarshalAs(1, MarshalType.VariableLengthArray, "sizeofSelect", 1)]
     [DataMember]
-    public byte[] pcrSelect;
+    public byte[]? pcrSelect;
 
     public PcrSelection() { hash = TpmAlgId.Null; }
 

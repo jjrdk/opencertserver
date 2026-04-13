@@ -225,7 +225,7 @@ internal class ObjectContext
                 return false;
             }
             var tp = TheTpmHandle.GetType();
-            if (!(tp == Ht.HmacSession || tp == Ht.PolicySession || (tp == Ht.Transient)))
+            if (!(tp is Ht.HmacSession or Ht.PolicySession or Ht.Transient))
             {
                 return true;
             }
