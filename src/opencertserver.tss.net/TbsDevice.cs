@@ -1,4 +1,4 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
@@ -11,53 +11,53 @@ namespace OpenCertServer.Tpm2Lib;
 
 public sealed class TbsDevice : Tpm2Device
 {
-    private UIntPtr TbsHandle;
-    private UIntPtr OriginalHandle;
+    private UIntPtr _tbsHandle;
+    private UIntPtr _originalHandle;
 
     /// <summary>
     /// Default constructor.
     /// </summary>
-    public TbsDevice(bool hasRM = true)
+    public TbsDevice(bool hasRm = true)
     {
         NeedsHMAC = false;
-        _HasRM = hasRM;
+        _HasRM = hasRm;
     }
 
     public override UIntPtr GetHandle(UIntPtr h)
     {
         if (h != UIntPtr.Zero)
         {
-            TbsHandle = h;
+            _tbsHandle = h;
         }
-        return TbsHandle;
+        return _tbsHandle;
     }
 
     public override void Connect()
     {
-        TbsWrapper.TBS_CONTEXT_PARAMS contextParams;
+        TbsWrapper.TbsContextParams contextParams;
 
         var tbsContext = UIntPtr.Zero;
-        contextParams.Version = TbsWrapper.TBS_CONTEXT_VERSION.TWO;
-        contextParams.Flags = TbsWrapper.TBS_CONTEXT_CREATE_FLAGS.IncludeTpm20;
+        contextParams.Version = TbsWrapper.TbsContextVersion.Two;
+        contextParams.Flags = TbsWrapper.TbsContextCreateFlags.IncludeTpm20;
         var result = TbsWrapper.NativeMethods
             .Tbsi_Context_Create(ref contextParams, ref tbsContext);
         Debug.WriteLine(Globs.GetResourceString("TbsHandle:") + tbsContext.ToUInt32());
 
-        if (result != TbsWrapper.TBS_RESULT.SUCCESS)
+        if (result != TbsWrapper.TbsResult.Success)
         {
             throw new Exception("Failed to create TBS context: Error {" + result + "}");
         }
 
-        TbsHandle = tbsContext;
-        OriginalHandle = tbsContext;
+        _tbsHandle = tbsContext;
+        _originalHandle = tbsContext;
     }
 
     public override void Close()
     {
-        if (OriginalHandle != UIntPtr.Zero)
+        if (_originalHandle != UIntPtr.Zero)
         {
-            TbsWrapper.NativeMethods.Tbsip_Context_Close(OriginalHandle);
-            OriginalHandle = UIntPtr.Zero;
+            TbsWrapper.NativeMethods.Tbsip_Context_Close(_originalHandle);
+            _originalHandle = UIntPtr.Zero;
         }
     }
 
@@ -104,7 +104,7 @@ public sealed class TbsDevice : Tpm2Device
 
     public override void DispatchCommand(CommandModifier active, byte[] inBuf, out byte[] outBuf)
     {
-        if (TbsHandle == UIntPtr.Zero)
+        if (_tbsHandle == UIntPtr.Zero)
         {
             throw new Exception("TBS context not created.");
         }
@@ -113,14 +113,14 @@ public sealed class TbsDevice : Tpm2Device
         var resultByteCount = (uint)resultBuf.Length;
         var result = TpmRc.Success;
         var tbsRes = TbsWrapper.NativeMethods.
-            Tbsip_Submit_Command(TbsHandle,
-                (TbsWrapper.TBS_COMMAND_LOCALITY)active.ActiveLocality,
+            Tbsip_Submit_Command(_tbsHandle,
+                (TbsWrapper.TbsCommandLocality)active.ActiveLocality,
                 active.ActivePriority,
                 inBuf,
                 (uint)inBuf.Length,
                 resultBuf,
                 ref resultByteCount);
-        if (tbsRes == TbsWrapper.TBS_RESULT.SUCCESS)
+        if (tbsRes == TbsWrapper.TbsResult.Success)
         {
             if (resultByteCount != 0)
             {
@@ -131,7 +131,7 @@ public sealed class TbsDevice : Tpm2Device
             result = TpmRc.TbsUnknownError;
         }
         else
-        { 
+        {
             result = (TpmRc)tbsRes;
         }
 
@@ -159,19 +159,19 @@ public sealed class TbsDevice : Tpm2Device
 
     public override void CancelContext()
     {
-        var result = TbsWrapper.NativeMethods.Tbsip_Cancel_Commands(TbsHandle);
-        if (result != TbsWrapper.TBS_RESULT.SUCCESS)
+        var result = TbsWrapper.NativeMethods.Tbsip_Cancel_Commands(_tbsHandle);
+        if (result != TbsWrapper.TbsResult.Success)
         {
             Debug.WriteLine("TbsStubs.Tbsip_Cancel_Command error 0x{0:x}", result);
             throw new Exception("Tbsip_Cancel_Command() failed. Error {" + result + "}");
         }
     }
-    private byte[] GetTpmAuth(TBS_AUTH_TYPE authType)
+    private byte[] GetTpmAuth(TbsAuthType authType)
     {
 #if false
             return new byte[0];
 #else
-        if (TbsHandle == UIntPtr.Zero)
+        if (_tbsHandle == UIntPtr.Zero)
         {
             throw new Exception("TBS context not created.");
         }
@@ -180,11 +180,11 @@ public sealed class TbsDevice : Tpm2Device
         var resultBuf = new byte[256];
         var resultByteCount = (uint)resultBuf.Length;
         var result = TbsWrapper.NativeMethods.
-            Tbsi_Get_OwnerAuth(TbsHandle,
+            Tbsi_Get_OwnerAuth(_tbsHandle,
                 (uint)authType,
                 resultBuf,
                 ref resultByteCount);
-        if (result != TbsWrapper.TBS_RESULT.SUCCESS)
+        if (result != TbsWrapper.TbsResult.Success)
         {
 #if false
                 Console.WriteLine($"Trying to read LockoutAuth from the registry...");
@@ -204,8 +204,8 @@ public sealed class TbsDevice : Tpm2Device
 #endif
 #if !WINDOWS_UWP
             Console.WriteLine("GetTpmAuth({0}): Windows TBS returned 0x{1:X} {2}", authType, result,
-                result == TbsWrapper.TBS_RESULT.OWNERAUTH_NOT_FOUND ? " (OWNERAUTH_NOT_FOUND)" :
-                result == TbsWrapper.TBS_RESULT.BAD_PARAMETER ? " (BAD_PARAMETER)" : "");
+                result == TbsWrapper.TbsResult.OwnerauthNotFound ? " (OWNERAUTH_NOT_FOUND)" :
+                result == TbsWrapper.TbsResult.BadParameter ? " (BAD_PARAMETER)" : "");
 #endif
             return [];
         }
@@ -216,35 +216,35 @@ public sealed class TbsDevice : Tpm2Device
 
     public override byte[] GetLockoutAuth()
     {
-        return GetTpmAuth(TBS_AUTH_TYPE.LOCKOUT);
+        return GetTpmAuth(TbsAuthType.Lockout);
     }
 
     public override byte[] GetOwnerAuth()
     {
-        return GetTpmAuth(TBS_AUTH_TYPE.OWNER);
+        return GetTpmAuth(TbsAuthType.Owner);
     }
 
     public override byte[] GetEndorsementAuth()
     {
-        return GetTpmAuth(TBS_AUTH_TYPE.ENDORSEMENT);
+        return GetTpmAuth(TbsAuthType.Endorsement);
     }
 } // class TbsDevice
 
 [SuppressMessage("Microsoft.Design", "CA1008:EnumsShouldHaveZeroValue")]
-public enum TBS_COMMAND_PRIORITY : uint
+public enum TbsCommandPriority : uint
 {
-    LOW = 100,
-    NORMAL = 200,
-    HIGH = 300,
-    SYSTEM = 400,
-    MAX = 0x80000000
+    Low = 100,
+    Normal = 200,
+    High = 300,
+    System = 400,
+    Max = 0x80000000
 }
 
-public enum TBS_AUTH_TYPE : uint
+public enum TbsAuthType : uint
 {
-    LOCKOUT = 1,        // TBS_OWNERAUTH_TYPE_FULL
-    ENDORSEMENT = 12,   // TBS_OWNERAUTH_TYPE_ENDORSEMENT_20
-    OWNER = 13          // TBS_OWNERAUTH_TYPE_STORAGE_20
+    Lockout = 1,        // TBS_OWNERAUTH_TYPE_FULL
+    Endorsement = 12,   // TBS_OWNERAUTH_TYPE_ENDORSEMENT_20
+    Owner = 13          // TBS_OWNERAUTH_TYPE_STORAGE_20
 }
 
 internal class TbsWrapper
@@ -255,87 +255,87 @@ internal class TbsWrapper
         // to the TpmRc enum.
 
         [DllImport("tbs.dll", CharSet = CharSet.Unicode)]
-        internal static extern TBS_RESULT
+        internal static extern TbsResult
             Tbsi_Context_Create(
-            ref TBS_CONTEXT_PARAMS  ContextParams,
-            ref UIntPtr             Context
+            ref TbsContextParams  contextParams,
+            ref UIntPtr             context
             );
 
         [DllImport("tbs.dll", CharSet = CharSet.Unicode)]
-        internal static extern TBS_RESULT
+        internal static extern TbsResult
             Tbsi_Get_OwnerAuth(
             UIntPtr                 hContext,
             uint                    ownerAuthType,
             [System.Runtime.InteropServices.MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 3), Out]
-            byte[]                  OutBuf,
-            ref uint                OutBufLen
+            byte[]                  outBuf,
+            ref uint                outBufLen
             );
 
         [DllImport("tbs.dll", CharSet = CharSet.Unicode)]
-        internal static extern TBS_RESULT
+        internal static extern TbsResult
             Tbsip_Context_Close(
-            UIntPtr                 Context
+            UIntPtr                 context
             );
 
         [DllImport("tbs.dll", CharSet = CharSet.Unicode)]
-        internal static extern TBS_RESULT
+        internal static extern TbsResult
             Tbsip_Submit_Command(
-            UIntPtr                 Context,
-            TBS_COMMAND_LOCALITY    Locality,
-            TBS_COMMAND_PRIORITY Priority,
+            UIntPtr                 context,
+            TbsCommandLocality    locality,
+            TbsCommandPriority priority,
             [System.Runtime.InteropServices.MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 4), In]
-            byte[]                  InBuffer,
-            uint                    InBufferSize,
+            byte[]                  inBuffer,
+            uint                    inBufferSize,
             [System.Runtime.InteropServices.MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 6), Out]
-            byte[]                  OutBuf,
-            ref uint                OutBufLen
+            byte[]                  outBuf,
+            ref uint                outBufLen
             );
 
         [DllImport("tbs.dll", CharSet = CharSet.Unicode)]
-        internal static extern TBS_RESULT
+        internal static extern TbsResult
             Tbsip_Cancel_Commands(
-            UIntPtr                 Context
+            UIntPtr                 context
             );
 
     }
 
-    public enum TBS_RESULT : uint
+    public enum TbsResult : uint
     {
-        SUCCESS = 0,
-        OWNERAUTH_NOT_FOUND = 0x80284015,
-        BAD_PARAMETER = 0x80284002
+        Success = 0,
+        OwnerauthNotFound = 0x80284015,
+        BadParameter = 0x80284002
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct TBS_CONTEXT_PARAMS
+    public struct TbsContextParams
     {
-        public TBS_CONTEXT_VERSION Version;
-        public TBS_CONTEXT_CREATE_FLAGS Flags;
+        public TbsContextVersion Version;
+        public TbsContextCreateFlags Flags;
     }
 
-    public enum TBS_COMMAND_LOCALITY : uint
+    public enum TbsCommandLocality : uint
     {
-        ZERO = 0,
-        ONE = 1,
-        TWO = 2,
-        THREE = 3,
-        FOUR = 4
+        Zero = 0,
+        One = 1,
+        Two = 2,
+        Three = 3,
+        Four = 4
     }
 
-    public enum TBS_CONTEXT_VERSION : uint
+    public enum TbsContextVersion : uint
     {
-        ONE = 1,
-        TWO = 2
+        One = 1,
+        Two = 2
     }
 
-    public enum TBS_TPM_VERSION : uint
+    public enum TbsTpmVersion : uint
     {
         Invalid = 0,
-        V1_2 = 1,
+        V12 = 1,
         V2 = 2
     }
 
-    public enum TBS_CONTEXT_CREATE_FLAGS : uint
+    public enum TbsContextCreateFlags : uint
     {
         RequestRaw = 0x00000001,
         IncludeTpm12 = 0x00000002,
@@ -374,42 +374,42 @@ internal class TpmDllWrapper
         [DllImport("tpm.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void Signal_Hash_End();
 
-        const string platform = "tpm.dll"; // "platform.dll";
+        const string Platform = "tpm.dll"; // "platform.dll";
 
-        [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Platform, CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__Signal_PhysicalPresenceOn();
 
-        [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Platform, CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__Signal_PhysicalPresenceOff();
 
-        [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Platform, CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__Signal_PowerOn();
 
-        [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Platform, CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__Signal_PowerOff();
 
-        [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Platform, CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__SetCancel();
 
-        [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Platform, CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__ClearCancel();
 
         [DllImport("tpm.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__NVEnable(IntPtr platParm);
 
-        [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Platform, CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__NVDisable();
 
-        [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Platform, CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__RsaKeyCacheControl(int state);
 
-        [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Platform, CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__LocalitySet(byte locality);
 
-        [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Platform, CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__SetNvAvail();
 
-        [DllImport(platform, CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Platform, CallingConvention = CallingConvention.Cdecl)]
         public static extern void _plat__ClearNvAvail();
     }
 } // class TpmDllWrapper
@@ -419,8 +419,8 @@ internal class TpmDllWrapper
 /// </summary>
 public sealed class InprocTpm : Tpm2Device
 {
-    private IntPtr ResponseBuf;
-    private uint ResponseBufSize = 4096;
+    private IntPtr _responseBuf;
+    private uint _responseBufSize = 4096;
 
     /// <summary>
     /// Specify the path to TPM.dll.  Note: any TPM in the current directory takes precedence
@@ -429,17 +429,9 @@ public sealed class InprocTpm : Tpm2Device
     public InprocTpm(string tpmDllPath)
     {
         TpmDllWrapper.NativeMethods.SetDllDirectory(tpmDllPath);
-        try
-        {
-            TpmDllWrapper.NativeMethods._plat__NVEnable(IntPtr.Zero);
-        }
-        catch (Exception)
-        {
-            //Console.Error.WriteLine("Can't load the TPM dll (or a dependency) at " + tpmDllPath);
-            throw;
-        }
+        TpmDllWrapper.NativeMethods._plat__NVEnable(IntPtr.Zero);
         NeedsHMAC = false;
-        ResponseBuf = Marshal.AllocHGlobal((int)ResponseBufSize);
+        _responseBuf = Marshal.AllocHGlobal((int)_responseBufSize);
     }
 
     public override void Connect()
@@ -459,28 +451,28 @@ public sealed class InprocTpm : Tpm2Device
         PowerOn();
     }
 
-    private bool PowerIsOn;
+    private bool _powerIsOn;
 
     public void PowerOff()
     {
-        if (!PowerIsOn)
+        if (!_powerIsOn)
         {
             return;
         }
         TpmDllWrapper.NativeMethods._plat__Signal_PowerOff();
-        PowerIsOn = false;
+        _powerIsOn = false;
     }
 
     public void PowerOn()
     {
-        if (PowerIsOn)
+        if (_powerIsOn)
         {
             return;
         }
         TpmDllWrapper.NativeMethods._plat__Signal_PowerOn();
         TpmDllWrapper.NativeMethods._TPM_Init();
         TpmDllWrapper.NativeMethods._plat__SetNvAvail();
-        PowerIsOn = true;
+        _powerIsOn = true;
     }
 
     public override bool PlatformAvailable()
@@ -515,7 +507,7 @@ public sealed class InprocTpm : Tpm2Device
 
     public override void AssertPhysicalPresence(bool assertPhysicalPresence)
     {
-        if (!PowerIsOn)
+        if (!_powerIsOn)
         {
             return;
         }
@@ -537,7 +529,7 @@ public sealed class InprocTpm : Tpm2Device
 
     public override void SignalCancelOn()
     {
-        if (!PowerIsOn)
+        if (!_powerIsOn)
         {
             return;
         }
@@ -546,7 +538,7 @@ public sealed class InprocTpm : Tpm2Device
 
     public override void SignalCancelOff()
     {
-        if (!PowerIsOn)
+        if (!_powerIsOn)
         {
             return;
         }
@@ -555,7 +547,7 @@ public sealed class InprocTpm : Tpm2Device
 
     public override void SignalNvOn()
     {
-        if (!PowerIsOn)
+        if (!_powerIsOn)
         {
             return;
         }
@@ -564,7 +556,7 @@ public sealed class InprocTpm : Tpm2Device
 
     public override void SignalNvOff()
     {
-        if (!PowerIsOn)
+        if (!_powerIsOn)
         {
             return;
         }
@@ -573,7 +565,7 @@ public sealed class InprocTpm : Tpm2Device
 
     public override void SignalKeyCacheOn()
     {
-        if (!PowerIsOn)
+        if (!_powerIsOn)
         {
             return;
         }
@@ -582,7 +574,7 @@ public sealed class InprocTpm : Tpm2Device
 
     public override void SignalKeyCacheOff()
     {
-        if (!PowerIsOn)
+        if (!_powerIsOn)
         {
             return;
         }
@@ -591,7 +583,7 @@ public sealed class InprocTpm : Tpm2Device
 
     public override void SignalHashStart()
     {
-        if (!PowerIsOn)
+        if (!_powerIsOn)
         {
             return;
         }
@@ -600,7 +592,7 @@ public sealed class InprocTpm : Tpm2Device
 
     public override void SignalHashData(byte[] data)
     {
-        if (!PowerIsOn)
+        if (!_powerIsOn)
         {
             return;
         }
@@ -609,7 +601,7 @@ public sealed class InprocTpm : Tpm2Device
 
     public override void SignalHashEnd()
     {
-        if (!PowerIsOn)
+        if (!_powerIsOn)
         {
             return;
         }
@@ -623,13 +615,13 @@ public sealed class InprocTpm : Tpm2Device
 
     public override void DispatchCommand(CommandModifier active, byte[] inBuf, out byte[] outBuf)
     {
-        if (!PowerIsOn)
+        if (!_powerIsOn)
         {
             outBuf = [];
             return;
         }
-        var respSize = ResponseBufSize;
-        var respBuf = ResponseBuf;
+        var respSize = _responseBufSize;
+        var respBuf = _responseBuf;
 
         TpmDllWrapper.NativeMethods._plat__LocalitySet(active.ActiveLocality);
         TpmDllWrapper.NativeMethods.ExecuteCommand((uint)inBuf.Length,

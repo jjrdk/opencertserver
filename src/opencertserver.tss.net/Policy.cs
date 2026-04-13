@@ -198,8 +198,6 @@ public class PolicyTree
         return PolicyRoot.GetPolicyDigest(PolicyHash.HashAlg);
     }
 
-    internal bool AllowErrorsInPolicyEval;
-
     private bool PolicyContainsOrs;
 
     /// <summary>

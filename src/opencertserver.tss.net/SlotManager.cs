@@ -165,7 +165,7 @@ public sealed class Tbs : IDisposable
                 throw new Exception("Unrecognized command");
             }
 
-            if (cc == TpmCc.ContextLoad || cc == TpmCc.ContextSave)
+            if (cc is TpmCc.ContextLoad or TpmCc.ContextSave)
             {
                 Debug.WriteLine("ContextLoad and ContextSave are not supported in this build");
                 outBuf = Marshaller.GetTpmRepresentation(new object[] {
@@ -264,11 +264,11 @@ public sealed class Tbs : IDisposable
                 }
 
                 var slotType = SlotType.NoSlot;
-                if (res == TpmRc.ObjectHandles || res == TpmRc.ObjectMemory)
+                if (res is TpmRc.ObjectHandles or TpmRc.ObjectMemory)
                 {
                     slotType = SlotType.ObjectSlot;
                 }
-                else if (res == TpmRc.SessionHandles || res == TpmRc.SessionMemory)
+                else if (res is TpmRc.SessionHandles or TpmRc.SessionMemory)
                 {
                     slotType = SlotType.SessionSlot;
                 }

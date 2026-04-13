@@ -155,8 +155,8 @@ public abstract partial class TpmStructureBase
         public uint GetValueAsUInt()
         {
             var t = Globs.GetMemberType(this);
-            return t == typeof(byte) ? (uint)(byte)Value
-                : t == typeof(ushort) ? (uint)(ushort)Value : (uint)Value;
+            return t == typeof(byte) ? (byte)Value
+                : t == typeof(ushort) ? (ushort)Value : (uint)Value;
         }
     } // class TpmStructMemberInfo
 
@@ -219,7 +219,7 @@ public abstract partial class TpmStructureBase
                     Debug.Assert(mt != MarshalType.ArrayCount && mt != MarshalType.LengthOfStruct);
 
                     tsmi.WireType = mt;
-                    if (mt == MarshalType.SizedStruct || mt == MarshalType.VariableLengthArray)
+                    if (mt is MarshalType.SizedStruct or MarshalType.VariableLengthArray)
                     {
                         tsmi.SizeName = (string)a.ConstructorArguments[2].Value;
                         tsmi.SizeLength = (int)a.ConstructorArguments[3].Value;

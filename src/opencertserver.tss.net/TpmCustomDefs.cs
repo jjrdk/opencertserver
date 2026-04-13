@@ -1,4 +1,4 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
@@ -34,7 +34,7 @@ public partial class TpmHash
     }
 
     /// <summary>
-    /// Get or set the data associated with this TpmHash.  The length is checked when set. 
+    /// Get or set the data associated with this TpmHash.  The length is checked when set.
     /// </summary>
 //        [MarshalAs(1, MarshalType.FixedLengthArray)]
     public byte[] HashData
@@ -58,7 +58,7 @@ public partial class TpmHash
     }
 
     /// <summary>
-    /// Get the number of bytes of the hash output 
+    /// Get the number of bytes of the hash output
     /// </summary>
     public int Length { get { return digest.Length; } }
 
@@ -100,23 +100,23 @@ public partial class TpmHash
     /// for the purposes of comparison.
     /// </summary>
     /// <param name="digest">Byte array representing digest</param>
-    private TpmHash(byte[] _digest)
+    private TpmHash(byte[] digest)
     {
         hashAlg = TpmAlgId.None;
-        digest = _digest;
+        this.digest = digest;
     }
 
     public static implicit operator TpmHash(byte[] digest)
     {
         return new TpmHash(digest);
     }
-        
+
     /// <summary>
     /// Implicit conversion of a hash object to byte-array.
     /// </summary>
-    /// <param name="a"></param>
+    /// <param name="hash"></param>
     /// <returns>Digest stored in the hash object</returns>
-    public static implicit operator byte[](TpmHash hash)
+    public static implicit operator byte[](TpmHash? hash)
     {
         return hash == null ? null : hash.HashData;
     }
@@ -124,24 +124,24 @@ public partial class TpmHash
     /// <summary>
     /// Implicit conversion of a hash object to a TPM algorithm.
     /// </summary>
-    /// <param name="a"></param>
+    /// <param name="hash"></param>
     /// <returns>Hash algorithm associated with the hash object</returns>
-    public static implicit operator TpmAlgId(TpmHash hash)
+    public static implicit operator TpmAlgId(TpmHash? hash)
     {
         return hash == null ? TpmAlgId.None : hash.HashAlg;
     }
 
     /// <summary>
-    /// Returns true if the two hashes are equal, i.e. if both hash algorithms and
+    /// Returns true if the two hashes are equal, i.e., if both hash algorithms and
     /// digests are the same. When this operator is used to compare a hash object
     /// with a byte buffer representing digest, the latter is converted to a hash
     /// object with its hash algorithm set to null, which excludes the algorithms
     /// from comparison).
     /// </summary>
-    /// <param name="lhs">Left hand side operand</param>
-    /// <param name="rhs">Right hand side operand</param>
+    /// <param name="lhs">Left-hand side operand</param>
+    /// <param name="rhs">Right-hand side operand</param>
     /// <returns></returns>
-    public static bool operator == (TpmHash lhs, TpmHash rhs)
+    public static bool operator == (TpmHash? lhs, TpmHash? rhs)
     {
         return (object)lhs == null ? (object)rhs == null
             : (object)rhs != null &&
@@ -233,7 +233,7 @@ public partial class TpmHash
             throw new ArgumentException("TpmHash.FromRandom: Not a hash algorithm");
         }
         return new TpmHash(hashAlg, CryptoLib.HashData(hashAlg, Globs.GetRandomBytes(
-            (int)DigestSize(hashAlg))));
+            DigestSize(hashAlg))));
     }
 
     /// <summary>
@@ -348,7 +348,7 @@ public class AuthValue : TpmStructureBase
     /// </summary>
     public byte[] AuthVal { get; set; }
 
-    internal static bool IsNull(AuthValue auth)
+    internal static bool IsNull(AuthValue? auth)
     {
         return auth == null || auth.AuthVal.Length == 0;
     }
@@ -366,7 +366,7 @@ public class AuthValue : TpmStructureBase
     }
 
     /// <summary>
-    /// Create an zero-length AuthValue 
+    /// Create an zero-length AuthValue
     /// </summary>
     public AuthValue()
     {
@@ -409,7 +409,7 @@ public class AuthValue : TpmStructureBase
         return !(lhs == rhs);
     }
 
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         if (obj == null || GetType() != obj.GetType())
         {
@@ -535,7 +535,7 @@ public class TpmHandleX
 /// </summary>
 public partial class TpmHandle
 {
-    private byte[] _Name;
+    private byte[]? _Name;
     private AuthValue _AuthValue;
 
     /// <summary>
@@ -550,13 +550,13 @@ public partial class TpmHandle
 
     /// <summary>
     /// Get the TPM name of the associated entity.
-    /// 
+    ///
     /// If the entity is a transient object, persistent object or NV index, the
     /// name must have been previously set explicitly by the caller (by means of
     /// SetName() or GetName(Tpm2 tpm) methods) or implicitly by the framework
     /// (when an object is created by means of CreatePrimary, CreateLoaded or
     /// Create command).
-    /// 
+    ///
     /// Otherwise the name is a 4-byte TPM representation of the handle value.
     /// </summary>
     public byte[] GetName()
@@ -594,10 +594,9 @@ public partial class TpmHandle
                 tpm.NvReadPublic(this, out _Name);
                 return _Name;
             }
-            if (ht == Ht.Transient || ht == Ht.Persistent)
+            if (ht is Ht.Transient or Ht.Persistent)
             {
-                byte[] qName;
-                tpm.ReadPublic(this, out _Name, out qName);
+                tpm.ReadPublic(this, out _Name, out _);
                 return _Name;
             }
         }
@@ -626,7 +625,7 @@ public partial class TpmHandle
     }
 
     /// <summary>
-    /// Associates authorization value with the handle. 
+    /// Associates authorization value with the handle.
     /// This association is done automatically by TPM commands producing the
     /// corresponding handle or changing object's auth value.
     /// However on many occasions the library does not have access to the auth
@@ -648,7 +647,7 @@ public partial class TpmHandle
     /// is subsequently used in a command that requires authorization, this auth-value
     /// will be used (in a PWAP or HMAC session, depending on context).
     /// </summary>
-    public byte[] Auth
+    public byte[]? Auth
     {
         get
         {
@@ -695,7 +694,7 @@ public partial class TpmHandle
     /// <param name="lhs">Left hand side operand</param>
     /// <param name="rhs">Right hand side operand</param>
     /// <returns></returns>
-    public static bool operator == (TpmHandle lhs, TpmHandle rhs)
+    public static bool operator == (TpmHandle? lhs, TpmHandle? rhs)
     {
         return  (object)lhs == null ? (object)rhs == null
             : (object)rhs != null && (lhs.handle == rhs.handle);
@@ -708,7 +707,7 @@ public partial class TpmHandle
     /// <param name="lhs">Left hand side operand</param>
     /// <param name="rhs">Right hand side operand</param>
     /// <returns></returns>
-    public static bool operator != (TpmHandle lhs, TpmHandle rhs)
+    public static bool operator != (TpmHandle? lhs, TpmHandle? rhs)
     {
         return !(lhs == rhs);
     }
@@ -724,7 +723,7 @@ public partial class TpmHandle
     }
 
     /// <summary>
-    /// Calculate the qualified name of an object presumed loaded under the provided ancestral chain 
+    /// Calculate the qualified name of an object presumed loaded under the provided ancestral chain
     /// in a given hierarchy.
     /// </summary>
     /// <param name="hierarchyHandle"></param>
@@ -869,7 +868,7 @@ public partial class TpmHandle
     {
         return new TpmHandle(reservedHandle);
     }
-        
+
     static public TpmHandle RhOwner { get { return new TpmHandle(TpmRh.Owner); } }
 
     public static TpmHandle RhNull { get { return new TpmHandle(TpmRh.Null); } }
@@ -1208,7 +1207,7 @@ public class PcrValueCollection : TpmStructureBase
 
     public PcrValueCollection(PcrValue[] vals)
     {
-        Values = Globs.CopyArray<PcrValue>(vals);
+        Values = Globs.CopyArray(vals);
     }
 
     public PcrValueCollection(PcrSelection[] pcrSelection, Tpm2bDigest[] values)
@@ -1280,8 +1279,8 @@ public class PcrValueCollection : TpmStructureBase
     }
 
     /// <summary>
-    // Get the hash of the concatenation of the values in the array order defined
-    // by the PcrSelection[] returned from GetPcrSelectionArray.
+    /// Get the hash of the concatenation of the values in the array order defined
+    /// by the PcrSelection[] returned from GetPcrSelectionArray.
     /// </summary>
     /// <param name="hashAlg"></param>
     /// <returns></returns>
@@ -1404,7 +1403,7 @@ public partial class SymDefObject : IPublicParmsUnion
     /// </summary>
     /// <param name="src"></param>
     /// <returns></returns>
-    public static implicit operator SymDefObject(SymDef src)
+    public static implicit operator SymDefObject(SymDef? src)
     {
         if (src == null)
         {
@@ -1425,7 +1424,7 @@ public partial class SymDefObject : IPublicParmsUnion
             throw new NotImplementedException("SymDefObject.ToNet: XOR is not supported");
         }
         m.Put(Algorithm, "algorithm");
-        if (Algorithm == TpmAlgId.None || Algorithm == TpmAlgId.Null)
+        if (Algorithm is TpmAlgId.None or TpmAlgId.Null)
         {
             return;
         }
@@ -1436,7 +1435,7 @@ public partial class SymDefObject : IPublicParmsUnion
     internal override void ToHost(Marshaller m)
     {
         Algorithm = (TpmAlgId)m.Get(typeof (TpmAlgId), "algorithm");
-        if (Algorithm == TpmAlgId.None || Algorithm == TpmAlgId.Null)
+        if (Algorithm is TpmAlgId.None or TpmAlgId.Null)
         {
             return;
         }
@@ -1466,12 +1465,12 @@ public partial class SensitiveCreate
 public partial class EccPoint
 {
     /// <summary>
-    /// Returns true if the two ECC points are equal, i.e. if both coordinates
+    /// Returns true if the two ECC points are equal, i.e., if both coordinates
     /// are pairwise equal.
     /// </summary>
-    /// <param name="lhs">Left hand side operand</param>
-    /// <param name="rhs">Right hand side operand</param>
-    public static bool operator == (EccPoint lhs, EccPoint rhs)
+    /// <param name="lhs">Left-hand side operand</param>
+    /// <param name="rhs">Right-hand side operand</param>
+    public static bool operator == (EccPoint? lhs, EccPoint? rhs)
     {
         return (object)lhs == null ? (object)rhs == null
             : (object)rhs != null &&

@@ -526,7 +526,7 @@ public partial class TssObject
         // fill in the public data
         newKey.Public = pub.Copy();
 
-        if (pub.type == TpmAlgId.Keyedhash || pub.type == TpmAlgId.Symcipher)
+        if (pub.type is TpmAlgId.Keyedhash or TpmAlgId.Symcipher)
         {
             byte[] unique = null;
             if (pub.objectAttributes.HasFlag(ObjectAttr.Restricted | ObjectAttr.Decrypt))

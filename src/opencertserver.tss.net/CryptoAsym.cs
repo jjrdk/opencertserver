@@ -20,9 +20,9 @@ namespace OpenCertServer.Tpm2Lib;
 public sealed class AsymCryptoSystem : IDisposable
 {
     private TpmPublic _publicParms;
-    private ECDiffieHellman _ecDhProvider;
-    private ECDsa _ecdsaProvider;
-    private RSA _rsaProvider;
+    private ECDiffieHellman? _ecDhProvider;
+    private ECDsa? _ecdsaProvider;
+    private RSA? _rsaProvider;
 
     public AsymCryptoSystem()
     {
@@ -84,7 +84,7 @@ public sealed class AsymCryptoSystem : IDisposable
     /// <param name="pubKey"></param>
     /// <param name="privKey"></param>
     /// <returns></returns>
-    public static AsymCryptoSystem CreateFrom(TpmPublic pubKey, TpmPrivate privKey = null)
+    public static AsymCryptoSystem CreateFrom(TpmPublic pubKey, TpmPrivate? privKey = null)
     {
         var cs = new AsymCryptoSystem();
 
@@ -165,8 +165,8 @@ public sealed class AsymCryptoSystem : IDisposable
     public TpmPrivate GetPrivate(out TpmPublic tpmPub,
         TpmAlgId nameAlg = TpmAlgId.Sha1,
         ObjectAttr keyAttrs = ObjectAttr.Decrypt | ObjectAttr.UserWithAuth,
-        IAsymSchemeUnion scheme = null,
-        SymDefObject symDef = null)
+        IAsymSchemeUnion? scheme = null,
+        SymDefObject? symDef = null)
     {
         if (scheme == null)
         {
@@ -328,16 +328,16 @@ public sealed class AsymCryptoSystem : IDisposable
     /// <param name="dataIsDigest">Specifies the type of 'data' parameter contents</param>
     /// <param name="signature">The signature</param>
     /// <returns>True if the verification succeeds.</returns>
-    private bool VerifySignature(byte[] data, bool dataIsDigest, ISignatureUnion sig)
+    private bool VerifySignature(byte[] data, bool dataIsDigest, ISignatureUnion signature)
     {
-        var sigScheme = sig.GetUnionSelector();
-        var sigHash = CryptoLib.SchemeHash(sig);
+        var sigScheme = signature.GetUnionSelector();
+        var sigHash = CryptoLib.SchemeHash(signature);
 
         var rsaParams = _publicParms.parameters as RsaParms;
         if (rsaParams != null)
         {
             Debug.Assert(_rsaProvider != null);
-            var s = sig as SignatureRsa;
+            var s = signature as SignatureRsa;
             var keyScheme = rsaParams.scheme.GetUnionSelector();
 
             if (keyScheme != TpmAlgId.Null && keyScheme != sigScheme)
@@ -345,26 +345,14 @@ public sealed class AsymCryptoSystem : IDisposable
                 throw new ArgumentException("Key scheme and signature scheme do not match");
             }
 
-            var paddingScheme = RSASignaturePadding.Pkcs1;
-            switch (sigScheme)
+            var paddingScheme = sigScheme switch
             {
-                case TpmAlgId.Rsassa:
-                {
-                    paddingScheme = RSASignaturePadding.Pkcs1;
-                    break;
-                }
-                case TpmAlgId.Rsapss:
-                {
-                    paddingScheme = RSASignaturePadding.Pss;
-                    break;
-                }
-                default:
-                {
-                    throw new ArgumentException("VerifySignature(): Unrecognized scheme");
-                }
-            }
+                TpmAlgId.Rsassa => RSASignaturePadding.Pkcs1,
+                TpmAlgId.Rsapss => RSASignaturePadding.Pss,
+                _ => throw new ArgumentException("VerifySignature(): Unrecognized scheme")
+            };
 
-            var sRsa = sig as SignatureRsa;
+            var sRsa = signature as SignatureRsa;
             if (dataIsDigest)
             {
                 return _rsaProvider.VerifyHash(data, sRsa.sig, CryptoLib.GetHashAlgorithmName(sigHash), paddingScheme);
@@ -386,7 +374,7 @@ public sealed class AsymCryptoSystem : IDisposable
                 throw new ArgumentException("Key scheme and signature scheme do not match");
             }
 
-            var s = sig as SignatureEcdsa;
+            var s = signature as SignatureEcdsa;
             var sigBlob = Globs.Concatenate(s.signatureR, s.signatureS);
             Debug.Assert(_ecdsaProvider != null);
             if (dataIsDigest)
@@ -467,16 +455,6 @@ public sealed class AsymCryptoSystem : IDisposable
     /// <returns></returns>
     public byte[] EncryptOaep(byte[] plainText, byte[] label)
     {
-        if (plainText == null)
-        {
-            plainText = [];
-        }
-
-        if (label == null)
-        {
-            label = [];
-        }
-
         var rr = new RawRsa(_rsaProvider.ExportParameters(false), _rsaProvider.KeySize);
         var cipherText = rr.OaepEncrypt(plainText, OaepHash, label);
         return cipherText;
@@ -501,18 +479,9 @@ public sealed class AsymCryptoSystem : IDisposable
 
     public void Dispose()
     {
-        if (_rsaProvider != null)
-        {
-            _rsaProvider.Dispose();
-        }
-        if (_ecdsaProvider != null)
-        {
-            _ecdsaProvider.Dispose();
-        }
-        if (_ecDhProvider != null)
-        {
-            _ecDhProvider.Dispose();
-        }
+        _rsaProvider?.Dispose();
+        _ecdsaProvider?.Dispose();
+        _ecDhProvider?.Dispose();
     }
 } // class AsymCryptoSystem
 
@@ -640,10 +609,6 @@ public class RawRsa
 
     public static byte[] GetLabel(byte[] data)
     {
-        if (data == null)
-        {
-            return [];
-        }
         if (data.Length == 0)
         {
             return data;
