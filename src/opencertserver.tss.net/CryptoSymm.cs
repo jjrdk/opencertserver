@@ -148,7 +148,7 @@ public sealed class SymCipher : IDisposable
         return symCipher;
     } // Create()
 
-    const CipherMode CipherModeNone = (CipherMode)0;
+    const CipherMode CipherModeNone = 0;
 
     public static CipherMode GetCipherMode(TpmAlgId cipherMode)
     {

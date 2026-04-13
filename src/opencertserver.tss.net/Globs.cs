@@ -297,7 +297,7 @@ public class Globs
     /// <summary>
     /// Default RNG used by the library (for nonces, and if a random auth-value is required, etc.)
     /// </summary>
-    public static PRNG Rng = new PRNG();
+    public static Prng Rng = new Prng();
 
     public static byte[] GetRandomBytes(int numBytes)
     {
@@ -676,7 +676,7 @@ public class Globs
     {
         if (typeName.EndsWith("[]"))
         {
-            typeName = typeName.Substring(0, typeName.Length - 2);
+            typeName = typeName[..^2];
         }
         if (typeName == "bool")     { return "bool"; }
         if (typeName == "Byte")     { return "byte"; }
@@ -928,7 +928,7 @@ public class Dbg
     {
         if (Enabled && CurIndent.Length > 3)
         {
-            CurIndent = CurIndent.Substring(0, CurIndent.Length - 4);
+            CurIndent = CurIndent[..^4];
         }
     }
 #if false

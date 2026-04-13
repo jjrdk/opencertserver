@@ -15,7 +15,10 @@
   <PropertyGroup>
     <AssemblyName>opencertserver.tss.net</AssemblyName>
     <RootNamespace>OpenCertServer.Tpm2Lib</RootNamespace>
-    <Nullable>disable</Nullable>
+    <!-- Don't escalate warnings to errors for this vendored library (shared.proj sets it true) -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Suppress the nullable-related diagnostics produced by the large vendored code. -->
+    <NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8605;CS8618;CS8625;CS8765</NoWarn>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Suppress obsolete API warnings from the vendored source -->

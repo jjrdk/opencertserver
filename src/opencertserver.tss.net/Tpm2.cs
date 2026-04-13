@@ -73,38 +73,34 @@ public sealed partial class Tpm2 : IDisposable
         // ReSharper disable once InconsistentNaming
         private Behavior behavior;
 
-        BehaviorMgr (Behavior b)
+        BehaviorMgr(Behavior b)
         {
             behavior = b;
         }
 
-        public static implicit operator BehaviorMgr (Behavior b)
+        public static implicit operator BehaviorMgr(Behavior b)
         {
             return new BehaviorMgr(b);
         }
 
         public bool Strict
         {
-            get
-            {
-                return behavior.HasFlag(Behavior.Strict);
-            }
+            get { return behavior.HasFlag(Behavior.Strict); }
             set
             {
-                behavior = value ? behavior | Behavior.Strict
+                behavior = value
+                    ? behavior | Behavior.Strict
                     : behavior & ~Behavior.Strict;
             }
         }
 
         public bool Passthrough
         {
-            get
-            {
-                return behavior.HasFlag(Behavior.Passthrough);
-            }
+            get { return behavior.HasFlag(Behavior.Passthrough); }
             set
             {
-                behavior = value ? behavior | Behavior.Passthrough
+                behavior = value
+                    ? behavior | Behavior.Passthrough
                     : behavior & ~Behavior.Passthrough;
             }
         }
@@ -129,29 +125,29 @@ public sealed partial class Tpm2 : IDisposable
     /// <summary>
     /// Auth value associated with the storage hierarchy (TpmRh.Owner).
     /// </summary>
-    public AuthValue   OwnerAuth = new AuthValue();
+    public AuthValue OwnerAuth = new AuthValue();
 
     /// <summary>
     /// Auth value associated with the endorsement hierarchy (TpmRh.Endorsement).
     /// </summary>
-    public AuthValue   EndorsementAuth = new AuthValue();
+    public AuthValue EndorsementAuth = new AuthValue();
 
     /// <summary>
     /// Auth value associated with the platform hierarchy (TpmRh.Platform).
     /// </summary>
-    public AuthValue   PlatformAuth = new AuthValue();
+    public AuthValue PlatformAuth = new AuthValue();
 
     /// <summary>
     /// Auth value associated with the dictionary attack lockout reset (TpmRh.Lockout).
     /// </summary>
-    public AuthValue   LockoutAuth = new AuthValue();
+    public AuthValue LockoutAuth = new AuthValue();
 
     /// <summary>
     /// Returns auth value associated with the given permanent handle.
     /// </summary>
     public AuthValue GetPermHandleAuth(TpmRh h)
     {
-        return  h == TpmRh.Owner ? OwnerAuth :
+        return h == TpmRh.Owner ? OwnerAuth :
             h == TpmRh.Lockout ? LockoutAuth :
             h == TpmRh.Platform ? PlatformAuth :
             h == TpmRh.Endorsement ? EndorsementAuth : null;
@@ -165,7 +161,7 @@ public sealed partial class Tpm2 : IDisposable
     /// </summary>
     public TpmAlgId AutoAuthHashAlg = TpmAlgId.Sha384;
 
-    private int  TolerateErrorsPermanently = 0;
+    private int TolerateErrorsPermanently = 0;
 
     /// <summary>
     /// Hash algorithm to compute a digest of a private part that is used to index
@@ -248,7 +244,7 @@ public sealed partial class Tpm2 : IDisposable
     /// Flag indicating that Physical Presence state should be cleared upon the
     /// pending or next TPM command completion.
     /// </summary>
-    bool    ResetPp = false;
+    bool ResetPp = false;
 
 
     /// <summary>
@@ -359,7 +355,6 @@ public sealed partial class Tpm2 : IDisposable
     /// The installed set of expected response codes is cleared when the next TPM
     /// command completes (whether successfully of with an error).
     /// </summary>
-
     /// <summary>
     /// Prevents this TPM context from throwing an exception if the next TPM command fails.
     /// If exceptions are not disabled permanently the effect of _AllowErrors() is nullified after the
@@ -402,8 +397,8 @@ public sealed partial class Tpm2 : IDisposable
         // Empty responses list indicates success
         ExpectedResponses = null;
 
-        if (expectedResponses == null ||  expectedResponses.Length == 0 ||
-            expectedResponses.Length == 1 && (TpmRc)expectedResponses[0] == TpmRc.Success)
+        if (expectedResponses == null || expectedResponses.Length == 0 ||
+            expectedResponses.Length == 1 && expectedResponses[0] == TpmRc.Success)
         {
             return this;
         }
@@ -423,13 +418,14 @@ public sealed partial class Tpm2 : IDisposable
         {
             ExpectedResponses = [TpmRc.Success];
         }
+
         var old = ExpectedResponses;
         ExpectedResponses = new TpmRc[expectedResponses.Length + old.Length];
         Array.Copy(old, ExpectedResponses, old.Length);
 
         for (var i = 0; i < expectedResponses.Length; ++i)
         {
-            var rc = (TpmRc)expectedResponses[i];
+            var rc = expectedResponses[i];
             var curPos = old.Length + i;
             if (rc == TpmRc.Success && curPos != 0)
             {
@@ -441,8 +437,10 @@ public sealed partial class Tpm2 : IDisposable
                 rc = ExpectedResponses[0];
                 ExpectedResponses[0] = TpmRc.Success;
             }
+
             ExpectedResponses[curPos] = rc;
         }
+
         AssertExpectedResponsesValid();
         return this;
     }
@@ -481,6 +479,7 @@ public sealed partial class Tpm2 : IDisposable
         {
             TolerateErrors = false;
         }
+
         return this;
     }
 
@@ -495,6 +494,7 @@ public sealed partial class Tpm2 : IDisposable
         {
             TolerateErrors = true;
         }
+
         return this;
     }
 
@@ -528,6 +528,7 @@ public sealed partial class Tpm2 : IDisposable
             Device.AssertPhysicalPresence(true);
             ResetPp = true;
         }
+
         return this;
     }
 
@@ -561,8 +562,10 @@ public sealed partial class Tpm2 : IDisposable
                     ActiveModifiers.ActiveLocality = (byte)locality;
                     break;
                 }
+
                 throw new ArgumentException("Invalid locality");
         }
+
         return this;
     }
 
@@ -571,19 +574,20 @@ public sealed partial class Tpm2 : IDisposable
     /// Not all TPM devices will be able to honor priority requests.
     /// </summary>
     /// <param name="priority"></param>
-    public Tpm2 _SetPriority(TBS_COMMAND_PRIORITY priority)
+    public Tpm2 _SetPriority(TbsCommandPriority priority)
     {
         switch (priority)
         {
-            case TBS_COMMAND_PRIORITY.LOW:
-            case TBS_COMMAND_PRIORITY.NORMAL:
-            case TBS_COMMAND_PRIORITY.HIGH:
-            case TBS_COMMAND_PRIORITY.SYSTEM:
+            case TbsCommandPriority.Low:
+            case TbsCommandPriority.Normal:
+            case TbsCommandPriority.High:
+            case TbsCommandPriority.System:
                 ActiveModifiers.ActivePriority = priority;
                 break;
             default:
                 throw new ArgumentException("Invalid priority");
         }
+
         return this;
     }
 
@@ -667,9 +671,10 @@ public sealed partial class Tpm2 : IDisposable
 
     public delegate bool CmdStatsCallback(TpmCc command, TpmRc maskedError, double executionTime);
 
-    public delegate bool AlternateActionCallback(TpmCc ordinal,
+    public delegate bool AlternateActionCallback(
+        TpmCc ordinal,
         TpmStructureBase inParms,
-        Type expectedResponseType,     // null, if no response expected
+        Type expectedResponseType, // null, if no response expected
         out TpmStructureBase outParms,
         out bool desiredSuccessCode);
 
@@ -716,8 +721,10 @@ public sealed partial class Tpm2 : IDisposable
     /// <param name="cpc"></param>
     /// <param name="cbc"></param>
     /// <returns></returns>
-    public Tpm2 _SetCommandCallbacks(CmdStatsCallback csc,
-        CmdParamsCallback cpc = null, CmdBufCallback cbc = null)
+    public Tpm2 _SetCommandCallbacks(
+        CmdStatsCallback csc,
+        CmdParamsCallback cpc = null,
+        CmdBufCallback cbc = null)
     {
         TheCmdParamsCallback = cpc;
         TheCmdBufCallback = cbc;
@@ -896,7 +903,7 @@ public sealed partial class Tpm2 : IDisposable
                 outParms.GetType(),
                 out var outParmsAlt,
                 out desiredSuccessCode);
-            Debug.Assert (outParmsAlt == null);
+            Debug.Assert(outParmsAlt == null);
             if (alternate)
             {
                 _ClearCommandContext();
@@ -942,18 +949,19 @@ public sealed partial class Tpm2 : IDisposable
         }
 
         // Response atoms
-        var   responseTag = TpmSt.None;
-        var   resultCode = TpmRc.None;
-        uint    responseParamSize = 0;
-        byte[]  outParmsNoHandles = null,
-                outParmsWithHandles = null;
-        TpmHandle[]     outHandles = null;
-        SessionOut[]    outSessions = null;
+        var responseTag = TpmSt.None;
+        var resultCode = TpmRc.None;
+        uint responseParamSize = 0;
+        byte[] outParmsNoHandles = null,
+               outParmsWithHandles = null;
+        TpmHandle[] outHandles = null;
+        SessionOut[] outSessions = null;
 
         // In normal processing there is just one pass through this do-while loop
         // If command observation/modification callbacks are installed, then the
         // caller repeats the command as long as necessary.
-        do try
+        do
+            try
             {
                 var invokeCallbacks = OuterCommand == TpmCc.None &&
                     !CpHashMode && !DoNotDispatchCommand;
@@ -1007,7 +1015,7 @@ public sealed partial class Tpm2 : IDisposable
                     if (command == null)
                     {
                         repeat = true;
-                        continue;   // retry
+                        continue; // retry
                     }
                 }
 
@@ -1042,7 +1050,6 @@ public sealed partial class Tpm2 : IDisposable
                             {
                                 Device.DispatchCommand(ActiveModifiers, command, out response);
                             }
-
                         }
                         catch (Exception)
                         {
@@ -1066,6 +1073,7 @@ public sealed partial class Tpm2 : IDisposable
                     {
                         continue;
                     }
+
                     if (resultCode != TpmRc.NvRate || ++nvRateRecoveryCount > 4)
                     {
                         break;
@@ -1099,20 +1107,23 @@ public sealed partial class Tpm2 : IDisposable
                     ProcessResponseSessions(outSessions);
 
                     var offset = (int)commandInfo.HandleCountOut * 4;
-                    outParmsWithHandles = DoParmEncryption(outParmsWithHandles, commandInfo, offset, Direction.Response);
+                    outParmsWithHandles =
+                        DoParmEncryption(outParmsWithHandles, commandInfo, offset, Direction.Response);
 
                     var m = new Marshaller(outParmsWithHandles);
                     CommandHeader actualHeader;
                     TpmHandle[] actualHandles;
                     SessionIn[] actualSessions;
                     byte[] actualParmsBuf;
-                    CommandProcessor.CrackCommand(command, out actualHeader, out actualHandles, out actualSessions, out actualParmsBuf);
+                    CommandProcessor.CrackCommand(command, out actualHeader, out actualHandles, out actualSessions,
+                        out actualParmsBuf);
 
                     m = new Marshaller();
                     foreach (var h in actualHandles)
                     {
                         m.Put(h, "handle");
                     }
+
                     m.Put(actualParmsBuf, "parms");
                     var actualParms = (TpmStructureBase)Activator.CreateInstance(inParms.GetType());
                     actualParms.ToHost(m);
@@ -1126,6 +1137,7 @@ public sealed partial class Tpm2 : IDisposable
                             }
                         }
                     }
+
                     UpdateHandleData(actualHeader.CommandCode, actualParms, actualHandles, outParms);
                     //ValidateResponseSessions(outHandles, outSessions, ordinal, resultCode, outParmsNoHandles);
 
@@ -1147,7 +1159,10 @@ public sealed partial class Tpm2 : IDisposable
                     _ClearCommandPrelaunchContext();
                     _ClearCommandContext();
                 }
-                catch (Exception) { }
+                catch (Exception)
+                {
+                }
+
                 throw;
             }
         while (repeat);
@@ -1164,6 +1179,7 @@ public sealed partial class Tpm2 : IDisposable
             {
                 throw new Exception("No audit hash set for this command stream");
             }
+
             var parmHash = GetCommandHash(CommandAuditHash.HashAlg, parms, inHandles);
             var expectedResponseHash = GetExpectedResponseHash(CommandAuditHash.HashAlg,
                 outParmsNoHandles,
@@ -1186,7 +1202,8 @@ public sealed partial class Tpm2 : IDisposable
                 {
                     ProcessResponseSessions(outSessions);
                     var offset = (int)commandInfo.HandleCountOut * 4;
-                    outParmsWithHandles = DoParmEncryption(outParmsWithHandles, commandInfo, offset, Direction.Response);
+                    outParmsWithHandles =
+                        DoParmEncryption(outParmsWithHandles, commandInfo, offset, Direction.Response);
                 }
 
                 var mt = new Marshaller(outParmsWithHandles);
@@ -1198,14 +1215,15 @@ public sealed partial class Tpm2 : IDisposable
                     UpdateHandleData(ordinal, inParms, inHandles, outParms);
                     ValidateResponseSessions(outHandles, outSessions, ordinal, resultCode, outParmsNoHandles);
 
-                    foreach (var s in Sessions) if (s is AuthSession sess)
-                    {
-                        if (sess.Attrs.HasFlag(SessionAttr.Audit) && !TpmHandle.IsNull(sess.BindObject))
+                    foreach (var s in Sessions)
+                        if (s is AuthSession sess)
                         {
-                            sess.BindObject = TpmRh.Null;
-                            break; // only one audit session is expected
+                            if (sess.Attrs.HasFlag(SessionAttr.Audit) && !TpmHandle.IsNull(sess.BindObject))
+                            {
+                                sess.BindObject = TpmRh.Null;
+                                break; // only one audit session is expected
+                            }
                         }
-                    }
                 }
             }
         }
@@ -1215,6 +1233,7 @@ public sealed partial class Tpm2 : IDisposable
             // Clear all per-invocation state (e.g. sessions, errors expected) ready for next command
             _ClearCommandContext();
         }
+
         return commandSucceeded;
     }
 
@@ -1241,6 +1260,7 @@ public sealed partial class Tpm2 : IDisposable
                 // ReSharper disable once RedundantAssignment
                 errorEntity = "Unknown";
             }
+
             if ((resultCodeValue & 0x40) != 0)
             {
                 errorEntity = "Parameter";
@@ -1264,7 +1284,8 @@ public sealed partial class Tpm2 : IDisposable
             "[Code=TpmRc.{0}],[FullVal=0x{1:X},{1}]\n" +
             "[ErrorEntity={2}],[ParmNum={3}]" +
             "[ParmName={4}]",
-            new object[] {
+            new object[]
+            {
                 maskedError.ToString(),
                 //(uint)maskedError,
                 resultCodeValue,
@@ -1286,8 +1307,11 @@ public sealed partial class Tpm2 : IDisposable
     /// <param name="inParms"></param>
     /// <returns></returns>
     // ReSharper disable once UnusedParameter.Local
-    private bool ProcessError(TpmSt responseTag, uint responseParamSize,
-        TpmRc resultCode, TpmStructureBase inParms)
+    private bool ProcessError(
+        TpmSt responseTag,
+        uint responseParamSize,
+        TpmRc resultCode,
+        TpmStructureBase inParms)
     {
         string errorString;
 
@@ -1310,12 +1334,14 @@ public sealed partial class Tpm2 : IDisposable
             {
                 return false;
             }
+
             // If there is an installed error handler invoke it.
             if (TheErrorHandler != null)
             {
                 TheErrorHandler(resultCode, ExpectedResponses);
                 return false;
             }
+
             // ReSharper disable once ConvertIfStatementToConditionalTernaryExpression
             if (ExpectedResponses.Length == 1)
             {
@@ -1333,11 +1359,13 @@ public sealed partial class Tpm2 : IDisposable
             _ClearCommandContext();
             throw new TssException(errorString);
         }
+
         // Else we have an error
         if (responseTag != TpmSt.NoSessions)
         {
             throw new Exception("Ill-formed responseTag (not NoSessions)");
         }
+
         if (responseParamSize != 10)
         {
             throw new Exception("Ill-formed reponseParamSize (not 10)");
@@ -1374,9 +1402,10 @@ public sealed partial class Tpm2 : IDisposable
                 }
             }
         }
+
         var errorDetails = FormatString("\r\n" +
             "Details: \n" +
-            "[Code=TpmRc.{0}],"+
+            "[Code=TpmRc.{0}]," +
             "[RawCode=0x{1:X},{1}]\n" +
             "[ErrorEntity={2}], [ParmNum={3}]\n" +
             "[ParmName={4}]",
@@ -1432,11 +1461,13 @@ public sealed partial class Tpm2 : IDisposable
         {
             return false;
         }
+
         if (ctxt == TpmRh.Null || ctxt.handle == 0)
         {
             _ClearCommandContext();
             return false;
         }
+
         FlushContext(ctxt);
         if (_LastCommandSucceeded())
         {
@@ -1448,16 +1479,16 @@ public sealed partial class Tpm2 : IDisposable
 
     class CancelationCtx
     {
-        Tpm2    tpm;
-        string  cmdName;
-        bool    origTolerateErrors;
-        TpmRc   origLastError;
+        Tpm2 tpm;
+        string cmdName;
+        bool origTolerateErrors;
+        TpmRc origLastError;
 
-        bool    thereWasCancelation = false;
-        TpmRc   lastError;
-        int     attempt = 0;
+        bool thereWasCancelation = false;
+        TpmRc lastError;
+        int attempt = 0;
 
-        public CancelationCtx (Tpm2 t, string cmd)
+        public CancelationCtx(Tpm2 t, string cmd)
         {
             tpm = t;
             cmdName = cmd;
@@ -1499,9 +1530,11 @@ public sealed partial class Tpm2 : IDisposable
         }
 
         var ctx = new CancelationCtx(this, "FlushContext");
-        do {
+        do
+        {
             _AllowErrors().FlushContext(h);
         } while (ctx.NeedRetry());
+
         return ctx.Done();
     }
 
@@ -1513,17 +1546,19 @@ public sealed partial class Tpm2 : IDisposable
         TpmAlgId authHash,
         int nonceCallerSize = 16)
     {
-        byte[]  nonceTpm;
-        var     EmptySalt = new byte[0];
+        byte[] nonceTpm;
+        var EmptySalt = new byte[0];
 
-        TpmHandle   hSess;
+        TpmHandle hSess;
         var ctx = new CancelationCtx(this, "FlushContext");
-        do {
+        do
+        {
             _AllowErrors();
             hSess = StartAuthSession(TpmRh.Null, TpmRh.Null,
                 GetRandomBytes(nonceCallerSize), EmptySalt,
                 sessionType, new SymDef(), authHash, out nonceTpm);
         } while (ctx.NeedRetry());
+
         ctx.Done();
 
         AuthSession sess = hSess + SessionAttr.ContinueSession;
@@ -1566,7 +1601,7 @@ public sealed partial class Tpm2 : IDisposable
 
         var idx = 0;
         // Skip handles
-        while (idx < pi.Length && pi[idx].ParameterType == typeof (TpmHandle)) ++idx;
+        while (idx < pi.Length && pi[idx].ParameterType == typeof(TpmHandle)) ++idx;
         idx += (int)parmNumber - 1; // parmNumber is 1 based
         return idx < pi.Length ? pi[idx].Name : "Undefined (parameter index too big)";
     }
@@ -1590,6 +1625,7 @@ public sealed partial class Tpm2 : IDisposable
         {
             throw new Exception("TPM assigned name differs from what is expected");
         }
+
         h.Name = tpmAssignedName;
     }
 
@@ -1612,15 +1648,17 @@ public sealed partial class Tpm2 : IDisposable
         }
 
         // Session data must not be cleared for nested commands
-        foreach(var s in TempSessions)
+        foreach (var s in TempSessions)
         {
             CancelSafeFlushContext(s);
         }
+
         TempSessions.Clear();
-        foreach(var h in TempNames)
+        foreach (var h in TempNames)
         {
             h.Name = null;
         }
+
         TempNames.Clear();
     }
 
@@ -1641,6 +1679,7 @@ public sealed partial class Tpm2 : IDisposable
             Device.AssertPhysicalPresence(false);
             ResetPp = false;
         }
+
         _LastCommand = CurrentCommand;
         CurrentCommand = TpmCc.None;
         ExpectedResponses = null;
@@ -1674,7 +1713,7 @@ public sealed partial class Tpm2 : IDisposable
         foreach (var b in Sessions)
         {
             var s = b as AuthSession;
-            if ( s == null )
+            if (s == null)
             {
                 continue;
             }
@@ -1682,6 +1721,7 @@ public sealed partial class Tpm2 : IDisposable
             CheckParamEncSessCandidate(s, SessionAttr.Decrypt);
             CheckParamEncSessCandidate(s, SessionAttr.Encrypt);
         }
+
         // If the first auth session is followed by parameter decryption
         // and or encryption session(s), the NonceTPM must be included
         // into HMAC of the first auth session. This precludes encryption
@@ -1690,6 +1730,7 @@ public sealed partial class Tpm2 : IDisposable
         {
             NonceTpmDec = DecSession.NonceTpm;
         }
+
         if (EncSession != null && EncSession != Sessions[0] && EncSession != DecSession)
         {
             NonceTpmEnc = EncSession.NonceTpm;
@@ -1717,10 +1758,12 @@ public sealed partial class Tpm2 : IDisposable
                 // handle (e.g., when the session was created by other Tpm2 object).
                 return false;
             }
+
             sess.Init(SessionParams[sess]);
             sess.CalcSessionKey();
             SessionParams.Remove(sess);
         }
+
         return true;
     }
 
@@ -1797,6 +1840,7 @@ public sealed partial class Tpm2 : IDisposable
                                 authHandle.Auth = PlatformAuth;
                             }
                         }
+
                         break;
                 }
             }
@@ -1817,14 +1861,16 @@ public sealed partial class Tpm2 : IDisposable
                     }
 
                     bool done;
-                    do {
+                    do
+                    {
                         done = true;
-                        try {
+                        try
+                        {
                             s = Sessions[i] = CancelSafeStartAuthSession(TpmSe.Hmac, AutoAuthHashAlg);
                         }
                         catch (TpmException e)
                         {
-                            if (   GetBaseErrorCode(e.RawResponse) == TpmRc.Hash
+                            if (GetBaseErrorCode(e.RawResponse) == TpmRc.Hash
                              && AutoAuthHashAlg != TpmAlgId.Sha1)
                             {
                                 if (AutoAuthHashAlg == TpmAlgId.Sha384)
@@ -1857,12 +1903,14 @@ public sealed partial class Tpm2 : IDisposable
                     s = Sessions[i] = new Pwap(authHandle.Auth);
                 }
             }
+
             if (s.Handle != TpmRh.Pw && !_InitializeSession(s as AuthSession))
             {
                 // There are no session parameters associated with the session
                 // handle (e.g., when the session was created by other Tpm2 object).
                 throw new Exception("Wrong session handle");
             }
+
             s.AuthHandle = authHandle;
         }
 
@@ -1902,12 +1950,13 @@ public sealed partial class Tpm2 : IDisposable
                             // allows its written state to be reset or its
                             // contents to be locked.
                             if (!pub.attributes.HasFlag(NvAttr.Written) ||
-                                0 != (pub.attributes & NvAttr.Orderly  |
+                                0 != (pub.attributes & NvAttr.Orderly |
                                     (NvAttr.ReadStclear | NvAttr.ClearStclear |
                                         NvAttr.Writedefine | NvAttr.Globallock)))
                             {
                                 TempNames.Add(h);
                             }
+
                             break;
                         }
                     }
@@ -1916,6 +1965,7 @@ public sealed partial class Tpm2 : IDisposable
                 {
                     // Failed to read public part of the object. Leave its name empty.
                 }
+
                 h.Name = name;
             }
         }
@@ -1974,8 +2024,10 @@ public sealed partial class Tpm2 : IDisposable
             {
                 throw new Exception("CreateRequestSessions: Unknown session type");
             }
+
             firstSession = false;
         }
+
         return sessions.ToArray();
     }
 
@@ -2031,6 +2083,7 @@ public sealed partial class Tpm2 : IDisposable
                 {
                     throw new TpmFailure("PWAP returned non-empty nonce");
                 }
+
                 if (outSess.auth.Length != 0)
                 {
                     throw new TpmFailure("PWAP returned non-empty auth value");
@@ -2102,14 +2155,14 @@ public sealed partial class Tpm2 : IDisposable
 
         if (!candidate.CanEncrypt())
         {
-            throw new Exception(string.Format("{0} session is missing symmetric algorithm",
-                decrypt ? "Decryption" : "Encryption"));
+            throw new Exception($"{(decrypt ? "Decryption" : "Encryption")} session is missing symmetric algorithm");
         }
+
         if ((decrypt ? DecSession : EncSession) != null)
         {
-            throw new Exception(string.Format("Multiple {0} sessions",
-                decrypt ? "decryption" : "encryption"));
+            throw new Exception($"Multiple {(decrypt ? "decryption" : "encryption")} sessions");
         }
+
         if (decrypt)
         {
             DecSession = candidate;
@@ -2136,8 +2189,8 @@ public sealed partial class Tpm2 : IDisposable
             return parms;
         }
 
-        AuthSession     encSess = null;
-        ParmCryptInfo   encFlag2, encFlag4;
+        AuthSession encSess = null;
+        ParmCryptInfo encFlag2, encFlag4;
 
         if (inOrOut == Direction.Command)
         {
@@ -2157,6 +2210,7 @@ public sealed partial class Tpm2 : IDisposable
         {
             return parms;
         }
+
         if ((commandInfo.TheParmCryptInfo & (encFlag2 | encFlag4)) == 0)
         {
             throw new Exception(string.Format("Command {0} cannot use {1} session",
@@ -2179,6 +2233,7 @@ public sealed partial class Tpm2 : IDisposable
         {
             parms[offset + countSize + j] = encFirstParm[j];
         }
+
         return parms;
     } // DoParmEncryption()
 
@@ -2199,7 +2254,11 @@ public sealed partial class Tpm2 : IDisposable
     /// <param name="inParms"></param>
     /// <param name="inHandles"></param>
     // ReSharper disable once UnusedParameter.Local
-    private void UpdateHandleData(TpmCc ordinal, TpmStructureBase inParms, TpmHandle[] inHandles, TpmStructureBase outParms)
+    private void UpdateHandleData(
+        TpmCc ordinal,
+        TpmStructureBase inParms,
+        TpmHandle[] inHandles,
+        TpmStructureBase outParms)
     {
         switch (ordinal)
         {
@@ -2250,6 +2309,7 @@ public sealed partial class Tpm2 : IDisposable
                     var name = req.inPublic.GetName();
                     ProcessName(resp.handle, resp.name, req.inPublic);
                 }
+
                 break;
             }
             case TpmCc.StartAuthSession:
@@ -2262,7 +2322,7 @@ public sealed partial class Tpm2 : IDisposable
                         req.symmetric, req.authHash);
                 break;
             }
-            case TpmCc.HmacStart:   // alias to TpmCc.MacStart
+            case TpmCc.HmacStart: // alias to TpmCc.MacStart
             {
                 if (inParms is Tpm2HmacStartRequest parms)
                 {
@@ -2270,13 +2330,15 @@ public sealed partial class Tpm2 : IDisposable
                     resp.handle.Auth = parms.auth;
                     resp.handle.Name = null;
                 }
-                else {
+                else
+                {
                     Debug.Assert(inParms is Tpm2MacStartRequest);
                     var req = (Tpm2MacStartRequest)inParms;
                     var resp = (Tpm2MacStartResponse)outParms;
                     resp.handle.Auth = req.auth;
                     resp.handle.Name = null;
                 }
+
                 break;
             }
             case TpmCc.NvDefineSpace:
@@ -2311,6 +2373,7 @@ public sealed partial class Tpm2 : IDisposable
                     case (uint)TpmRh.Platform: PlatformAuth = auth; break;
                     case (uint)TpmRh.Lockout: LockoutAuth = auth; break;
                 }
+
                 req.authHandle.Auth = auth;
                 break;
             }
@@ -2323,6 +2386,7 @@ public sealed partial class Tpm2 : IDisposable
                     var numPcrs = GetProperty(this, Pt.PcrCount);
                     PcrHandles = new TpmHandle[numPcrs];
                 }
+
                 var pcrId = (int)req.pcrHandle.GetOffset();
                 Debug.Assert(pcrId < PcrHandles.Length);
                 PcrHandles[pcrId] = req.pcrHandle;
@@ -2336,6 +2400,7 @@ public sealed partial class Tpm2 : IDisposable
                     req.persistentHandle.Auth = req.objectHandle.Auth;
                     req.persistentHandle.Name = req.objectHandle.Name;
                 }
+
                 break;
             }
             case TpmCc.Clear:
@@ -2380,6 +2445,7 @@ public sealed partial class Tpm2 : IDisposable
                 {
                     PlatformAuth = new AuthValue();
                 }
+
                 break;
             }
             case TpmCc.ContextSave:
@@ -2476,7 +2542,7 @@ public sealed partial class Tpm2 : IDisposable
             return;
         }
 
-        Debug.WriteLine("COMMAND " + Enum.GetName(typeof (TpmCc), commandCode));
+        Debug.WriteLine("COMMAND " + Enum.GetName(typeof(TpmCc), commandCode));
         switch (outOrIn)
         {
             case 0:
@@ -2486,6 +2552,7 @@ public sealed partial class Tpm2 : IDisposable
                 Debug.WriteLine("RESPONSE STRUCTURE");
                 break;
         }
+
         var ss = theStruct.ToString();
         Debug.WriteLine(ss);
     }
@@ -2502,6 +2569,7 @@ public sealed partial class Tpm2 : IDisposable
         {
             Device.Dispose();
         }
+
         Device = null;
     }
 
@@ -2605,14 +2673,7 @@ public class CommandProcessor
         // Get the handles (note we need to return the actual object because it contains the name.
         // The handles are always first, and will be simple fields or get/set props.
         MemberInfo[] fields;
-        try
-        {
-            fields = s.GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance);
-        }
-        catch (Exception)
-        {
-            throw;
-        }
+        fields = s.GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance);
 
         var fieldPos = 0;
         for (var j = 0; j < numHandles; j++)
@@ -2623,12 +2684,14 @@ public class CommandProcessor
                 // Ignore setters
                 f = fields[fieldPos++];
             } while (f.Name.StartsWith("set_"));
+
             // Either a simple field
             var ff = f as FieldInfo;
             if (ff != null)
             {
                 handles[j] = (TpmHandle)ff.GetValue(s);
             }
+
             // A get or set accessor
             var mm = f as MethodInfo;
             if (mm != null)
@@ -2637,6 +2700,7 @@ public class CommandProcessor
                 handles[j] = hRep is TpmHandle rep ? rep : ((TpmHandleX)hRep).Handle;
             }
         }
+
         // And the rest is the parms
         var b = Marshaller.GetTpmRepresentation(s);
         parms = new byte[b.Length - numHandles * 4];
@@ -2645,13 +2709,13 @@ public class CommandProcessor
 
     public static CrackedCommand CrackCommand(byte[] command)
     {
-
         var c = new CrackedCommand();
         var success = CrackCommand(command, out c.Header, out c.Handles, out c.Sessions, out c.CommandParms);
         if (!success)
         {
             return null;
         }
+
         return c;
     }
 
@@ -2682,11 +2746,13 @@ public class CommandProcessor
             commandParms = null;
             return false;
         }
+
         handles = new TpmHandle[commandInfo.HandleCountIn];
         for (var j = 0; j < handles.Length; j++)
         {
             handles[j] = m.Get<TpmHandle>();
         }
+
         // Note sessions are only present if the command tag indicates sessions
         if (header.Tag == TpmSt.Sessions)
         {
@@ -2698,18 +2764,21 @@ public class CommandProcessor
                 var s = m.Get<SessionIn>();
                 inSessions.Add(s);
             }
+
             sessions = inSessions.ToArray();
         }
         else
         {
             sessions = [];
         }
+
         // And finally parameters
         commandParms = m.GetArray<byte>((int)(m.GetPutPos() - m.GetGetPos()));
         if (m.GetPutPos() != header.CommandSize)
         {
             throw new Exception("Command length in header does not match input byte-stream");
         }
+
         return true;
     }
 
@@ -2727,7 +2796,6 @@ public class CommandProcessor
         SessionIn[] sessions,
         byte[] parmsWithoutHandles)
     {
-
         // ReSharper disable once UnusedVariable
         var commandInfo = Tpm2.CommandInfoFromCommandCode(commandCode);
 
@@ -2748,6 +2816,7 @@ public class CommandProcessor
             {
                 m2.Put(s, "session");
             }
+
             m.PutUintPrependedArray(m2.GetBytes(), "sessions");
         }
 
@@ -2802,6 +2871,7 @@ public class CommandProcessor
         {
             handles[j] = m.Get<TpmHandle>();
         }
+
         var parmsEnd = m.GetPutPos();
         if (tag == TpmSt.Sessions)
         {
@@ -2815,6 +2885,7 @@ public class CommandProcessor
                 var s = m.Get<SessionOut>();
                 sessX.Add(s);
             }
+
             sessions = sessX.ToArray();
             m.SetGetPos(startOfParmsX);
         }
@@ -2879,12 +2950,14 @@ public class CommandProcessor
         {
             response = "The TPM command is not properly formatted.  Doing the best I can...\n";
         }
+
         var command = Tpm2.CommandInfoFromCommandCode(commandHeader.CommandCode);
         if (command == null)
         {
-            response += string.Format("The command-code {0} is not defined.  Aborting\n", commandHeader.CommandCode);
+            response += $"The command-code {commandHeader.CommandCode} is not defined.  Aborting\n";
             return response;
         }
+
         response += "Header:\n";
         response += commandHeader + "\n";
 
@@ -2903,8 +2976,9 @@ public class CommandProcessor
         for (var j = 0; j < inSessions.Length; j++)
         {
             // ReSharper disable once FormatStringProblem
-            response += string.Format("{0}: 0x{1:x}\n", j, inSessions[j]);
+            response += $"{j}: 0x{inSessions[j]:x}\n";
         }
+
         return response;
     }
 
@@ -2923,47 +2997,43 @@ public class CommandProcessor
         var responseCode = m.Get<TpmRc>();
         var maskedResponse = Tpm2.GetBaseErrorCode(responseCode);
         return maskedResponse;
-
     }
 
     public static string ParseResponse(string commandCode, byte[] buf)
     {
-        TpmHandle[] outHandles;
         SessionOut[] outSessions;
-        byte[] responseParmsNoHandles;
         byte[] responseParmsWithHandles;
-        var response = "";
+        var response = new StringBuilder();
         if (1 != CommandInformation.Info.Count(item => item.CommandCode.ToString() == commandCode))
         {
-            response = "Command code not recognized.  Defined command codes are:\n";
+            response.AppendLine("Command code not recognized. Defined command codes are:");
             // ReSharper disable once LoopCanBeConvertedToQuery
             foreach (var info in CommandInformation.Info)
             {
-                response += info.CommandCode.ToString() + " ";
+                response.Append(info.CommandCode).Append(' ');
             }
-            return response;
+
+            return response.ToString();
         }
 
         var command = CommandInformation.Info.First(item => item.CommandCode.ToString() == commandCode);
         TpmSt tag;
-        uint paramSize;
         TpmRc responseCode;
 
         SplitResponse(buf,
             command.HandleCountOut,
             out tag,
-            out paramSize,
+            out _,
             out responseCode,
-            out outHandles,
+            out _,
             out outSessions,
-            out responseParmsNoHandles,
+            out _,
             out responseParmsWithHandles);
         if (responseCode != TpmRc.Success)
         {
-            TpmRc resultCode;
-            response += "Error:\n";
-            response += Tpm2.GetErrorString(command.InStructType, (uint)responseCode, out resultCode);
-            return response;
+            response.AppendLine("Error:");
+            response.Append(Tpm2.GetErrorString(command.InStructType, (uint)responseCode, out _));
+            return response.ToString();
         }
 
         // At this point in the processing stack we cannot deal with encrypted responses
@@ -2980,40 +3050,42 @@ public class CommandProcessor
             }
         }
 
-        response += "Response Header:\n";
-        response += "    Tag=" + tag.ToString() + "\n";
-        response += "    Response code=" + responseCode.ToString() + "\n";
+        response.AppendLine("Response Header:");
+        response.AppendLine($"    Tag={tag}");
+        response.AppendLine($"    Response code={responseCode}");
 
-        response += "Response Parameters:\n";
+        response.AppendLine("Response Parameters:");
         if (!responseIsEncrypted)
         {
             var m2 = new Marshaller(responseParmsWithHandles);
             var inParms = m2.Get(command.OutStructType, "");
-            response += inParms + "\n";
+            response.AppendLine(inParms.ToString());
         }
         else
         {
             var m2 = new Marshaller(responseParmsWithHandles);
-            object encOutParms = null;
+            object? encOutParms;
             switch (command.TheParmCryptInfo)
             {
                 // TODO: this is not the right type if we ever do size-checks
                 case ParmCryptInfo.DecOut2:
-                    encOutParms = m2.Get(typeof (Tpm2bMaxBuffer), "");
+                    encOutParms = m2.Get(typeof(Tpm2bMaxBuffer), "");
                     break;
                 default:
                     throw new NotImplementedException("NOT IMPLEMENTED");
             }
-            response += "Encrypted: " + encOutParms + "\n";
+
+            response.AppendLine($"Encrypted: {encOutParms}");
         }
 
-        response += "Sessions [" + outSessions.Length + "]\n";
+        response.AppendLine($"Sessions [{outSessions.Length}]");
         for (var j = 0; j < outSessions.Length; j++)
         {
             // ReSharper disable once FormatStringProblem
-            response += string.Format("{0}: 0x{1:x}\n", j, outSessions[j]);
+            response.Append($"{j}: 0x{outSessions[j]:x}\n");
         }
-        return response;
+
+        return response.ToString();
     }
 
     public static string CleanHex(string s)
@@ -3023,34 +3095,11 @@ public class CommandProcessor
         s = s.Replace("0X", " ");
 
         // Get rid of the whitespace
-        var s2 = s.Split(new[] {' ', '\n', '\r', '\t', '-'});
+        var separator = new[] { ' ', '\n', '\r', '\t', '-' };
+        var s2 = s.Split(separator);
         // Stick it back together
         return s2.Aggregate("", (current, s3) => current + s3);
     }
-
-    /// <summary>
-    /// Interpret a HEX command string into a parsed command.
-    /// </summary>
-    /// <param name="s"></param>
-    public static string ParseCommand(string s)
-    {
-        s = CleanHex(s);
-        var commandBytes = Globs.ByteArrayFromHex(s);
-        return ParseCommand(commandBytes);
-    }
-
-    /// <summary>
-    /// Interpret a HEX command string into a parsed command.
-    /// </summary>
-    /// <param name="commandName"></param>
-    /// <param name="s"></param>
-    public static string ParseResponse(string commandName, string s)
-    {
-        s = CleanHex(s);
-        var commandBytes = Globs.ByteArrayFromHex(s);
-        return ParseResponse(commandName, commandBytes);
-    }
-
 }
 
 public class ResponseInfo
@@ -3075,7 +3124,7 @@ public class CrackedCommand
 public class CommandModifier
 {
     public byte ActiveLocality = 0;
-    public TBS_COMMAND_PRIORITY ActivePriority = TBS_COMMAND_PRIORITY.NORMAL;
+    public TbsCommandPriority ActivePriority = TbsCommandPriority.Normal;
 }
 
 #if !WINDOWS_UWP

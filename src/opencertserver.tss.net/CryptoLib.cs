@@ -13,31 +13,21 @@ namespace OpenCertServer.Tpm2Lib;
 
 public static class CryptoLib
 {
-    public static byte[] HashData(TpmAlgId algId, byte[] dataToHash)
+    public static byte[] HashData(TpmAlgId algId, byte[]? dataToHash)
     {
         if (dataToHash == null)
         {
             dataToHash = [];
         }
 
-        HashAlgorithm hashAlg = null;
-        switch (algId)
+        HashAlgorithm hashAlg = algId switch
         {
-            case TpmAlgId.Sha1:
-                hashAlg = new SHA1Managed();
-                break;
-            case TpmAlgId.Sha256:
-                hashAlg = new SHA256Managed();
-                break;
-            case TpmAlgId.Sha384:
-                hashAlg = new SHA384Managed();
-                break;
-            case TpmAlgId.Sha512:
-                hashAlg = new SHA512Managed();
-                break;
-            default:
-                throw new ArgumentException("AlgId is not a supported hash algorithm");
-        }
+            TpmAlgId.Sha1 => new SHA1Managed(),
+            TpmAlgId.Sha256 => new SHA256Managed(),
+            TpmAlgId.Sha384 => new SHA384Managed(),
+            TpmAlgId.Sha512 => new SHA512Managed(),
+            _ => throw new ArgumentException("AlgId is not a supported hash algorithm")
+        };
         return hashAlg.ComputeHash(dataToHash);
     }
 

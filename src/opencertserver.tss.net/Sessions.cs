@@ -39,7 +39,7 @@ public class SessionBase
     /// <summary>
     /// Handle to authorize
     /// </summary>
-    internal TpmHandle AuthHandle;
+    internal TpmHandle? AuthHandle;
 
     /// <summary>
     /// Session type indicator corresponding to the Auth.None authorization type.
@@ -139,7 +139,7 @@ public class AuthSession : SessionBase
     /// <summary>
     /// Placeholder value indicating that an unencrypted salt value must be supplied.
     /// </summary>
-    private static byte[] SaltNeeded = [];
+    private static byte[] _saltNeeded = [];
 
     /// The following set of parameters defines a session state. All of them except
     /// for NonceTpm are specified as TPM2_StartAuthSession command parameters,
@@ -147,15 +147,15 @@ public class AuthSession : SessionBase
     /// and NonceTpm will then be updated correspondingly before and after each
     /// command using the session.
     public TpmSe       SessionType;
-    public byte[]      Salt;
+    public byte[]?      Salt;
     public TpmHandle   BindObject;
-    public byte[]      NonceCaller;
+    public byte[]?      NonceCaller;
     public byte[]      NonceTpm;
 
     /// <summary>
-    /// Symmetric cipher to be used for encrypting and decrypting sessions.  
+    /// Symmetric cipher to be used for encrypting and decrypting sessions.
     /// </summary>
-    public SymDef      Symmetric;
+    public SymDef?      Symmetric;
 
     /// <summary>
     /// Hash algorithm used by this session.
@@ -167,21 +167,16 @@ public class AuthSession : SessionBase
     public byte[] SessionKey;
 
     /// <summary>
-    /// By default policy sessions do NOT include the authValue of the associated entity in 
+    /// By default policy sessions do NOT include the authValue of the associated entity in
     /// the HMAC. The caller can add it in by calling PolicyAuthValue.
     /// </summary>
     internal bool SessIncludesAuth;
 
     /// <summary>
     /// If SessIncludesAuth is true, then PlaintextAuth implies that the authVal is used like
-    /// PWAP. Else the hmac computation is performed.  
+    /// PWAP. Else the hmac computation is performed.
     /// </summary>
     internal bool PlaintextAuth = false;
-
-    public AuthSession()
-    {
-        Handle = TpmRh.Null;
-    }
 
     /// <summary>
     /// Constructs an object encapsulating a session opened in TPM. The Tpm2 object
@@ -240,7 +235,7 @@ public class AuthSession : SessionBase
         byte[] nonceCaller, byte[] nonceTpm, SymDef symmetric, TpmAlgId authHash)
     {
         SessionType = sessionType;
-        Salt = tpmKey == TpmRh.Null ? null : SaltNeeded;
+        Salt = tpmKey == TpmRh.Null ? null : _saltNeeded;
         BindObject = bindObject;
         NonceCaller = nonceCaller;
         NonceTpm = nonceTpm;
@@ -251,17 +246,17 @@ public class AuthSession : SessionBase
     /// <summary>
     /// Sets parameters associated with the session.
     /// </summary>
-    internal void Init (AuthSession Params)
+    internal void Init (AuthSession @params)
     {
-        SessionType = Params.SessionType;
-        BindObject = Params.BindObject;
-        NonceCaller = Params.NonceCaller;
-        NonceTpm = Params.NonceTpm;
-        Symmetric = Params.Symmetric;
-        AuthHash = Params.AuthHash;
-        AuthHandle = Params.AuthHandle;
+        SessionType = @params.SessionType;
+        BindObject = @params.BindObject;
+        NonceCaller = @params.NonceCaller;
+        NonceTpm = @params.NonceTpm;
+        Symmetric = @params.Symmetric;
+        AuthHash = @params.AuthHash;
+        AuthHandle = @params.AuthHandle;
         // When salt is required, the session will have it set directly by the user
-        if (Params.Salt != SaltNeeded)
+        if (@params.Salt != _saltNeeded)
         {
             Salt = null;
         }
@@ -351,7 +346,7 @@ public class AuthSession : SessionBase
     /// </summary>
     public void CalcSessionKey()
     {
-        if (Salt == SaltNeeded)
+        if (Salt == _saltNeeded)
         {
             throw new Exception("Unencrypted salt value must be provided for the session" +
                 Handle.handle.ToString("X8"));
@@ -381,8 +376,8 @@ public class AuthSession : SessionBase
     /// <returns></returns>
     internal byte[] GetAuthHmac(byte[] parmHash, Direction direction, byte[] nonceDec = null, byte[] nonceEnc = null)
     {
-        // special case.  If this is a policy session and the session includes PolicyPassword the 
-        // TPM expects and assumes that the HMAC field will have the plaintext entity field as in 
+        // special case.  If this is a policy session and the session includes PolicyPassword the
+        // TPM expects and assumes that the HMAC field will have the plaintext entity field as in
         // a PWAP session (the related PolicyAuthValue demands an HMAC as usual)
         if (PlaintextAuth)
         {
@@ -427,65 +422,6 @@ public class AuthSession : SessionBase
 #endif
         return hmac;
     }
-
-    /// <summary>
-    /// Run a path on the policy tree.  The path is identified by the leaf identifier string. A session is
-    /// created and returned. If allowErrors is true then errors returned do not cause an exception (but 
-    /// are returned in the response code).
-    /// </summary>
-    /// <param name="tpm"></param>
-    /// <param name="policySession"></param>
-    /// <param name="branchToEvaluate"></param>
-    /// <param name="allowErrors"></param>
-    /// <returns></returns>
-    public TpmRc RunPolicy(Tpm2 tpm, PolicyTree policyTree, string branchToEvaluate = null, bool allowErrors = false)
-    {
-        policyTree.AllowErrorsInPolicyEval = allowErrors;
-
-        PolicyAce leafAce = null;
-
-        // First, check that the policy is OK.
-        policyTree.CheckPolicy(branchToEvaluate, ref leafAce);
-        if (leafAce == null)
-        {
-            throw new Exception("RunPolicy: Branch identifier " + branchToEvaluate + " does not exist");
-        }
-
-        var responseCode = TpmRc.Success;
-        try
-        {
-            if (allowErrors)
-            {
-                tpm._DisableExceptions();
-            }
-
-            tpm._InitializeSession(this);
-
-            // Walk up the tree from the leaf..
-            var nextAce = leafAce;
-            while (nextAce != null)
-            {
-                responseCode = nextAce.Execute(tpm, this, policyTree);
-
-                if (responseCode != TpmRc.Success)
-                {
-                    break;
-                }
-
-                // ..and continue along the path to the root
-                nextAce = nextAce.PreviousAce;
-            }
-        }
-        finally
-        {
-            if (allowErrors)
-            {
-                tpm._EnableExceptions();
-            }
-        }
-
-        return responseCode;
-    }
 } // class AuthSession
 
 /// <summary>
@@ -493,11 +429,6 @@ public class AuthSession : SessionBase
 /// </summary>
 public class Pwap : SessionBase
 {
-    public Pwap()
-    {
-        Handle = new TpmHandle(TpmRh.Pw);
-    }
-
     public Pwap(byte[] authVal)
     {
         Handle = new TpmHandle(TpmRh.Pw);

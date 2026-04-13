@@ -1,4 +1,4 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
@@ -38,7 +38,7 @@ internal class KeyWrapper
         byte[] publicName,
         TpmAlgId parentNameAlg,
         byte[] parentSeed,
-        TssObject.Transformer f = null)
+        TssObject.Transformer? f = null)
     {
         // ReSharper disable once InconsistentNaming
         var tpm2bIv = Marshaller.ToTpm2B(iv);
@@ -75,12 +75,8 @@ internal class KeyWrapper
         return priv;
     }
 
-    private static void Transform(byte[] x, TssObject.Transformer f)
+    private static void Transform(byte[] x, TssObject.Transformer? f)
     {
-        if (f == null)
-        {
-            return;
-        }
-        f(x);
+        f?.Invoke(x);
     }
 }

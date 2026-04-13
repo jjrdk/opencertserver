@@ -29,7 +29,7 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
     /// otherwise the simulator re-initialises and all persistent handles are wiped.
     /// </summary>
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool>
-        _initializedSimulatorEndpoints = new();
+        InitializedSimulatorEndpoints = new();
 
     private static readonly ObjectAttr SigningKeyAttributes =
         ObjectAttr.Sign
@@ -41,7 +41,7 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
 
     private readonly Tpm2Device _device;
     private readonly Tpm2 _tpm;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     /// <summary>
     /// Creates a provider that connects using the mode and options specified in <paramref name="options"/>.
@@ -82,7 +82,7 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
             // would reinitialise the simulator and wipe all keys, forcing expensive
             // re-provisioning on every test scenario.
             var endpointKey = $"{options.SimulatorHost}:{options.SimulatorPort}";
-            bool isFirstConnection = _initializedSimulatorEndpoints.TryAdd(endpointKey, true);
+            bool isFirstConnection = InitializedSimulatorEndpoints.TryAdd(endpointKey, true);
 
             if (isFirstConnection && tcp.PlatformAvailable() && tcp.PowerCtlAvailable())
             {
@@ -115,7 +115,7 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
             var template = new TpmPublic(
                 TpmAlgId.Sha256,
                 SigningKeyAttributes,
-                null,
+                [],
                 new RsaParms(
                     new SymDefObject(TpmAlgId.Null, 0, TpmAlgId.Null),
                     new NullAsymScheme(),
@@ -127,7 +127,7 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
                 TpmHandle.RhOwner,
                 new SensitiveCreate(),
                 template,
-                null,
+                [],
                 [],
                 out _,
                 out _,
@@ -152,7 +152,7 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
             var template = new TpmPublic(
                 TpmAlgId.Sha256,
                 SigningKeyAttributes,
-                null,
+                [],
                 new EccParms(
                     new SymDefObject(TpmAlgId.Null, 0, TpmAlgId.Null),
                     new NullAsymScheme(),
@@ -164,7 +164,7 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
                 TpmHandle.RhOwner,
                 new SensitiveCreate(),
                 template,
-                null,
+                [],
                 [],
                 out _,
                 out _,
