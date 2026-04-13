@@ -19,6 +19,7 @@ public sealed class PackTask : FrostingTask<BuildContext>
         {
             Configuration = context.BuildConfiguration,
             NoBuild = true,
+            SymbolPackageFormat = "snupkg",
             NoRestore = true,
             OutputDirectory = "./artifacts/packages",
             IncludeSymbols = true,
@@ -37,5 +38,7 @@ public sealed class PackTask : FrostingTask<BuildContext>
         context.DotNetPack("./src/opencertserver.est.client/opencertserver.est.client.csproj", packSettings);
         context.DotNetPack("./src/opencertserver.est.server/opencertserver.est.server.csproj", packSettings);
         context.DotNetPack("./src/opencertserver.ca.server/opencertserver.ca.server.csproj", packSettings);
+        context.DotNetPack("./src/opencertserver.tss.net/opencertserver.tss.net.csproj", packSettings);
+        context.DotNetPack("./src/opencertserver.tpm/opencertserver.tpm.csproj", packSettings);
     }
 }
