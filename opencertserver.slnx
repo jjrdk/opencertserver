@@ -36,5 +36,5 @@
   <Project Path="src\opencertserver.est.client\opencertserver.est.client.csproj" />
   <Project Path="src\opencertserver.lambda\opencertserver.lambda.csproj" />
   <Project Path="src\opencertserver.tpm\opencertserver.tpm.csproj" />
-  <Project Path="src\OpenCertServer.TSS.Net.Managed\OpenCertServer.TSS.Net.Managed.csproj" />
+  <Project Path="src\opencertserver.tss.net\opencertserver.tss.net.csproj" />
 </Solution>

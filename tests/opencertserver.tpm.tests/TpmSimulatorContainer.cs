@@ -43,8 +43,7 @@ internal sealed class TpmSimulatorContainer : IAsyncDisposable
         // Build only if the image doesn't exist yet; subsequent calls are instant.
         await image.CreateAsync(ct);
 
-        var container = new ContainerBuilder()
-            .WithImage(image)
+        var container = new ContainerBuilder(image)
             .WithPortBinding(TpmCommandPort, true)
             .WithPortBinding(TpmPlatformPort, true)
             .WithWaitStrategy(

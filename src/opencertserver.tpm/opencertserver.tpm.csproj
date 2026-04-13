@@ -23,7 +23,7 @@
           (or if we switch to Pkcs11Interop), remove this project reference and add it back
           as a PackageReference. The sole swap seam is ITpmKeyProvider.
         -->
-        <ProjectReference Include="..\OpenCertServer.TSS.Net.Managed\OpenCertServer.TSS.Net.Managed.csproj" />
+        <ProjectReference Include="..\opencertserver.tss.net\opencertserver.tss.net.csproj" />
     </ItemGroup>
 
     <ItemGroup>
