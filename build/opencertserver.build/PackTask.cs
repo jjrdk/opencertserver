@@ -26,19 +26,23 @@ public sealed class PackTask : FrostingTask<BuildContext>
             MSBuildSettings = new DotNetMSBuildSettings().SetConfiguration(context.BuildConfiguration)
                 .SetVersion(context.BuildVersion)
         };
-
-        context.DotNetPack("./src/CertesSlim/CertesSlim.csproj", packSettings);
-        context.DotNetPack("./src/opencertserver.acme.abstractions/opencertserver.acme.abstractions.csproj",
-            packSettings);
-        context.DotNetPack("./src/opencertserver.acme.aspnetclient/opencertserver.acme.aspnetclient.csproj",
-            packSettings);
-        context.DotNetPack("./src/opencertserver.acme.server/opencertserver.acme.server.csproj", packSettings);
-        context.DotNetPack("./src/opencertserver.ca/opencertserver.ca.csproj", packSettings);
-        context.DotNetPack("./src/opencertserver.ca.utils/opencertserver.ca.utils.csproj", packSettings);
-        context.DotNetPack("./src/opencertserver.est.client/opencertserver.est.client.csproj", packSettings);
-        context.DotNetPack("./src/opencertserver.est.server/opencertserver.est.server.csproj", packSettings);
-        context.DotNetPack("./src/opencertserver.ca.server/opencertserver.ca.server.csproj", packSettings);
-        context.DotNetPack("./src/opencertserver.tss.net/opencertserver.tss.net.csproj", packSettings);
-        context.DotNetPack("./src/opencertserver.tpm/opencertserver.tpm.csproj", packSettings);
+        string[] projectNames =
+        [
+            "CertesSlim",
+            "opencertserver.acme.abstractions",
+            "opencertserver.acme.aspnetclient",
+            "opencertserver.acme.server",
+            "opencertserver.ca",
+            "opencertserver.ca.utils",
+            "opencertserver.est.client",
+            "opencertserver.est.server",
+            "opencertserver.ca.server",
+            "opencertserver.tss.net",
+            "opencertserver.tpm"
+        ];
+        foreach (var projectName in projectNames)
+        {
+            context.DotNetPack($"./src/{projectName}/{projectName}.csproj", packSettings);
+        }
     }
 }

@@ -130,14 +130,14 @@ internal static class ServerKeyGenHandler
 
     private static bool PrefersEncryptedKeyPart(HttpRequest httpRequest)
     {
-        return httpRequest.GetTypedHeaders().Accept?.Any(mediaType =>
+        return httpRequest.GetTypedHeaders().Accept.Any(mediaType =>
             string.Equals(mediaType.MediaType.Value, Constants.MultiPartMixed, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(
                 mediaType.Parameters.FirstOrDefault(parameter =>
                         parameter.Name.Equals("smime-type", StringComparison.OrdinalIgnoreCase))
                     ?.Value.ToString().Trim('"'),
                 "server-generated-key",
-                StringComparison.OrdinalIgnoreCase)) == true;
+                StringComparison.OrdinalIgnoreCase));
     }
 
     private static (bool UseEncryptedKeyPart, IResult? ErrorResult) GetRequestedEncryptedKeyDelivery(HttpRequest httpRequest)

@@ -86,7 +86,7 @@ internal static partial class Program
 
                 var csrInput = CollectCsrInput(parse, csrOptions, Console.Out, Console.In);
                 var request = BuildCertificateRequest(privateKeyAlg, csrInput, Console.Out);
-                var pem = request.ToPkcs10();
+                var pem = request.ToPkcs10Pem();
 
                 var directoryName = string.IsNullOrWhiteSpace(outPath) ? null : Path.GetDirectoryName(outPath);
                 if (!string.IsNullOrWhiteSpace(directoryName))

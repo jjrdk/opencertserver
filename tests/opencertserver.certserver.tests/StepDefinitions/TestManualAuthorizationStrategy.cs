@@ -1,3 +1,5 @@
+using System.Security.Cryptography.X509Certificates;
+
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Security.Claims;
@@ -11,7 +13,7 @@ internal sealed class TestManualAuthorizationStrategy : IManualAuthorizationStra
     public bool TryGetPendingAuthorization(
         HttpRequest request,
         ClaimsPrincipal? user,
-        string requestContent,
+        CertificateRequest requestContent,
         out TimeSpan retryAfter,
         out string? message)
     {

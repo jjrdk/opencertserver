@@ -89,7 +89,7 @@ public sealed class CertificateAuthorityTests : IDisposable
         using var rsa = RSA.Create(2048);
 
         var req = CreateCertificateRequest(rsa);
-        var b64 = req.ToPkcs10();
+        var b64 = req.ToPkcs10Pem();
         var cert =
             await _authority.SignCertificateRequestPem(b64, cancellationToken: CancellationToken.None) as
                 SignCertificateResponse.Success;

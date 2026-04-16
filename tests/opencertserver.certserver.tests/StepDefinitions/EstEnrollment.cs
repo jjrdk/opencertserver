@@ -33,7 +33,7 @@ public partial class CertificateServerFeatures
         }
 
         _key = RSA.Create();
-        var (_, collection) = await estClient!.Enroll(new X500DistinguishedName("cn=test, ou=test"), _key,
+        var (_, collection) = await estClient.Enroll(new X500DistinguishedName("cn=test, ou=test"), _key,
             X509KeyUsageFlags.DigitalSignature,
             new AuthenticationHeaderValue("Bearer", "valid-jwt"));
         _certCollection = collection!;

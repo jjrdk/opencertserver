@@ -1,3 +1,5 @@
+using System.Security.Cryptography.X509Certificates;
+
 namespace OpenCertServer.Est.Server.Handlers;
 
 using System.Security.Claims;
@@ -14,7 +16,7 @@ public interface IManualAuthorizationStrategy
     bool TryGetPendingAuthorization(
         HttpRequest request,
         ClaimsPrincipal? user,
-        string requestContent,
+        CertificateRequest requestContent,
         out TimeSpan retryAfter,
         out string? message);
 }
@@ -24,7 +26,7 @@ internal sealed class DefaultManualAuthorizationStrategy : IManualAuthorizationS
     public bool TryGetPendingAuthorization(
         HttpRequest request,
         ClaimsPrincipal? user,
-        string requestContent,
+        CertificateRequest requestContent,
         out TimeSpan retryAfter,
         out string? message)
     {
@@ -33,4 +35,3 @@ internal sealed class DefaultManualAuthorizationStrategy : IManualAuthorizationS
         return false;
     }
 }
-

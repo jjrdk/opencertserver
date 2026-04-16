@@ -73,7 +73,8 @@ public sealed class EstClient : IDisposable
             throw new InvalidOperationException("No pending EST bootstrap trust is available to accept.");
         }
 
-        foreach (var certificate in PendingBootstrapTrust.Certificates.Where(certificate => _options.ExplicitTrustAnchors
+        foreach (var certificate in PendingBootstrapTrust.Certificates.Where(certificate => _options
+            .ExplicitTrustAnchors
             .All(existing => !existing.RawData.AsSpan().SequenceEqual(certificate.RawData))))
         {
             _options.ExplicitTrustAnchors.Add(certificate);
@@ -149,8 +150,9 @@ public sealed class EstClient : IDisposable
 
         using var request = new HttpRequestMessage(HttpMethod.Get, requestUriBuilder.Uri);
         EnsureBootstrapRequestAllowed(request, authenticationHeader: null, clientCertificate: null);
-        var response = await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken)
-            .ConfigureAwait(false);
+        var response =
+            await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken)
+                .ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
             throw await CreateEstErrorAsync(response, "Error retrieving CA certificates", cancellationToken)
@@ -200,8 +202,10 @@ public sealed class EstClient : IDisposable
         };
         request.Headers.Authorization = authenticationHeader;
         EnsureBootstrapRequestAllowed(request, authenticationHeader, clientCertificate: null);
-        var response = await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseHeadersRead, CancellationToken.None)
-            .ConfigureAwait(false);
+        var response =
+            await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseHeadersRead,
+                    CancellationToken.None)
+                .ConfigureAwait(false);
         if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound)
         {
             return new CertificateSigningRequestTemplate(subject: null, subjectPkInfo: null);
@@ -235,7 +239,8 @@ public sealed class EstClient : IDisposable
         catch (Exception)
         {
             var csrAttributes = new CsrAttributes(reader);
-            return csrAttributes.GetPreferredTemplate() ?? new CertificateSigningRequestTemplate(subject: null, subjectPkInfo: null);
+            return csrAttributes.GetPreferredTemplate() ??
+                new CertificateSigningRequestTemplate(subject: null, subjectPkInfo: null);
         }
     }
 
@@ -333,10 +338,10 @@ public sealed class EstClient : IDisposable
 
         var path = requestUri.AbsolutePath;
         var isBootstrapPath = string.Equals(path, "/.well-known/est/cacerts", StringComparison.Ordinal) ||
-                              string.Equals(path, "/.well-known/est/fullcmc", StringComparison.Ordinal) ||
-                              (path.StartsWith("/.well-known/est/", StringComparison.Ordinal) &&
-                               (path.EndsWith("/cacerts", StringComparison.Ordinal) ||
-                                path.EndsWith("/fullcmc", StringComparison.Ordinal)));
+            string.Equals(path, "/.well-known/est/fullcmc", StringComparison.Ordinal) ||
+            (path.StartsWith("/.well-known/est/", StringComparison.Ordinal) &&
+                (path.EndsWith("/cacerts", StringComparison.Ordinal) ||
+                    path.EndsWith("/fullcmc", StringComparison.Ordinal)));
 
         return isBootstrapPath && AuthorizeServerIdentity(certificate, requestUri);
     }
@@ -358,7 +363,11 @@ public sealed class EstClient : IDisposable
 
     private bool ShouldCaptureBootstrapTrust(Uri requestUri)
     {
-        return _options is { AllowBootstrapCaCertsWithoutTrustedServer: true, TrustAnchorMode: EstTrustAnchorMode.ExplicitOnly, ExplicitTrustAnchors.Count: 0 } &&
+        return _options is
+            {
+                AllowBootstrapCaCertsWithoutTrustedServer: true, TrustAnchorMode: EstTrustAnchorMode.ExplicitOnly,
+                ExplicitTrustAnchors.Count: 0
+            } &&
             PendingBootstrapTrust == null &&
             IsBootstrapPath(requestUri.AbsolutePath);
     }
@@ -398,16 +407,20 @@ public sealed class EstClient : IDisposable
 
     private bool IsBootstrapProvisioningRequired()
     {
-        return _options is { AllowBootstrapCaCertsWithoutTrustedServer: true, TrustAnchorMode: EstTrustAnchorMode.ExplicitOnly, ExplicitTrustAnchors.Count: 0 };
+        return _options is
+        {
+            AllowBootstrapCaCertsWithoutTrustedServer: true, TrustAnchorMode: EstTrustAnchorMode.ExplicitOnly,
+            ExplicitTrustAnchors.Count: 0
+        };
     }
 
     private static bool IsBootstrapPath(string path)
     {
         return string.Equals(path, "/.well-known/est/cacerts", StringComparison.Ordinal) ||
-               string.Equals(path, "/.well-known/est/fullcmc", StringComparison.Ordinal) ||
-               (path.StartsWith("/.well-known/est/", StringComparison.Ordinal) &&
+            string.Equals(path, "/.well-known/est/fullcmc", StringComparison.Ordinal) ||
+            (path.StartsWith("/.well-known/est/", StringComparison.Ordinal) &&
                 (path.EndsWith("/cacerts", StringComparison.Ordinal) ||
-                 path.EndsWith("/fullcmc", StringComparison.Ordinal)));
+                    path.EndsWith("/fullcmc", StringComparison.Ordinal)));
     }
 
     private static bool BuildChainWithExplicitTrustAnchors(X509Certificate2 certificate, EstClientOptions options)
@@ -436,7 +449,7 @@ public sealed class EstClient : IDisposable
             Uri.CheckHostName(host) == UriHostNameType.IPv6)
         {
             return IPAddress.TryParse(host, out var expectedIp) &&
-                   certificate.GetSubjectAlternativeIpAddresses().Any(ip => ip.Equals(expectedIp));
+                certificate.GetSubjectAlternativeIpAddresses().Any(ip => ip.Equals(expectedIp));
         }
 
         var sanDnsNames = certificate.GetSubjectAlternativeDnsNames();
@@ -510,7 +523,7 @@ public sealed class EstClient : IDisposable
         CertificateRequest certRequest,
         CancellationToken cancellationToken)
     {
-        var content = new StringContent(certRequest.ToPkcs10(), Encoding.UTF8, "application/pkcs10-mime");
+        var content = new StringContent(certRequest.ToPkcs10Pem(), Encoding.UTF8, "application/pkcs10-mime");
         var pathValue = _profileName == null
             ? "/.well-known/est/simplereenroll"
             : $"/.well-known/est/{_profileName}/simplereenroll";
@@ -534,8 +547,9 @@ public sealed class EstClient : IDisposable
             clientHandler.ClientCertificates.Add(certificate);
         }
 
-        var response = await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken)
-            .ConfigureAwait(false);
+        var response =
+            await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken)
+                .ConfigureAwait(false);
         if (_messageHandler is HttpClientHandler ch)
         {
             ch.ClientCertificates.Clear();
@@ -584,7 +598,8 @@ public sealed class EstClient : IDisposable
             pathValue);
         var requestMessage = new HttpRequestMessage
         {
-            Content = new StringContent(request.ToPkcs10(), Encoding.UTF8, "application/pkcs10"),
+            Content =
+                new StringContent(request.ToPkcs10Base64(), Encoding.UTF8, "application/pkcs10"),
             Method = HttpMethod.Post,
             RequestUri = requestUriBuilder.Uri,
             Headers =
@@ -606,7 +621,8 @@ public sealed class EstClient : IDisposable
             clientHandler.ClientCertificates.Add(certificate);
         }
 
-        var response = await SendWithRedirectHandlingAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken)
+        var response = await SendWithRedirectHandlingAsync(requestMessage, HttpCompletionOption.ResponseContentRead,
+                cancellationToken)
             .ConfigureAwait(false);
 
         if (_messageHandler is HttpClientHandler ch)
@@ -669,8 +685,9 @@ public sealed class EstClient : IDisposable
 
             // Follow same-origin redirects without user input. A redirected origin would require a new TLS
             // connection and repeating all security checks, so those redirects are rejected above.
-            var nextRequest = await CloneRequestAsync(currentRequest, redirectUri, response.StatusCode, cancellationToken)
-                .ConfigureAwait(false);
+            var nextRequest =
+                await CloneRequestAsync(currentRequest, redirectUri, response.StatusCode, cancellationToken)
+                    .ConfigureAwait(false);
             response.Dispose();
             currentRequest = nextRequest;
         }
@@ -687,8 +704,8 @@ public sealed class EstClient : IDisposable
     private static bool IsSameOrigin(Uri currentUri, Uri redirectUri)
     {
         return string.Equals(currentUri.Scheme, redirectUri.Scheme, StringComparison.OrdinalIgnoreCase) &&
-               string.Equals(currentUri.Host, redirectUri.Host, StringComparison.OrdinalIgnoreCase) &&
-               currentUri.Port == redirectUri.Port;
+            string.Equals(currentUri.Host, redirectUri.Host, StringComparison.OrdinalIgnoreCase) &&
+            currentUri.Port == redirectUri.Port;
     }
 
     private static async Task<HttpRequestMessage> CloneRequestAsync(
@@ -732,7 +749,8 @@ public sealed class EstClient : IDisposable
         string defaultMessage,
         CancellationToken cancellationToken)
     {
-        if (response.Content.Headers.ContentType?.MediaType?.Equals("text/plain", StringComparison.OrdinalIgnoreCase) == true)
+        if (response.Content.Headers.ContentType?.MediaType?.Equals("text/plain", StringComparison.OrdinalIgnoreCase) ==
+            true)
         {
             var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(error))

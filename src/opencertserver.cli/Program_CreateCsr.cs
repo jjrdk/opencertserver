@@ -68,7 +68,7 @@ internal static partial class Program
                 EnsureHasPrivateKey(key);
                 var csrInput = CollectCsrInput(parse, csrOptions, Console.Out, Console.In);
                 var request = BuildCertificateRequest(key, csrInput, Console.Out);
-                var pem = request.ToPkcs10();
+                var pem = request.ToPkcs10Pem();
 
                 var directoryName = string.IsNullOrWhiteSpace(outPath) ? null : Path.GetDirectoryName(outPath);
                 if (!string.IsNullOrWhiteSpace(directoryName))

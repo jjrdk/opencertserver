@@ -1754,7 +1754,7 @@ public partial class CertificateServerFeatures
             RSASignaturePadding.Pss);
         request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
         request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
-        return request.ToPkcs10();
+        return request.ToPkcs10Pem();
     }
 
     private static string CreateBase64DerCsr()
