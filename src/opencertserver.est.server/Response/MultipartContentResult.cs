@@ -1,7 +1,8 @@
 using System.Net;
 using Microsoft.AspNetCore.Http;
+using OpenCertServer.Est.Server.Handlers;
 
-namespace OpenCertServer.Est.Server.Handlers;
+namespace OpenCertServer.Est.Server.Response;
 
 internal class MultipartContentResult : IResult
 {

@@ -9,10 +9,12 @@ using OpenCertServer.Ca.Utils.X509;
 /// </summary>
 public sealed class CmsContentInfo : IAsnValue
 {
-    public CmsContentInfo(Oid contentType, byte[] encodedContent)
+    public CmsContentInfo(Oid contentType, IAsnValue encodedContent)
     {
         ContentType = contentType;
-        EncodedContent = encodedContent;
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        encodedContent.Encode(writer);
+        EncodedContent = writer.Encode();
     }
 
     public CmsContentInfo(AsnReader reader)

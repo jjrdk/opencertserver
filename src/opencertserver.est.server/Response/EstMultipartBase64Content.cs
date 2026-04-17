@@ -1,7 +1,7 @@
-namespace OpenCertServer.Est.Server.Handlers;
-
 using System.Net.Http.Headers;
 using System.Text;
+
+namespace OpenCertServer.Est.Server.Response;
 
 internal sealed class EstMultipartBase64Content : StringContent
 {

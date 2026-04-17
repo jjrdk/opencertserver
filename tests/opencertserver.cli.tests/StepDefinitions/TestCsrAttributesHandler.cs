@@ -1,3 +1,5 @@
+using OpenCertServer.Est.Server.Response;
+
 namespace opencertserver.cli.tests.StepDefinitions;
 
 using System.Security.Claims;

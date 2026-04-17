@@ -3,7 +3,7 @@ using System.Net;
 using Microsoft.AspNetCore.Http;
 using OpenCertServer.Ca.Utils;
 
-namespace OpenCertServer.Est.Server.Handlers;
+namespace OpenCertServer.Est.Server.Response;
 
 internal class CertificateSigningRequestTemplateResult : IResult
 {

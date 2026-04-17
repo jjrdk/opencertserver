@@ -1,6 +1,7 @@
 using System.Formats.Asn1;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Est.Server.Handlers;
+using OpenCertServer.Est.Server.Response;
 
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
@@ -24,7 +25,7 @@ public partial class CertificateServerFeatures
     private const string CaCertHandlerPath = "src/opencertserver.est.server/Handlers/CaCertHandler.cs";
     private const string SimpleEnrollHandlerPath = "src/opencertserver.est.server/Handlers/SimpleEnrollHandler.cs";
     private const string SimpleReEnrollHandlerPath = "src/opencertserver.est.server/Handlers/SimpleReEnrollHandler.cs";
-    private const string RetryAfterResultPath = "src/opencertserver.est.server/Handlers/RetryAfterResult.cs";
+    private const string RetryAfterResultPath = "src/opencertserver.est.server/Response/RetryAfterResult.cs";
 
     private const string TlsUniqueProofOfPossessionVerifierPath =
         "src/opencertserver.est.server/Handlers/TlsUniqueProofOfPossessionVerifier.cs";
@@ -33,7 +34,7 @@ public partial class CertificateServerFeatures
     private const string CsrAttributesHandlerPath = "src/opencertserver.est.server/Handlers/CsrAttributesHandler.cs";
 
     private const string CsrTemplateResultPath =
-        "src/opencertserver.est.server/Handlers/CertificateSigningRequestTemplateResult.cs";
+        "src/opencertserver.est.server/Response/CertificateSigningRequestTemplateResult.cs";
 
     private const string EstClientPath = "src/opencertserver.est.client/EstClient.cs";
     private const string EstClientOptionsPath = "src/opencertserver.est.client/EstClientOptions.cs";

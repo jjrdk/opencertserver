@@ -23,13 +23,10 @@ internal static class CaCertsHandler
     {
         var export = await certificates(profileName, cancellationToken).ConfigureAwait(false);
         var signedData = new SignedData(version: 1, certificates: export.ToArray());
-        var writer = new AsnWriter(AsnEncodingRules.DER);
-        signedData.Encode(writer);
-        var signedEncoded = writer.Encode();
-        writer.Reset();
         var contentInfo = new CmsContentInfo(
             Oids.Pkcs7Signed.InitializeOid(Oids.Pkcs7SignedFriendlyName),
-            signedEncoded);
+            signedData);
+        var writer = new AsnWriter(AsnEncodingRules.DER);
         contentInfo.Encode(writer);
         var contentBytes = writer.Encode();
         return Results.Text(Convert.ToBase64String(contentBytes), Constants.PkiMimeTypeCertsOnly,

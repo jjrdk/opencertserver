@@ -33,8 +33,7 @@ internal static class SimpleReEnrollHandler
         [FromRoute] string profileName,
         CancellationToken cancellationToken)
     {
-        var connection = context.Connection;
-        var cert = await connection.GetClientCertificateAsync(cancellationToken).ConfigureAwait(false);
+        var cert = await context.Connection.GetClientCertificateAsync(cancellationToken).ConfigureAwait(false);
         using var reader = new StreamReader(context.Request.Body, Encoding.UTF8);
         var requestBody = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
@@ -77,10 +76,13 @@ internal static class SimpleReEnrollHandler
                 Constants.TextPlainMimeType, Encoding.UTF8, (int)HttpStatusCode.BadRequest);
         }
 
-        var currentSan = cert.Extensions.FirstOrDefault(x => x.Oid?.Value == Oids.SubjectAltName)?.RawData;
-        var requestedSan = request.CertificateExtensions.FirstOrDefault(x => x.Oid?.Value == Oids.SubjectAltName)?.RawData;
-        if (!(currentSan == null && requestedSan == null) &&
-            (currentSan == null || requestedSan == null || !currentSan.AsSpan().SequenceEqual(requestedSan)))
+        var currentSans = cert.Extensions.Where(x => x.Oid?.Value == Oids.SubjectAltName)
+            .Select(x => x.RawData)
+            .ToHashSet();
+        var requestedSans = request.CertificateExtensions.Where(x => x.Oid?.Value == Oids.SubjectAltName)
+            .Select(x => x.RawData)
+            .ToHashSet();
+        if (!currentSans.SetEquals(requestedSans))
         {
             return Results.Text(
                 "The re-enrollment CSR SubjectAltName extension must match the current certificate SubjectAltName extension.",
@@ -111,15 +113,12 @@ internal static class SimpleReEnrollHandler
             return Results.Text(success.Certificate.ToPemChain(success.Issuers), Constants.PemFile);
         }
 
-        X509Certificate2[] content = [success.Certificate];
-        var signedResponse = new SignedData(version: 1, certificates: content.Concat(success.Issuers).ToArray());
-        var writer = new AsnWriter(AsnEncodingRules.DER);
-        signedResponse.Encode(writer);
-        var derBytes = writer.Encode();
-        writer.Reset();
+        X509Certificate2[] content = [success.Certificate, ..success.Issuers];
+        var signedResponse = new SignedData(version: 1, certificates: content);
         var contentInfo = new CmsContentInfo(
             Oids.Pkcs7Signed.InitializeOid(Oids.Pkcs7SignedFriendlyName),
-            derBytes);
+            signedResponse);
+        var writer = new AsnWriter(AsnEncodingRules.DER);
         contentInfo.Encode(writer);
         var contentBytes = writer.Encode();
         return Results.Text(Convert.ToBase64String(contentBytes), Constants.PkiMimeTypeCertsOnly);

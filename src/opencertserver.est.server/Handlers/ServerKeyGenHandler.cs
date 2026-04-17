@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Est.Server.Response;
 
 namespace OpenCertServer.Est.Server.Handlers;
 
@@ -116,14 +117,11 @@ internal static class ServerKeyGenHandler
     private static string CreateCertsOnlyResponse(X509Certificate2 certificate)
     {
         var signedData = new SignedData(version: 1, certificates: [certificate]);
-        var writer = new AsnWriter(AsnEncodingRules.DER);
-        signedData.Encode(writer);
-        var signedBytes = writer.Encode();
-        writer.Reset();
-
         var contentInfo = new CmsContentInfo(
             Oids.Pkcs7Signed.InitializeOid(Oids.Pkcs7SignedFriendlyName),
-            signedBytes);
+            signedData);
+
+        var writer = new AsnWriter(AsnEncodingRules.DER);
         contentInfo.Encode(writer);
         return writer.Encode().Base64Encode();
     }

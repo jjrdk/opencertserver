@@ -1,7 +1,8 @@
-namespace OpenCertServer.Est.Server.Handlers;
-
 using System.Text;
 using Microsoft.AspNetCore.Http;
+using OpenCertServer.Est.Server.Handlers;
+
+namespace OpenCertServer.Est.Server.Response;
 
 internal sealed class RetryAfterResult(TimeSpan retryAfter, string? message = null) : IResult
 {
