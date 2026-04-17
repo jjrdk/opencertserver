@@ -6,6 +6,12 @@ using System.Security.Cryptography;
 /// <summary>
 /// Represents an ASN.1 AlgorithmIdentifier value used in X.509 structures.
 /// </summary>
+/// <code>
+/// AlgorithmIdentifier {ALGORITHM:IOSet } ::= SEQUENCE {
+///     algorithm          ALGORITHM.&id({IOSet}),
+///     parameters         ALGORITHM.&Type({IOSet}{@algorithm}) OPTIONAL
+/// }
+/// </code>
 public class AlgorithmIdentifier : IAsnValue
 {
     /// <summary>
@@ -23,13 +29,20 @@ public class AlgorithmIdentifier : IAsnValue
     public AlgorithmIdentifier(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
-
+        if (sequenceReader.PeekTag().HasSameClassAndValue(Asn1Tag.Sequence))
+        {
+            sequenceReader = sequenceReader.ReadSequence();
+        }
         AlgorithmOid = sequenceReader.ReadObjectIdentifier().InitializeOid();
         switch (AlgorithmOid.Value)
         {
             case Oids.EcPublicKey:
                 // Skip parameters for EC (should be named curve OID)
                 CurveOid = sequenceReader.ReadObjectIdentifier().InitializeOid();
+                break;
+            case Oids.RsaPss:
+                // Skip parameters for RSA-PSS (should be a sequence)
+                sequenceReader.ReadSequence();
                 break;
             default:
                 // Skip parameters for others (should be NULL)

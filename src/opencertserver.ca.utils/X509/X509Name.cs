@@ -25,9 +25,10 @@ public class X509Name : IAsnValue
     public X509Name(AsnReader reader)
     {
         var values = new List<RelativeDistinguishedName>();
+        reader = reader.ReadSequence();
         while (reader.HasData)
         {
-            values.Add(new RelativeDistinguishedName(reader.ReadSequence()));
+            values.Add(new RelativeDistinguishedName(reader));
         }
 
         RelativeDistinguishedNames = values.AsReadOnly();

@@ -12,7 +12,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Pkcs7;
 using OpenCertServer.Ca.Utils.X509Extensions;
@@ -23,9 +22,11 @@ internal static class SimpleEnrollHandler
         ClaimsPrincipal? user,
         HttpRequest httpRequest,
         ICertificateAuthority certificateAuthority,
+        IManualAuthorizationStrategy manualAuthorizationStrategy,
         CancellationToken cancellationToken)
     {
-        return HandleProfile("", certificateAuthority, httpRequest, user,  cancellationToken);
+        return HandleProfile("", certificateAuthority, httpRequest, user, manualAuthorizationStrategy,
+            cancellationToken);
     }
 
     public static async Task<IResult> HandleProfile(
@@ -33,42 +34,47 @@ internal static class SimpleEnrollHandler
         ICertificateAuthority certificateAuthority,
         HttpRequest httpRequest,
         ClaimsPrincipal? user,
+        IManualAuthorizationStrategy manualAuthorizationStrategy,
         CancellationToken cancellationToken)
     {
         var body = httpRequest.Body;
         var responseType = httpRequest.GetTypedHeaders().Accept;
         using var reader = new StreamReader(body, Encoding.UTF8);
         var requestContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-        var normalizedRequestContent = requestContent;
         if (!PemEncoding.TryFind(requestContent, out _))
         {
             try
             {
-                normalizedRequestContent = requestContent.NormalizeBase64();
-            }
-            catch (InvalidOperationException)
-            {
-                normalizedRequestContent = requestContent;
+                requestContent = requestContent.NormalizeBase64();
             }
             catch (FormatException)
             {
-                normalizedRequestContent = requestContent;
+            }
+            catch (InvalidOperationException o)
+            {
+                return Results.Text(o.Message, Constants.TextPlainMimeType, Encoding.UTF8,
+                    (int)HttpStatusCode.BadRequest);
             }
         }
+
         if (!requestContent.TryVerifyTlsUniqueValue(out var proofOfPossessionError))
         {
             return Results.Text(proofOfPossessionError, Constants.TextPlainMimeType, Encoding.UTF8,
                 (int)HttpStatusCode.BadRequest);
         }
 
-        var manualAuthorizationStrategy = httpRequest.HttpContext.RequestServices
-            .GetRequiredService<IManualAuthorizationStrategy>();
+        var csrDer = Convert.FromBase64String(requestContent);
+        var csr = CertificateRequest.LoadSigningRequest(
+            csrDer,
+            HashAlgorithmName.SHA256,
+            signerSignaturePadding: RSASignaturePadding.Pss);
+
         if (manualAuthorizationStrategy.TryGetPendingAuthorization(
-                httpRequest,
-                user,
-                normalizedRequestContent,
-                out var retryAfter,
-                out var pendingMessage))
+            httpRequest,
+            user,
+            csr,
+            out var retryAfter,
+            out var pendingMessage))
         {
             return new RetryAfterResult(retryAfter, pendingMessage);
         }
@@ -76,8 +82,8 @@ internal static class SimpleEnrollHandler
         SignCertificateResponse newCert;
         try
         {
-            newCert = await certificateAuthority.SignCertificateRequestPem(
-                normalizedRequestContent,
+            newCert = await certificateAuthority.SignCertificateRequest(
+                csr,
                 profileName,
                 user?.Identity as ClaimsIdentity,
                 cancellationToken: cancellationToken).ConfigureAwait(false);

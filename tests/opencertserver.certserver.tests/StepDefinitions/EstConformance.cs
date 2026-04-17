@@ -1034,7 +1034,9 @@ public partial class CertificateServerFeatures
     public async Task ThenTheRequestBodyMustBeASimplePkiRequestContainingAPkcs10CertificationRequest()
     {
         var body = await ConformanceState.CapturedRequest!.Content!.ReadAsStringAsync();
-        Assert.StartsWith("-----BEGIN CERTIFICATE REQUEST-----", body, StringComparison.Ordinal);
+        var csr = CertificateRequest.LoadSigningRequest(
+            Convert.FromBase64String(body), HashAlgorithmName.SHA256, CertificateRequestLoadOptions.Default,
+            RSASignaturePadding.Pss);
     }
 
     [Then("the request content type MUST be \"(.+)\"")]
@@ -1754,7 +1756,7 @@ public partial class CertificateServerFeatures
             RSASignaturePadding.Pss);
         request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
         request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
-        return request.ToPkcs10Pem();
+        return request.ToPkcs10Base64();
     }
 
     private static string CreateBase64DerCsr()
@@ -1905,7 +1907,8 @@ public partial class CertificateServerFeatures
                 HashAlgorithmName.SHA256,
                 RSASignaturePadding.Pss);
             ApplyCaExtensions(currentRoot, request);
-            var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.Add(validity));
+            var certificate =
+                request.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.Add(validity));
             return (privateKey, certificate);
         }
 
@@ -1914,7 +1917,8 @@ public partial class CertificateServerFeatures
             var privateKey = ECDsa.Create();
             var request = new CertificateRequest(currentRoot.SubjectName, privateKey, HashAlgorithmName.SHA256);
             ApplyCaExtensions(currentRoot, request);
-            var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.Add(validity));
+            var certificate =
+                request.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.Add(validity));
             return (privateKey, certificate);
         }
 

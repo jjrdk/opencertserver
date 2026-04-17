@@ -36,7 +36,9 @@ public class RelativeDistinguishedName : IAsnValue
         List<AttributeTypeValue> values = [];
         // Windows does not enforce the sort order on multi-value RDNs.
         var tag = reader.PeekTag();
-        var rdn = reader.ReadSetOf(skipSortOrderValidation: true, expectedTag: tag);
+        var rdn = tag.HasSameClassAndValue(new Asn1Tag(UniversalTagNumber.Set))
+            ? reader.ReadSetOf(skipSortOrderValidation: true, expectedTag: tag)
+            : reader.ReadSequence(expectedTag: tag);
         while (rdn.HasData)
         {
             values.Add(new AttributeTypeValue(rdn));
