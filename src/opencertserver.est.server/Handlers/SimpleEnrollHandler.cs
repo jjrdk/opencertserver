@@ -1,6 +1,4 @@
-﻿using OpenCertServer.Ca.Utils;
-
-namespace OpenCertServer.Est.Server.Handlers;
+﻿namespace OpenCertServer.Est.Server.Handlers;
 
 using System.Formats.Asn1;
 using System.IO;
@@ -12,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Pkcs7;
 using OpenCertServer.Ca.Utils.X509Extensions;
@@ -41,20 +40,17 @@ internal static class SimpleEnrollHandler
         var responseType = httpRequest.GetTypedHeaders().Accept;
         using var reader = new StreamReader(body, Encoding.UTF8);
         var requestContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-        if (!PemEncoding.TryFind(requestContent, out _))
+        try
         {
-            try
-            {
-                requestContent = requestContent.NormalizeBase64();
-            }
-            catch (FormatException)
-            {
-            }
-            catch (InvalidOperationException o)
-            {
-                return Results.Text(o.Message, Constants.TextPlainMimeType, Encoding.UTF8,
-                    (int)HttpStatusCode.BadRequest);
-            }
+            requestContent = requestContent.NormalizeBase64();
+        }
+        catch (FormatException)
+        {
+        }
+        catch (InvalidOperationException o)
+        {
+            return Results.Text(o.Message, Constants.TextPlainMimeType, Encoding.UTF8,
+                (int)HttpStatusCode.BadRequest);
         }
 
         if (!requestContent.TryVerifyTlsUniqueValue(out var proofOfPossessionError))
@@ -65,9 +61,9 @@ internal static class SimpleEnrollHandler
 
         var csrDer = Convert.FromBase64String(requestContent);
         var csr = CertificateRequest.LoadSigningRequest(
-            csrDer,
-            HashAlgorithmName.SHA256,
-            signerSignaturePadding: RSASignaturePadding.Pss);
+                csrDer,
+                HashAlgorithmName.SHA256,
+                signerSignaturePadding: RSASignaturePadding.Pss);
 
         if (manualAuthorizationStrategy.TryGetPendingAuthorization(
             httpRequest,
