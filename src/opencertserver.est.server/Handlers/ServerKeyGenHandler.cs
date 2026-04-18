@@ -44,7 +44,7 @@ internal static class ServerKeyGenHandler
         EstInstruments.ServerKeyGenRequests.Add(1);
         var sw = Stopwatch.GetTimestamp();
         using var activity = EstInstruments.ActivitySource.StartActivity(ActivityNames.ServerKeyGen);
-        activity?.AddTag(TagKeys.ProfileName, profileName);
+        activity?.AddTag(TagKeys.Profile, profileName);
         IResult result;
         try
         {

@@ -25,7 +25,7 @@ internal static class CaCertsHandler
         EstInstruments.CaCertsRequests.Add(1);
         var sw = Stopwatch.GetTimestamp();
         using var activity = EstInstruments.ActivitySource.StartActivity(ActivityNames.CaCerts);
-        activity?.AddTag(TagKeys.ProfileName, profileName);
+        activity?.AddTag(TagKeys.Profile, profileName);
         try
         {
             var export = await certificates(profileName, cancellationToken).ConfigureAwait(false);

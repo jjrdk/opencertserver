@@ -17,7 +17,5 @@ internal static class TagKeys
 
     /// <summary>HTTP response status code recorded on non-2xx result paths.</summary>
     internal const string HttpStatusCode = "http.response.status_code";
-
-    internal const string ProfileName = "est.profile";
 }
 
