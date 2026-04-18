@@ -37,7 +37,7 @@ internal static class SimpleReEnrollHandler
         EstInstruments.SimpleReEnrollRequests.Add(1);
         var sw = Stopwatch.GetTimestamp();
         using var activity = EstInstruments.ActivitySource.StartActivity(ActivityNames.SimpleReEnroll);
-        activity?.AddTag(TagKeys.ProfileName, profileName);
+        activity?.AddTag(TagKeys.Profile, profileName);
         IResult result;
         try
         {

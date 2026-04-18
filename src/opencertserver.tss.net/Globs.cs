@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Reflection;
 using System.Resources;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OpenCertServer.Tpm2Lib;

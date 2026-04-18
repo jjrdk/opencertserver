@@ -1,6 +1,5 @@
 using System.Formats.Asn1;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Est.Server.Handlers;
 using OpenCertServer.Est.Server.Response;
 
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
