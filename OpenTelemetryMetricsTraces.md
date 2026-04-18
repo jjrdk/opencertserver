@@ -196,5 +196,4 @@ This document lists relevant OpenTelemetry metrics and traces for OpenCertServer
 - `opencertserver.tls.errors`: Counter for TLS-related errors.
 - `opencertserver.errors.internal`: Counter for internal server errors.
 
-**Collection Location**: In middleware or base handlers.</content>
-<parameter name="filePath">/Users/jacobreimers/code/opencertserver/OpenTelemetryMetricsTraces.md
+**Collection Location**: In middleware or base handlers.
