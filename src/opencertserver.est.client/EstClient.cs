@@ -729,17 +729,19 @@ public sealed class EstClient : IDisposable
             clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
         }
 
-        if (method != HttpMethod.Get && method != HttpMethod.Head && request.Content != null)
+        if (method == HttpMethod.Get || method == HttpMethod.Head || request.Content == null)
         {
-            var contentBytes = await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-            var contentClone = new ByteArrayContent(contentBytes);
-            foreach (var header in request.Content.Headers)
-            {
-                contentClone.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            }
-
-            clone.Content = contentClone;
+            return clone;
         }
+
+        var contentBytes = await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        var contentClone = new ByteArrayContent(contentBytes);
+        foreach (var header in request.Content.Headers)
+        {
+            contentClone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+
+        clone.Content = contentClone;
 
         return clone;
     }

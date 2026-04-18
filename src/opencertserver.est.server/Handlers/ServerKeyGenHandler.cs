@@ -1,19 +1,18 @@
-using System.Diagnostics;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Mvc;
-using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Est.Server.Response;
-
 namespace OpenCertServer.Est.Server.Handlers;
 
+using System.Diagnostics;
 using System.Formats.Asn1;
 using System.Net;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using OpenCertServer.Ca.Utils;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Pkcs7;
+using OpenCertServer.Est.Server.Response;
 
 internal static class ServerKeyGenHandler
 {
@@ -28,9 +27,11 @@ internal static class ServerKeyGenHandler
         HttpRequest httpRequest,
         ICertificateAuthority certificateAuthority,
         Stream body,
+        IManualAuthorizationStrategy manualAuthorizationStrategy,
         CancellationToken cancellationToken)
     {
-        return HandleProfile("", user, httpRequest, certificateAuthority, body, cancellationToken);
+        return HandleProfile("", user, httpRequest, certificateAuthority, body, manualAuthorizationStrategy,
+            cancellationToken);
     }
 
     public static async Task<IResult> HandleProfile(
@@ -39,6 +40,7 @@ internal static class ServerKeyGenHandler
         HttpRequest httpRequest,
         ICertificateAuthority certificateAuthority,
         Stream body,
+        IManualAuthorizationStrategy manualAuthorizationStrategy,
         CancellationToken cancellationToken)
     {
         EstInstruments.ServerKeyGenRequests.Add(1);
@@ -78,16 +80,42 @@ internal static class ServerKeyGenHandler
             try
             {
                 using var reader = new StreamReader(body, Encoding.UTF8);
-                var request = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-                var signingRequest = PemEncoding.TryFind(request, out _)
-                    ? CertificateRequest.LoadSigningRequestPem(
-                        request,
-                        HashAlgorithmName.SHA256)
-                    : CertificateRequest.LoadSigningRequest(
-                        request.Base64DecodeBytes(),
-                        HashAlgorithmName.SHA256,
-                        CertificateRequestLoadOptions.SkipSignatureValidation,
-                        RSASignaturePadding.Pss);
+                var requestContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    requestContent = requestContent.NormalizeBase64();
+                }
+                catch (FormatException)
+                {
+                }
+                catch (InvalidOperationException o)
+                {
+                    return Results.Text(o.Message, Constants.TextPlainMimeType, Encoding.UTF8,
+                        (int)HttpStatusCode.BadRequest);
+                }
+
+                if (!requestContent.TryVerifyTlsUniqueValue(out var proofOfPossessionError))
+                {
+                    return Results.Text(proofOfPossessionError, Constants.TextPlainMimeType, Encoding.UTF8,
+                        (int)HttpStatusCode.BadRequest);
+                }
+
+                var csrDer = Convert.FromBase64String(requestContent);
+                var csr = CertificateRequest.LoadSigningRequest(
+                    csrDer,
+                    HashAlgorithmName.SHA256,
+                    options: CertificateRequestLoadOptions.SkipSignatureValidation,
+                    signerSignaturePadding: RSASignaturePadding.Pss);
+
+                if (manualAuthorizationStrategy.TryGetPendingAuthorization(
+                    httpRequest,
+                    user,
+                    csr,
+                    out var retryAfter,
+                    out var pendingMessage))
+                {
+                    return new RetryAfterResult(retryAfter, pendingMessage);
+                }
 
                 var encryptedKeyDelivery = GetRequestedEncryptedKeyDelivery(httpRequest);
                 if (encryptedKeyDelivery.ErrorResult != null)
@@ -95,12 +123,12 @@ internal static class ServerKeyGenHandler
                     return encryptedKeyDelivery.ErrorResult;
                 }
 
-                var privateKey = signingRequest.PublicKey.Oid.Value switch
+                var privateKey = csr.PublicKey.Oid.Value switch
                 {
-                    Oids.Rsa => CreateServerSideRsaRequest(signingRequest),
-                    Oids.EcPublicKey => CreateServerSideEcRequest(signingRequest),
+                    Oids.Rsa => CreateServerSideRsaRequest(csr),
+                    Oids.EcPublicKey => CreateServerSideEcRequest(csr),
                     _ => throw new NotSupportedException(
-                        $"Server-side key generation does not support CSR public key algorithm '{signingRequest.PublicKey.Oid.Value}'.")
+                        $"Server-side key generation does not support CSR public key algorithm '{csr.PublicKey.Oid.Value}'.")
                 };
 
                 var newCert =
@@ -115,7 +143,8 @@ internal static class ServerKeyGenHandler
                             Constants.PemMimeType,
                             smimeType: "server-generated-key")
                         : new EstMultipartBase64Content(privateKey.Pkcs8.Base64Encode(), Constants.Pkcs8));
-                    mpr.Add(new EstMultipartBase64Content(CreateCertsOnlyResponse(success.Certificate), Constants.PemMimeType));
+                    mpr.Add(new EstMultipartBase64Content(CreateCertsOnlyResponse(success.Certificate),
+                        Constants.PemMimeType));
                     return new MultipartContentResult(mpr);
                 }
 
@@ -139,7 +168,9 @@ internal static class ServerKeyGenHandler
     {
         var rsa = RSA.Create();
         var pkcs8 = rsa.ExportPkcs8PrivateKey();
-        return (new CertificateRequest(signingRequest.SubjectName, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss), pkcs8);
+        return (
+            new CertificateRequest(signingRequest.SubjectName, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss),
+            pkcs8);
     }
 
     private static (CertificateRequest Request, byte[] Pkcs8) CreateServerSideEcRequest(
@@ -174,7 +205,8 @@ internal static class ServerKeyGenHandler
                 StringComparison.OrdinalIgnoreCase));
     }
 
-    private static (bool UseEncryptedKeyPart, IResult? ErrorResult) GetRequestedEncryptedKeyDelivery(HttpRequest httpRequest)
+    private static (bool UseEncryptedKeyPart, IResult? ErrorResult) GetRequestedEncryptedKeyDelivery(
+        HttpRequest httpRequest)
     {
         var prefersEncryptedKeyPart = PrefersEncryptedKeyPart(httpRequest);
         var requestedProtection = httpRequest.Headers[KeyProtectionHeader].ToString();
@@ -188,10 +220,10 @@ internal static class ServerKeyGenHandler
         if (string.IsNullOrWhiteSpace(smimeCapabilities))
         {
             return (true, Results.Text(
-                "Encrypted server-side key delivery requires the SMIMECapabilities attribute.",
-                Constants.TextPlainMimeType,
-                Encoding.UTF8,
-                (int)HttpStatusCode.BadRequest));
+                        "Encrypted server-side key delivery requires the SMIMECapabilities attribute.",
+                        Constants.TextPlainMimeType,
+                        Encoding.UTF8,
+                        (int)HttpStatusCode.BadRequest));
         }
 
         var symmetricIdentifier = httpRequest.Headers[SymmetricDecryptKeyIdentifierHeader].ToString();
@@ -210,10 +242,10 @@ internal static class ServerKeyGenHandler
         if (!hasRequiredIdentifier)
         {
             return (true, Results.Text(
-                "Encrypted server-side key delivery requires a DecryptKeyIdentifier or AsymmetricDecryptKeyIdentifier attribute.",
-                Constants.TextPlainMimeType,
-                Encoding.UTF8,
-                (int)HttpStatusCode.BadRequest));
+                        "Encrypted server-side key delivery requires a DecryptKeyIdentifier or AsymmetricDecryptKeyIdentifier attribute.",
+                        Constants.TextPlainMimeType,
+                        Encoding.UTF8,
+                        (int)HttpStatusCode.BadRequest));
         }
 
         var protectionStatus = httpRequest.Headers[KeyProtectionStatusHeader].ToString();
@@ -221,10 +253,10 @@ internal static class ServerKeyGenHandler
             string.Equals(protectionStatus, "unusable", StringComparison.OrdinalIgnoreCase))
         {
             return (true, Results.Text(
-                "The requested key-encryption material is unavailable or unusable.",
-                Constants.TextPlainMimeType,
-                Encoding.UTF8,
-                (int)HttpStatusCode.BadRequest));
+                        "The requested key-encryption material is unavailable or unusable.",
+                        Constants.TextPlainMimeType,
+                        Encoding.UTF8,
+                        (int)HttpStatusCode.BadRequest));
         }
 
         return (true, null);
