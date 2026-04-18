@@ -81,8 +81,10 @@ internal static class SimpleEnrollHandler
             {
                 requestContent = requestContent.NormalizeBase64();
             }
-            catch (FormatException)
+            catch (FormatException f)
             {
+                return Results.Text(f.Message, Constants.TextPlainMimeType, Encoding.UTF8,
+                    (int)HttpStatusCode.BadRequest);
             }
             catch (InvalidOperationException o)
             {
