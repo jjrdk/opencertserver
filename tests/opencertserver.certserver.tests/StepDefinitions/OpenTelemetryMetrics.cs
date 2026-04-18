@@ -8,7 +8,7 @@ using Xunit;
 
 public partial class CertificateServerFeatures
 {
-    private MeterListener _meterListener = null!;
+    private MeterListener? _meterListener;
     private readonly Dictionary<string, long> _metricCounters = new();
 
     [Given("an OpenTelemetry meter listener")]
@@ -109,6 +109,13 @@ public partial class CertificateServerFeatures
                 _metricCounters.TryGetValue("opencertserver.crl.request.requests", out var count) && count > 0,
                 $"Expected opencertserver.crl.request.requests > 0, actual: {(_metricCounters.TryGetValue("opencertserver.crl.request.requests", out var c) ? c : 0)}");
         }
+    }
+
+    [AfterScenario]
+    public void DisposeMeterListener()
+    {
+        _meterListener?.Dispose();
+        _meterListener = null;
     }
 }
 
