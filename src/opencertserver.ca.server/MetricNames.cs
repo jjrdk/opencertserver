@@ -43,5 +43,11 @@ internal static class MetricNames
     internal const string InventorySuccesses = "opencertserver.ca.inventory.successes";
     internal const string InventoryFailures  = "opencertserver.ca.inventory.failures";
     internal const string InventoryDuration  = "opencertserver.ca.inventory.duration";
+
+    // /ca/certificates (retrieval by thumbprint / id)
+    internal const string CertRetrievalRequests  = "opencertserver.ca.certretrieval.requests";
+    internal const string CertRetrievalSuccesses = "opencertserver.ca.certretrieval.successes";
+    internal const string CertRetrievalFailures  = "opencertserver.ca.certretrieval.failures";
+    internal const string CertRetrievalDuration  = "opencertserver.ca.certretrieval.duration";
 }
 

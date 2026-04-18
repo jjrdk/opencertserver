@@ -45,5 +45,11 @@ internal static class CaInstruments
     internal static readonly Counter<long>     InventorySuccesses = Meter.CreateCounter<long>     (MetricNames.InventorySuccesses, description: "Successful inventory responses");
     internal static readonly Counter<long>     InventoryFailures  = Meter.CreateCounter<long>     (MetricNames.InventoryFailures,  description: "Failed inventory responses");
     internal static readonly Histogram<double> InventoryDuration  = Meter.CreateHistogram<double> (MetricNames.InventoryDuration,  "s", "Duration of inventory requests");
+
+    // /ca/certificates (retrieval by thumbprint / id)
+    internal static readonly Counter<long>     CertRetrievalRequests  = Meter.CreateCounter<long>     (MetricNames.CertRetrievalRequests,  description: "Total certificate retrieval requests");
+    internal static readonly Counter<long>     CertRetrievalSuccesses = Meter.CreateCounter<long>     (MetricNames.CertRetrievalSuccesses, description: "Successful certificate retrievals");
+    internal static readonly Counter<long>     CertRetrievalFailures  = Meter.CreateCounter<long>     (MetricNames.CertRetrievalFailures,  description: "Failed certificate retrievals");
+    internal static readonly Histogram<double> CertRetrievalDuration  = Meter.CreateHistogram<double> (MetricNames.CertRetrievalDuration,  "s", "Duration of certificate retrieval requests");
 }
 

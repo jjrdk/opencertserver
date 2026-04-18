@@ -11,6 +11,7 @@ internal static class ActivityNames
     internal const string CrlGeneration  = "opencertserver.crl.generation";
     internal const string CsrSign        = "opencertserver.ca.csr";
     internal const string Revoke         = "opencertserver.ca.revoke";
-    internal const string Inventory      = "opencertserver.ca.inventory";
+    internal const string Inventory             = "opencertserver.ca.inventory";
+    internal const string CertificateRetrieval  = "opencertserver.ca.certretrieval";
 }
 
