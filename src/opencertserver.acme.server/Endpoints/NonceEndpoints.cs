@@ -1,5 +1,6 @@
 namespace OpenCertServer.Acme.Server.Endpoints;
 
+using System.Diagnostics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -13,18 +14,53 @@ public static partial class NonceEndpoints
         // HEAD /new-nonce
         endpoints.MapMethods("/new-nonce", ["HEAD"], async (HttpContext context, INonceService nonceService, ILogger<INonceService> logger) =>
         {
-            await EnsureReplayNonceHeaderAsync(context, nonceService, logger).ConfigureAwait(false);
-            context.Response.StatusCode = StatusCodes.Status200OK;
+            AcmeInstruments.NewNonceRequests.Add(1);
+            var sw = Stopwatch.GetTimestamp();
+            using var activity = AcmeInstruments.ActivitySource.StartActivity(ActivityNames.NewNonce);
+            try
+            {
+                await EnsureReplayNonceHeaderAsync(context, nonceService, logger).ConfigureAwait(false);
+                context.Response.StatusCode = StatusCodes.Status200OK;
+                AcmeInstruments.NewNonceSuccesses.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch (Exception ex)
+            {
+                AcmeInstruments.NewNonceFailures.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                throw;
+            }
+            finally
+            {
+                AcmeInstruments.NewNonceDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+            }
         })
         .WithName("NewNonce");
 
         // GET /new-nonce
         endpoints.MapGet("/new-nonce", async (HttpContext context, INonceService nonceService, ILogger<INonceService> logger) =>
         {
-            await EnsureReplayNonceHeaderAsync(context, nonceService, logger).ConfigureAwait(false);
-            context.Response.StatusCode = StatusCodes.Status204NoContent;
+            AcmeInstruments.NewNonceRequests.Add(1);
+            var sw = Stopwatch.GetTimestamp();
+            using var activity = AcmeInstruments.ActivitySource.StartActivity(ActivityNames.NewNonce);
+            try
+            {
+                await EnsureReplayNonceHeaderAsync(context, nonceService, logger).ConfigureAwait(false);
+                context.Response.StatusCode = StatusCodes.Status204NoContent;
+                AcmeInstruments.NewNonceSuccesses.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch (Exception ex)
+            {
+                AcmeInstruments.NewNonceFailures.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                throw;
+            }
+            finally
+            {
+                AcmeInstruments.NewNonceDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+            }
         });
-//        .WithName("NewNonce");
 
         return endpoints;
     }

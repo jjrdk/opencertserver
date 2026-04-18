@@ -1,5 +1,6 @@
 namespace OpenCertServer.Acme.Server.Endpoints;
 
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using CertesSlim.Acme.Resource;
@@ -115,6 +116,11 @@ public static class AccountEndpoints
         LinkGenerator links,
         CancellationToken cancellationToken)
     {
+        AcmeInstruments.KeyChangeRequests.Add(1);
+        var sw = Stopwatch.GetTimestamp();
+        using var activity = AcmeInstruments.ActivitySource.StartActivity(ActivityNames.KeyChange);
+        try
+        {
         // RFC 8555 §7.3.5: The outer JWS is signed by the CURRENT (old) account key and
         // must identify the account with a "kid" header parameter.
         // The request validation middleware has already verified the outer signature via kid.
@@ -183,7 +189,19 @@ public static class AccountEndpoints
 
         account = await accountService.ChangeKey(account, newKey, cancellationToken).ConfigureAwait(false);
         context.Response.Headers.Location = accountUrl;
-        return Results.Ok(CreateAccountResponse(context, links, account));
+        var keyChangeResult = Results.Ok(CreateAccountResponse(context, links, account));
+        AcmeInstruments.KeyChangeSuccesses.Add(1);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        AcmeInstruments.KeyChangeDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+        return keyChangeResult;
+        }
+        catch (Exception ex)
+        {
+            AcmeInstruments.KeyChangeFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            AcmeInstruments.KeyChangeDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+            throw;
+        }
     }
 
     private static async Task<IResult> NewAccountHandler(
@@ -195,6 +213,11 @@ public static class AccountEndpoints
         [FromServices] LinkGenerator links,
         CancellationToken cancellationToken)
     {
+        AcmeInstruments.NewAccountRequests.Add(1);
+        var sw = Stopwatch.GetTimestamp();
+        using var activity = AcmeInstruments.ActivitySource.StartActivity(ActivityNames.NewAccount);
+        try
+        {
         var options = optionsAccessor.Value;
         var header = JsonSerializer.Deserialize<AcmeHeader>(Base64UrlEncoder.Decode(jwsPayload.Protected)!,
             AcmeSerializerContext.Default.AcmeHeader)!;
@@ -256,7 +279,18 @@ public static class AccountEndpoints
             payload.TermsOfServiceAgreed == true, externalAccountId, cancellationToken).ConfigureAwait(false);
         var createdAccountResponse = CreateAccountResponse(context, links, createdAccount);
         var createdAccountUrl = GetAccountUrl(context, links, createdAccount.AccountId);
+        AcmeInstruments.NewAccountSuccesses.Add(1);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        AcmeInstruments.NewAccountDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
         return Results.Created(createdAccountUrl, createdAccountResponse);
+        }
+        catch (Exception ex)
+        {
+            AcmeInstruments.NewAccountFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            AcmeInstruments.NewAccountDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+            throw;
+        }
     }
 
     private static Account CreateAccountResponse(

@@ -1,6 +1,6 @@
 namespace OpenCertServer.Ca.Server.Handlers;
 
-using System.Buffers.Text;
+using System.Diagnostics;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -15,6 +15,9 @@ public static class OcspHandler
 {
     public static async Task Handle(HttpContext context)
     {
+        CaInstruments.OcspRequests.Add(1);
+        var sw = Stopwatch.GetTimestamp();
+        using var activity = CaInstruments.ActivitySource.StartActivity(ActivityNames.OcspRequest);
         var cancellationToken = context.RequestAborted;
         byte[] requestBytes;
 
@@ -25,6 +28,9 @@ public static class OcspHandler
                 StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                CaInstruments.OcspFailures.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Error, "Invalid content type");
+                CaInstruments.OcspDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
                 return;
             }
 
@@ -35,6 +41,9 @@ public static class OcspHandler
         else
         {
             context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+            CaInstruments.OcspFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error, "Method not allowed");
+            CaInstruments.OcspDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
             return;
         }
 
@@ -43,22 +52,31 @@ public static class OcspHandler
         response.ContentType = "application/ocsp-response";
         await response.Body.WriteAsync(responseBytes, cancellationToken).ConfigureAwait(false);
         await response.CompleteAsync().ConfigureAwait(false);
+        CaInstruments.OcspSuccesses.Add(1);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        CaInstruments.OcspDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
     }
 
     public static async Task HandleGet(HttpContext context)
     {
+        CaInstruments.OcspRequests.Add(1);
+        var sw = Stopwatch.GetTimestamp();
+        using var activity = CaInstruments.ActivitySource.StartActivity(ActivityNames.OcspRequest);
         var cancellationToken = context.RequestAborted;
         var encodedRequest = context.Request.RouteValues["requestEncoded"] as string;
         if (string.IsNullOrWhiteSpace(encodedRequest))
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            CaInstruments.OcspFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error, "Missing encoded request");
+            CaInstruments.OcspDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
             return;
         }
 
         byte[] requestBytes;
         try
         {
-            requestBytes = Base64Url.DecodeFromChars(encodedRequest.AsSpan());
+            requestBytes = System.Buffers.Text.Base64Url.DecodeFromChars(encodedRequest.AsSpan());
         }
         catch
         {
@@ -68,6 +86,9 @@ public static class OcspHandler
             context.Response.ContentType = "application/ocsp-response";
             await context.Response.Body.WriteAsync(w.Encode(), cancellationToken).ConfigureAwait(false);
             await context.Response.CompleteAsync().ConfigureAwait(false);
+            CaInstruments.OcspFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error, "Malformed request");
+            CaInstruments.OcspDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
             return;
         }
 
@@ -76,6 +97,9 @@ public static class OcspHandler
         response.ContentType = "application/ocsp-response";
         await response.Body.WriteAsync(responseBytes, cancellationToken).ConfigureAwait(false);
         await response.CompleteAsync().ConfigureAwait(false);
+        CaInstruments.OcspSuccesses.Add(1);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        CaInstruments.OcspDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
     }
 
     private static async Task<byte[]> ProcessRequestAsync(

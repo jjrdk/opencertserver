@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using OpenCertServer.Ca.Utils.Ca;
@@ -40,61 +41,95 @@ internal static class ServerKeyGenHandler
         Stream body,
         CancellationToken cancellationToken)
     {
+        EstInstruments.ServerKeyGenRequests.Add(1);
+        var sw = Stopwatch.GetTimestamp();
+        using var activity = EstInstruments.ActivitySource.StartActivity(ActivityNames.ServerKeyGen);
+        IResult result;
         try
         {
-            using var reader = new StreamReader(body, Encoding.UTF8);
-            var request = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-            var signingRequest = PemEncoding.TryFind(request, out _)
-                ? CertificateRequest.LoadSigningRequestPem(
-                    request,
-                    HashAlgorithmName.SHA256)
-                : CertificateRequest.LoadSigningRequest(
-                    request.Base64DecodeBytes(),
-                    HashAlgorithmName.SHA256,
-                    CertificateRequestLoadOptions.SkipSignatureValidation,
-                    RSASignaturePadding.Pss);
-
-            var encryptedKeyDelivery = GetRequestedEncryptedKeyDelivery(httpRequest);
-            if (encryptedKeyDelivery.ErrorResult != null)
-            {
-                return encryptedKeyDelivery.ErrorResult;
-            }
-
-            var privateKey = signingRequest.PublicKey.Oid.Value switch
-            {
-                Oids.Rsa => CreateServerSideRsaRequest(signingRequest),
-                Oids.EcPublicKey => CreateServerSideEcRequest(signingRequest),
-                _ => throw new NotSupportedException(
-                    $"Server-side key generation does not support CSR public key algorithm '{signingRequest.PublicKey.Oid.Value}'.")
-            };
-
-            var newCert =
-                await certificateAuthority.SignCertificateRequest(privateKey.Request, profileName,
-                    user.Identity as ClaimsIdentity, cancellationToken: cancellationToken).ConfigureAwait(false);
-            if (newCert is SignCertificateResponse.Success success)
-            {
-                var mpr = new MultipartContent();
-                mpr.Add(encryptedKeyDelivery.UseEncryptedKeyPart
-                    ? new EstMultipartBase64Content(
-                        privateKey.Pkcs8.Base64Encode(),
-                        Constants.PemMimeType,
-                        smimeType: "server-generated-key")
-                    : new EstMultipartBase64Content(privateKey.Pkcs8.Base64Encode(), Constants.Pkcs8));
-                mpr.Add(new EstMultipartBase64Content(CreateCertsOnlyResponse(success.Certificate), Constants.PemMimeType));
-                return new MultipartContentResult(mpr);
-            }
-
-            var error = (SignCertificateResponse.Error)newCert;
-            return Results.Text(
-                string.Join(Environment.NewLine, error.Errors), Constants.TextPlainMimeType,
-                Encoding.UTF8,
-                (int)HttpStatusCode.BadRequest);
+            result = await Core().ConfigureAwait(false);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return Results.Text(
-                "An error occurred while processing the request.", Constants.TextPlainMimeType, Encoding.UTF8,
-                (int)HttpStatusCode.BadRequest);
+            EstInstruments.ServerKeyGenFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            EstInstruments.ServerKeyGenDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+            throw;
+        }
+
+        var statusCode = (result as IStatusCodeHttpResult)?.StatusCode ?? 200;
+        if (statusCode >= 400)
+        {
+            EstInstruments.ServerKeyGenFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error);
+        }
+        else
+        {
+            EstInstruments.ServerKeyGenSuccesses.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+
+        EstInstruments.ServerKeyGenDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+        return result;
+
+        async Task<IResult> Core()
+        {
+            try
+            {
+                using var reader = new StreamReader(body, Encoding.UTF8);
+                var request = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                var signingRequest = PemEncoding.TryFind(request, out _)
+                    ? CertificateRequest.LoadSigningRequestPem(
+                        request,
+                        HashAlgorithmName.SHA256)
+                    : CertificateRequest.LoadSigningRequest(
+                        request.Base64DecodeBytes(),
+                        HashAlgorithmName.SHA256,
+                        CertificateRequestLoadOptions.SkipSignatureValidation,
+                        RSASignaturePadding.Pss);
+
+                var encryptedKeyDelivery = GetRequestedEncryptedKeyDelivery(httpRequest);
+                if (encryptedKeyDelivery.ErrorResult != null)
+                {
+                    return encryptedKeyDelivery.ErrorResult;
+                }
+
+                var privateKey = signingRequest.PublicKey.Oid.Value switch
+                {
+                    Oids.Rsa => CreateServerSideRsaRequest(signingRequest),
+                    Oids.EcPublicKey => CreateServerSideEcRequest(signingRequest),
+                    _ => throw new NotSupportedException(
+                        $"Server-side key generation does not support CSR public key algorithm '{signingRequest.PublicKey.Oid.Value}'.")
+                };
+
+                var newCert =
+                    await certificateAuthority.SignCertificateRequest(privateKey.Request, profileName,
+                        user.Identity as ClaimsIdentity, cancellationToken: cancellationToken).ConfigureAwait(false);
+                if (newCert is SignCertificateResponse.Success success)
+                {
+                    var mpr = new MultipartContent();
+                    mpr.Add(encryptedKeyDelivery.UseEncryptedKeyPart
+                        ? new EstMultipartBase64Content(
+                            privateKey.Pkcs8.Base64Encode(),
+                            Constants.PemMimeType,
+                            smimeType: "server-generated-key")
+                        : new EstMultipartBase64Content(privateKey.Pkcs8.Base64Encode(), Constants.Pkcs8));
+                    mpr.Add(new EstMultipartBase64Content(CreateCertsOnlyResponse(success.Certificate), Constants.PemMimeType));
+                    return new MultipartContentResult(mpr);
+                }
+
+                var error = (SignCertificateResponse.Error)newCert;
+                return Results.Text(
+                    string.Join(Environment.NewLine, error.Errors), Constants.TextPlainMimeType,
+                    Encoding.UTF8,
+                    (int)HttpStatusCode.BadRequest);
+            }
+            catch (Exception)
+            {
+                return Results.Text(
+                    "An error occurred while processing the request.", Constants.TextPlainMimeType, Encoding.UTF8,
+                    (int)HttpStatusCode.BadRequest);
+            }
         }
     }
 

@@ -1,5 +1,6 @@
 namespace OpenCertServer.Acme.Server.Endpoints;
 
+using System.Diagnostics;
 using CertesSlim.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -26,6 +27,11 @@ public static class OrderEndpoints
             IOptions<AcmeServerOptions> optionsAccessor,
             CancellationToken cancellationToken) =>
         {
+            AcmeInstruments.NewOrderRequests.Add(1);
+            var sw = Stopwatch.GetTimestamp();
+            using var activity = AcmeInstruments.ActivitySource.StartActivity(ActivityNames.NewOrder);
+            try
+            {
             var header = payload.ToAcmeHeader();
             var account = await accountService.FromRequest(header, cancellationToken).ConfigureAwait(false);
 
@@ -71,7 +77,18 @@ public static class OrderEndpoints
                     new RouteValueDictionary([KeyValuePair.Create<string, string?>("orderId", order.OrderId)]),
                     scheme: Uri.UriSchemeHttps) ??
                 string.Empty;
+            AcmeInstruments.NewOrderSuccesses.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            AcmeInstruments.NewOrderDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
             return Results.Created(orderUrl, orderResponse);
+            }
+            catch (Exception ex)
+            {
+                AcmeInstruments.NewOrderFailures.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                AcmeInstruments.NewOrderDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+                throw;
+            }
         }).WithName("NewOrder");
 
         endpoints.MapPost("/order/{orderId}", async (
@@ -194,19 +211,35 @@ public static class OrderEndpoints
             LinkGenerator links,
             CancellationToken cancellationToken) =>
         {
-            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
-            var orderRequest = payload.ToPayload<FinalizeOrderRequest>();
-            if (string.IsNullOrWhiteSpace(orderRequest?.Csr))
+            AcmeInstruments.OrderFinalizeRequests.Add(1);
+            var sw = Stopwatch.GetTimestamp();
+            using var activity = AcmeInstruments.ActivitySource.StartActivity(ActivityNames.OrderFinalize);
+            try
             {
-                throw new MalformedRequestException("CSR was empty or could not be read.");
-            }
+                var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
+                var orderRequest = payload.ToPayload<FinalizeOrderRequest>();
+                if (string.IsNullOrWhiteSpace(orderRequest?.Csr))
+                {
+                    throw new MalformedRequestException("CSR was empty or could not be read.");
+                }
 
-            var order = await orderService.ProcessCsr(account, orderId, orderRequest.Csr, cancellationToken).ConfigureAwait(false);
-            GetOrderUrls(context, links, order, out var authorizationUrls, out var finalizeUrl, out var certificateUrl);
-            var orderResponse =
-                new OpenCertServer.Acme.Abstractions.HttpModel.Order(order, authorizationUrls, finalizeUrl,
-                    certificateUrl);
-            return Results.Ok(orderResponse);
+                var order = await orderService.ProcessCsr(account, orderId, orderRequest.Csr, cancellationToken).ConfigureAwait(false);
+                GetOrderUrls(context, links, order, out var authorizationUrls, out var finalizeUrl, out var certificateUrl);
+                var orderResponse =
+                    new OpenCertServer.Acme.Abstractions.HttpModel.Order(order, authorizationUrls, finalizeUrl,
+                        certificateUrl);
+                AcmeInstruments.OrderFinalizeSuccesses.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                AcmeInstruments.OrderFinalizeDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+                return Results.Ok(orderResponse);
+            }
+            catch (Exception ex)
+            {
+                AcmeInstruments.OrderFinalizeFailures.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                AcmeInstruments.OrderFinalizeDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+                throw;
+            }
         }).WithName("FinalizeOrder").AddEndpointFilter<AcmeLocationFilter>();
 
         endpoints.MapPost("/order/{orderId}/certificate", [AcmeLocation("GetOrder")] async (
@@ -216,9 +249,25 @@ public static class OrderEndpoints
             IAccountService accountService,
             CancellationToken cancellationToken) =>
         {
-            var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
-            var certificateChainBytes = await orderService.GetCertificate(account, orderId, cancellationToken).ConfigureAwait(false);
-            return Results.File(certificateChainBytes, "application/pem-certificate-chain");
+            AcmeInstruments.CertificateRequests.Add(1);
+            var sw = Stopwatch.GetTimestamp();
+            using var activity = AcmeInstruments.ActivitySource.StartActivity(ActivityNames.Certificate);
+            try
+            {
+                var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken).ConfigureAwait(false);
+                var certificateChainBytes = await orderService.GetCertificate(account, orderId, cancellationToken).ConfigureAwait(false);
+                AcmeInstruments.CertificateSuccesses.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                AcmeInstruments.CertificateDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+                return Results.File(certificateChainBytes, "application/pem-certificate-chain");
+            }
+            catch (Exception ex)
+            {
+                AcmeInstruments.CertificateFailures.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                AcmeInstruments.CertificateDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+                throw;
+            }
         }).WithName("GetCertificate").AddEndpointFilter<AcmeLocationFilter>();
 
         return endpoints;
