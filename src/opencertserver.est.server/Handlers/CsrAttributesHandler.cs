@@ -25,6 +25,7 @@ public static class CsrAttributesHandler
         EstInstruments.CsrAttrsRequests.Add(1);
         var sw = Stopwatch.GetTimestamp();
         using var activity = EstInstruments.ActivitySource.StartActivity(ActivityNames.CsrAttrs);
+        activity?.AddTag(TagKeys.ProfileName, profileName);
         try
         {
             var attributes = await loader.GetTemplate(profileName, user, cancellationToken).ConfigureAwait(false);

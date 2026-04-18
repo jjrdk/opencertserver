@@ -42,6 +42,7 @@ internal static class SimpleEnrollHandler
         EstInstruments.SimpleEnrollRequests.Add(1);
         var sw = Stopwatch.GetTimestamp();
         using var activity = EstInstruments.ActivitySource.StartActivity(ActivityNames.SimpleEnroll);
+        activity?.AddTag(TagKeys.ProfileName, profileName);
         IResult result;
         try
         {
