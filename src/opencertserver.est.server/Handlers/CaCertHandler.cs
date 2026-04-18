@@ -1,5 +1,6 @@
 ﻿namespace OpenCertServer.Est.Server.Handlers;
 
+using System.Diagnostics;
 using System.Formats.Asn1;
 using System.Net;
 using Microsoft.AspNetCore.Http;
@@ -21,15 +22,33 @@ internal static class CaCertsHandler
         EstPublishedCertificatesResolver certificates,
         CancellationToken cancellationToken = default)
     {
-        var export = await certificates(profileName, cancellationToken).ConfigureAwait(false);
-        var signedData = new SignedData(version: 1, certificates: export.ToArray());
-        var contentInfo = new CmsContentInfo(
-            Oids.Pkcs7Signed.InitializeOid(Oids.Pkcs7SignedFriendlyName),
-            signedData);
-        var writer = new AsnWriter(AsnEncodingRules.DER);
-        contentInfo.Encode(writer);
-        var contentBytes = writer.Encode();
-        return Results.Text(Convert.ToBase64String(contentBytes), Constants.PkiMimeTypeCertsOnly,
-            statusCode: (int)HttpStatusCode.OK);
+        EstInstruments.CaCertsRequests.Add(1);
+        var sw = Stopwatch.GetTimestamp();
+        using var activity = EstInstruments.ActivitySource.StartActivity(ActivityNames.CaCerts);
+        try
+        {
+            var export = await certificates(profileName, cancellationToken).ConfigureAwait(false);
+            var signedData = new SignedData(version: 1, certificates: export.ToArray());
+            var contentInfo = new CmsContentInfo(
+                Oids.Pkcs7Signed.InitializeOid(Oids.Pkcs7SignedFriendlyName),
+                signedData);
+            var writer = new AsnWriter(AsnEncodingRules.DER);
+            contentInfo.Encode(writer);
+            var contentBytes = writer.Encode();
+            EstInstruments.CaCertsSuccesses.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            return Results.Text(Convert.ToBase64String(contentBytes), Constants.PkiMimeTypeCertsOnly,
+                statusCode: (int)HttpStatusCode.OK);
+        }
+        catch (Exception ex)
+        {
+            EstInstruments.CaCertsFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
+        finally
+        {
+            EstInstruments.CaCertsDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+        }
     }
 }

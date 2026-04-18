@@ -3,6 +3,7 @@
 namespace OpenCertServer.Acme.Server.Workers;
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.Model;
@@ -66,27 +67,49 @@ public sealed class ValidationWorker : IValidationWorker
 
             var challenge = pendingAuthZ.Challenges[0];
 
-            var validator = _challengeValidatorFactory.GetValidator(challenge);
-            var (isValid, error) = await validator.ValidateChallenge(challenge, account, cancellationToken).ConfigureAwait(false);
-
-            if (isValid)
+            AcmeInstruments.ChallengeValidationRequests.Add(1);
+            AcmeInstruments.ChallengeValidationActive.Add(1);
+            var sw = Stopwatch.GetTimestamp();
+            using var activity = AcmeInstruments.ActivitySource.StartActivity(ActivityNames.ChallengeValidation);
+            try
             {
-                challenge.Error = null;
-                challenge.Validated = DateTimeOffset.UtcNow;
-                challenge.SetStatus(ChallengeStatus.Valid);
-                pendingAuthZ.SetStatus(AuthorizationStatus.Valid);
+                var validator = _challengeValidatorFactory.GetValidator(challenge);
+                var (isValid, error) = await validator.ValidateChallenge(challenge, account, cancellationToken).ConfigureAwait(false);
 
-                if (order.Error != null && string.Equals(order.Error.Type, "urn:ietf:params:acme:error:unauthorized", StringComparison.Ordinal))
+                if (isValid)
                 {
-                    order.Error = null;
+                    challenge.Error = null;
+                    challenge.Validated = DateTimeOffset.UtcNow;
+                    challenge.SetStatus(ChallengeStatus.Valid);
+                    pendingAuthZ.SetStatus(AuthorizationStatus.Valid);
+                    if (order.Error != null && string.Equals(order.Error.Type, "urn:ietf:params:acme:error:unauthorized", StringComparison.Ordinal))
+                    {
+                        order.Error = null;
+                    }
+
+                    AcmeInstruments.ChallengeValidationSuccesses.Add(1);
+                    activity?.SetStatus(ActivityStatusCode.Ok);
+                }
+                else
+                {
+                    challenge.Error = error ?? new AcmeError("serverInternal", "Challenge validation failed.", pendingAuthZ.Identifier);
+                    challenge.SetStatus(ChallengeStatus.Invalid);
+                    pendingAuthZ.SetStatus(AuthorizationStatus.Invalid);
+                    order.Error = challenge.Error;
+                    AcmeInstruments.ChallengeValidationFailures.Add(1);
+                    activity?.SetStatus(ActivityStatusCode.Error);
                 }
             }
-            else
+            catch (Exception ex)
             {
-                challenge.Error = error ?? new AcmeError("serverInternal", "Challenge validation failed.", pendingAuthZ.Identifier);
-                challenge.SetStatus(ChallengeStatus.Invalid);
-                pendingAuthZ.SetStatus(AuthorizationStatus.Invalid);
-                order.Error = challenge.Error;
+                AcmeInstruments.ChallengeValidationFailures.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                throw;
+            }
+            finally
+            {
+                AcmeInstruments.ChallengeValidationActive.Add(-1);
+                AcmeInstruments.ChallengeValidationDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
             }
         }
 
