@@ -1284,9 +1284,12 @@ public partial class CertificateServerFeatures
     [Then("the response MUST contain one private key part and one certificate part")]
     public async Task ThenTheResponseMustContainOnePrivateKeyPartAndOneCertificatePart()
     {
-        var payload = await GetMultipartContent().Select(s=>s.ContentType!).ToArrayAsync();
-        Assert.Contains("application/pkcs8", payload.AsEnumerable(), StringComparer.OrdinalIgnoreCase);
-        Assert.Contains("application/pkcs7-mime", payload, StringComparer.OrdinalIgnoreCase);
+        var payload = await GetMultipartContent().Select(s => s.ContentType!).ToArrayAsync();
+        Assert.Equal(2, payload.Length);
+        Assert.Equal(1, payload.Count(contentType =>
+            string.Equals(contentType, "application/pkcs8", StringComparison.OrdinalIgnoreCase)));
+        Assert.Equal(1, payload.Count(contentType =>
+            string.Equals(contentType, "application/pkcs7-mime", StringComparison.OrdinalIgnoreCase)));
     }
 
     [Then(@"the private key part MUST use the content type ""(.+)""")]
