@@ -1,4 +1,5 @@
 using System.Formats.Asn1;
+using Microsoft.AspNetCore.WebUtilities;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Est.Server.Response;
 
@@ -1281,11 +1282,11 @@ public partial class CertificateServerFeatures
     }
 
     [Then("the response MUST contain one private key part and one certificate part")]
-    public void ThenTheResponseMustContainOnePrivateKeyPartAndOneCertificatePart()
+    public async Task ThenTheResponseMustContainOnePrivateKeyPartAndOneCertificatePart()
     {
-        var payload = GetResponseText(Encoding.Latin1);
-        Assert.Contains("application/pkcs8", payload, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("application/pkcs7-mime", payload, StringComparison.OrdinalIgnoreCase);
+        var payload = await GetMultipartContent().Select(s=>s.ContentType!).ToArrayAsync();
+        Assert.Contains("application/pkcs8", payload.AsEnumerable(), StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("application/pkcs7-mime", payload, StringComparer.OrdinalIgnoreCase);
     }
 
     [Then(@"the private key part MUST use the content type ""(.+)""")]
@@ -2031,6 +2032,19 @@ public partial class CertificateServerFeatures
     private string GetResponseText(Encoding? encoding = null)
     {
         return (encoding ?? Encoding.UTF8).GetString(ConformanceState.ResponseBytes ?? []);
+    }
+
+    private async IAsyncEnumerable<MultipartSection> GetMultipartContent()
+    {
+        var boundary = ConformanceState.Response?.Content.Headers.ContentType?.Parameters
+            .FirstOrDefault(parameter => string.Equals(parameter.Name, "boundary", StringComparison.OrdinalIgnoreCase));
+        var reader = new MultipartReader(
+            boundary
+                ?.Value?.Trim('"') ?? string.Empty, new MemoryStream(ConformanceState.ResponseBytes ?? []));
+        while (await reader.ReadNextSectionAsync() is { } section)
+        {
+            yield return section;
+        }
     }
 
     private CsrAttributes GetParsedCsrAttributes()
