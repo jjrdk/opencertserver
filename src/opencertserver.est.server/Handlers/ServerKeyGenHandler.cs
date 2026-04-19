@@ -106,7 +106,8 @@ internal static class ServerKeyGenHandler
                 var csr = CertificateRequest.LoadSigningRequest(
                     csrDer,
                     HashAlgorithmName.SHA256,
-                    options: CertificateRequestLoadOptions.SkipSignatureValidation,
+                    options: CertificateRequestLoadOptions.SkipSignatureValidation |
+                    CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
                     signerSignaturePadding: RSASignaturePadding.Pss);
 
                 if (manualAuthorizationStrategy.TryGetPendingAuthorization(
@@ -138,7 +139,7 @@ internal static class ServerKeyGenHandler
                         user.Identity as ClaimsIdentity, cancellationToken: cancellationToken).ConfigureAwait(false);
                 if (newCert is SignCertificateResponse.Success success)
                 {
-                    var mpr = new MultipartContent();
+                    var mpr = new MultipartContent("mixed");
                     mpr.Add(encryptedKeyDelivery.UseEncryptedKeyPart
                         ? new EstMultipartBase64Content(
                             privateKey.Pkcs8.Base64Encode(),
@@ -147,7 +148,8 @@ internal static class ServerKeyGenHandler
                         : new EstMultipartBase64Content(privateKey.Pkcs8.Base64Encode(), Constants.Pkcs8));
                     mpr.Add(new EstMultipartBase64Content(CreateCertsOnlyResponse(success.Certificate),
                         Constants.PemMimeType));
-                    return new MultipartContentResult(mpr);
+                    return Results.Stream(
+                        await mpr.ReadAsStreamAsync(cancellationToken), mpr.Headers.ContentType!.ToString());
                 }
 
                 var error = (SignCertificateResponse.Error)newCert;
