@@ -2041,9 +2041,10 @@ public partial class CertificateServerFeatures
     {
         var boundary = ConformanceState.Response?.Content.Headers.ContentType?.Parameters
             .FirstOrDefault(parameter => string.Equals(parameter.Name, "boundary", StringComparison.OrdinalIgnoreCase));
+        using var responseStream = new MemoryStream(ConformanceState.ResponseBytes ?? []);
         var reader = new MultipartReader(
             boundary
-                ?.Value?.Trim('"') ?? string.Empty, new MemoryStream(ConformanceState.ResponseBytes ?? []));
+                ?.Value?.Trim('"') ?? string.Empty, responseStream);
         while (await reader.ReadNextSectionAsync() is { } section)
         {
             yield return section;
