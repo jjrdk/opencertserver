@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <Import Project="../../shared.proj" />
+
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Mcp</RootNamespace>
+        <AssemblyName>opencertserver.mcp</AssemblyName>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <OutputType>Exe</OutputType>
+        <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
+        <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+        <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.ca\opencertserver.ca.csproj" />
+        <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
+
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="" />
+    </ItemGroup>
+
+</Project>
