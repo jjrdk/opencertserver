@@ -58,7 +58,7 @@ public sealed class TpmCaCertificateStore
         // Remove stale entries for this profile first.
         var stale = store.Certificates
             .Find(X509FindType.FindBySubjectName, SubjectTag(profileName), validOnly: false);
-        foreach (X509Certificate2 old in stale)
+        foreach (var old in stale)
         {
             store.Remove(old);
         }

@@ -82,7 +82,7 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
             // would reinitialise the simulator and wipe all keys, forcing expensive
             // re-provisioning on every test scenario.
             var endpointKey = $"{options.SimulatorHost}:{options.SimulatorPort}";
-            bool isFirstConnection = InitializedSimulatorEndpoints.TryAdd(endpointKey, true);
+            var isFirstConnection = InitializedSimulatorEndpoints.TryAdd(endpointKey, true);
 
             if (isFirstConnection && tcp.PlatformAvailable() && tcp.PowerCtlAvailable())
             {
@@ -185,7 +185,7 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
     {
         lock (_lock)
         {
-            ISigSchemeUnion scheme = padding == RSASignaturePadding.Pss
+            var scheme = padding == RSASignaturePadding.Pss
                 ? new SchemeRsapss(ToTpmAlgId(hashAlgorithm))
                 : (ISigSchemeUnion)new SchemeRsassa(ToTpmAlgId(hashAlgorithm));
 

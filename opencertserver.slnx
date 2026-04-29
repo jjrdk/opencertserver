@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/servers/">
     <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
+    <Project Path="src/opencertserver.mcp/opencertserver.mcp.csproj" />
     <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
     <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
     <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />

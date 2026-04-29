@@ -34,6 +34,11 @@ public class CaProfileSet : IStoreCaProfiles
             : Task.FromResult(_profiles.TryGetValue(name, out var profile) ? profile : _profiles[_defaultProfile]);
     }
 
+    public IAsyncEnumerable<CaProfile> GetProfiles(CancellationToken cancellationToken = default)
+    {
+        return _profiles.Values.ToAsyncEnumerable();
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {

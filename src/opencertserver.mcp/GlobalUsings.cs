@@ -1,0 +1,11 @@
+global using System.Collections;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Hosting;
+global using Microsoft.Extensions.Logging;
+global using Microsoft.Extensions.Options;
+global using OpenCertServer.Ca;
+global using OpenCertServer.Ca.Utils;
+global using OpenCertServer.Ca.Utils.Ca;
+global using OpenCertServer.Ca.Utils.Ocsp;

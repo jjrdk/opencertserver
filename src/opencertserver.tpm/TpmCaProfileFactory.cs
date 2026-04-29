@@ -132,7 +132,7 @@ public sealed class TpmCaProfileFactory : IDisposable
         var notBefore = DateTimeOffset.UtcNow.Date;
         var notAfter = notBefore.Add(_options.CaCertificateValidity);
 
-        CertificateRequest request = key switch
+        var request = key switch
         {
             RSA rsa => new CertificateRequest(dn, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss),
             ECDsa ecdsa => new CertificateRequest(dn, ecdsa, HashAlgorithmName.SHA256),
@@ -147,7 +147,7 @@ public sealed class TpmCaProfileFactory : IDisposable
         // → ExportRSAPrivateKey / ExportECPrivateKey → ExportParameters(true), which TPM-backed
         // keys intentionally refuse.  Instead, sign the TBS bytes via X509SignatureGenerator which
         // calls SignHash — the only signing path our TPM wrappers support.
-        X509SignatureGenerator generator = key switch
+        var generator = key switch
         {
             RSA rsa => X509SignatureGenerator.CreateForRSA(rsa, RSASignaturePadding.Pss),
             ECDsa ecdsa => X509SignatureGenerator.CreateForECDsa(ecdsa),
