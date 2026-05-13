@@ -22,5 +22,3 @@ jobs:
         run: dotnet build opencertserver.slnx -c Release
       - name: Test OpenCertServer
         run: dotnet test opencertserver.slnx -c Release
-      - name: Build OpenCertServer UI
-        run: cd web && npm install && npm run build

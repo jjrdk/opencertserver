@@ -1,7 +1,0 @@
-{
-  "/ca": {
-    "target": "https://localhost:6001",
-    "secure": true,
-    "changeOrigin": true
-  }
-}
