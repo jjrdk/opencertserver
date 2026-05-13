@@ -1,8 +1,8 @@
-using System.Diagnostics;
-
 namespace OpenCertServer.Mcp;
 
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using OpenCertServer.Mcp.Transport;
 
 /// <summary>
 /// The MCP server that hosts certificate authority tools.
@@ -15,6 +15,7 @@ public sealed class McpServer : IDisposable
     private readonly ConcurrentDictionary<string, McpToolDefinition> _tools = new();
     private volatile bool _isRunning;
     private IServiceProvider? _serviceProvider;
+    private McpStdioTransport? _stdioTransport;
 
     /// <summary>
     /// Creates a new MCP server instance.
@@ -99,20 +100,28 @@ public sealed class McpServer : IDisposable
     /// Starts the MCP server (for stdio transport).
     /// </summary>
     public async Task StartAsync(CancellationToken cancellationToken = default)
-    {
-        _isRunning = true;
-        _logger.LogInformation("MCP server starting: {ServerName} v{Version}",
-            _options.ServerName, _options.ServerVersion);
+     {
+         _isRunning = true;
+         _logger.LogInformation("MCP server starting: {ServerName} v{Version}",
+             _options.ServerName, _options.ServerVersion);
 
         if (_options.ListToolsOnStart)
-        {
-            _logger.LogInformation("Registered {ToolCount} MCP tool(s)", _tools.Count);
-        }
+         {
+             _logger.LogInformation("Registered {ToolCount} MCP tool(s)", _tools.Count);
+         }
 
-        // TODO: Implement stdio transport loop here
-        // This would read JSON-RPC requests from stdin and write responses to stdout
+         // Create and start the stdio transport
+        var transportLogger = _logger as ILogger<McpStdioTransport>;
+        _stdioTransport = new McpStdioTransport(this, transportLogger ?? _logger as ILogger<McpStdioTransport> ?? NullLogger<McpStdioTransport>.Instance);
+         await _stdioTransport.StartAsync(cancellationToken);
+     }
 
-        await Task.CompletedTask;
+     /// <summary>
+    /// Sets up the stdio transport for future calls to StartAsync.
+    /// </summary>
+    public void UseStdioTransport()
+     {
+         // Already handled in StartAsync, this method exists for API compatibility.
     }
 
     /// <summary>
@@ -141,9 +150,10 @@ public sealed class McpServer : IDisposable
     }
 
     public void Dispose()
-    {
-        _isRunning = false;
-        _tools.Clear();
-        _serviceProvider = null;
-    }
+     {
+         _isRunning = false;
+         _stdioTransport?.Dispose();
+         _tools.Clear();
+         _serviceProvider = null;
+     }
 }
