@@ -13,8 +13,11 @@ namespace OpenCertServer.Mcp.Transport;
 /// </summary>
 internal class JsonRpcResponse
 {
+    [JsonPropertyName("jsonrpc")]
     public string Jsonrpc { get; set; } = "2.0";
+    [JsonPropertyName("id")]
     public JsonElement? Id { get; set; }
+    [JsonPropertyName("result")]
     public JsonElement? Result { get; set; }
     [JsonPropertyName("error")]
     public JsonRpcError? ErrorResult { get; set; }
