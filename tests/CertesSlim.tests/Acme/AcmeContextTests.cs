@@ -1,11 +1,10 @@
-﻿using System;
-using System.Threading.Tasks;
-using CertesSlim.Acme;
+﻿using CertesSlim.Acme;
 using CertesSlim.Acme.Resource;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using Xunit;
 using static CertesSlim.Tests.Helper;
+using Directory = CertesSlim.Acme.Resource.Directory;
 
 namespace CertesSlim.Tests.Acme;
 
@@ -77,7 +76,7 @@ public class AcmeContextTests
         httpClientMock.ConsumeNonce().Returns("nonce");
 
         httpClientMock.Post<string, object>(MockDirectoryV2.RevokeCert, Arg.Any<object>())
-            .Returns(new AcmeHttpResponse<string>(null, null, null, null));
+            .Returns(new AcmeHttpResponse<string>(null!, null!, null, null));
 
         var certKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
 

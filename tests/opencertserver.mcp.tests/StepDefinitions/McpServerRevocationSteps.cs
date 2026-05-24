@@ -36,10 +36,14 @@ public sealed class McpServerRevocationSteps
         }
 
         [Given("a certificate is issued")]
+        [Scope(Tag = "mcp-server-revocation")]
         public async Task GivenACertificateIsIssued()
         {
                 // This issues a cert that goes into TestSharedState; also stash in _issuedCerts for OCSP
-                await TestSharedState.IssueAsync(_fixture.McpServer, "test-rev-check-1");
+                var csr = McpServerFixture.CreateBase64DerCsr();
+                var mcpResult = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr });
+                if (mcpResult.IsSuccess)
+                        TestSharedState.SignedCert = (McpCertificateItem)mcpResult.Content!;
 
                 // Also need an actual X509Certificate2 in _issuedCerts for hash computation
                 var cert = await _fixture.CreateAndIssueCertificateAsync("test-rev-check-1");
@@ -54,7 +58,10 @@ public sealed class McpServerRevocationSteps
                 _issuedCerts.Add(cert);
 
                 // Also add to shared state so common assertions work
-                await TestSharedState.IssueAsync(_fixture.McpServer, "test-rev-check-2");
+                var csr = McpServerFixture.CreateBase64DerCsr();
+                var mcpResult = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr });
+                if (mcpResult.IsSuccess)
+                        TestSharedState.SignedCert = (McpCertificateItem)mcpResult.Content!;
 
                 // Revoke it via MCP
                 await _fixture.InvokeMcpToolAsync("revoke_certificate", new
@@ -64,32 +71,35 @@ public sealed class McpServerRevocationSteps
                 });
         }
 
-        [When("the MCP server invokes \\\"get_crl\\\" with default parameters")]
+        [When("the MCP server invokes \"get_crl\" with default parameters")]
         public async Task WhenGetCrlDefault()
         {
                 var result = await _fixture.InvokeMcpToolAsync("get_crl", new { });
                 Assert.True(result.IsSuccess, $"get_crl failed: {result.ErrorMessage}");
+                TestSharedState.ToolResult = result;
                 TestSharedState.CrlResult = (McpCrlResult)result.Content!;
         }
 
-        [When("the MCP server invokes \\\"get_crl\\\" with profileName \\\"(.+)\\\"")]
+        [When("the MCP server invokes \"get_crl\" with profileName \"(.+)\"")]
         public async Task WhenGetCrlWithProfile(string profileName)
         {
                 var result = await _fixture.InvokeMcpToolAsync("get_crl", new { profileName });
                 Assert.True(result.IsSuccess, $"get_crl with profile failed: {result.ErrorMessage}");
+                TestSharedState.ToolResult = result;
                 TestSharedState.CrlResult = (McpCrlResult)result.Content!;
         }
 
-        [When("the MCP server invokes \\\"get_crl\\\" with includePem true")]
+        [When("the MCP server invokes \"get_crl\" with includePem true")]
         public async Task WhenGetCrlWithPem()
         {
                 var result = await _fixture.InvokeMcpToolAsync("get_crl", new { includePem = true });
                 Assert.True(result.IsSuccess, $"get_crl with PEM failed: {result.ErrorMessage}");
+                TestSharedState.ToolResult = result;
                 TestSharedState.CrlResult = (McpCrlResult)result.Content!;
         }
 
         [When(
-                "the MCP server invokes \\\"check_ocsp_status\\\" with the certificate's serial number, issuer name hash, and issuer key hash")]
+                "the MCP server invokes \"check_ocsp_status\" with the certificate's serial number, issuer name hash, and issuer key hash")]
         public async Task WhenCheckOcspWithGoodCert()
         {
                 var (serial, nameHash, keyHash) = await GetCertInfoAsync();
@@ -105,7 +115,7 @@ public sealed class McpServerRevocationSteps
         }
 
         [When(
-                "the MCP server invokes \\\"check_ocsp_status\\\" with serial number \\\"(.+)\\\", issuer name hash \\\"(.+)\\\", and issuer key hash \\\"(.+)\\\"")]
+                "the MCP server invokes \"check_ocsp_status\" with serial number \"(.+)\", issuer name hash \"(.+)\", and issuer key hash \"(.+)\"")]
         public async Task WhenCheckOcspWithSerial(string serial, string nameHash, string keyHash)
         {
                 var result = await _fixture.InvokeMcpToolAsync("check_ocsp_status", new
@@ -120,7 +130,7 @@ public sealed class McpServerRevocationSteps
                 TestSharedState.ToolResult = result;
         }
 
-        [When("the MCP server invokes \\\"check_ocsp_status\\\" with serial number \\\"(.+)\\\" but no issuer hashes")]
+        [When("the MCP server invokes \"check_ocsp_status\" with serial number \"(.+)\" but no issuer hashes")]
         public async Task WhenCheckOcspWithoutHashes(string serial)
         {
                 var result = await _fixture.InvokeMcpToolAsync("check_ocsp_status", new { serialNumber = serial });
@@ -131,7 +141,7 @@ public sealed class McpServerRevocationSteps
         }
 
         [When(
-                "the MCP server invokes \\\"get_revocation_status\\\" with an array containing the certificate's serial number")]
+                "the MCP server invokes \"get_revocation_status\" with an array containing the certificate's serial number")]
         public async Task WhenGetRevStatusWithGoodCert()
         {
                 var (serial, _, _) = await GetCertInfoAsync();
@@ -144,7 +154,7 @@ public sealed class McpServerRevocationSteps
                 TestSharedState.ToolResult = result;
         }
 
-        [When("the MCP server invokes \\\"get_revocation_status\\\" with serial number \\\"(.+)\\\"")]
+        [When("the MCP server invokes \"get_revocation_status\" with serial number \"(.+)\"")]
         public async Task WhenGetRevStatusWithUnknownCert(string serial)
         {
                 var result = await _fixture.InvokeMcpToolAsync("get_revocation_status", new
@@ -156,7 +166,7 @@ public sealed class McpServerRevocationSteps
                 TestSharedState.ToolResult = result;
         }
 
-        [When("the MCP server invokes \\\"get_revocation_status\\\" with an empty serialNumbers array")]
+        [When("the MCP server invokes \"get_revocation_status\" with an empty serialNumbers array")]
         public async Task WhenGetRevStatusWithEmptyArray()
         {
                 var result = await _fixture.InvokeMcpToolAsync("get_revocation_status", new
@@ -166,7 +176,7 @@ public sealed class McpServerRevocationSteps
                 TestSharedState.ToolResult = result;
         }
 
-        [When("the MCP server invokes \\\"get_revocation_status\\\" with both certificates' serial numbers")]
+        [When("the MCP server invokes \"get_revocation_status\" with both certificates' serial numbers")]
         public async Task WhenGetRevStatusWithMixedCerts()
         {
                 var serials = _issuedCerts.Select(c => c.GetSerialNumberString()).ToList();
@@ -179,7 +189,7 @@ public sealed class McpServerRevocationSteps
                 TestSharedState.ToolResult = result;
         }
 
-        [When("the MCP server invokes \\\"get_revocation_status\\\" with serial numbers and profileName \\\"(.+)\\\"")]
+        [When("the MCP server invokes \"get_revocation_status\" with serial numbers and profileName \"(.+)\"")]
         public async Task WhenGetRevStatusWithProfile(string profileName)
         {
                 var serials = _issuedCerts.Select(c => c.GetSerialNumberString()).ToList();
@@ -222,7 +232,7 @@ public sealed class McpServerRevocationSteps
                 // When includePem is true, CrlBytesBase64 should be populated
         }
 
-        [Then("the response profile name MUST be \\\"(.+)\\\"")]
+        [Then("the response profile name MUST be \"(.+)\"")]
         public void ThenCrlProfileMustMatch(string expected)
         {
                 Assert.NotNull(TestSharedState.CrlResult);
@@ -230,8 +240,9 @@ public sealed class McpServerRevocationSteps
         }
 
         [Then("the status MUST be McpCertificateStatus.Good (.+)")]
-        public void ThenOcspStatusMustBeGood(int expectedValue)
+        public void ThenOcspStatusMustBeGood(string expectedValueStr)
         {
+                int expectedValue = int.Parse(expectedValueStr.Trim('(', ')'));
                 Assert.NotNull(TestSharedState.OcspResult);
                 Assert.True(TestSharedState.OcspResult.Status == McpCertificateStatus.Good);
                 Assert.Equal(expectedValue, (int)TestSharedState.OcspResult.Status);
@@ -253,11 +264,23 @@ public sealed class McpServerRevocationSteps
         }
 
         [Then("the status MUST be McpCertificateStatus.Unknown (.+)")]
-        public void ThenOcspStatusMustBeUnknown(int expectedValue)
+        public void ThenOcspStatusMustBeUnknown(string expectedValueStr)
         {
-                Assert.NotNull(TestSharedState.OcspResult);
-                Assert.True(TestSharedState.OcspResult.Status == McpCertificateStatus.Unknown);
-                Assert.Equal(expectedValue, (int)TestSharedState.OcspResult.Status);
+                int expectedValue = int.Parse(expectedValueStr.Trim('(', ')'));
+                if (TestSharedState.OcspResult != null)
+                {
+                        Assert.True(TestSharedState.OcspResult.Status == McpCertificateStatus.Unknown);
+                        Assert.Equal(expectedValue, (int)TestSharedState.OcspResult.Status);
+                }
+                else if (TestSharedState.RevocationStatusResult?.Checks.Count > 0)
+                {
+                        Assert.True(TestSharedState.RevocationStatusResult.Checks[0].Status == McpCertificateStatus.Unknown);
+                        Assert.Equal(expectedValue, (int)TestSharedState.RevocationStatusResult.Checks[0].Status);
+                }
+                else
+                {
+                        throw new Exception("No OcspResult or RevocationStatusResult to check for Unknown status");
+                }
         }
 
         [Then("the Checks array MUST contain one entry")]
@@ -281,6 +304,21 @@ public sealed class McpServerRevocationSteps
                 Assert.Single(TestSharedState.RevocationStatusResult.Checks);
                 Assert.Equal(McpCertificateStatus.Good, TestSharedState.RevocationStatusResult.Checks[0].Status);
                 Assert.True(TestSharedState.RevocationStatusResult.Checks[0].FoundInStore);
+        }
+
+        [Then("the first check result MUST have FoundInStore equal to true")]
+        public void ThenFirstCheckFoundInStoreTrue()
+        {
+                Assert.NotNull(TestSharedState.RevocationStatusResult);
+                Assert.NotEmpty(TestSharedState.RevocationStatusResult.Checks);
+                Assert.True(TestSharedState.RevocationStatusResult.Checks[0].FoundInStore);
+        }
+
+        [Then("the response MUST have a TotalChecks equal to {int}")]
+        public void ThenResponseHasTotalChecks(int expected)
+        {
+                Assert.NotNull(TestSharedState.RevocationStatusResult);
+                Assert.Equal(expected, TestSharedState.RevocationStatusResult.TotalChecks);
         }
 
         [Then("FoundInStore MUST be false")]
@@ -307,19 +345,27 @@ public sealed class McpServerRevocationSteps
         }
 
         [Then("at least one result MUST have status Revoked (.+)")]
-        public void ThenAtLeastOneRevoked(int expectedValue)
+        public void ThenAtLeastOneRevoked(string expectedValueStr)
         {
+                int expectedValue = int.Parse(expectedValueStr.Trim('(', ')'));
                 Assert.NotNull(TestSharedState.RevocationStatusResult);
                 Assert.Contains(TestSharedState.RevocationStatusResult.Checks,
                         c => c.Status == McpCertificateStatus.Revoked);
                 Assert.Equal((int)McpCertificateStatus.Revoked, expectedValue);
         }
 
-        [Then("the response profile MUST be \\\"(.+)\\\"")]
+        [Then("the response profile MUST be \"(.+)\"")]
         public void ThenRevocationProfileMustMatch(string expected)
         {
-                Assert.NotNull(TestSharedState.RevocationStatusResult);
-                Assert.Equal(expected, TestSharedState.RevocationStatusResult.Profile);
+                if (TestSharedState.CrlResult != null)
+                {
+                        Assert.Equal(expected, TestSharedState.CrlResult.Profile);
+                }
+                else
+                {
+                        Assert.NotNull(TestSharedState.RevocationStatusResult);
+                        Assert.Equal(expected, TestSharedState.RevocationStatusResult.Profile);
+                }
         }
 
         [Then("the TotalChecks MUST be (.+)")]
@@ -327,13 +373,5 @@ public sealed class McpServerRevocationSteps
         {
                 Assert.NotNull(TestSharedState.RevocationStatusResult);
                 Assert.Equal(expected, TestSharedState.RevocationStatusResult.TotalChecks);
-        }
-
-        [Then("the error description contains (.+)")]
-        public void ThenErrorContainsKeyword(string keyword)
-        {
-                Assert.NotNull(TestSharedState.ToolResult);
-                var msg = TestSharedState.ToolResult.ErrorMessage!;
-                Assert.True(msg.Contains(keyword, StringComparison.OrdinalIgnoreCase));
         }
 }

@@ -30,7 +30,7 @@ public class CertificationRequestBuilderTests
 
         Assert.Equal(san, csr.SubjectAlternativeNames);
 
-        Assert.Throws<ArgumentNullException>(() => csr.SubjectAlternativeNames = null);
+        Assert.Throws<ArgumentNullException>(() => csr.SubjectAlternativeNames = null!);
     }
 
     [Fact]

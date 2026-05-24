@@ -27,7 +27,7 @@ Feature: MCP Certificate Query Tools
             And NotBefore must be before NotAfter
 
             When the MCP server invokes "list_certificates" with page 0 and pageSize 1
-            And the result MUST succeed
+            Then the result MUST succeed
             And the items list MUST contain at most 1 certificate
             And hasNextPage indicates whether there are more pages
 

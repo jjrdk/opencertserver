@@ -1,6 +1,6 @@
-﻿using System;
-using CertesSlim.Acme.Resource;
+﻿using CertesSlim.Acme.Resource;
 using Xunit;
+using Directory = CertesSlim.Acme.Resource.Directory;
 
 namespace CertesSlim.Tests.Acme.Resource;
 
@@ -16,7 +16,7 @@ public class DirectoryTests
             KeyChange = new Uri("http://KeyChange.is.working"),
             NewAccount = new Uri("http://NewAccount.is.working"),
             NewOrder = new Uri("http://NewOrder.is.working"),
-            Meta = new DirectoryMeta(new Uri("http://certes.is.working"), null, null, null)
+            Meta = new DirectoryMeta(new Uri("http://certes.is.working"), null!, null, null)
         };
 
         var model = new Directory(

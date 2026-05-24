@@ -28,7 +28,7 @@ public class AccountTests
         var srcJson = File.ReadAllText("./Data/account.json");
         var deserialized = JsonSerializer.Deserialize(srcJson, CertesSerializerContext.Default.Account);
 
-        Assert.Equal(AccountStatus.Valid, deserialized.Status);
+        Assert.Equal(AccountStatus.Valid, deserialized!.Status);
         Assert.Equal(2, deserialized.Contact?.Count);
     }
 }

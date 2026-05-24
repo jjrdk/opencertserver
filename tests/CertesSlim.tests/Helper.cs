@@ -14,12 +14,12 @@ public static partial class Helper
         TProperty value)
     {
         var member = propertyLambda.Body as MemberExpression;
-        var propInfo = member.Member as PropertyInfo;
+        var propInfo = member!.Member as PropertyInfo;
 
-        propInfo.SetValue(source, value);
+        propInfo!.SetValue(source, value);
         var actualValue = propInfo.GetValue(source);
 
-        Assert.Equal(value, (TProperty)actualValue);
+        Assert.Equal(value, (TProperty)actualValue!);
     }
 
     public static string GetTestKey(this string algo)
