@@ -251,7 +251,7 @@ internal sealed class McpStdioTransport : IDisposable
             !paramsProp.TryGetProperty("name", out var nameProp) ||
             nameProp.ValueKind != JsonValueKind.String)
         {
-            var error = JsonRpcResponse.Error(id, -32602, "tool/call: missing 'name' parameter");
+            var error = JsonRpcResponse.Error(id, -32602, "tools/call: missing 'name' parameter");
             WriteResponse(error);
             return;
         }
@@ -259,7 +259,7 @@ internal sealed class McpStdioTransport : IDisposable
         var name = nameProp.GetString();
         if (string.IsNullOrEmpty(name))
         {
-            var error = JsonRpcResponse.Error(id, -32602, "tool/call: empty 'name' parameter");
+            var error = JsonRpcResponse.Error(id, -32602, "tools/call: empty 'name' parameter");
             WriteResponse(error);
             return;
         }
