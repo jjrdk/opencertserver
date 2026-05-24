@@ -1,3 +1,5 @@
+using OpenCertServer.Ca.Utils.Ca;
+
 namespace OpenCertServer.Mcp.Tests.StepDefinitions;
 
 using System.Security.Cryptography;
@@ -34,8 +36,9 @@ public class ParameterHandlingSteps
             }
             else if (value.StartsWith("[") && value.EndsWith("]"))
             {
-                // Parse as JSON array
-                var arrayValue = value.Replace("{issued_serial}", TestSharedState.IssuedSerialNumber ?? "0000");
+                // Parse as JSON array — serial numbers are strings, so quote them
+                var arrayValue = value.Replace("{issued_serial}",
+                    $@"""{TestSharedState.IssuedSerialNumber ?? "0000"}""");
                 var jsonArray = JsonSerializer.Deserialize<JsonElement>(arrayValue);
                 parameters[key] = jsonArray;
                 continue;
@@ -61,6 +64,15 @@ public class ParameterHandlingSteps
 
         var result = await _fixture.InvokeMcpToolAsync(toolName, parameters);
         TestSharedState.ToolResult = result;
+    }
+
+    [Given("the MCP server is initialized with a test CA")]
+    public void GivenTheMCPServerIsInitializedWithATestCA()
+    {
+        // Fixture is auto-initialized by Reqnroll via dependency injection.
+        // This step is a no-op placeholder to satisfy the Background requirement.
+        // Clears any leftover state from previous scenarios.
+        TestSharedState.Clear();
     }
 
     [When(@"the MCP server invokes ""([^""]*)"" with a PEM CSR")]
@@ -150,5 +162,16 @@ public class ParameterHandlingSteps
         {
             throw new Exception("Failed to issue test certificate");
         }
+    }
+
+    [Then("the error message MUST mention {string}")]
+    public void ThenTheErrorMessageMUSTMention(string keyword)
+    {
+        var r = TestSharedState.ToolResult;
+        Assert.NotNull(r);
+        Assert.False(r.IsSuccess);
+        var msg = r.ErrorMessage ?? "";
+        Assert.True(msg.Contains(keyword, StringComparison.OrdinalIgnoreCase),
+            $"Error '{msg}' does not mention '{keyword}'");
     }
 }

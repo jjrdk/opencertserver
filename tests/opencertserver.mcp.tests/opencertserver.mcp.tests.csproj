@@ -1,9 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <IsPackable>false</IsPackable>
-        <RootNamespace>OpenCertServer.Mcp.Tests</RootNamespace>
-    </PropertyGroup>
+     <PropertyGroup>
+         <IsPackable>false</IsPackable>
+         <RootNamespace>OpenCertServer.Mcp.Tests</RootNamespace>
+          <!-- Test projects don't need trim/AOT compatibility -->
+         <IsTrimmable>false</IsTrimmable>
+         <IsAotCompatible>false</IsAotCompatible>
+     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk"/>

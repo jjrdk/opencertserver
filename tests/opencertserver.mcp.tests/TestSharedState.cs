@@ -25,6 +25,7 @@ public static class TestSharedState
     public static IReadOnlyDictionary<string, McpToolDefinition>? Tools { get; set; }
     public static IStoreCertificates? Store { get; set; }
     public static string? RequestedSerialNumber { get; set; }
+    public static string? IssuedSerialNumber { get; set; }
     public static readonly List<X509Certificate2> IssuedCerts = new();
 
     public static void Clear()
@@ -40,6 +41,7 @@ public static class TestSharedState
         Tools = null;
         Store = null;
         RequestedSerialNumber = null;
+        IssuedSerialNumber = null;
         IssuedCerts.Clear();
     }
 }
