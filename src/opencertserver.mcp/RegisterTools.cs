@@ -1,6 +1,6 @@
-using OpenCertServer.Mcp.Tools;
-
 namespace OpenCertServer.Mcp;
+
+using OpenCertServer.Mcp.Tools;
 
 /// <summary>
 /// Helper class to register all MCP tools with the server.
