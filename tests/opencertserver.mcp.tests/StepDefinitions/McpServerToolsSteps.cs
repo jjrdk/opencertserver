@@ -31,6 +31,13 @@ public class McpServerToolsSteps
         Assert.Equal(count, TestSharedState.Tools.Count);
     }
 
+    [Then("the server MUST report exactly (.+) registered tools")]
+    public void ThenServerMustReportExactlyTools(int count)
+    {
+        Assert.NotNull(TestSharedState.Tools);
+        Assert.Equal(count, TestSharedState.Tools.Count);
+    }
+
     [Then("the registered tools MUST cover certificate query, operations, and revocation checking")]
     public void ThenRegisteredToolsMustCoverAllCategories()
     {
@@ -66,7 +73,18 @@ public class McpServerToolsSteps
         }
     }
 
-    [Then("the MCP server MUST register the \\\"(.+)\\\" tool")]
+    [Then("it MUST have a non-empty description")]
+    public void ThenCurrentToolMustHaveDescription()
+    {
+        Assert.NotNull(TestSharedState.Tools);
+        foreach (var (_, def) in TestSharedState.Tools!)
+        {
+            Assert.NotNull(def.Description);
+            Assert.NotEmpty(def.Description);
+        }
+    }
+
+    [Then("the MCP server MUST register the \"(.+)\" tool")]
     public void ThenTheMcpServerMustRegisterTheTool(string toolName)
     {
         Assert.NotNull(TestSharedState.Tools);
@@ -75,11 +93,11 @@ public class McpServerToolsSteps
     }
 
     [Then("the error code MUST be McpErrorCode.ToolNotFound (.+)")]
-    public void ThenTheErrorCodeMustBeMcpErrorCodeToolNotFound(int expectedCode)
+    public void ThenTheErrorCodeMustBeMcpErrorCodeToolNotFound(string expectedCodeStr)
     {
         Assert.NotNull(TestSharedState.ToolResult);
-        Assert.True(TestSharedState.ToolResult.IsSuccess);
-        Assert.Equal(expectedCode, TestSharedState.ToolResult.ErrorCode);
+        Assert.False(TestSharedState.ToolResult!.IsSuccess);
+        Assert.Equal((int)McpErrorCode.ToolNotFound, TestSharedState.ToolResult.ErrorCode);
     }
 
     [Then("the tool description contains (.+)")]

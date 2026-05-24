@@ -7,6 +7,7 @@ using OpenCertServer.Mcp;
 using OpenCertServer.Mcp.Tools;
 using Reqnroll;
 using Xunit;
+using System.Security.Cryptography;
 
 [Binding]
 public sealed class McpServerCertificateQuerySteps
@@ -18,13 +19,22 @@ public sealed class McpServerCertificateQuerySteps
         _fixture = fixture;
     }
 
-    [Given("a certificate is issued with CN \\\"(.+)\\\"")]
+    [Given("a certificate is issued with CN (.+)")]
     public async Task GivenACertificateIsIssuedWithCn(string cn)
     {
-        await TestSharedState.IssueAsync(_fixture.McpServer, cn);
+        using var rsa = RSA.Create(3072);
+        var request = new System.Security.Cryptography.X509Certificates.CertificateRequest(
+            new System.Security.Cryptography.X509Certificates.X500DistinguishedName($"CN={cn}"),
+            rsa,
+            System.Security.Cryptography.HashAlgorithmName.SHA256,
+            System.Security.Cryptography.RSASignaturePadding.Pss);
+        var csr = Convert.ToBase64String(request.CreateSigningRequest());
+        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr });
+        Assert.True(result.IsSuccess, $"sign_certificate failed: {result.ErrorMessage}");
+        TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
     }
 
-    [When("the MCP server invokes \\\"list_certificates\\\" with page (.+) and pageSize (.+)")]
+    [When("the MCP server invokes \"list_certificates\" with page (.+) and pageSize (.+)")]
     public async Task WhenListWithPageAndPageSize(int page, int pageSize)
     {
         var result = await _fixture.InvokeMcpToolAsync("list_certificates", new { page, pageSize });
@@ -36,7 +46,7 @@ public sealed class McpServerCertificateQuerySteps
         }
     }
 
-    [When("the MCP server invokes \\\"search_certificates\\\" with no filter parameters")]
+    [When("the MCP server invokes \"search_certificates\" with no filter parameters")]
     public async Task WhenSearchWithNoFilters()
     {
         var result = await _fixture.InvokeMcpToolAsync("search_certificates", new { });
@@ -47,7 +57,20 @@ public sealed class McpServerCertificateQuerySteps
         }
     }
 
-    [When("the MCP server invokes \\\"get_certificate\\\" with the issued certificate's serial number")]
+    [When("the MCP server invokes {string} with serialNumber matching the issued cert")]
+    public async Task WhenSearchWithSerialNumber(string toolName)
+    {
+        if (TestSharedState.SignedCert == null)
+            throw new Exception("No cert in shared state — run the Background step first");
+        var result = await _fixture.InvokeMcpToolAsync(toolName, new { serialNumber = TestSharedState.SignedCert.SerialNumber });
+        TestSharedState.ToolResult = result;
+        if (result.IsSuccess)
+        {
+            TestSharedState.SearchResult = (McpCertificateSearchResult)result.Content!;
+        }
+    }
+
+    [When("the MCP server invokes \"get_certificate\" with the issued certificate's serial number")]
     public async Task WhenGetBySerial()
     {
         // The serial is in shared state
@@ -62,7 +85,7 @@ public sealed class McpServerCertificateQuerySteps
         }
     }
 
-    [When("the MCP server invokes \\\"get_certificate\\\" with serial number \\\"(.+)\\\"")]
+    [When("the MCP server invokes \"get_certificate\" with serial number \"(.+)\"")]
     public async Task WhenGetBySpecificSerial(string serial)
     {
         var result = await _fixture.InvokeMcpToolAsync("get_certificate", new { serialNumber = serial });
@@ -73,7 +96,7 @@ public sealed class McpServerCertificateQuerySteps
         }
     }
 
-    [When("the MCP server invokes \\\"get_certificate\\\" without providing a serial number")]
+    [When("the MCP server invokes \"get_certificate\" without providing a serial number")]
     public async Task WhenGetWithoutSerial()
     {
         var result = await _fixture.InvokeMcpToolAsync("get_certificate", new { });
@@ -83,7 +106,7 @@ public sealed class McpServerCertificateQuerySteps
             : null;
     }
 
-    [When("the MCP server invokes \\\"get_ca_certificates\\\" with includeFullChain false")]
+    [When("the MCP server invokes \"get_ca_certificates\" with includeFullChain false")]
     public async Task WhenGetCaCertsNoChain()
     {
         var result = await _fixture.InvokeMcpToolAsync("get_ca_certificates", new { includeFullChain = false });
@@ -91,7 +114,7 @@ public sealed class McpServerCertificateQuerySteps
         TestSharedState.CaCertsResult = (McpCaCertificatesResult)result.Content!;
     }
 
-    [When("the MCP server invokes \\\"get_ca_certificates\\\" with includeFullChain true")]
+    [When("the MCP server invokes \"get_ca_certificates\" with includeFullChain true")]
     public async Task WhenGetCaCertsWithChain()
     {
         var result = await _fixture.InvokeMcpToolAsync("get_ca_certificates", new { includeFullChain = true });
@@ -99,7 +122,7 @@ public sealed class McpServerCertificateQuerySteps
         TestSharedState.CaCertsResult = (McpCaCertificatesResult)result.Content!;
     }
 
-    [When("the MCP server invokes \\\"get_ca_certificates\\\" with profileName \\\"(.+)\\\"")]
+    [When("the MCP server invokes \"get_ca_certificates\" with profileName \"(.+)\"")]
     public async Task WhenGetCaCertsWithProfile(string profileName)
     {
         var result =
@@ -228,30 +251,8 @@ public sealed class McpServerCertificateQuerySteps
         _ = TestSharedState.SearchResult.HasNextPage;
     }
 
-    [Then("the result MUST succeed")]
-    public void EnsureResultSucceeded()
-    {
-        _ = TestSharedState.ToolResult?.IsSuccess;
-    }
-
-    [Then("the result MUST indicate failure")]
-    public void EnsureResultFailed()
-    {
-        Assert.NotNull(TestSharedState.ToolResult);
-        Assert.False(TestSharedState.ToolResult.IsSuccess);
-    }
-
-    [Then("the error description contains (.+)")]
-    public void ThenErrorContainsKeyword(string keyword)
-    {
-        Assert.NotNull(TestSharedState.ToolResult);
-        var msg = TestSharedState.ToolResult.ErrorMessage!;
-        Assert.True(msg.Contains(keyword, StringComparison.OrdinalIgnoreCase),
-            $"Error '{msg}' does not contain '{keyword}'");
-    }
-
-    [Then("the returned certificate serial number MUST be non-empty")]
-    public void ThenSerialMustBeNonEmpty()
+    [Then("the returned certificate MUST have a non-empty serial number")]
+    public void ThenReturnedCertMustHaveSerial()
     {
         Assert.NotNull(TestSharedState.SignedCert);
         Assert.NotEmpty(TestSharedState.SignedCert.SerialNumber);
@@ -304,7 +305,7 @@ public sealed class McpServerCertificateQuerySteps
         }
     }
 
-    [Then("the profiles list MUST include \\\"(.+)\\\"")]
+    [Then("the profiles list MUST include \"(.+)\"")]
     public void ThenProfilesMustIncludeProfile(string name)
     {
         Assert.NotNull(TestSharedState.CaCertsResult);

@@ -18,8 +18,8 @@ public sealed class McpServerMetadataSteps
     _metadata = null!;
   }
 
-  [When("the MCP server invokes \\\"get_server_metadata\\\" with no parameters")]
-  [When("the MCP server invokes \\\"get_server_metadata\\\"")]
+  [When("the MCP server invokes \"get_server_metadata\" with no parameters")]
+  [When("the MCP server invokes \"get_server_metadata\"")]
   public async Task WhenGetServerMetadata()
   {
     var result = await _fixture.InvokeMcpToolAsync("get_server_metadata", new { });
@@ -159,68 +159,40 @@ public sealed class McpServerMetadataSteps
     }
   }
 
-  [Then("the supported key types MUST include \\\"(.+)\\\"")]
+  [Then("the supported key types MUST include \"(.+)\"")]
   public void ThenKeyTypeIncludes(string keyType)
   {
     Assert.NotNull(_metadata);
     Assert.Contains(keyType, _metadata.SupportedKeyTypes);
   }
 
-  [Then("the supported key types MUST include \\\"ECDSA\\\"")]
-  public void ThenKeyTypeIncludesEcdsa()
+  [Then("the supported signature algorithms MUST include \"(.+)\"")]
+  public void ThenSigAlgorithmIncludes(string algorithm)
   {
     Assert.NotNull(_metadata);
-    Assert.Contains("ECDSA", _metadata.SupportedKeyTypes);
+    Assert.Contains(algorithm, _metadata.SupportedSignatureAlgorithms);
   }
 
-  [Then("the supported signature algorithms MUST include \\\"SHA256withRSA\\\"")]
-  public void ThenSigAlgorithmIncludesSha256Rsa()
-  {
-    Assert.NotNull(_metadata);
-    Assert.Contains("SHA256withRSA", _metadata.SupportedSignatureAlgorithms);
-  }
-
-  [Then("the supported signature algorithms MUST include \\\"SHA256withECDSA\\\"")]
-  public void ThenSigAlgorithmIncludesSha256Ecdsa()
-  {
-    Assert.NotNull(_metadata);
-    Assert.Contains("SHA256withECDSA", _metadata.SupportedSignatureAlgorithms);
-  }
-
-  [Then("the supported signature algorithms MUST include \\\"SHA512withRSA\\\"")]
-  public void ThenSigAlgorithmIncludesSha512Rsa()
-  {
-    Assert.NotNull(_metadata);
-    Assert.Contains("SHA512withRSA", _metadata.SupportedSignatureAlgorithms);
-  }
-
-  [Then("the supported signature algorithms MUST include \\\"SHA512withECDSA\\\"")]
-  public void ThenSigAlgorithmIncludesSha512Ecdsa()
-  {
-    Assert.NotNull(_metadata);
-    Assert.Contains("SHA512withECDSA", _metadata.SupportedSignatureAlgorithms);
-  }
-
-  [Then("the caBundle endpoint MUST start with \\\"/.well-known/est\\\"")]
-  public void ThenCaBundleEndpointStartsWithWellKnown()
+  [Then("the caBundle endpoint MUST start with {string}")]
+  public void ThenCaBundleEndpointStartsWithWellKnown(string expectedPrefix)
   {
     Assert.NotNull(_metadata);
     Assert.NotNull(_metadata.EstEndpoints);
-    Assert.StartsWith("/.well-known/est", _metadata.EstEndpoints.CaBundle!);
+    Assert.StartsWith(expectedPrefix, _metadata.EstEndpoints.CaBundle!);
   }
 
-  [Then("the simpleEnroll endpoint MUST be \\\"/.well-known/est/simpleenroll\\\"")]
-  public void ThenSimpleEnrollEndpointCorrect()
+  [Then("the simpleEnroll endpoint MUST be {string}")]
+  public void ThenSimpleEnrollEndpointCorrect(string expectedPath)
   {
     Assert.NotNull(_metadata);
-    Assert.Equal("/.well-known/est/simpleenroll", _metadata.EstEndpoints.SimpleEnroll);
+    Assert.Equal(expectedPath, _metadata.EstEndpoints.SimpleEnroll);
   }
 
-  [Then("the simpleReenroll endpoint MUST be \\\"/.well-known/est/simplereenroll\\\"")]
-  public void ThenSimpleReenrollEndpointCorrect()
+  [Then("the simpleReenroll endpoint MUST be {string}")]
+  public void ThenSimpleReenrollEndpointCorrect(string expectedPath)
   {
     Assert.NotNull(_metadata);
-    Assert.Equal("/.well-known/est/simplereenroll", _metadata.EstEndpoints.SimpleReenroll);
+    Assert.Equal(expectedPath, _metadata.EstEndpoints.SimpleReenroll);
   }
 
   [Then("the reported max CSR key size MUST be at least (.+)")]

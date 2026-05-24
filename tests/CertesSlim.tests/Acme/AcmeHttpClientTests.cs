@@ -1,11 +1,7 @@
-﻿using System;
-using System.Net;
-using System.Net.Http;
+﻿using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using CertesSlim.Acme;
 using CertesSlim.Acme.Resource;
 using CertesSlim.Extensions;
@@ -14,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using Xunit;
 using static CertesSlim.Tests.Helper;
+using Directory = CertesSlim.Acme.Resource.Directory;
 
 namespace CertesSlim.Tests.Acme;
 
@@ -95,7 +92,7 @@ public class AcmeHttpClientTests
             .Returns(new AcmeHttpResponse<Directory>(accountLoc, MockDirectoryV2, null, null));
         httpMock.Post<Account, object>(MockDirectoryV2.NewAccount, Arg.Any<object>())
             .Returns(new AcmeHttpResponse<Account>(
-                    accountLoc, null, null, new AcmeError
+                    accountLoc, null!, null, new AcmeError
                     {
                         Status = HttpStatusCode.BadRequest,
                         Type = "urn:ietf:params:acme:error:badNonce"
@@ -125,13 +122,13 @@ public class AcmeHttpClientTests
             .Returns(new AcmeHttpResponse<Directory>(accountLoc, MockDirectoryV2, null, null));
         httpMock.Post<Account, object>(MockDirectoryV2.NewAccount, Arg.Any<object>())
             .Returns(new AcmeHttpResponse<Account>(
-                    accountLoc, null, null, new AcmeError
+                    accountLoc, null!, null, new AcmeError
                     {
                         Status = HttpStatusCode.BadRequest,
                         Type = "urn:ietf:params:acme:error:badNonce"
                     }),
                 new AcmeHttpResponse<Account>(
-                    accountLoc, null, null, new AcmeError
+                    accountLoc, null!, null, new AcmeError
                     {
                         Status = HttpStatusCode.BadRequest,
                         Type = "urn:ietf:params:acme:error:badNonce"

@@ -212,7 +212,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             await testRunner.WhenAsync("the MCP server invokes \"list_certificates\" with page 0 and pageSize 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 30
-            await testRunner.AndAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+            await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 31
             await testRunner.AndAsync("the items list MUST contain at most 1 certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");

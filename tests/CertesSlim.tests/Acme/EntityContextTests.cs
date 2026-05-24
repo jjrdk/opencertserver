@@ -34,7 +34,7 @@ public class EntityContextTests
 
         location = new Uri("http://acme.d/acct/2");
         httpMock.Post<Account, JwsPayload>(location, Arg.Any<JwsPayload>())
-            .Returns(new AcmeHttpResponse<Account>(location, null, null, new AcmeError { Detail = "err" }));
+            .Returns(new AcmeHttpResponse<Account>(location, null!, null, new AcmeError { Detail = "err" }));
         ctx = new EntityContext<Account>(ctxMock, location);
         await Assert.ThrowsAsync<AcmeRequestException>(() => ctx.Resource());
     }
