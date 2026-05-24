@@ -1,8 +1,6 @@
 namespace OpenCertServer.Mcp.Tests;
 
-using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Mcp;
 using OpenCertServer.Mcp.Tools;
@@ -28,27 +26,6 @@ public static class TestSharedState
     public static IStoreCertificates? Store { get; set; }
     public static string? RequestedSerialNumber { get; set; }
     public static readonly List<X509Certificate2> IssuedCerts = new();
-
-    /// <summary>
-    /// Issues a certificate via the MCP sign_certificate tool.
-    /// </summary>
-    public static async Task<X509Certificate2?> IssueAsync(
-        McpServer mcp, string cn, string profile = "rsa")
-    {
-        using var rsa = RSA.Create(3072);
-        var request = new CertificateRequest(
-            new X500DistinguishedName(cn),
-            rsa,
-            HashAlgorithmName.SHA256,
-            RSASignaturePadding.Pss);
-        var pemCsr = request.ToPkcs10Base64();
-        
-        // We use the MCP tool via the fixture - but we don't have the fixture here.
-        // This method is not called directly. Instead, each step class uses
-        // _fixture.InvokeMcpToolAsync + signs the result into SharedState.
-        // Kept for reference only.
-        return null;
-    }
 
     public static void Clear()
     {
