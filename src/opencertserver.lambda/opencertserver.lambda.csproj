@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <Import Project="../../shared.proj"/>
     <PropertyGroup>
         <RootNamespace>OpenCertServer.Lambda</RootNamespace>
         <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
@@ -24,6 +23,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Amazon.Lambda.AspNetCoreServer" Version="10.1.1" />
+        <PackageReference Include="Amazon.Lambda.AspNetCoreServer" />
     </ItemGroup>
 </Project>
