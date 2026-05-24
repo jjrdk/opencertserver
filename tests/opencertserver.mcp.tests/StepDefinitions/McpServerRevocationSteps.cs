@@ -21,7 +21,10 @@ public sealed class McpServerRevocationSteps
         private async Task<(string serial, string nameHash, string keyHash)> GetCertInfoAsync()
         {
                 if (_issuedCerts.Count == 0)
+                {
                         throw new InvalidOperationException("No certificates issued yet");
+                }
+
                 var cert = _issuedCerts[^1];
 
                 var nameHashBytes = SHA256.Create()!.ComputeHash(cert.SubjectName.RawData);
@@ -40,7 +43,9 @@ public sealed class McpServerRevocationSteps
                 var csr = McpServerFixture.CreateBase64DerCsr();
                 var mcpResult = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr });
                 if (mcpResult.IsSuccess)
+                {
                         TestSharedState.SignedCert = (McpCertificateItem)mcpResult.Content!;
+                }
 
                 // Also need an actual X509Certificate2 in _issuedCerts for hash computation
                 var cert = await _fixture.CreateAndIssueCertificateAsync("test-rev-check-1");
@@ -58,7 +63,9 @@ public sealed class McpServerRevocationSteps
                 var csr = McpServerFixture.CreateBase64DerCsr();
                 var mcpResult = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr });
                 if (mcpResult.IsSuccess)
+                {
                         TestSharedState.SignedCert = (McpCertificateItem)mcpResult.Content!;
+                }
 
                 // Revoke it via MCP
                 await _fixture.InvokeMcpToolAsync("revoke_certificate", new

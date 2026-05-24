@@ -94,7 +94,9 @@ internal sealed class McpStdioTransport : IDisposable
                 break;
             }
             if (string.IsNullOrWhiteSpace(line))
+            {
                 continue;
+            }
 
             try
             {
@@ -165,7 +167,9 @@ internal sealed class McpStdioTransport : IDisposable
 
             case "tools/call":
                 if (root.TryGetProperty("params", out var paramsProp))
+                {
                     await HandleToolsCall(paramsProp.Clone(), id);
+                }
                 else
                 {
                     using var emptyDoc = JsonDocument.Parse("{}");
@@ -274,9 +278,11 @@ internal sealed class McpStdioTransport : IDisposable
 
         JsonElement? args = null;
         if (paramsProp.TryGetProperty("arguments", out var argsProp))
+        {
             args = argsProp;
+        }
 
-         // Pass JsonElement through as Dictionary<string, JsonElement> for proper handling
+        // Pass JsonElement through as Dictionary<string, JsonElement> for proper handling
          var parameters = (args != null && args.Value.ValueKind == JsonValueKind.Object)
              ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
                 args!.Value.GetRawText(), new JsonSerializerOptions())

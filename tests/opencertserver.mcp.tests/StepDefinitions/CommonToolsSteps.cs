@@ -32,7 +32,10 @@ public sealed class CommonToolsSteps : IDisposable
     {
         // Ensure tools are initialized (needed by metadata steps in Scenario Outline)
         if (TestSharedState.Tools == null)
+        {
             TestSharedState.Tools = _fixture.McpServer.GetTools();
+        }
+
         // Strip surrounding quotes that Scenario Outline substitution may add
         toolName = toolName.Trim('"').Trim('\'');
         var result = await _fixture.InvokeMcpToolAsync(toolName, new { });
@@ -53,8 +56,16 @@ public sealed class CommonToolsSteps : IDisposable
         if (!ok)
         {
             string reason = "r=" + (r?.IsSuccess + "");
-            if (cert != null) reason += " cert=notnull";
-            if (rev != null) reason += " rev=notnull";
+            if (cert != null)
+            {
+                reason += " cert=notnull";
+            }
+
+            if (rev != null)
+            {
+                reason += " rev=notnull";
+            }
+
             throw new Exception($"Expected success but got: {reason}");
         }
     }
@@ -91,7 +102,10 @@ public sealed class CommonToolsSteps : IDisposable
             // Strip leading article words
             foreach (var prefix in new[] { "that ", "an ", "a ", "the " })
                 if (clean.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
                     clean = clean[prefix.Length..];
+                }
+
             return msg.Contains(clean, StringComparison.OrdinalIgnoreCase);
         });
         Assert.True(pass, $"Error '{msg}' does not mention required '{keyword}'");
@@ -127,7 +141,10 @@ public sealed class CommonToolsSteps : IDisposable
         // If we have a signed cert that was revoked, check inventory
         var store = TestSharedState.Store!;
         if (expectedReason == null)
+        {
             throw new Exception("expectedReason is null");
+        }
+
         var items = new List<CertificateItemInfo>();
         await foreach (var item in store.GetInventory(0, 500, CancellationToken.None))
             items.Add(item);

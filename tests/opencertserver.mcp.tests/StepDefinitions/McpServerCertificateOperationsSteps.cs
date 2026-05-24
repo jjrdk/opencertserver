@@ -92,7 +92,10 @@ public sealed class McpServerCertificateOperationsSteps
     public async Task WhenRevokeWithReason(string reason)
     {
         if (TestSharedState.SignedCert == null)
+        {
             throw new Exception("No signed cert available — run 'Given a certificate is issued' first");
+        }
+
         var serial = TestSharedState.SignedCert.SerialNumber;
         var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { serialNumber = serial, reason });
         TestSharedState.ToolResult = result;
@@ -103,7 +106,10 @@ public sealed class McpServerCertificateOperationsSteps
     public async Task WhenRevokeWithFullFields(string reason, int reasonCode, string description)
     {
         if (TestSharedState.SignedCert == null)
+        {
             throw new Exception("No signed cert available — run 'Given a certificate is issued' first");
+        }
+
         var serial = TestSharedState.SignedCert.SerialNumber;
         var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { serialNumber = serial, reason });
         TestSharedState.ToolResult = result;
