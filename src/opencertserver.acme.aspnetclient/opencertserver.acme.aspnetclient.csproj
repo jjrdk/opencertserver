@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<Import Project="../../shared.proj" />
 	<PropertyGroup>
 		<RootNamespace>OpenCertServer.Acme.AspNetClient</RootNamespace>
 		<ImplicitUsings>enable</ImplicitUsings>

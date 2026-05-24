@@ -1,21 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <Import Project="../../shared.proj"/>
     <PropertyGroup>
         <RootNamespace>OpenCertServer.Acme.AspNetClient.Tests</RootNamespace>
         <AssemblyName>opencertserver.acme.aspnetclient.tests</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
-        <PackageReference Include="xunit.v3" Version="3.2.2"/>
-        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+        <PackageReference Include="Microsoft.AspNetCore.TestHost"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="xunit.v3"/>
+        <PackageReference Include="xunit.runner.visualstudio">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="NSubstitute" Version="5.3.0" />
+        <PackageReference Include="NSubstitute"/>
     </ItemGroup>
 
     <ItemGroup>

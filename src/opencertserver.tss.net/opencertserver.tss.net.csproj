@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="../../shared.proj" />
   <!--
     Vendored copy of TSS.NET (https://github.com/microsoft/TSS.MSR), snapshot from 2022-04-22.
     Source is MIT-licensed (https://github.com/microsoft/TSS.MSR/blob/master/LICENSE).

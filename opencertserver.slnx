@@ -13,11 +13,11 @@
     <File Path="docs\opencertserver_cp.md" />
     <File Path="docs\opencertserver_cps.md" />
     <File Path="README.md" />
-    <File Path="shared.proj" />
     <File Path="Docker.md" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/opencertserver.cli.tests/opencertserver.cli.tests.csproj" />
+    <Project Path="tests/opencertserver.mcp.tests/opencertserver.mcp.tests.csproj" />
     <Project Path="tests\CertesSlim.tests\CertesSlim.tests.csproj" />
     <Project Path="tests\opencertserver.acme.abstractions.tests\opencertserver.acme.abstractions.tests.csproj" />
     <Project Path="tests\opencertserver.acme.aspnetclient.tests\opencertserver.acme.aspnetclient.tests.csproj" />

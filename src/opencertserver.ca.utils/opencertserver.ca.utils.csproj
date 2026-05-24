@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <Import Project="../../shared.proj" />
     <PropertyGroup>
         <RootNamespace>OpenCertServer.Ca.Utils</RootNamespace>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
