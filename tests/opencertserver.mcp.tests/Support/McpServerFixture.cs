@@ -123,10 +123,10 @@ public class McpServerFixture : IDisposable
      }
 
     public Task<McpToolResult> InvokeMcpToolAsync(string toolName, object parameters)
-     {
+        {
         var dict = ConvertToDict(parameters);
         return McpServer.InvokeTool(toolName, dict);
-     }
+        }
 
     private static Dictionary<string, object> ConvertToDict(object obj)
      {

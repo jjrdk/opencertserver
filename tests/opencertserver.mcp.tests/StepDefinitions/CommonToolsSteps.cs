@@ -39,9 +39,9 @@ public sealed class CommonToolsSteps : IDisposable
         TestSharedState.ToolResult = result;
     }
 
-    [Then("the result MUST succeed")]
+      [Then("the result MUST succeed")]
     public void ThenResultMustSucceed()
-    {
+      {
         var r = TestSharedState.ToolResult;
         var cert = TestSharedState.SignedCert;
         var rev = TestSharedState.RevocationStatusResult;
