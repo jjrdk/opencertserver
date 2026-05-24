@@ -3,8 +3,6 @@
     <PropertyGroup>
         <IsPackable>false</IsPackable>
         <RootNamespace>OpenCertServer.Tpm.Tests</RootNamespace>
-        <Nullable>enable</Nullable>
-        <LangVersion>latest</LangVersion>
         <IsAotCompatible>false</IsAotCompatible>
     </PropertyGroup>
 
@@ -17,6 +15,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk"/>
         <PackageReference Include="Reqnroll.xUnit.v3"/>
+        <PackageReference Include="xunit.v3"/>
         <PackageReference Include="Testcontainers"/>
         <PackageReference Include="xunit.runner.visualstudio">
             <PrivateAssets>all</PrivateAssets>
