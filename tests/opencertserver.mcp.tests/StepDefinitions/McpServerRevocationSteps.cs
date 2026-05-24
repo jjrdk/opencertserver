@@ -293,6 +293,7 @@ public sealed class McpServerRevocationSteps
         public void ThenFirstCheckMustMatchSerial()
         {
                 Assert.NotNull(TestSharedState.RevocationStatusResult);
+                Assert.NotNull(TestSharedState.RequestedSerialNumber);
                 Assert.Single(TestSharedState.RevocationStatusResult.Checks);
                 Assert.Equal(TestSharedState.RequestedSerialNumber, TestSharedState.RevocationStatusResult.Checks[0].SerialNumber);
         }
