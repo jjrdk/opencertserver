@@ -247,7 +247,9 @@ internal sealed class McpStdioTransport : IDisposable
 
     private async Task HandleToolsCall(JsonElement paramsProp, JsonElement? id)
     {
-        if (!paramsProp.TryGetProperty("name", out var nameProp) || nameProp.ValueKind != JsonValueKind.String)
+        if (paramsProp.ValueKind != JsonValueKind.Object ||
+            !paramsProp.TryGetProperty("name", out var nameProp) ||
+            nameProp.ValueKind != JsonValueKind.String)
         {
             var error = JsonRpcResponse.Error(id, -32602, "tool/call: missing 'name' parameter");
             WriteResponse(error);
