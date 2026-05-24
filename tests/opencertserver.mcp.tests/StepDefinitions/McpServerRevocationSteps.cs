@@ -142,6 +142,7 @@ public sealed class McpServerRevocationSteps
         public async Task WhenGetRevStatusWithGoodCert()
         {
                 var (serial, _, _) = await GetCertInfoAsync();
+                TestSharedState.RequestedSerialNumber = serial;
                 var result = await _fixture.InvokeMcpToolAsync("get_revocation_status", new
                 {
                         serialNumbers = new[] { serial }
@@ -154,6 +155,7 @@ public sealed class McpServerRevocationSteps
         [When("the MCP server invokes \"get_revocation_status\" with serial number \"(.+)\"")]
         public async Task WhenGetRevStatusWithUnknownCert(string serial)
         {
+                TestSharedState.RequestedSerialNumber = serial;
                 var result = await _fixture.InvokeMcpToolAsync("get_revocation_status", new
                 {
                         serialNumbers = new[] { serial }
@@ -292,6 +294,7 @@ public sealed class McpServerRevocationSteps
         {
                 Assert.NotNull(TestSharedState.RevocationStatusResult);
                 Assert.Single(TestSharedState.RevocationStatusResult.Checks);
+                Assert.Equal(TestSharedState.RequestedSerialNumber, TestSharedState.RevocationStatusResult.Checks[0].SerialNumber);
         }
 
         [Then("the first check result MUST have status Good")]
