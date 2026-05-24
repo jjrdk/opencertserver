@@ -26,6 +26,7 @@ public static class TestSharedState
     public static McpServerMetadata? ServerMetadata { get; set; }
     public static IReadOnlyDictionary<string, McpToolDefinition>? Tools { get; set; }
     public static IStoreCertificates? Store { get; set; }
+    public static string? RequestedSerialNumber { get; set; }
     public static readonly List<X509Certificate2> IssuedCerts = new();
 
     /// <summary>
@@ -61,6 +62,7 @@ public static class TestSharedState
         ServerMetadata = null;
         Tools = null;
         Store = null;
+        RequestedSerialNumber = null;
         IssuedCerts.Clear();
     }
 }
