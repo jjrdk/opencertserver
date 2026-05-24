@@ -47,7 +47,7 @@ public class McpServerFixture : IDisposable
             caLogger);
 
         var mcpServer = new McpServer(
-            new McpServerOptions { ServerName = "TestMcpServer", ServerVersion = "1.0.0" }, mcpLogger);
+            new McpServerOptions { ServerName = "TestMcpServer", ServerVersion = "1.0.0" }, mcpLogger, loggerFactory);
         mcpServer.RegisterAll();
 
          _host = Host.CreateDefaultBuilder()

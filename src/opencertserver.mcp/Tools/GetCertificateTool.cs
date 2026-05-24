@@ -48,12 +48,12 @@ public static class GetCertificateTool
         }
 
         var includePem = parameters?.TryGetValue("includePem", out var pemObj) ?? false
-            ? Convert.ToBoolean(pemObj)
+            ? ParameterHelper.GetBoolean(pemObj, false)
             : false;
 
         var store = context.GetService<IStoreCertificates>();
 
-        var serialBytes = HexToBytes(serialNumber);
+        var serialBytes = ParameterHelper.HexToBytes(serialNumber);
         if (serialBytes == null)
         {
             return McpToolResult.Fail("serialNumber must be a valid hex-encoded string");
@@ -72,6 +72,10 @@ public static class GetCertificateTool
 
         var pem = includePem ? cert.ExportCertificatePem() : null;
 
+        // Look up revocation status from store
+        var inventory = await store.GetInventory(0, int.MaxValue, CancellationToken.None)
+            .FirstOrDefaultAsync(i => i.SerialNumber.Equals(serialNumber, StringComparison.OrdinalIgnoreCase), CancellationToken.None);
+
         var result = new McpCertificateItem
         {
             SerialNumber = SerialNumberToString(cert),
@@ -82,9 +86,9 @@ public static class GetCertificateTool
             NotAfter = cert.NotAfter,
             PublicKeyAlgorithm = cert.PublicKey?.Oid?.Value ?? "unknown",
             PublicKeySize = ((AsymmetricAlgorithm?)cert.GetRSAPublicKey() ?? cert.GetECDsaPublicKey())?.KeySize ?? 0,
-            IsRevoked = false,
-            RevocationReason = null,
-            RevocationDate = null,
+            IsRevoked = inventory?.IsRevoked ?? false,
+            RevocationReason = inventory?.RevocationReason,
+            RevocationDate = inventory?.RevocationDate,
             Pem = pem
         };
 

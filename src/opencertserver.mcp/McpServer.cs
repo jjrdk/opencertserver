@@ -12,6 +12,7 @@ public sealed class McpServer : IDisposable
 {
     private readonly McpServerOptions _options;
     private readonly ILogger<McpServer> _logger;
+    private readonly ILoggerFactory? _loggerFactory;
     private readonly ConcurrentDictionary<string, McpToolDefinition> _tools = new();
     private volatile bool _isRunning;
     private IServiceProvider? _serviceProvider;
@@ -20,10 +21,11 @@ public sealed class McpServer : IDisposable
     /// <summary>
     /// Creates a new MCP server instance.
     /// </summary>
-    public McpServer(McpServerOptions options, ILogger<McpServer> logger)
+    public McpServer(McpServerOptions options, ILogger<McpServer> logger, ILoggerFactory? loggerFactory = null)
     {
         _options = options;
         _logger = logger;
+        _loggerFactory = loggerFactory;
     }
 
     /// <summary>
@@ -117,8 +119,8 @@ public sealed class McpServer : IDisposable
          }
 
          // Create and start the stdio transport
-        var transportLogger = _logger as ILogger<McpStdioTransport>;
-        _stdioTransport = new McpStdioTransport(this, transportLogger ?? _logger as ILogger<McpStdioTransport> ?? NullLogger<McpStdioTransport>.Instance);
+        var transportLogger = _loggerFactory?.CreateLogger<McpStdioTransport>() ?? NullLogger<McpStdioTransport>.Instance;
+        _stdioTransport = new McpStdioTransport(this, transportLogger);
          await _stdioTransport.StartAsync(cancellationToken);
      }
 

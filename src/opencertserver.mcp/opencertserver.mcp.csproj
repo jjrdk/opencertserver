@@ -13,6 +13,7 @@
     <ItemGroup>
         <ProjectReference Include="..\opencertserver.ca\opencertserver.ca.csproj"/>
         <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj"/>
+        <ProjectReference Include="..\opencertserver.ca.server\opencertserver.ca.server.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

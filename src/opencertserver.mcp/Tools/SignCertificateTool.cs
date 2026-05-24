@@ -32,27 +32,48 @@ public static class SignCertificateTool
             ? profileObj.ToString()
             : null;
 
+        // Parse dates as DateTimeOffset to preserve timezone information
         var notBefore =
             parameters?.TryGetValue("notBefore", out var nbObj) == true &&
-            DateTime.TryParse(nbObj.ToString(), out var nb)
+            DateTimeOffset.TryParse(nbObj.ToString(), System.Globalization.CultureInfo.InvariantCulture, 
+                System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, 
+                out var nb)
                 ? (DateTimeOffset?)nb
                 : null;
 
         var notAfter =
             parameters?.TryGetValue("notAfter", out var naObj) == true &&
-            DateTime.TryParse(naObj.ToString(), out var na)
+            DateTimeOffset.TryParse(naObj.ToString(), System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out var na)
                 ? (DateTimeOffset?)na
                 : null;
 
         var includePem = parameters?.TryGetValue("includePem", out var pemObj3) == true &&
-            bool.TryParse(pemObj3.ToString(), out var p) && p;
+            ParameterHelper.GetBoolean(pemObj3, false);
 
         var ca = context.GetService<ICertificateAuthority>();
 
         CertificateRequest request;
         try
         {
-            var normalized = csr.NormalizeBase64();
+            // Support both PEM and base64 DER formats
+            var normalized = csr.Trim();
+            if (normalized.StartsWith("-----BEGIN CERTIFICATE REQUEST-----"))
+            {
+                // Strip PEM headers/footers and whitespace
+                normalized = normalized
+                    .Replace("-----BEGIN CERTIFICATE REQUEST-----", "")
+                    .Replace("-----END CERTIFICATE REQUEST-----", "")
+                    .Replace("\r", "")
+                    .Replace("\n", "")
+                    .Replace(" ", "");
+            }
+            else
+            {
+                normalized = normalized.NormalizeBase64();
+            }
+            
             var csrDer = Convert.FromBase64String(normalized);
             request = CertificateRequest.LoadSigningRequest(
                 csrDer,

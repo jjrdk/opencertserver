@@ -24,6 +24,13 @@ public static class SearchCertificatesTool
             }
         }
 
+        // Extract keyAlgorithms as array if provided
+        string[]? keyAlgorithms = null;
+        if (parameters?.TryGetValue("keyAlgorithms", out var kaObj) == true)
+        {
+            keyAlgorithms = ParameterHelper.GetStringArray(kaObj);
+        }
+
         var filter = new CertificateSearchFilter
         {
             SubjectCN = filterDict.GetValueOrDefault("subjectCN"),
@@ -48,13 +55,11 @@ public static class SearchCertificatesTool
                     ? nabDate
                     : null,
             Status = filterDict.GetValueOrDefault("status"),
-            KeyAlgorithms = filterDict.TryGetValue("keyAlgorithms", out var ka)
-                ? ka.Split(',', StringSplitOptions.TrimEntries)
-                : null
+            KeyAlgorithms = keyAlgorithms
         };
 
-        var page = filterDict.TryGetValue("page", out var p) ? System.Convert.ToInt32(p) : 0;
-        var pageSize = filterDict.TryGetValue("pageSize", out var ps) ? System.Convert.ToInt32(ps) : 100;
+        var page = ParameterHelper.GetInt32(parameters?.TryGetValue("page", out var p) == true ? p : null, 0);
+        var pageSize = ParameterHelper.GetInt32(parameters?.TryGetValue("pageSize", out var ps) == true ? ps : null, 100);
 
         if (pageSize is < 1 or > 500)
         {
@@ -62,13 +67,19 @@ public static class SearchCertificatesTool
         }
 
         var store = context.GetService<IStoreCertificates>();
+        
+        // NOTE: Filtering is not currently implemented in the store.
+        // This tool currently returns paginated inventory results without applying filters.
+        // To fully implement filtering, either:
+        // 1. Add a SearchCertificates method to IStoreCertificates that supports the filter, or
+        // 2. Apply client-side filtering (inefficient for large stores)
         var result = await store
             .GetInventory(page, pageSize, CancellationToken.None)
             .Select(item => new McpCertificateItem
             {
                 SerialNumber = item.SerialNumber,
                 Subject = item.DistinguishedName,
-                Issuer = item.DistinguishedName,
+                Issuer = "(issuer not available in inventory)", // Placeholder - issuer not in CertificateItemInfo
                 Thumbprint = item.Thumbprint,
                 NotBefore = item.NotBefore,
                 NotAfter = item.NotAfter,
@@ -79,7 +90,6 @@ public static class SearchCertificatesTool
                 RevocationDate = item.RevocationDate
             })
             .ToArrayAsync(CancellationToken.None);
-        //.SearchCertificates(filter, page, pageSize, CancellationToken.None);
 
         var finalResult = new McpCertificateSearchResult
         {
@@ -98,21 +108,21 @@ public static class SearchCertificatesTool
         {
             Name = "search_certificates",
             Description =
-                "Search certificates by multiple criteria: subject CN, subject contains substring, issuer, serial number, thumbprint, date range (notBefore/notAfter), revocation status, and key algorithm.",
+                "List certificates with pagination. NOTE: Filtering by criteria (subject, issuer, dates, status, key algorithm) is not currently implemented - all filter parameters are accepted but ignored. Use list_certificates for simple pagination or get_certificate for specific serial lookups.",
             InputSchema = @"{
                  ""type"": ""object"",
                  ""properties"": {
-                      ""subjectCN"": {""type"": ""string"", ""description"": ""Exact match on subject CN""},
-                      ""subjectContains"": {""type"": ""string"", ""description"": ""Substring match on subject DN""},
-                      ""issuerContains"": {""type"": ""string"", ""description"": ""Substring match on issuer DN""},
-                      ""serialNumber"": {""type"": ""string"", ""description"": ""Exact match on serial number""},
-                      ""thumbprint"": {""type"": ""string"", ""description"": ""Exact match on thumbprint""},
-                      ""notBeforeAfter"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""Certificates not before this date""},
-                      ""notBeforeBefore"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""Certificates not before this date""},
-                      ""notAfterAfter"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""Certificates not after this date""},
-                      ""notAfterBefore"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""Certificates not after this date""},
-                      ""status"": {""type"": ""string"", ""enum"": [""Good"", ""Revoked"", ""Unknown"", """"], ""description"": ""Filter by revocation status""},
-                      ""keyAlgorithms"": {""type"": ""array"", ""items"": {""type"": ""string""}, ""description"": ""Filter by key type (RSA, ECDSA)""},
+                      ""subjectCN"": {""type"": ""string"", ""description"": ""(Not implemented) Exact match on subject CN""},
+                      ""subjectContains"": {""type"": ""string"", ""description"": ""(Not implemented) Substring match on subject DN""},
+                      ""issuerContains"": {""type"": ""string"", ""description"": ""(Not implemented) Substring match on issuer DN""},
+                      ""serialNumber"": {""type"": ""string"", ""description"": ""(Not implemented) Exact match on serial number""},
+                      ""thumbprint"": {""type"": ""string"", ""description"": ""(Not implemented) Exact match on thumbprint""},
+                      ""notBeforeAfter"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""(Not implemented) Certificates not before this date""},
+                      ""notBeforeBefore"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""(Not implemented) Certificates not before this date""},
+                      ""notAfterAfter"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""(Not implemented) Certificates not after this date""},
+                      ""notAfterBefore"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""(Not implemented) Certificates not after this date""},
+                      ""status"": {""type"": ""string"", ""enum"": [""Good"", ""Revoked"", ""Unknown"", """"], ""description"": ""(Not implemented) Filter by revocation status""},
+                      ""keyAlgorithms"": {""type"": ""array"", ""items"": {""type"": ""string""}, ""description"": ""(Not implemented) Filter by key type (RSA, ECDSA)""},
                       ""page"": {""type"": ""integer"", ""default"": 0},
                       ""pageSize"": {""type"": ""integer"", ""default"": 100}
                   },

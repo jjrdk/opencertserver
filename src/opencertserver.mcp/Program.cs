@@ -1,10 +1,13 @@
 namespace OpenCertServer.Mcp;
 
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenCertServer.Ca;
+using OpenCertServer.Ca.Server;
 
 /// <summary>
 /// Entry point for the MCP certificate server (stdio transport).
@@ -24,6 +27,18 @@ public static class Program
         });
         builder.Configuration.AddEnvironmentVariables("MCP_");
 
+        // Register CA services required by MCP tools
+        services.AddInMemoryCertificateStore();
+        
+        // Configure CA based on environment or use self-signed for testing
+        var dn = builder.Configuration.GetValue<string>("CA_DN") ?? "CN=MCP Test CA";
+        services.AddSelfSignedCertificateAuthority(
+            new X500DistinguishedName(dn.StartsWith("CN=") ? dn : $"CN={dn}"),
+            Array.Empty<string>(), // OCSP URLs
+            Array.Empty<string>(), // CRL URLs
+            Array.Empty<string>(), // CA Issuer URLs
+            TimeSpan.FromDays(90));
+
         var host = builder.Build();
 
         // Configure MCP server options
@@ -34,7 +49,8 @@ public static class Program
 
         // Create and initialize the MCP server
         var logger = host.Services.GetRequiredService<ILogger<McpServer>>();
-        var mcpServer = new McpServer(options, logger);
+        var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
+        var mcpServer = new McpServer(options, logger, loggerFactory);
 
         // Register all tools
         mcpServer.RegisterAll();

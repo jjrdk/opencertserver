@@ -135,8 +135,8 @@ internal sealed class McpStdioTransport : IDisposable
 
     private async Task ProcessMessage(string raw, CancellationToken cancellationToken)
     {
-        var doc = JsonDocument.Parse(raw);
-        var root = doc.RootElement;
+        using var doc = JsonDocument.Parse(raw);
+        var root = doc.RootElement.Clone(); // Clone to use beyond document lifetime
 
         if (!root.TryGetProperty("method", out var methodProp))
         {
@@ -147,7 +147,7 @@ internal sealed class McpStdioTransport : IDisposable
         }
 
         var method = methodProp.GetString()!;
-        JsonElement? id = root.TryGetProperty("id", out var idProp) ? idProp : null;
+        JsonElement? id = root.TryGetProperty("id", out var idProp) ? idProp.Clone() : null;
 
         _logger.LogDebug("Received method: {Method}", method);
 
@@ -163,9 +163,12 @@ internal sealed class McpStdioTransport : IDisposable
 
             case "tools/call":
                 if (root.TryGetProperty("params", out var paramsProp))
-                    await HandleToolsCall(paramsProp, id);
+                    await HandleToolsCall(paramsProp.Clone(), id);
                 else
-                    await HandleToolsCall(JsonDocument.Parse("{}").RootElement, id);
+                {
+                    using var emptyDoc = JsonDocument.Parse("{}");
+                    await HandleToolsCall(emptyDoc.RootElement.Clone(), id);
+                }
                 break;
 
             case "notifications/initialized":
@@ -185,8 +188,11 @@ internal sealed class McpStdioTransport : IDisposable
             case "logging/setLevel":
                 _logger.LogDebug("Client set log level: {Level}",
                     root.TryGetProperty("params", out var lp) ? lp.ToString() : "unknown");
-                var loggingOk = JsonRpcResponse.Ok(id, JsonDocument.Parse("{}").RootElement);
-                WriteResponse(loggingOk);
+                using (var emptyDoc2 = JsonDocument.Parse("{}"))
+                {
+                    var loggingOk = JsonRpcResponse.Ok(id, emptyDoc2.RootElement.Clone());
+                    WriteResponse(loggingOk);
+                }
                 break;
 
             default:
@@ -231,8 +237,8 @@ internal sealed class McpStdioTransport : IDisposable
                 writer.Flush();
             }
 
-            var result = JsonDocument.Parse(stream.ToArray());
-            var response = JsonRpcResponse.Ok(id, result.RootElement);
+            using var result = JsonDocument.Parse(stream.ToArray());
+            var response = JsonRpcResponse.Ok(id, result.RootElement.Clone());
             WriteResponse(response);
         }
         catch (Exception ex)
@@ -268,26 +274,30 @@ internal sealed class McpStdioTransport : IDisposable
         if (paramsProp.TryGetProperty("arguments", out var argsProp))
             args = argsProp;
 
+         // Pass JsonElement through as Dictionary<string, JsonElement> for proper handling
          var parameters = (args != null && args.Value.ValueKind == JsonValueKind.Object)
-             ? (JsonSerializer.Deserialize<Dictionary<string, object>>(
-                args!.Value.ToString(), new JsonSerializerOptions())
-               ?? new Dictionary<string, object>())
-             : new Dictionary<string, object>();
+             ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+                args!.Value.GetRawText(), new JsonSerializerOptions())
+               ?? new Dictionary<string, JsonElement>()
+             : new Dictionary<string, JsonElement>();
 
-        var result = await _server.InvokeTool(name!, parameters!);
+        // Convert to Dictionary<string, object> for compatibility with existing tool handlers
+        var objectParameters = parameters.ToDictionary(
+            kvp => kvp.Key,
+            kvp => (object)kvp.Value);
+
+        var result = await _server.InvokeTool(name!, objectParameters!);
 
         if (result.IsSuccess)
         {
             var json = JsonSerializer.Serialize(result.Content);
             using var doc = JsonDocument.Parse(json);
-            var response = JsonRpcResponse.Ok(id, doc.RootElement);
+            var response = JsonRpcResponse.Ok(id, doc.RootElement.Clone());
             WriteResponse(response);
         }
         else
         {
-            using var dataDoc = JsonDocument.Parse(
-                JsonSerializer.Serialize(
-                    new { code = result.ErrorCode, message = result.ErrorMessage }));
+            // Remove dead code - dataDoc was never used
             var error = JsonRpcResponse.Error(id, result.ErrorCode, result.ErrorMessage!);
             WriteResponse(error);
         }

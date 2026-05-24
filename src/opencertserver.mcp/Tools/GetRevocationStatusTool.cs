@@ -19,7 +19,7 @@ public static class GetRevocationStatusTool
         var parameters = context.Parameters as IDictionary<string, object>;
 
         var serialNumbersObj = parameters?.TryGetValue("serialNumbers", out var snObj) ?? false
-            ? snObj as IEnumerable<object>
+            ? ParameterHelper.GetObjectArray(snObj)
             : null;
 
         if (serialNumbersObj == null || !serialNumbersObj.Any())
@@ -42,7 +42,17 @@ public static class GetRevocationStatusTool
                 continue;
             }
 
-            var serialBytes = Convert.FromHexString(serialNumber.Length % 2 == 0 ? serialNumber : "0" + serialNumber);
+            // Validate hex string before conversion
+            if (!ParameterHelper.IsValidHex(serialNumber))
+            {
+                return McpToolResult.Fail($"Invalid hex serial number: {serialNumber}");
+            }
+
+            var serialBytes = ParameterHelper.HexToBytes(serialNumber);
+            if (serialBytes == null)
+            {
+                return McpToolResult.Fail($"Failed to parse serial number: {serialNumber}");
+            }
 
             // Build CertId with SHA-256 as the default hash algorithm
             var algorithmId = new AlgorithmIdentifier(HashAlgorithmName.SHA256.GetHashAlgorithmOid());
