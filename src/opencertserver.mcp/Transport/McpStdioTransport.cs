@@ -14,14 +14,15 @@ namespace OpenCertServer.Mcp.Transport;
 internal class JsonRpcResponse
 {
     public string Jsonrpc { get; set; } = "2.0";
-    public string? Id { get; set; }
+    public JsonElement? Id { get; set; }
     public JsonElement? Result { get; set; }
+    [JsonPropertyName("error")]
     public JsonRpcError? ErrorResult { get; set; }
 
-    public static JsonRpcResponse Ok(string? id, JsonElement result)
+    public static JsonRpcResponse Ok(JsonElement? id, JsonElement result)
         => new() { Id = id, Result = result };
 
-    public static JsonRpcResponse Error(string? id, int code, string message)
+    public static JsonRpcResponse Error(JsonElement? id, int code, string message)
         => new() { Id = id, ErrorResult = new JsonRpcError(code, message) };
 
     public string Serialize()
@@ -141,7 +142,7 @@ internal sealed class McpStdioTransport : IDisposable
         }
 
         var method = methodProp.GetString()!;
-        var id = root.TryGetProperty("id", out var idProp) ? idProp.ToString() : null;
+        JsonElement? id = root.TryGetProperty("id", out var idProp) ? idProp : null;
 
         _logger.LogDebug("Received method: {Method}", method);
 
@@ -190,13 +191,13 @@ internal sealed class McpStdioTransport : IDisposable
         }
     }
 
-    private async Task HandleInitialize(string? id)
+    private async Task HandleInitialize(JsonElement? id)
     {
         var response = JsonRpcResponse.Ok(id, JsonDocument.Parse("{}").RootElement);
         WriteResponse(response);
     }
 
-    private async Task HandleToolsList(string? id)
+    private async Task HandleToolsList(JsonElement? id)
     {
         try
         {
@@ -235,7 +236,7 @@ internal sealed class McpStdioTransport : IDisposable
         }
     }
 
-    private async Task HandleToolsCall(JsonElement paramsProp, string? id)
+    private async Task HandleToolsCall(JsonElement paramsProp, JsonElement? id)
     {
         var name = paramsProp.GetProperty("name").GetString();
         if (string.IsNullOrEmpty(name))
