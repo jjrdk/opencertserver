@@ -58,7 +58,10 @@ public sealed class McpServerCertificateQuerySteps
     public async Task WhenSearchWithSerialNumber(string toolName)
     {
         if (TestSharedState.SignedCert == null)
+        {
             throw new Exception("No cert in shared state — run the Background step first");
+        }
+
         var result = await _fixture.InvokeMcpToolAsync(toolName, new { serialNumber = TestSharedState.SignedCert.SerialNumber });
         TestSharedState.ToolResult = result;
         if (result.IsSuccess)
@@ -72,7 +75,10 @@ public sealed class McpServerCertificateQuerySteps
     {
         // The serial is in shared state
         if (TestSharedState.SignedCert == null)
+        {
             throw new Exception("No signed cert available — run 'Given a certificate is issued' first");
+        }
+
         var serial = TestSharedState.SignedCert.SerialNumber;
         var result = await _fixture.InvokeMcpToolAsync("get_certificate", new { serialNumber = serial });
         TestSharedState.ToolResult = result;
@@ -279,7 +285,11 @@ public sealed class McpServerCertificateQuerySteps
     [Then("each CA certificate MUST have a subject, issuer, serial number, and thumbprint")]
     public void ThenEachCaCertMustHaveMetadata()
     {
-        if (TestSharedState.CaCertsResult == null) return;
+        if (TestSharedState.CaCertsResult == null)
+        {
+            return;
+        }
+
         foreach (var cert in TestSharedState.CaCertsResult.Certificates)
         {
             Assert.NotNull(cert.Subject);

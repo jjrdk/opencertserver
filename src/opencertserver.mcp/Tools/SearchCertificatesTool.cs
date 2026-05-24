@@ -84,31 +84,49 @@ public static class SearchCertificatesTool
         IEnumerable<CertificateItemInfo> filtered = allItems;
 
         if (!string.IsNullOrWhiteSpace(filter.SubjectCN))
+        {
             filtered = filtered.Where(i => i.DistinguishedName.Contains(filter.SubjectCN!, StringComparison.OrdinalIgnoreCase));
+        }
 
         if (!string.IsNullOrWhiteSpace(filter.SubjectContains))
+        {
             filtered = filtered.Where(i => i.DistinguishedName.Contains(filter.SubjectContains!, StringComparison.OrdinalIgnoreCase));
+        }
 
         if (!string.IsNullOrWhiteSpace(filter.IssuerContains))
+        {
             filtered = filtered.Where(i => i.DistinguishedName.Contains(filter.IssuerContains!, StringComparison.OrdinalIgnoreCase));
+        }
 
         if (!string.IsNullOrWhiteSpace(filter.SerialNumber))
+        {
             filtered = filtered.Where(i => i.SerialNumber.Contains(filter.SerialNumber!, StringComparison.OrdinalIgnoreCase));
+        }
 
         if (!string.IsNullOrWhiteSpace(filter.Thumbprint))
+        {
             filtered = filtered.Where(i => i.Thumbprint.Contains(filter.Thumbprint!, StringComparison.OrdinalIgnoreCase));
+        }
 
         if (filter.NotBeforeAfter.HasValue)
+        {
             filtered = filtered.Where(i => i.NotBefore >= filter.NotBeforeAfter!.Value);
+        }
 
         if (filter.NotBeforeBefore.HasValue)
+        {
             filtered = filtered.Where(i => i.NotBefore <= filter.NotBeforeBefore!.Value);
+        }
 
         if (filter.NotAfterAfter.HasValue)
+        {
             filtered = filtered.Where(i => i.NotAfter >= filter.NotAfterAfter!.Value);
+        }
 
         if (filter.NotAfterBefore.HasValue)
+        {
             filtered = filtered.Where(i => i.NotAfter <= filter.NotAfterBefore!.Value);
+        }
 
         if (!string.IsNullOrWhiteSpace(filter.Status))
         {

@@ -10,16 +10,24 @@ internal static class ParameterHelper
     /// <summary>
     /// Safely extracts an integer parameter from a dictionary that may contain JsonElement values.
     /// </summary>
-    public static int GetInt32(object? value, int defaultValue = 0)
+    public static int GetInt32(this object? value, int defaultValue = 0)
     {
-        if (value == null) return defaultValue;
+        if (value == null)
+        {
+            return defaultValue;
+        }
 
         if (value is JsonElement element)
         {
             if (element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var intValue))
+            {
                 return intValue;
+            }
+
             if (element.ValueKind == JsonValueKind.String && int.TryParse(element.GetString(), out var parsedValue))
+            {
                 return parsedValue;
+            }
         }
         else if (value is int i)
         {
@@ -45,14 +53,27 @@ internal static class ParameterHelper
     /// </summary>
     public static bool GetBoolean(object? value, bool defaultValue = false)
     {
-        if (value == null) return defaultValue;
+        if (value == null)
+        {
+            return defaultValue;
+        }
 
         if (value is JsonElement element)
         {
-            if (element.ValueKind == JsonValueKind.True) return true;
-            if (element.ValueKind == JsonValueKind.False) return false;
+            if (element.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+
+            if (element.ValueKind == JsonValueKind.False)
+            {
+                return false;
+            }
+
             if (element.ValueKind == JsonValueKind.String && bool.TryParse(element.GetString(), out var parsedValue))
+            {
                 return parsedValue;
+            }
         }
         else if (value is bool b)
         {
@@ -78,7 +99,10 @@ internal static class ParameterHelper
     /// </summary>
     public static string[]? GetStringArray(object? value)
     {
-        if (value == null) return null;
+        if (value == null)
+        {
+            return null;
+        }
 
         if (value is JsonElement element)
         {
@@ -88,7 +112,9 @@ internal static class ParameterHelper
                 foreach (var item in element.EnumerateArray())
                 {
                     if (item.ValueKind == JsonValueKind.String)
+                    {
                         list.Add(item.GetString()!);
+                    }
                 }
                 return list.ToArray();
             }
@@ -119,7 +145,10 @@ internal static class ParameterHelper
     /// </summary>
     public static IEnumerable<object>? GetObjectArray(object? value)
     {
-        if (value == null) return null;
+        if (value == null)
+        {
+            return null;
+        }
 
         if (value is JsonElement element)
         {
@@ -146,12 +175,17 @@ internal static class ParameterHelper
     /// </summary>
     public static bool IsValidHex(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) return false;
-        
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
         foreach (var c in value)
         {
             if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+            {
                 return false;
+            }
         }
         return true;
     }
@@ -161,8 +195,15 @@ internal static class ParameterHelper
     /// </summary>
     public static byte[]? HexToBytes(string? hex)
     {
-        if (string.IsNullOrWhiteSpace(hex)) return null;
-        if (!IsValidHex(hex)) return null;
+        if (string.IsNullOrWhiteSpace(hex))
+        {
+            return null;
+        }
+
+        if (!IsValidHex(hex))
+        {
+            return null;
+        }
 
         try
         {

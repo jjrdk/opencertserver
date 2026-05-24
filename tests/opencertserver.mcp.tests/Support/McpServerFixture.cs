@@ -131,7 +131,10 @@ public class McpServerFixture : IDisposable
     private static Dictionary<string, object> ConvertToDict(object obj)
      {
         if (obj is IDictionary<string, object> existing)
+        {
             return new Dictionary<string, object>(existing);
+        }
+
         var dict = new Dictionary<string, object>();
 #pragma warning disable IL2075
         foreach (var prop in obj.GetType().GetProperties(
@@ -140,7 +143,9 @@ public class McpServerFixture : IDisposable
         {
             var val = prop.GetValue(obj);
             if (val != null)
+            {
                 dict[prop.Name] = val;
+            }
         }
         return dict;
      }
