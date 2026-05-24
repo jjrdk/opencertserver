@@ -43,7 +43,7 @@ public static class ListCertificatesTool
             {
                 SerialNumber = info.SerialNumber,
                 Subject = info.DistinguishedName,
-                Issuer = "(issuer not available in inventory)", // Placeholder - issuer not in CertificateItemInfo
+                Issuer = info.Issuer ?? info.DistinguishedName,
                 Thumbprint = info.Thumbprint,
                 NotBefore = info.NotBefore,
                 NotAfter = info.NotAfter,

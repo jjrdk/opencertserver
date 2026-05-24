@@ -11,13 +11,17 @@ public class CertificateItemInfo
     /// Gets or sets the certificate serial number.
     /// </summary>
     public required string SerialNumber { get; set; }
-    /// <summary>
-    /// Gets or sets the subject distinguished name.
-    /// </summary>
+     /// <summary>
+     /// Gets or sets the subject distinguished name.
+     /// </summary>
     public required string DistinguishedName { get; set; }
-    /// <summary>
-    /// Gets or sets the certificate validity start time.
-    /// </summary>
+     /// <summary>
+     /// Gets or sets the issuer distinguished name.
+     /// </summary>
+    public string? Issuer { get; set; }
+     /// <summary>
+     /// Gets or sets the certificate validity start time.
+     /// </summary>
     public DateTime NotBefore { get; set; }
     /// <summary>
     /// Gets or sets the certificate validity end time.
