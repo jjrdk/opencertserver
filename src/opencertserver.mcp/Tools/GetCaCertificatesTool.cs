@@ -21,8 +21,8 @@ public static class GetCaCertificatesTool
             : null;
 
         var includeFullChain = parameters?.TryGetValue("includeFullChain", out var chainObj) ?? false
-            ? bool.TryParse(chainObj.ToString(), out var chain) && chain
-            : false;
+             ? ParameterHelper.GetBoolean(chainObj, false)
+             : false;
 
         var ca = context.GetService<ICertificateAuthority>();
 
