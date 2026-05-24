@@ -1,12 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
      <PropertyGroup>
-         <IsPackable>false</IsPackable>
-         <RootNamespace>OpenCertServer.Mcp.Tests</RootNamespace>
+          <IsPackable>false</IsPackable>
+          <RootNamespace>OpenCertServer.Mcp.Tests</RootNamespace>
           <!-- Test projects don't need trim/AOT compatibility -->
-         <IsTrimmable>false</IsTrimmable>
-         <IsAotCompatible>false</IsAotCompatible>
-     </PropertyGroup>
+          <IsTrimmable>false</IsTrimmable>
+          <IsAotCompatible>false</IsAotCompatible>
+          <!-- Disable test parallelization: TestSharedState uses static mutable state, so scenarios must not run concurrently -->
+          <CollectionBehavior>DisableTestParallelization</CollectionBehavior>
+      </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk"/>

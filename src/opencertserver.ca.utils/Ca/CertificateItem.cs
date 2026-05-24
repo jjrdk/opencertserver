@@ -18,9 +18,10 @@ public class CertificateItem : CertificateItemInfo
     public CertificateItemInfo AsInfo()
     {
         return new CertificateItemInfo
-        {
+         {
             SerialNumber = SerialNumber,
             DistinguishedName = DistinguishedName,
+            Issuer = Issuer,
             NotBefore = NotBefore,
             NotAfter = NotAfter,
             RevocationReason = RevocationReason,
@@ -35,9 +36,10 @@ public class CertificateItem : CertificateItemInfo
     public static CertificateItem FromX509Certificate2(X509Certificate2 cert)
     {
         return new CertificateItem
-        {
+         {
             SerialNumber = cert.GetSerialNumberString(),
             DistinguishedName = cert.Subject,
+            Issuer = cert.Issuer,
             NotBefore = cert.NotBefore,
             NotAfter = cert.NotAfter,
             Thumbprint = cert.Thumbprint,

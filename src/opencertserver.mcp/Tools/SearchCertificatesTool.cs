@@ -139,7 +139,7 @@ public static class SearchCertificatesTool
         {
             SerialNumber = item.SerialNumber,
             Subject = item.DistinguishedName,
-            Issuer = "(issuer not available in inventory)", // Placeholder - issuer not in CertificateItemInfo
+            Issuer = item.Issuer ?? item.DistinguishedName,
             Thumbprint = item.Thumbprint,
             NotBefore = item.NotBefore,
             NotAfter = item.NotAfter,
