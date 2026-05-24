@@ -77,13 +77,16 @@ public sealed class McpServer : IDisposable
             var result = await tool.Handler(context);
 
             var duration = Stopwatch.GetElapsedTime(sw).TotalSeconds;
-            if (result.IsSuccess)
+            if (_options.EnableTelemetry)
             {
-                McpInstruments.RecordSuccess(toolName, duration);
-            }
-            else
-            {
-                McpInstruments.RecordFailure(toolName, duration, result.ErrorMessage);
+                if (result.IsSuccess)
+                {
+                    McpInstruments.RecordSuccess(toolName, duration);
+                }
+                else
+                {
+                    McpInstruments.RecordFailure(toolName, duration, result.ErrorMessage);
+                }
             }
 
             return result;
@@ -91,7 +94,10 @@ public sealed class McpServer : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error invoking tool: {ToolName}", toolName);
-            McpInstruments.RecordFailure(toolName, Stopwatch.GetElapsedTime(sw).TotalSeconds, ex.Message);
+            if (_options.EnableTelemetry)
+            {
+                McpInstruments.RecordFailure(toolName, Stopwatch.GetElapsedTime(sw).TotalSeconds, ex.Message);
+            }
             return McpToolResult.Fail(ex.Message, (int)McpErrorCode.InternalError);
         }
     }
