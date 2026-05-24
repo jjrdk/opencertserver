@@ -1292,7 +1292,9 @@ public partial class CertificateServerFeatures
             string.Equals(contentType, "application/pkcs7-mime", StringComparison.OrdinalIgnoreCase)));
     }
 
-    [Then(@"the private key part MUST use the content type ""(.+)""")]
+    [Then("""
+          the private key part MUST use the content type "(.+)"
+          """)]
     public void ThenThePrivateKeyPartMustUseTheContentType(string contentType)
     {
         Assert.Contains(contentType, GetResponseText(Encoding.Latin1), StringComparison.OrdinalIgnoreCase);

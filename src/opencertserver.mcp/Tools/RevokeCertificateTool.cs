@@ -55,28 +55,30 @@ public static class RevokeCertificateTool
             Name = "revoke_certificate",
             Description =
                 "Revoke a certificate by its serial number. Requires serial number and revocation reason. Returns success/failure status.",
-            InputSchema = @"{
-                  ""type"": ""object"",
-                  ""properties"": {
-                      ""serialNumber"": {
-                          ""type"": ""string"",
-                          ""description"": ""Certificate serial number (hex string)""
-                      },
-                      ""reason"": {
-                          ""type"": ""string"",
-                          ""description"": ""Revocation reason"",
-                          ""enum"": [
-                              ""Unspecified"", ""KeyCompromise"", ""CACompromise"",
-                              ""AffiliationChanged"", ""Superseded"",
-                              ""CessationOfOperation"", ""CertificateHold"",
-                              ""RemoveFromCRL"", ""PrivilegeWithdrawn"",
-                              ""AACompromise""
-                          ]
-                      }
-                  },
-                  ""required"": [""serialNumber"", ""reason""],
-                  ""additionalProperties"": false
-              }",
+            InputSchema = """
+                          {
+                                            "type": "object",
+                                            "properties": {
+                                                "serialNumber": {
+                                                    "type": "string",
+                                                    "description": "Certificate serial number (hex string)"
+                                                },
+                                                "reason": {
+                                                    "type": "string",
+                                                    "description": "Revocation reason",
+                                                    "enum": [
+                                                        "Unspecified", "KeyCompromise", "CACompromise",
+                                                        "AffiliationChanged", "Superseded",
+                                                        "CessationOfOperation", "CertificateHold",
+                                                        "RemoveFromCRL", "PrivilegeWithdrawn",
+                                                        "AACompromise"
+                                                    ]
+                                                }
+                                            },
+                                            "required": ["serialNumber", "reason"],
+                                            "additionalProperties": false
+                                        }
+                          """,
             Handler = Handle
         };
     }

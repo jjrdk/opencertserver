@@ -137,36 +137,38 @@ public static class SignCertificateTool
             Name = "sign_certificate",
             Description =
                 "Sign a Certificate Signing Request (CSR) and return the signed certificate. Supports PEM or Base64-encoded CSR input, optional profile selection, and custom validity dates.",
-            InputSchema = @"{
-                  ""type"": ""object"",
-                  ""properties"": {
-                      ""csr"": {
-                          ""type"": ""string"",
-                          ""description"": ""PEM or Base64-encoded Certificate Signing Request""
-                      },
-                      ""profileName"": {
-                          ""type"": ""string"",
-                          ""description"": ""CA profile name (optional, uses default if omitted)""
-                      },
-                      ""notBefore"": {
-                          ""type"": ""string"",
-                          ""format"": ""date-time"",
-                          ""description"": ""Certificate validity start (ISO 8601, optional)""
-                      },
-                      ""notAfter"": {
-                          ""type"": ""string"",
-                          ""format"": ""date-time"",
-                          ""description"": ""Certificate validity end (ISO 8601, optional)""
-                      },
-                      ""includePem"": {
-                          ""type"": ""boolean"",
-                          ""description"": ""Include PEM-encoded cert and chain in response"",
-                          ""default"": false
-                      }
-                  },
-                  ""required"": [""csr""],
-                  ""additionalProperties"": false
-              }",
+            InputSchema = """
+                          {
+                                            "type": "object",
+                                            "properties": {
+                                                "csr": {
+                                                    "type": "string",
+                                                    "description": "PEM or Base64-encoded Certificate Signing Request"
+                                                },
+                                                "profileName": {
+                                                    "type": "string",
+                                                    "description": "CA profile name (optional, uses default if omitted)"
+                                                },
+                                                "notBefore": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "description": "Certificate validity start (ISO 8601, optional)"
+                                                },
+                                                "notAfter": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "description": "Certificate validity end (ISO 8601, optional)"
+                                                },
+                                                "includePem": {
+                                                    "type": "boolean",
+                                                    "description": "Include PEM-encoded cert and chain in response",
+                                                    "default": false
+                                                }
+                                            },
+                                            "required": ["csr"],
+                                            "additionalProperties": false
+                                        }
+                          """,
             Handler = Handle
         };
     }

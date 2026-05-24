@@ -1354,7 +1354,7 @@ public partial class CertificateServerFeatures
         Assert.StartsWith("urn:ietf:params:acme:error:", AcmeState.OrderResponse!.Error!.Title!, StringComparison.Ordinal);
     }
 
-    [Then(@"^the ACME server MUST fetch ""http://\{identifier\}/\.well-known/acme-challenge/\{token\}""$")]
+    [Then("""^the ACME server MUST fetch "http://\{identifier\}/\.well-known/acme-challenge/\{token\}"$""")]
     public void ThenTheAcmeServerMustFetchTheHttpChallengeResource()
     {
         Assert.NotNull(AcmeState.ChallengeUrl);
@@ -1842,7 +1842,9 @@ public partial class CertificateServerFeatures
 
     // ──────────────────────── EAB step definitions ────────────────────────
 
-    [Given(@"the ACME server has a provisioned external account key ""(.+)""")]
+    [Given("""
+           the ACME server has a provisioned external account key "(.+)"
+           """)]
     public async Task GivenTheAcmeServerHasAProvisionedExternalAccountKey(string keyId)
     {
         var store = GetRequiredService<IStoreExternalAccountKeys>();
@@ -1854,7 +1856,9 @@ public partial class CertificateServerFeatures
         AcmeState.CurrentEabMacKey = macKey;
     }
 
-    [When(@"the client creates a new account with a valid external account binding for key ""(.+)""")]
+    [When("""
+          the client creates a new account with a valid external account binding for key "(.+)"
+          """)]
     public async Task WhenTheClientCreatesANewAccountWithAValidExternalAccountBindingForKey(string keyId)
     {
         AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
@@ -1869,7 +1873,9 @@ public partial class CertificateServerFeatures
         }).ConfigureAwait(false);
     }
 
-    [When(@"the client creates a new account with an invalid EAB HMAC signature for key ""(.+)""")]
+    [When("""
+          the client creates a new account with an invalid EAB HMAC signature for key "(.+)"
+          """)]
     public async Task WhenTheClientCreatesANewAccountWithAnInvalidEabHmacSignatureForKey(string keyId)
     {
         AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
@@ -1885,7 +1891,9 @@ public partial class CertificateServerFeatures
         }).ConfigureAwait(false);
     }
 
-    [When(@"the client creates a new account with an EAB url mismatch for key ""(.+)""")]
+    [When("""
+          the client creates a new account with an EAB url mismatch for key "(.+)"
+          """)]
     public async Task WhenTheClientCreatesANewAccountWithAnEabUrlMismatchForKey(string keyId)
     {
         AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
@@ -1900,7 +1908,9 @@ public partial class CertificateServerFeatures
         }).ConfigureAwait(false);
     }
 
-    [When(@"the client creates a new account with an EAB payload that is not the account JWK for key ""(.+)""")]
+    [When("""
+          the client creates a new account with an EAB payload that is not the account JWK for key "(.+)"
+          """)]
     public async Task WhenTheClientCreatesANewAccountWithAnEabPayloadThatIsNotTheAccountJwkForKey(string keyId)
     {
         AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
@@ -1917,7 +1927,9 @@ public partial class CertificateServerFeatures
         }).ConfigureAwait(false);
     }
 
-    [When(@"the client successfully creates a new account with external account key ""(.+)""")]
+    [When("""
+          the client successfully creates a new account with external account key "(.+)"
+          """)]
     public async Task WhenTheClientSuccessfullyCreatesANewAccountWithExternalAccountKey(string keyId)
     {
         AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
@@ -1936,7 +1948,9 @@ public partial class CertificateServerFeatures
         AcmeState.AccountUrl = AcmeState.Response?.Headers.Location;
     }
 
-    [When(@"the client attempts to create another account reusing external account key ""(.+)""")]
+    [When("""
+          the client attempts to create another account reusing external account key "(.+)"
+          """)]
     public async Task WhenTheClientAttemptsToCreateAnotherAccountReusingExternalAccountKey(string keyId)
     {
         var newKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
@@ -1951,7 +1965,9 @@ public partial class CertificateServerFeatures
         }).ConfigureAwait(false);
     }
 
-    [Then(@"the account MUST be linked to external account key ""(.+)""")]
+    [Then("""
+          the account MUST be linked to external account key "(.+)"
+          """)]
     public async Task ThenTheAccountMustBeLinkedToExternalAccountKey(string keyId)
     {
         Assert.NotNull(AcmeState.Response?.Headers.Location);
@@ -1964,7 +1980,7 @@ public partial class CertificateServerFeatures
         Assert.Equal(keyId, account!.ExternalAccountId);
     }
 
-    [When(@"the server checks whether external account key ""(.+)"" is active")]
+    [When("""the server checks whether external account key "(.+)" is active""")]
     public async Task WhenTheServerChecksWhetherExternalAccountKeyIsActive(string keyId)
     {
         var eabService = GetRequiredService<IExternalAccountBindingService>();
