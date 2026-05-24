@@ -102,22 +102,24 @@ public static class GetCertificateTool
             Name = "get_certificate",
             Description =
                 "Get a certificate by its serial number. Returns full certificate metadata and optionally the PEM-encoded certificate.",
-            InputSchema = @"{
-                 ""type"": ""object"",
-                 ""properties"": {
-                     ""serialNumber"": {
-                         ""type"": ""string"",
-                         ""description"": ""Certificate serial number (hex string)""
-                     },
-                     ""includePem"": {
-                         ""type"": ""boolean"",
-                         ""description"": ""Include PEM-encoded certificate in response"",
-                         ""default"": false
-                     }
-                 },
-                 ""required"": [""serialNumber""],
-                 ""additionalProperties"": false
-             }",
+            InputSchema = """
+                          {
+                                           "type": "object",
+                                           "properties": {
+                                               "serialNumber": {
+                                                   "type": "string",
+                                                   "description": "Certificate serial number (hex string)"
+                                               },
+                                               "includePem": {
+                                                   "type": "boolean",
+                                                   "description": "Include PEM-encoded certificate in response",
+                                                   "default": false
+                                               }
+                                           },
+                                           "required": ["serialNumber"],
+                                           "additionalProperties": false
+                                       }
+                          """,
             Handler = Handle
         };
     }

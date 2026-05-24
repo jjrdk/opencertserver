@@ -474,7 +474,9 @@ public partial class CertificateServerFeatures
         Assert.NotNull(OcspState.LastResponse);
     }
 
-    [Then(@"the OCSP responder MUST return the OCSP response status ""(.+)""")]
+    [Then("""
+          the OCSP responder MUST return the OCSP response status "(.+)"
+          """)]
     public void ThenTheOcspResponderMustReturnTheOcspResponseStatus(string statusName)
     {
         Assert.NotNull(OcspState.LastResponse);
@@ -503,7 +505,9 @@ public partial class CertificateServerFeatures
         Assert.Null(OcspState.LastResponse!.ResponseBytes);
     }
 
-    [Then(@"the OCSP responder MAY return the OCSP response status ""(.+)""")]
+    [Then("""
+          the OCSP responder MAY return the OCSP response status "(.+)"
+          """)]
     public void ThenTheOcspResponderMayReturnTheOcspResponseStatus(string statusName)
     {
         Assert.NotNull(OcspState.LastResponse);
@@ -625,7 +629,9 @@ public partial class CertificateServerFeatures
         }
     }
 
-    [Then(@"the OCSP response status MUST be ""successful""")]
+    [Then("""
+          the OCSP response status MUST be "successful"
+          """)]
     public void ThenTheOcspResponseStatusMustBeSuccessful()
     {
         Assert.Equal(OcspResponseStatus.Successful, OcspState.LastResponse!.ResponseStatus);

@@ -168,25 +168,27 @@ public static class SearchCertificatesTool
             Name = "search_certificates",
             Description =
                  "Search certificates by multiple criteria: subject, issuer, serial number, thumbprint, date range, revocation status, and key algorithm. Supports pagination.",
-            InputSchema = @"{
-                  ""type"": ""object"",
-                  ""properties"": {
-                       ""subjectCN"": {""type"": ""string"", ""description"": ""Substring match on subject CN""},
-                       ""subjectContains"": {""type"": ""string"", ""description"": ""Substring match on subject DN""},
-                       ""issuerContains"": {""type"": ""string"", ""description"": ""Substring match on issuer DN""},
-                       ""serialNumber"": {""type"": ""string"", ""description"": ""Substring match on serial number""},
-                       ""thumbprint"": {""type"": ""string"", ""description"": ""Substring match on thumbprint""},
-                       ""notBeforeAfter"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""Certificates not before this date""},
-                       ""notBeforeBefore"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""Certificates not before this date""},
-                       ""notAfterAfter"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""Certificates not after this date""},
-                       ""notAfterBefore"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""Certificates not after this date""},
-                       ""status"": {""type"": ""string"", ""enum"": [""Good"", ""Revoked"", ""Unknown"", """"], ""description"": ""Filter by revocation status""},
-                       ""keyAlgorithms"": {""type"": ""array"", ""items"": {""type"": ""string""}, ""description"": ""Filter by key type (RSA, ECDSA) (not yet supported - requires loading certs)""},
-                       ""page"": {""type"": ""integer"", ""default"": 0},
-                       ""pageSize"": {""type"": ""integer"", ""default"": 100}
-                   },
-                   ""additionalProperties"": false
-               }",
+            InputSchema = """
+                          {
+                                            "type": "object",
+                                            "properties": {
+                                                 "subjectCN": {"type": "string", "description": "Substring match on subject CN"},
+                                                 "subjectContains": {"type": "string", "description": "Substring match on subject DN"},
+                                                 "issuerContains": {"type": "string", "description": "Substring match on issuer DN"},
+                                                 "serialNumber": {"type": "string", "description": "Substring match on serial number"},
+                                                 "thumbprint": {"type": "string", "description": "Substring match on thumbprint"},
+                                                 "notBeforeAfter": {"type": "string", "format": "date-time", "description": "Certificates not before this date"},
+                                                 "notBeforeBefore": {"type": "string", "format": "date-time", "description": "Certificates not before this date"},
+                                                 "notAfterAfter": {"type": "string", "format": "date-time", "description": "Certificates not after this date"},
+                                                 "notAfterBefore": {"type": "string", "format": "date-time", "description": "Certificates not after this date"},
+                                                 "status": {"type": "string", "enum": ["Good", "Revoked", "Unknown", ""], "description": "Filter by revocation status"},
+                                                 "keyAlgorithms": {"type": "array", "items": {"type": "string"}, "description": "Filter by key type (RSA, ECDSA) (not yet supported - requires loading certs)"},
+                                                 "page": {"type": "integer", "default": 0},
+                                                 "pageSize": {"type": "integer", "default": 100}
+                                             },
+                                             "additionalProperties": false
+                                         }
+                          """,
             Handler = Handle
         };
     }

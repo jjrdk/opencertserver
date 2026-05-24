@@ -20,7 +20,7 @@ public class ParameterHandlingSteps
         _fixture = fixture;
     }
 
-    [When(@"the MCP server invokes ""([^""]*)"" with parameters:")]
+    [When("""the MCP server invokes "([^"]*)" with parameters:""")]
     public async Task WhenInvokeWithParameters(string toolName, Table table)
     {
         var parameters = new Dictionary<string, object>();
@@ -34,11 +34,13 @@ public class ParameterHandlingSteps
             {
                 value = TestSharedState.IssuedSerialNumber ?? "0000";
             }
-            else if (value.StartsWith("[") && value.EndsWith("]"))
+            else if (value.StartsWith('[') && value.EndsWith(']'))
             {
                 // Parse as JSON array — serial numbers are strings, so quote them
                 var arrayValue = value.Replace("{issued_serial}",
-                    $@"""{TestSharedState.IssuedSerialNumber ?? "0000"}""");
+                    $"""
+                     "{TestSharedState.IssuedSerialNumber ?? "0000"}"
+                     """);
                 var jsonArray = JsonSerializer.Deserialize<JsonElement>(arrayValue);
                 parameters[key] = jsonArray;
                 continue;
@@ -75,7 +77,7 @@ public class ParameterHandlingSteps
         TestSharedState.Clear();
     }
 
-    [When(@"the MCP server invokes ""([^""]*)"" with a PEM CSR")]
+    [When("""the MCP server invokes "([^"]*)" with a PEM CSR""")]
     public async Task WhenInvokeWithPemCsr(string toolName)
     {
         // Generate a test CSR in PEM format
@@ -102,7 +104,7 @@ public class ParameterHandlingSteps
         }
     }
 
-    [When(@"the MCP server invokes ""([^""]*)"" with ISO 8601 dates")]
+    [When("""the MCP server invokes "([^"]*)" with ISO 8601 dates""")]
     public async Task WhenInvokeWithIso8601Dates(string toolName)
     {
         // Generate a test CSR

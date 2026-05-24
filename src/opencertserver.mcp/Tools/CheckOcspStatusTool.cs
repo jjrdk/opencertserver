@@ -100,25 +100,27 @@ public static class CheckOcspStatusTool
             Name = "check_ocsp_status",
             Description =
                 "Check the revocation status of a certificate using OCSP-style logic. Requires serial number, issuer name hash (hex), and issuer key hash (hex). Returns good, revoked, or unknown status.",
-            InputSchema = @"{
-                   ""type"": ""object"",
-                   ""properties"": {
-                       ""serialNumber"": {
-                           ""type"": ""string"",
-                           ""description"": ""Certificate serial number (hex string)""
-                       },
-                       ""issuerNameHash"": {
-                           ""type"": ""string"",
-                           ""description"": ""Issuer name hash (SHA-256, hex string)""
-                       },
-                       ""issuerKeyHash"": {
-                           ""type"": ""string"",
-                           ""description"": ""Issuer key hash (SHA-256, hex string)""
-                       }
-                   },
-                   ""required"": [""serialNumber"", ""issuerNameHash"", ""issuerKeyHash""],
-                   ""additionalProperties"": false
-               }",
+            InputSchema = """
+                          {
+                                             "type": "object",
+                                             "properties": {
+                                                 "serialNumber": {
+                                                     "type": "string",
+                                                     "description": "Certificate serial number (hex string)"
+                                                 },
+                                                 "issuerNameHash": {
+                                                     "type": "string",
+                                                     "description": "Issuer name hash (SHA-256, hex string)"
+                                                 },
+                                                 "issuerKeyHash": {
+                                                     "type": "string",
+                                                     "description": "Issuer key hash (SHA-256, hex string)"
+                                                 }
+                                             },
+                                             "required": ["serialNumber", "issuerNameHash", "issuerKeyHash"],
+                                             "additionalProperties": false
+                                         }
+                          """,
             Handler = Handle
         };
     }

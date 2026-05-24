@@ -111,21 +111,23 @@ internal sealed class McpStdioTransport : IDisposable
 
     private Task SendCapabilities()
     {
-        using var capDoc = JsonDocument.Parse(@"{
-            ""jsonrpc"": ""2.0"",
-            ""result"": {
-                ""protocolVersion"": ""2024-11-05"",
-                ""capabilities"": {
-                    ""tools"": { ""listChanged"": false },
-                    ""logging"": {},
-                    ""prompts"": { ""listChanged"": false }
-                },
-                ""serverInfo"": {
-                    ""name"": ""OpenCertServer"",
-                    ""version"": ""3.1.0""
-                }
-            }
-        }");
+        using var capDoc = JsonDocument.Parse("""
+                                              {
+                                                          "jsonrpc": "2.0",
+                                                          "result": {
+                                                              "protocolVersion": "2024-11-05",
+                                                              "capabilities": {
+                                                                  "tools": { "listChanged": false },
+                                                                  "logging": {},
+                                                                  "prompts": { "listChanged": false }
+                                                              },
+                                                              "serverInfo": {
+                                                                  "name": "OpenCertServer",
+                                                                  "version": "3.1.0"
+                                                              }
+                                                          }
+                                                      }
+                                              """);
         var result = capDoc.RootElement.GetProperty("result").Clone();
         var response = JsonRpcResponse.Ok(null, result);
         WriteResponse(response);
