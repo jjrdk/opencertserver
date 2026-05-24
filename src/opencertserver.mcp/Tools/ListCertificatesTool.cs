@@ -13,9 +13,9 @@ public static class ListCertificatesTool
         var parameters = context.Parameters as IDictionary<string, object>;
 
         var pageObj2 = parameters?.TryGetValue("page", out var pageObj) ?? false ? pageObj : null;
-        var page = pageObj2 != null ? Convert.ToInt32(pageObj2) : 0;
+        var page = ParameterHelper.GetInt32(pageObj2, 0);
         var pageSizeObj2 = parameters?.TryGetValue("pageSize", out var pageSizeObj) ?? false ? pageSizeObj : null;
-        var pageSize = pageSizeObj2 != null ? Convert.ToInt32(pageSizeObj2) : 100;
+        var pageSize = ParameterHelper.GetInt32(pageSizeObj2, 100);
 
         if (pageSize is < 1 or > 500)
         {
@@ -43,7 +43,7 @@ public static class ListCertificatesTool
             {
                 SerialNumber = info.SerialNumber,
                 Subject = info.DistinguishedName,
-                Issuer = info.DistinguishedName,
+                Issuer = "(issuer not available in inventory)", // Placeholder - issuer not in CertificateItemInfo
                 Thumbprint = info.Thumbprint,
                 NotBefore = info.NotBefore,
                 NotAfter = info.NotAfter,

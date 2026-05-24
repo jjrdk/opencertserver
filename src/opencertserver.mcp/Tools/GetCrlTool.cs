@@ -23,7 +23,7 @@ public static class GetCrlTool
                : null;
 
         var includePem = parameters?.TryGetValue("includePem", out var pemObj) ?? false
-               ? bool.TryParse(pemObj.ToString(), out var pem) && pem
+               ? ParameterHelper.GetBoolean(pemObj, false)
                : false;
 
         var ca = context.GetService<ICertificateAuthority>();

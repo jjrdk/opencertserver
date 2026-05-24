@@ -62,11 +62,8 @@ public static class GetCaCertificatesTool
 
     private static string GetSerialNumberString(X509Certificate2 cert)
     {
-        var bytes = cert.GetSerialNumber();
-        var sb = new System.Text.StringBuilder(bytes.Length * 2);
-        foreach (var b in bytes)
-            sb.Append(b.ToString("X2"));
-        return sb.ToString();
+        // Use GetSerialNumberString() which returns big-endian hex matching the store's key format
+        return cert.GetSerialNumberString();
     }
 
     public static McpToolDefinition Create()

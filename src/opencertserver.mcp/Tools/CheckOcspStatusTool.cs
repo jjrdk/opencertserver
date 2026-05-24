@@ -24,6 +24,12 @@ public static class CheckOcspStatusTool
             return McpToolResult.Fail("serialNumber is required");
         }
 
+        // Validate serial number is valid hex
+        if (!ParameterHelper.IsValidHex(serialNumber))
+        {
+            return McpToolResult.Fail("serialNumber must be a valid hex-encoded string");
+        }
+
         var issuerNameHash = parameters?.TryGetValue("issuerNameHash", out var inhObj) ?? false
             ? inhObj.ToString()
             : null;
@@ -52,13 +58,19 @@ public static class CheckOcspStatusTool
             return McpToolResult.Fail("issuerNameHash and issuerKeyHash must be valid hex strings");
         }
 
+        var serialBytes = ParameterHelper.HexToBytes(serialNumber);
+        if (serialBytes == null)
+        {
+            return McpToolResult.Fail("Failed to parse serialNumber as hex");
+        }
+
         // Default to SHA-256 for hash algorithm
         var algorithmId = new AlgorithmIdentifier(HashAlgorithmName.SHA256.GetHashAlgorithmOid());
         var certId = new CertId(
             algorithmId,
             nameBytes,
             keyBytes,
-            Convert.FromHexString(serialNumber.Length % 2 == 0 ? serialNumber : "0" + serialNumber)
+            serialBytes
         );
 
         var (_, status, revokedInfo) = await store.GetCertificateStatus(certId, CancellationToken.None);
