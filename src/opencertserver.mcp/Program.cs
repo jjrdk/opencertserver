@@ -43,23 +43,27 @@ public static class Program
         await mcpServer.InitializeAsync(host.Services);
 
         // Wait for cancellation
-        var cts = new CancellationTokenSource();
-        // Start the server (stdio transport)
-        await mcpServer.StartAsync(cts.Token);
-
-        Console.CancelKeyPress += (s, e) =>
+        using var cts = new CancellationTokenSource();
+        ConsoleCancelEventHandler? cancelHandler = (s, e) =>
         {
             cts.Cancel();
             e.Cancel = true;
         };
+        Console.CancelKeyPress += cancelHandler;
+
+        var startTask = mcpServer.StartAsync(cts.Token);
 
         try
         {
-            await Task.Delay(Timeout.Infinite, cts.Token);
+            await Task.WhenAny(startTask, Task.Delay(Timeout.Infinite, cts.Token));
         }
-        catch (TaskCanceledException)
+        finally
         {
             await mcpServer.StopAsync();
+            Console.CancelKeyPress -= cancelHandler;
         }
+
+        // Propagate any server start/transport failures after shutdown.
+        await startTask;
     }
 }
