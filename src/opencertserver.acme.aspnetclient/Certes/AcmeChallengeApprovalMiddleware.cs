@@ -35,9 +35,14 @@ public sealed class AcmeChallengeApprovalMiddleware : ILetsEncryptChallengeAppro
     private async Task ProcessAcmeChallenge(HttpContext context)
     {
         var path = context.Request.Path.ToString();
+        var safePathForLog = path
+            .Replace("\r", string.Empty)
+            .Replace("\n", string.Empty)
+            .Replace("\u2028", string.Empty)
+            .Replace("\u2029", string.Empty);
         _logger.LogDebug(
             "Challenge invoked: {ChallengePath} by {IpAddress}",
-            path,
+            safePathForLog,
             context.Connection.RemoteIpAddress);
 
         var requestedToken = path[$"{MagicPrefix}/".Length..];
@@ -47,7 +52,7 @@ public sealed class AcmeChallengeApprovalMiddleware : ILetsEncryptChallengeAppro
         {
             _logger.LogInformation(
                 "The given challenge did not match {ChallengePath} among {AllChallenges}",
-                path,
+                safePathForLog,
                 allChallenges);
             await _next(context).ConfigureAwait(false);
             return;
