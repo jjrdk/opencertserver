@@ -86,20 +86,20 @@ public static class GetRevocationStatusTool
             Description =
                 "Check the revocation status of one or more certificates by serial number. Returns good, revoked, or unknown status for each. More convenient than check_ocsp_status as it doesn't require manual hash computation.",
             InputSchema = @"{
-                  'type': 'object',
-                  'properties': {
-                      'serialNumbers': {
-                          'type': 'array',
-                          'items': { 'type': 'string' },
-                          'description': 'Array of certificate serial numbers (hex strings)'
+                  ""type"": ""object"",
+                  ""properties"": {
+                      ""serialNumbers"": {
+                          ""type"": ""array"",
+                          ""items"": { ""type"": ""string"" },
+                          ""description"": ""Array of certificate serial numbers (hex strings)""
                       },
-                      'profileName': {
-                          'type': 'string',
-                          'description': 'CA profile name (optional, uses default if omitted)'
+                      ""profileName"": {
+                          ""type"": ""string"",
+                          ""description"": ""CA profile name (optional, uses default if omitted)""
                       }
                   },
-                  'required': ['serialNumbers'],
-                  'additionalProperties': false
+                  ""required"": [""serialNumbers""],
+                  ""additionalProperties"": false
               }",
             Handler = Handle
         };

@@ -65,20 +65,20 @@ public static class ListCertificatesTool
             Name = "list_certificates",
             Description = "List issued certificates with pagination. Returns serial number, subject, issuer, validity dates, thumbprint, and revocation status.",
             InputSchema = @"{
-                'type': 'object',
-                'properties': {
-                    'page': {
-                        'type': 'integer',
-                        'description': 'Zero-based page index',
-                        'default': 0
+                ""type"": ""object"",
+                ""properties"": {
+                    ""page"": {
+                        ""type"": ""integer"",
+                        ""description"": ""Zero-based page index"",
+                        ""default"": 0
                     },
-                    'pageSize': {
-                        'type': 'integer',
-                        'description': 'Items per page, 1-500',
-                        'default': 100
+                    ""pageSize"": {
+                        ""type"": ""integer"",
+                        ""description"": ""Items per page, 1-500"",
+                        ""default"": 100
                     }
                 },
-                'additionalProperties': false
+                ""additionalProperties"": false
             }",
             Handler = ListCertificatesAsync
         };

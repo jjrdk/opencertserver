@@ -100,23 +100,23 @@ public static class SearchCertificatesTool
             Description =
                 "Search certificates by multiple criteria: subject CN, subject contains substring, issuer, serial number, thumbprint, date range (notBefore/notAfter), revocation status, and key algorithm.",
             InputSchema = @"{
-                 'type': 'object',
-                 'properties': {
-                      'subjectCN': {'type': 'string', 'description': 'Exact match on subject CN'},
-                      'subjectContains': {'type': 'string', 'description': 'Substring match on subject DN'},
-                      'issuerContains': {'type': 'string', 'description': 'Substring match on issuer DN'},
-                      'serialNumber': {'type': 'string', 'description': 'Exact match on serial number'},
-                      'thumbprint': {'type': 'string', 'description': 'Exact match on thumbprint'},
-                      'notBeforeAfter': {'type': 'string', 'format': 'date-time', 'description': 'Certificates not before this date'},
-                      'notBeforeBefore': {'type': 'string', 'format': 'date-time', 'description': 'Certificates not before this date'},
-                      'notAfterAfter': {'type': 'string', 'format': 'date-time', 'description': 'Certificates not after this date'},
-                      'notAfterBefore': {'type': 'string', 'format': 'date-time', 'description': 'Certificates not after this date'},
-                      'status': {'type': 'string', 'enum': ['Good', 'Revoked', 'Unknown', ''], 'description': 'Filter by revocation status'},
-                      'keyAlgorithms': {'type': 'array', 'items': {'type': 'string'}, 'description': 'Filter by key type (RSA, ECDSA)'},
-                      'page': {'type': 'integer', 'default': 0},
-                      'pageSize': {'type': 'integer', 'default': 100}
+                 ""type"": ""object"",
+                 ""properties"": {
+                      ""subjectCN"": {""type"": ""string"", ""description"": ""Exact match on subject CN""},
+                      ""subjectContains"": {""type"": ""string"", ""description"": ""Substring match on subject DN""},
+                      ""issuerContains"": {""type"": ""string"", ""description"": ""Substring match on issuer DN""},
+                      ""serialNumber"": {""type"": ""string"", ""description"": ""Exact match on serial number""},
+                      ""thumbprint"": {""type"": ""string"", ""description"": ""Exact match on thumbprint""},
+                      ""notBeforeAfter"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""Certificates not before this date""},
+                      ""notBeforeBefore"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""Certificates not before this date""},
+                      ""notAfterAfter"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""Certificates not after this date""},
+                      ""notAfterBefore"": {""type"": ""string"", ""format"": ""date-time"", ""description"": ""Certificates not after this date""},
+                      ""status"": {""type"": ""string"", ""enum"": [""Good"", ""Revoked"", ""Unknown"", """"], ""description"": ""Filter by revocation status""},
+                      ""keyAlgorithms"": {""type"": ""array"", ""items"": {""type"": ""string""}, ""description"": ""Filter by key type (RSA, ECDSA)""},
+                      ""page"": {""type"": ""integer"", ""default"": 0},
+                      ""pageSize"": {""type"": ""integer"", ""default"": 100}
                   },
-                  'additionalProperties': false
+                  ""additionalProperties"": false
               }",
             Handler = Handle
         };

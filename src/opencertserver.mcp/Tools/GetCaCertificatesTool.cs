@@ -77,19 +77,19 @@ public static class GetCaCertificatesTool
             Description =
                 "Retrieve root and intermediate CA certificates. Optionally include rollover certificates from the published bundle. Returns certificate metadata and optionally PEM-encoded certificates.",
             InputSchema = @"{
-                'type': 'object',
-                'properties': {
-                    'profileName': {
-                        'type': 'string',
-                        'description': 'CA profile name (optional, uses default if omitted)'
+                ""type"": ""object"",
+                ""properties"": {
+                    ""profileName"": {
+                        ""type"": ""string"",
+                        ""description"": ""CA profile name (optional, uses default if omitted)""
                     },
-                    'includeFullChain': {
-                        'type': 'boolean',
-                        'description': 'Include rollover/transition certificates',
-                        'default': false
+                    ""includeFullChain"": {
+                        ""type"": ""boolean"",
+                        ""description"": ""Include rollover/transition certificates"",
+                        ""default"": false
                     }
                 },
-                'additionalProperties': false
+                ""additionalProperties"": false
             }",
             Handler = Handle
         };
