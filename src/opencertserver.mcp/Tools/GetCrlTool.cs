@@ -90,19 +90,19 @@ public static class GetCrlTool
             Description =
                   "Retrieve the current Certificate Revocation List (CRL). Parses the DER-encoded CRL and returns structured data: issuer DN, last update, next update, CRL number, and list of revoked certificates (serial number, revocation time, reason). Optionally include raw PEM bytes in response.",
             InputSchema = @"{
-                    'type': 'object',
-                    'properties': {
-                        'profileName': {
-                            'type': 'string',
-                            'description': 'CA profile name (optional, uses default if omitted)'
+                    ""type"": ""object"",
+                    ""properties"": {
+                        ""profileName"": {
+                            ""type"": ""string"",
+                            ""description"": ""CA profile name (optional, uses default if omitted)""
                         },
-                        'includePem': {
-                            'type': 'boolean',
-                            'description': 'Include raw PEM-encoded DER CRL in response',
-                            'default': false
+                        ""includePem"": {
+                            ""type"": ""boolean"",
+                            ""description"": ""Include raw PEM-encoded DER CRL in response"",
+                            ""default"": false
                         }
                     },
-                    'additionalProperties': false
+                    ""additionalProperties"": false
                 }",
             Handler = Handle
           };

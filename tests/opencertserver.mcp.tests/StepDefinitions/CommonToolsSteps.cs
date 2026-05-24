@@ -1,5 +1,6 @@
 namespace OpenCertServer.Mcp.Tests.StepDefinitions;
 
+using System.Text.Json;
 using OpenCertServer.Mcp.Tests.Support;
 using OpenCertServer.Mcp.Tests;
 using Reqnroll;
@@ -179,8 +180,15 @@ public sealed class CommonToolsSteps : IDisposable
         Assert.NotNull(tools);
         foreach (var (_, def) in tools)
         {
-            Assert.NotNull(def.Description);
-            Assert.NotEmpty(def.Description);
+            Assert.NotNull(def.InputSchema);
+            Assert.NotEmpty(def.InputSchema);
+
+            using var schemaDoc = JsonDocument.Parse(def.InputSchema);
+            Assert.Equal(JsonValueKind.Object, schemaDoc.RootElement.ValueKind);
+            Assert.True(schemaDoc.RootElement.TryGetProperty("type", out var typeProp));
+            Assert.Equal("object", typeProp.GetString());
+            Assert.True(schemaDoc.RootElement.TryGetProperty("properties", out var propertiesProp));
+            Assert.Equal(JsonValueKind.Object, propertiesProp.ValueKind);
         }
     }
 
