@@ -106,7 +106,7 @@ internal sealed class McpStdioTransport : IDisposable
         }
     }
 
-    private async Task SendCapabilities()
+    private Task SendCapabilities()
     {
         using var capDoc = JsonDocument.Parse(@"{
             ""jsonrpc"": ""2.0"",
@@ -126,6 +126,8 @@ internal sealed class McpStdioTransport : IDisposable
         var result = capDoc.RootElement.GetProperty("result").Clone();
         var response = JsonRpcResponse.Ok(null, result);
         WriteResponse(response);
+
+        return Task.CompletedTask;
     }
 
     private async Task ProcessMessage(string raw, CancellationToken cancellationToken)
@@ -191,13 +193,15 @@ internal sealed class McpStdioTransport : IDisposable
         }
     }
 
-    private async Task HandleInitialize(JsonElement? id)
+    private Task HandleInitialize(JsonElement? id)
     {
         var response = JsonRpcResponse.Ok(id, JsonDocument.Parse("{}").RootElement);
         WriteResponse(response);
+
+        return Task.CompletedTask;
     }
 
-    private async Task HandleToolsList(JsonElement? id)
+    private Task HandleToolsList(JsonElement? id)
     {
         try
         {
@@ -234,6 +238,8 @@ internal sealed class McpStdioTransport : IDisposable
             var error = JsonRpcResponse.Error(id, -32603, $"Failed to list tools: {ex.Message}");
             WriteResponse(error);
         }
+
+        return Task.CompletedTask;
     }
 
     private async Task HandleToolsCall(JsonElement paramsProp, JsonElement? id)
