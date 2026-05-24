@@ -228,7 +228,11 @@ public sealed class McpServerRevocationSteps
         [Then("the CRL bytes in the response MUST be base64-encoded")]
         public void ThenCrlBytesMustBeBase64()
         {
-                // When includePem is true, CrlBytesBase64 should be populated
+                Assert.NotNull(TestSharedState.CrlResult);
+                Assert.NotNull(TestSharedState.CrlResult.CrlBytesBase64);
+                Assert.NotEmpty(TestSharedState.CrlResult.CrlBytesBase64);
+                var crlBytes = Convert.FromBase64String(TestSharedState.CrlResult.CrlBytesBase64);
+                Assert.NotEmpty(crlBytes);
         }
 
         [Then("the response profile name MUST be \"(.+)\"")]
