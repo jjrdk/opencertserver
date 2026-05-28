@@ -94,7 +94,7 @@ public class McpServerToolsSteps
     public void ThenTheErrorCodeMustBeMcpErrorCodeToolNotFound(string expectedCodeStr)
     {
         Assert.NotNull(TestSharedState.ToolResult);
-        Assert.False(TestSharedState.ToolResult!.IsSuccess);
+        Assert.False(TestSharedState.ToolResult.IsSuccess);
         Assert.Equal((int)McpErrorCode.ToolNotFound, TestSharedState.ToolResult.ErrorCode);
     }
 
