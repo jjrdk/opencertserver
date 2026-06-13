@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "asn1js": "^3.0.7",
-    "pkijs": "^3.3.3"
-  }
-}
