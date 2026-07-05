@@ -26,6 +26,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj"/>
         <ProjectReference Include="..\..\src\opencertserver.acme.server\opencertserver.acme.server.csproj"/>
+        <ProjectReference Include="..\..\src\opencertserver.tss.net\opencertserver.tss.net.csproj"/>
     </ItemGroup>
 
 </Project>

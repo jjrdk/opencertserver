@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RequestServices;
 using Services;
 using Stores;
+using System.Security.Cryptography.X509Certificates;
 using Workers;
 
 public static class ServiceCollectionExtensions
@@ -47,6 +48,8 @@ public static class ServiceCollectionExtensions
 
             services.AddScoped<ILookupClient, LookupClient>();
             services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();
+            services.AddSingleton<IAttestationTrustProvider>(
+                new StaticAttestationTrustProvider(new X509Certificate2Collection()));
             services.AddScoped<IValidateDeviceAttestChallenges, DeviceAttestChallengeValidator>();
             services.AddScoped<IChallengeValidatorFactory, DefaultChallengeValidatorFactory>();
 

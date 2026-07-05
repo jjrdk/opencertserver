@@ -19,6 +19,7 @@
         <ProjectReference Include="..\CertesSlim\CertesSlim.csproj"/>
         <ProjectReference Include="..\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj"/>
         <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj"/>
+        <ProjectReference Include="..\opencertserver.tss.net\opencertserver.tss.net.csproj"/>
     </ItemGroup>
 
 </Project>

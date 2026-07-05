@@ -106,7 +106,7 @@ namespace OpenCertServer.Acme.Server.Tests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/device-attest-validation.feature.ndjson", 6);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/device-attest-validation.feature.ndjson", 13);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -134,18 +134,18 @@ namespace OpenCertServer.Acme.Server.Tests.Features
             await this.TestTearDownAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="Valid device attestation proof is accepted")]
+        [global::Xunit.FactAttribute(DisplayName="Self-signed AIK certificate without injected trusted root is rejected")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Device Attest Challenge Validation")]
-        [global::Xunit.TraitAttribute("Description", "Valid device attestation proof is accepted")]
-        public async global::System.Threading.Tasks.Task ValidDeviceAttestationProofIsAccepted()
+        [global::Xunit.TraitAttribute("Description", "Self-signed AIK certificate without injected trusted root is rejected")]
+        public async global::System.Threading.Tasks.Task Self_SignedAIKCertificateWithoutInjectedTrustedRootIsRejected()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "0";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Valid device attestation proof is accepted", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Self-signed AIK certificate without injected trusted root is rejected", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 6
+#line 8
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -155,21 +155,311 @@ namespace OpenCertServer.Acme.Server.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 9
     await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 8
-    await testRunner.AndAsync("the challenge has extra data with matching nonce \"dmFsaWROb25jZQ\" and a valid AIK" +
-                        " certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 9
-    await testRunner.WhenAsync("the server validates the challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
 #line 10
-    await testRunner.ThenAsync("the result is valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.AndAsync("the challenge has extra data with matching nonce \"dmFsaWROb25jZQ\" and a self-sign" +
+                        "ed AIK certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 11
+    await testRunner.WhenAsync("the server validates the challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 12
+    await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 13
+    await testRunner.AndAsync("the error type contains \"invalid_attestation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="AIK certificate signed by an injected trusted CA passes chain verification")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Device Attest Challenge Validation")]
+        [global::Xunit.TraitAttribute("Description", "AIK certificate signed by an injected trusted CA passes chain verification")]
+        public async global::System.Threading.Tasks.Task AIKCertificateSignedByAnInjectedTrustedCAPassesChainVerification()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "1";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("AIK certificate signed by an injected trusted CA passes chain verification", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 15
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 16
+    await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 17
+    await testRunner.AndAsync("the challenge has extra data with matching nonce \"dmFsaWROb25jZQ\", a trusted CA-s" +
+                        "igned AIK certificate, and a valid TPM proof signed by the AIK key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 18
+    await testRunner.WhenAsync("the server validates the challenge with a trusted CA injected", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 19
+    await testRunner.ThenAsync("the result is valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 20
     await testRunner.AndAsync("there is no error", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="Proof containing garbage bytes fails validation")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Device Attest Challenge Validation")]
+        [global::Xunit.TraitAttribute("Description", "Proof containing garbage bytes fails validation")]
+        public async global::System.Threading.Tasks.Task ProofContainingGarbageBytesFailsValidation()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "2";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Proof containing garbage bytes fails validation", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 24
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 25
+    await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 26
+    await testRunner.AndAsync("the challenge has extra data with matching nonce \"dmFsaWROb25jZQ\", a trusted CA-s" +
+                        "igned AIK certificate, and garbage proof bytes", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 27
+    await testRunner.WhenAsync("the server validates the challenge with a trusted CA injected", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 28
+    await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 29
+    await testRunner.AndAsync("the error type contains \"invalid_attestation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="Proof with wrong TPM magic value fails validation")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Device Attest Challenge Validation")]
+        [global::Xunit.TraitAttribute("Description", "Proof with wrong TPM magic value fails validation")]
+        public async global::System.Threading.Tasks.Task ProofWithWrongTPMMagicValueFailsValidation()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "3";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Proof with wrong TPM magic value fails validation", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 31
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 32
+    await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 33
+    await testRunner.AndAsync("the challenge has extra data with matching nonce \"dmFsaWROb25jZQ\", a trusted CA-s" +
+                        "igned AIK certificate, and a proof with invalid TPM magic", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 34
+    await testRunner.WhenAsync("the server validates the challenge with a trusted CA injected", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 35
+    await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 36
+    await testRunner.AndAsync("the error type contains \"invalid_attestation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="Proof with wrong attestation type fails validation")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Device Attest Challenge Validation")]
+        [global::Xunit.TraitAttribute("Description", "Proof with wrong attestation type fails validation")]
+        public async global::System.Threading.Tasks.Task ProofWithWrongAttestationTypeFailsValidation()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "4";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Proof with wrong attestation type fails validation", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 38
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 39
+    await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 40
+    await testRunner.AndAsync("the challenge has extra data with matching nonce \"dmFsaWROb25jZQ\", a trusted CA-s" +
+                        "igned AIK certificate, and a proof with wrong attestation type", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 41
+    await testRunner.WhenAsync("the server validates the challenge with a trusted CA injected", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 42
+    await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 43
+    await testRunner.AndAsync("the error type contains \"invalid_attestation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="Proof whose extra data does not match the challenge token fails validation")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Device Attest Challenge Validation")]
+        [global::Xunit.TraitAttribute("Description", "Proof whose extra data does not match the challenge token fails validation")]
+        public async global::System.Threading.Tasks.Task ProofWhoseExtraDataDoesNotMatchTheChallengeTokenFailsValidation()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "5";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Proof whose extra data does not match the challenge token fails validation", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 45
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 46
+    await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 47
+    await testRunner.AndAsync("the challenge has extra data with matching nonce \"dmFsaWROb25jZQ\", a trusted CA-s" +
+                        "igned AIK certificate, and a proof with mismatched extra data", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 48
+    await testRunner.WhenAsync("the server validates the challenge with a trusted CA injected", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 49
+    await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 50
+    await testRunner.AndAsync("the error type contains \"invalid_attestation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="Empty proof field with valid AIK chain fails validation")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Device Attest Challenge Validation")]
+        [global::Xunit.TraitAttribute("Description", "Empty proof field with valid AIK chain fails validation")]
+        public async global::System.Threading.Tasks.Task EmptyProofFieldWithValidAIKChainFailsValidation()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "6";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Empty proof field with valid AIK chain fails validation", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 52
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 53
+    await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 54
+    await testRunner.AndAsync("the challenge has extra data with matching nonce \"dmFsaWROb25jZQ\", a trusted CA-s" +
+                        "igned AIK certificate, and an empty proof", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 55
+    await testRunner.WhenAsync("the server validates the challenge with a trusted CA injected", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 56
+    await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 57
+    await testRunner.AndAsync("the error type contains \"invalid_attestation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="Previously consumed nonce is rejected as replay")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Device Attest Challenge Validation")]
+        [global::Xunit.TraitAttribute("Description", "Previously consumed nonce is rejected as replay")]
+        public async global::System.Threading.Tasks.Task PreviouslyConsumedNonceIsRejectedAsReplay()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "7";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Previously consumed nonce is rejected as replay", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 61
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 62
+    await testRunner.GivenAsync("a device-attest-01 challenge with token \"cmVwbGF5Tm9uY2U\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 63
+    await testRunner.AndAsync("the challenge has extra data with matching nonce \"cmVwbGF5Tm9uY2U\", a trusted CA-" +
+                        "signed AIK certificate, and a valid TPM proof signed by the AIK key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 64
+    await testRunner.WhenAsync("the server validates the challenge with a trusted CA injected", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 65
+    await testRunner.AndAsync("the server validates the same challenge again with a trusted CA injected", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 66
+    await testRunner.ThenAsync("the second result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 67
+    await testRunner.AndAsync("the second error type contains \"replay_nonce\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -182,11 +472,11 @@ namespace OpenCertServer.Acme.Server.Tests.Features
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "1";
+            string pickleIndex = "8";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Nonce mismatch causes validation failure", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 13
+#line 71
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -196,19 +486,19 @@ namespace OpenCertServer.Acme.Server.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 14
+#line 72
     await testRunner.GivenAsync("a device-attest-01 challenge with token \"bm9uY2VB\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 15
+#line 73
     await testRunner.AndAsync("the challenge has extra data with a different nonce \"bm9uY2VC\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 16
+#line 74
     await testRunner.WhenAsync("the server validates the challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 17
+#line 75
     await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 18
+#line 76
     await testRunner.AndAsync("the error type contains \"invalid_nonce\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -222,11 +512,11 @@ namespace OpenCertServer.Acme.Server.Tests.Features
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "2";
+            string pickleIndex = "9";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Missing attestation proof is rejected", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 20
+#line 78
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -236,19 +526,19 @@ namespace OpenCertServer.Acme.Server.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 21
+#line 79
     await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 22
+#line 80
     await testRunner.AndAsync("the challenge has no extra data", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 23
+#line 81
     await testRunner.WhenAsync("the server validates the challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 24
+#line 82
     await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 25
+#line 83
     await testRunner.AndAsync("the error type contains \"device_attestation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -262,11 +552,11 @@ namespace OpenCertServer.Acme.Server.Tests.Features
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "3";
+            string pickleIndex = "10";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Invalid AIK chain causes validation failure", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 27
+#line 85
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -276,20 +566,20 @@ namespace OpenCertServer.Acme.Server.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 28
+#line 86
     await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 29
+#line 87
     await testRunner.AndAsync("the challenge has extra data with matching nonce \"dmFsaWROb25jZQ\" but no AIK cert" +
                         "ificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 30
+#line 88
     await testRunner.WhenAsync("the server validates the challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 31
+#line 89
     await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 32
+#line 90
     await testRunner.AndAsync("the error type contains \"invalid_attestation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
