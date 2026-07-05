@@ -36,7 +36,13 @@ public static class DirectoryEndpoints
                     ExternalAccountRequired = options.ExternalAccountRequired,
                     CAAIdentities           = null,
                     TermsOfService          = options.TOS.RequireAgreement ? options.TOS.Url : null,
-                    Website                 = options.WebsiteUrl
+                    Website                 = options.WebsiteUrl,
+                    ChallengeTypesWithAdditionalContent =
+                    [
+                        "http-01",
+                        "dns-01",
+                        "device-attest-01"
+                    ]
                 }
             };
             AcmeInstruments.DirectorySuccesses.Add(1);

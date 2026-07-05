@@ -126,6 +126,7 @@ public partial class CertificateServerFeatures
             services.AddSingleton<TestAcmeChallengeValidationState>();
             services.AddSingleton<IValidateHttp01Challenges, TestAcmeHttp01ChallengeValidator>();
             services.AddSingleton<IValidateDns01Challenges, TestAcmeDns01ChallengeValidator>();
+            services.AddSingleton<IValidateDeviceAttestChallenges, TestAcmeDeviceAttestChallengeValidator>();
             services.Replace(ServiceDescriptor.Singleton<IIssueCertificates>(sp => sp.GetRequiredService<TestAcmeIssuer>()));
         }
     }

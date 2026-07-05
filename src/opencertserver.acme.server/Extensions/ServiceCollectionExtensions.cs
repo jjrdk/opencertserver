@@ -47,6 +47,7 @@ public static class ServiceCollectionExtensions
 
             services.AddScoped<ILookupClient, LookupClient>();
             services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();
+            services.AddScoped<IValidateDeviceAttestChallenges, DeviceAttestChallengeValidator>();
             services.AddScoped<IChallengeValidatorFactory, DefaultChallengeValidatorFactory>();
 
 //            services.AddScoped<AddNextNonceFilter>();

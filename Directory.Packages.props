@@ -6,11 +6,11 @@
     <PackageVersion Include="Amazon.Lambda.TestUtilities" Version="4.1.0" />
     <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="3.0.0" />
     <PackageVersion Include="Amazon.Lambda.AspNetCoreServer" Version="10.1.1" />
-    <PackageVersion Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.4.11" />
+    <PackageVersion Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.100.2" />
     <PackageVersion Include="Cake.Docker" Version="1.5.0" />
     <PackageVersion Include="Cake.Frosting" Version="6.2.0" />
     <PackageVersion Include="DnsClient" Version="1.8.0" />
-    <PackageVersion Include="GitVersion.MsBuild" Version="6.7.0" />
+    <PackageVersion Include="GitVersion.MsBuild" Version="6.8.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Certificate" Version="10.0.9" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
@@ -25,7 +25,7 @@
     <PackageVersion Include="NuGet.Protocol" Version="7.6.0" />
     <PackageVersion Include="Reqnroll.xUnit.v3" Version="3.3.4" />
     <PackageVersion Include="System.CommandLine" Version="2.0.9" />
-    <PackageVersion Include="Testcontainers" Version="4.12.0" />
+    <PackageVersion Include="Testcontainers" Version="4.13.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="xUnit.v3" Version="3.2.2" />
   </ItemGroup>
