@@ -21,6 +21,7 @@
     <Project Path="tests\CertesSlim.tests\CertesSlim.tests.csproj" />
     <Project Path="tests\opencertserver.acme.abstractions.tests\opencertserver.acme.abstractions.tests.csproj" />
     <Project Path="tests\opencertserver.acme.aspnetclient.tests\opencertserver.acme.aspnetclient.tests.csproj" />
+    <Project Path="tests\opencertserver.acme.server.tests\opencertserver.acme.server.tests.csproj" />
     <Project Path="tests\opencertserver.ca.tests\opencertserver.ca.tests.csproj" />
     <Project Path="tests\opencertserver.certserver.tests\opencertserver.certserver.tests.csproj" />
     <Project Path="tests\opencertserver.est.server.tests\opencertserver.est.server.tests.csproj" />

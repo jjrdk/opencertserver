@@ -16,7 +16,11 @@ public static class ChallengeTypes
     /// </summary>
     public const string Dns01 = "dns-01";
     /// <summary>
+    /// The Device Attestation challenge type string.
+    /// </summary>
+    public const string DeviceAttest01 = "device-attest-01";
+    /// <summary>
     /// Gets an immutable array of all supported challenge types.
     /// </summary>
-    public static readonly ImmutableArray<string> AllTypes = [Http01, Dns01];
+    public static readonly ImmutableArray<string> AllTypes = [Http01, Dns01, DeviceAttest01];
 }

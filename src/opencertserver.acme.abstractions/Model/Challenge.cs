@@ -88,6 +88,12 @@ public sealed class Challenge
     public AcmeError? Error { get; set; }
 
     /// <summary>
+    /// Gets or sets extra data associated with the challenge (e.g., the raw JSON body sent by the client
+    /// when responding to a device-attest-01 challenge).
+    /// </summary>
+    public string? ExtraData { get; set; }
+
+    /// <summary>
     /// Sets the status of the challenge, enforcing valid status transitions.
     /// </summary>
     /// <param name="nextStatus">The next status to set.</param>

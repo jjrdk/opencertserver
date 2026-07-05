@@ -16,10 +16,12 @@ public static class ChallengeTypes
     public const string Dns01 = "dns-01";
 
     /// <summary>
-    /// Gets the tls-alpn-01 challenge name.
+    /// The tls-alpn-01 challenge.
     /// </summary>
-    /// <value>
-    /// The tls-alpn-01 challenge name.
-    /// </value>
-    public static string TlsAlpn01 { get; } = "tls-alpn-01";
+    public const string TlsAlpn01 = "tls-alpn-01";
+
+    /// <summary>
+    /// The device-attest-01 challenge.
+    /// </summary>
+    public const string DeviceAttest01 = "device-attest-01";
 }
