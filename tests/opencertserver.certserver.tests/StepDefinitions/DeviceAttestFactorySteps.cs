@@ -1,21 +1,19 @@
-namespace OpenCertServer.Acme.Server.Tests.StepDefinitions;
-
-using System;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using CertesSlim.Acme.Resource;
 using Microsoft.IdentityModel.Tokens;
 using OpenCertServer.Acme.Abstractions.Services;
 using OpenCertServer.Acme.Server.Services;
 using Reqnroll;
 using Xunit;
-using AcmeAccount = OpenCertServer.Acme.Abstractions.Model.Account;
-using AcmeChallenge = OpenCertServer.Acme.Abstractions.Model.Challenge;
-using AcmeError = OpenCertServer.Acme.Abstractions.Model.AcmeError;
-using AcmeIdentifier = OpenCertServer.Acme.Abstractions.Model.Identifier;
-using AcmeOrder = OpenCertServer.Acme.Abstractions.Model.Order;
-using AcmeAuthorization = OpenCertServer.Acme.Abstractions.Model.Authorization;
+
+namespace OpenCertServer.CertServer.Tests.StepDefinitions;
+
+using AcmeAccount = Acme.Abstractions.Model.Account;
+using AcmeChallenge = Acme.Abstractions.Model.Challenge;
+using AcmeError = Acme.Abstractions.Model.AcmeError;
+using AcmeIdentifier = Acme.Abstractions.Model.Identifier;
+using AcmeOrder = Acme.Abstractions.Model.Order;
+using AcmeAuthorization = Acme.Abstractions.Model.Authorization;
 
 [Binding]
 public sealed class DeviceAttestFactorySteps
@@ -108,24 +106,26 @@ public sealed class DeviceAttestFactorySteps
     public void ThenValidatorImplementsDeviceAttest()
     {
         Assert.NotNull(_returnedValidator);
-        Assert.IsAssignableFrom<IValidateDeviceAttestChallenges>(_returnedValidator);
+        Assert.IsType<IValidateDeviceAttestChallenges>(_returnedValidator, exactMatch: false);
     }
 
     [Then(@"the returned validator implements IValidateHttp01Challenges")]
     public void ThenValidatorImplementsHttp01()
     {
         Assert.NotNull(_returnedValidator);
-        Assert.IsAssignableFrom<IValidateHttp01Challenges>(_returnedValidator);
+        Assert.IsType<IValidateHttp01Challenges>(_returnedValidator, exactMatch: false);
     }
 
     [Then(@"the returned validator implements IValidateDns01Challenges")]
     public void ThenValidatorImplementsDns01()
     {
         Assert.NotNull(_returnedValidator);
-        Assert.IsAssignableFrom<IValidateDns01Challenges>(_returnedValidator);
+        Assert.IsType<IValidateDns01Challenges>(_returnedValidator, exactMatch: false);
     }
 
-    [Then(@"an InvalidOperationException is thrown with message ""(.*)""")]
+    [Then("""
+          an InvalidOperationException is thrown with message "(.*)"
+          """)]
     public void ThenInvalidOperationExceptionIsThrown(string expectedMessage)
     {
         Assert.NotNull(_thrownException);

@@ -1,12 +1,5 @@
-namespace OpenCertServer.Acme.Server.Tests.StepDefinitions;
-
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -18,11 +11,14 @@ using OpenCertServer.Acme.Abstractions.Services;
 using OpenCertServer.Acme.Server;
 using OpenCertServer.Acme.Server.Configuration;
 using OpenCertServer.Acme.Server.Extensions;
-using AcmeAccount = OpenCertServer.Acme.Abstractions.Model.Account;
-using AcmeChallenge = OpenCertServer.Acme.Abstractions.Model.Challenge;
-using AcmeError = OpenCertServer.Acme.Abstractions.Model.AcmeError;
-using AcmeIdentifier = OpenCertServer.Acme.Abstractions.Model.Identifier;
-using AcmeOrder = OpenCertServer.Acme.Abstractions.Model.Order;
+
+namespace OpenCertServer.CertServer.Tests.StepDefinitions;
+
+using AcmeAccount = Acme.Abstractions.Model.Account;
+using AcmeChallenge = Acme.Abstractions.Model.Challenge;
+using AcmeError = Acme.Abstractions.Model.AcmeError;
+using AcmeIdentifier = Acme.Abstractions.Model.Identifier;
+using AcmeOrder = Acme.Abstractions.Model.Order;
 
 /// <summary>
 /// Creates a minimal ACME test server for directory and e2e tests.

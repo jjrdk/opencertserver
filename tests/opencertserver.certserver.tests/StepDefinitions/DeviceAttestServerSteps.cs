@@ -1,13 +1,8 @@
-namespace OpenCertServer.Acme.Server.Tests.StepDefinitions;
-
-using System;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Threading;
-using System.Threading.Tasks;
 using CertesSlim.Acme.Resource;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,13 +10,16 @@ using Microsoft.IdentityModel.Tokens;
 using OpenCertServer.Acme.Abstractions.Services;
 using Reqnroll;
 using Xunit;
-using AcmeAccount = OpenCertServer.Acme.Abstractions.Model.Account;
-using AcmeChallenge = OpenCertServer.Acme.Abstractions.Model.Challenge;
-using AcmeError = OpenCertServer.Acme.Abstractions.Model.AcmeError;
-using AcmeIdentifier = OpenCertServer.Acme.Abstractions.Model.Identifier;
-using AcmeOrder = OpenCertServer.Acme.Abstractions.Model.Order;
-using AcmeAuthorization = OpenCertServer.Acme.Abstractions.Model.Authorization;
-using DeviceAttestAnswer = OpenCertServer.Acme.Abstractions.Model.DeviceAttestChallengeAnswer;
+
+namespace OpenCertServer.CertServer.Tests.StepDefinitions;
+
+using AcmeAccount = Acme.Abstractions.Model.Account;
+using AcmeChallenge = Acme.Abstractions.Model.Challenge;
+using AcmeError = Acme.Abstractions.Model.AcmeError;
+using AcmeIdentifier = Acme.Abstractions.Model.Identifier;
+using AcmeOrder = Acme.Abstractions.Model.Order;
+using AcmeAuthorization = Acme.Abstractions.Model.Authorization;
+using DeviceAttestAnswer = Acme.Abstractions.Model.DeviceAttestChallengeAnswer;
 
 /// <summary>
 /// Step definitions for device-attest-directory.feature (GROUP 4) and
@@ -70,7 +68,9 @@ public sealed class DeviceAttestServerSteps : IDisposable
         Assert.True(_directoryJson.ContainsKey("meta"), "Directory must contain 'meta' field");
     }
 
-    [Then(@"the challengeTypesWithAdditionalContent array includes ""(.*)""")]
+    [Then("""
+          the challengeTypesWithAdditionalContent array includes "(.*)"
+          """)]
     public void ThenTheChallengeTypesWithAdditionalContentIncludes(string expectedType)
     {
         Assert.NotNull(_directoryJson);
@@ -84,7 +84,9 @@ public sealed class DeviceAttestServerSteps : IDisposable
 
     // ─── GROUP 5: E2E steps ───────────────────────────────────────────────────
 
-    [Given(@"a device-attest-01 challenge exists with token ""(.*)""")]
+    [Given("""
+           a device-attest-01 challenge exists with token "(.*)"
+           """)]
     public void GivenAChallengeExistsWithToken(string token)
     {
         using var rsa = RSA.Create(2048);
@@ -101,7 +103,7 @@ public sealed class DeviceAttestServerSteps : IDisposable
         TokenBackingField.SetValue(_challenge, token);
     }
 
-    [When(@"the device submits attestation evidence with matching nonce ""(.*)"" and a valid AIK certificate")]
+    [When("""the device submits attestation evidence with matching nonce "(.*)" and a valid AIK certificate""")]
     public async Task WhenTheDeviceSubmitsAttestationEvidence(string nonce)
     {
         Assert.NotNull(_challenge);
