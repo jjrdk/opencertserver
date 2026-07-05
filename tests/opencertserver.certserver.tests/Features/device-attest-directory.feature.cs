@@ -11,7 +11,7 @@
 #region Designer generated code
 #pragma warning disable
 using Reqnroll;
-namespace OpenCertServer.Acme.Server.Tests.Features
+namespace OpenCertServer.CertServer.Tests.Features
 {
     
     

@@ -1,25 +1,23 @@
-namespace OpenCertServer.Acme.Server.Tests.StepDefinitions;
-
-using System;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
-using System.Threading;
-using System.Reflection;
 using CertesSlim.Acme.Resource;
 using Microsoft.IdentityModel.Tokens;
-using OpenCertServer.Acme.Abstractions.Services;
 using OpenCertServer.Acme.Server.Services;
 using OpenCertServer.Tpm2Lib;
 using Reqnroll;
 using Xunit;
-using AcmeAccount = OpenCertServer.Acme.Abstractions.Model.Account;
-using AcmeChallenge = OpenCertServer.Acme.Abstractions.Model.Challenge;
-using AcmeError = OpenCertServer.Acme.Abstractions.Model.AcmeError;
-using AcmeIdentifier = OpenCertServer.Acme.Abstractions.Model.Identifier;
-using AcmeOrder = OpenCertServer.Acme.Abstractions.Model.Order;
-using AcmeAuthorization = OpenCertServer.Acme.Abstractions.Model.Authorization;
-using DeviceAttestAnswer = OpenCertServer.Acme.Abstractions.Model.DeviceAttestChallengeAnswer;
+
+namespace OpenCertServer.CertServer.Tests.StepDefinitions;
+
+using AcmeAccount = Acme.Abstractions.Model.Account;
+using AcmeChallenge = Acme.Abstractions.Model.Challenge;
+using AcmeError = Acme.Abstractions.Model.AcmeError;
+using AcmeIdentifier = Acme.Abstractions.Model.Identifier;
+using AcmeOrder = Acme.Abstractions.Model.Order;
+using AcmeAuthorization = Acme.Abstractions.Model.Authorization;
+using DeviceAttestAnswer = Acme.Abstractions.Model.DeviceAttestChallengeAnswer;
 
 /// <summary>
 /// Step definitions for device-attest-validation.feature (GROUP 2 + code-review remediation).
@@ -176,14 +174,16 @@ public sealed class DeviceAttestValidationSteps : IDisposable
 
     // ─── Given steps ─────────────────────────────────────────────────────────
 
-    [Given(@"a device-attest-01 challenge with token ""(.*)""")]
+    [Given("""
+           a device-attest-01 challenge with token "(.*)"
+           """)]
     public void GivenAChallengeWithToken(string token)
     {
         _account = CreateTestAccount();
         _challenge = CreateChallengeWithToken(token);
     }
 
-    [Given(@"the challenge has extra data with matching nonce ""(.*)"" and a self-signed AIK certificate")]
+    [Given("""the challenge has extra data with matching nonce "(.*)" and a self-signed AIK certificate""")]
     public void GivenSelfSignedAikNoTrustedRoot(string nonce)
     {
         Assert.NotNull(_challenge);
@@ -191,7 +191,7 @@ public sealed class DeviceAttestValidationSteps : IDisposable
             proof: ToBase64Url([1, 2, 3]));
     }
 
-    [Given(@"the challenge has extra data with matching nonce ""(.*)"", a trusted CA-signed AIK certificate, and a valid TPM proof signed by the AIK key")]
+    [Given("""the challenge has extra data with matching nonce "(.*)", a trusted CA-signed AIK certificate, and a valid TPM proof signed by the AIK key""")]
     public void GivenValidCaSignedAikAndValidProof(string nonce)
     {
         Assert.NotNull(_challenge);
@@ -206,7 +206,7 @@ public sealed class DeviceAttestValidationSteps : IDisposable
         aikKey.Dispose();
     }
 
-    [Given(@"the challenge has extra data with matching nonce ""(.*)"", a trusted CA-signed AIK certificate, and garbage proof bytes")]
+    [Given("""the challenge has extra data with matching nonce "(.*)", a trusted CA-signed AIK certificate, and garbage proof bytes""")]
     public void GivenCaSignedAikGarbageProof(string nonce)
     {
         Assert.NotNull(_challenge);
@@ -219,7 +219,7 @@ public sealed class DeviceAttestValidationSteps : IDisposable
         aikKey.Dispose();
     }
 
-    [Given(@"the challenge has extra data with matching nonce ""(.*)"", a trusted CA-signed AIK certificate, and a proof with invalid TPM magic")]
+    [Given("""the challenge has extra data with matching nonce "(.*)", a trusted CA-signed AIK certificate, and a proof with invalid TPM magic""")]
     public void GivenCaSignedAikWrongMagic(string nonce)
     {
         Assert.NotNull(_challenge);
@@ -233,7 +233,7 @@ public sealed class DeviceAttestValidationSteps : IDisposable
         aikKey.Dispose();
     }
 
-    [Given(@"the challenge has extra data with matching nonce ""(.*)"", a trusted CA-signed AIK certificate, and a proof with wrong attestation type")]
+    [Given("""the challenge has extra data with matching nonce "(.*)", a trusted CA-signed AIK certificate, and a proof with wrong attestation type""")]
     public void GivenCaSignedAikWrongType(string nonce)
     {
         Assert.NotNull(_challenge);
@@ -248,7 +248,7 @@ public sealed class DeviceAttestValidationSteps : IDisposable
         aikKey.Dispose();
     }
 
-    [Given(@"the challenge has extra data with matching nonce ""(.*)"", a trusted CA-signed AIK certificate, and a proof with mismatched extra data")]
+    [Given("""the challenge has extra data with matching nonce "(.*)", a trusted CA-signed AIK certificate, and a proof with mismatched extra data""")]
     public void GivenCaSignedAikMismatchedExtraData(string nonce)
     {
         Assert.NotNull(_challenge);
@@ -263,7 +263,7 @@ public sealed class DeviceAttestValidationSteps : IDisposable
         aikKey.Dispose();
     }
 
-    [Given(@"the challenge has extra data with matching nonce ""(.*)"", a trusted CA-signed AIK certificate, and an empty proof")]
+    [Given("""the challenge has extra data with matching nonce "(.*)", a trusted CA-signed AIK certificate, and an empty proof""")]
     public void GivenCaSignedAikEmptyProof(string nonce)
     {
         Assert.NotNull(_challenge);
@@ -272,7 +272,9 @@ public sealed class DeviceAttestValidationSteps : IDisposable
         _challenge.ExtraData = BuildExtraData(nonce, aikCertB64, proof: string.Empty);
     }
 
-    [Given(@"the challenge has extra data with a different nonce ""(.*)""")]
+    [Given("""
+           the challenge has extra data with a different nonce "(.*)"
+           """)]
     public void GivenTheChallengeHasExtraDataWithDifferentNonce(string differentNonce)
     {
         Assert.NotNull(_challenge);
@@ -287,7 +289,7 @@ public sealed class DeviceAttestValidationSteps : IDisposable
         _challenge.ExtraData = null;
     }
 
-    [Given(@"the challenge has extra data with matching nonce ""(.*)"" but no AIK certificate")]
+    [Given("""the challenge has extra data with matching nonce "(.*)" but no AIK certificate""")]
     public void GivenTheChallengeHasExtraDataWithMatchingNonceButNoAik(string nonce)
     {
         Assert.NotNull(_challenge);
@@ -336,7 +338,9 @@ public sealed class DeviceAttestValidationSteps : IDisposable
     [Then(@"the result is not valid")]
     public void ThenTheResultIsNotValid() => Assert.False(_resultIsValid);
 
-    [Then(@"the error type contains ""(.*)""")]
+    [Then("""
+          the error type contains "(.*)"
+          """)]
     public void ThenTheErrorTypeContains(string expectedType)
     {
         Assert.NotNull(_resultError);
@@ -346,7 +350,9 @@ public sealed class DeviceAttestValidationSteps : IDisposable
     [Then(@"the second result is not valid")]
     public void ThenTheSecondResultIsNotValid() => Assert.False(_secondResultIsValid);
 
-    [Then(@"the second error type contains ""(.*)""")]
+    [Then("""
+          the second error type contains "(.*)"
+          """)]
     public void ThenTheSecondErrorTypeContains(string expectedType)
     {
         Assert.NotNull(_secondResultError);

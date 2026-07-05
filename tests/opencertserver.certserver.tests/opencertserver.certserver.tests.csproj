@@ -3,6 +3,8 @@
 	<PropertyGroup>
 		<IsPackable>false</IsPackable>
 		<RootNamespace>OpenCertServer.CertServer.Tests</RootNamespace>
+		<IsTrimmable>false</IsTrimmable>
+		<IsAotCompatible>false</IsAotCompatible>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -21,6 +23,57 @@
 	  <ProjectReference Include="..\..\src\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj" />
 	  <ProjectReference Include="..\..\src\opencertserver.certserver\opencertserver.certserver.csproj" />
 	  <ProjectReference Include="..\..\src\opencertserver.est.client\opencertserver.est.client.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ReqnrollFeatureFile Update="Features\AcmeConformance.feature">
+	    <NormalizedLogicalName>Features/AcmeConformance.feature</NormalizedLogicalName>
+	    <NormalizedRelativeDir>Features/</NormalizedRelativeDir>
+	    <CodeBehindFile>Features/AcmeConformance.feature.cs</CodeBehindFile>
+	    <MessagesFile>obj\Release/net10.0/Features/AcmeConformance.feature.ndjson</MessagesFile>
+	    <MessagesResourceName>Features/AcmeConformance.feature.ndjson</MessagesResourceName>
+	    <FeatureFileResourceName>Features/AcmeConformance.feature</FeatureFileResourceName>
+	  </ReqnrollFeatureFile>
+	  <ReqnrollFeatureFile Update="Features\device-attest-directory.feature">
+	    <NormalizedLogicalName>Features/device-attest-directory.feature</NormalizedLogicalName>
+	    <NormalizedRelativeDir>Features/</NormalizedRelativeDir>
+	    <CodeBehindFile>Features/device-attest-directory.feature.cs</CodeBehindFile>
+	    <MessagesFile>obj\Release/net10.0/Features/device-attest-directory.feature.ndjson</MessagesFile>
+	    <MessagesResourceName>Features/device-attest-directory.feature.ndjson</MessagesResourceName>
+	    <FeatureFileResourceName>Features/device-attest-directory.feature</FeatureFileResourceName>
+	  </ReqnrollFeatureFile>
+	  <ReqnrollFeatureFile Update="Features\device-attest-e2e.feature">
+	    <NormalizedLogicalName>Features/device-attest-e2e.feature</NormalizedLogicalName>
+	    <NormalizedRelativeDir>Features/</NormalizedRelativeDir>
+	    <CodeBehindFile>Features/device-attest-e2e.feature.cs</CodeBehindFile>
+	    <MessagesFile>obj\Release/net10.0/Features/device-attest-e2e.feature.ndjson</MessagesFile>
+	    <MessagesResourceName>Features/device-attest-e2e.feature.ndjson</MessagesResourceName>
+	    <FeatureFileResourceName>Features/device-attest-e2e.feature</FeatureFileResourceName>
+	  </ReqnrollFeatureFile>
+	  <ReqnrollFeatureFile Update="Features\device-attest-factory.feature">
+	    <NormalizedLogicalName>Features/device-attest-factory.feature</NormalizedLogicalName>
+	    <NormalizedRelativeDir>Features/</NormalizedRelativeDir>
+	    <CodeBehindFile>Features/device-attest-factory.feature.cs</CodeBehindFile>
+	    <MessagesFile>obj\Release/net10.0/Features/device-attest-factory.feature.ndjson</MessagesFile>
+	    <MessagesResourceName>Features/device-attest-factory.feature.ndjson</MessagesResourceName>
+	    <FeatureFileResourceName>Features/device-attest-factory.feature</FeatureFileResourceName>
+	  </ReqnrollFeatureFile>
+	  <ReqnrollFeatureFile Update="Features\device-attest-models.feature">
+	    <NormalizedLogicalName>Features/device-attest-models.feature</NormalizedLogicalName>
+	    <NormalizedRelativeDir>Features/</NormalizedRelativeDir>
+	    <CodeBehindFile>Features/device-attest-models.feature.cs</CodeBehindFile>
+	    <MessagesFile>obj\Release/net10.0/Features/device-attest-models.feature.ndjson</MessagesFile>
+	    <MessagesResourceName>Features/device-attest-models.feature.ndjson</MessagesResourceName>
+	    <FeatureFileResourceName>Features/device-attest-models.feature</FeatureFileResourceName>
+	  </ReqnrollFeatureFile>
+	  <ReqnrollFeatureFile Update="Features\device-attest-validation.feature">
+	    <NormalizedLogicalName>Features/device-attest-validation.feature</NormalizedLogicalName>
+	    <NormalizedRelativeDir>Features/</NormalizedRelativeDir>
+	    <CodeBehindFile>Features/device-attest-validation.feature.cs</CodeBehindFile>
+	    <MessagesFile>obj\Release/net10.0/Features/device-attest-validation.feature.ndjson</MessagesFile>
+	    <MessagesResourceName>Features/device-attest-validation.feature.ndjson</MessagesResourceName>
+	    <FeatureFileResourceName>Features/device-attest-validation.feature</FeatureFileResourceName>
+	  </ReqnrollFeatureFile>
 	</ItemGroup>
 
 </Project>

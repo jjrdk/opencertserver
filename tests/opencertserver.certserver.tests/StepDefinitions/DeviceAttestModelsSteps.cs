@@ -1,11 +1,10 @@
-namespace OpenCertServer.Acme.Server.Tests.StepDefinitions;
-
-using System;
 using System.Text.Json;
 using OpenCertServer.Acme.Abstractions.Model;
 using OpenCertServer.Acme.Abstractions.Services;
 using Reqnroll;
 using Xunit;
+
+namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 /// <summary>
 /// Step definitions for device-attest-models.feature (GROUP 1).
@@ -17,7 +16,9 @@ public sealed class DeviceAttestModelsSteps
     private DeviceAttestChallengeAnswer? _answer;
     private string? _json;
 
-    [Given(@"a DeviceAttestChallengeAnswer with Nonce ""(.*)"" Proof ""(.*)"" AikCertificate ""(.*)"" DeviceId ""(.*)""")]
+    [Given("""
+           a DeviceAttestChallengeAnswer with Nonce "(.*)" Proof "(.*)" AikCertificate "(.*)" DeviceId "(.*)"
+           """)]
     public void GivenADeviceAttestChallengeAnswerWith(string nonce, string proof, string aikCertificate, string deviceId)
     {
         _answer = new DeviceAttestChallengeAnswer
@@ -36,23 +37,33 @@ public sealed class DeviceAttestModelsSteps
         _json = JsonSerializer.Serialize(_answer);
     }
 
-    [Then(@"the JSON contains nonce ""(.*)""")]
+    [Then("""
+          the JSON contains nonce "(.*)"
+          """)]
     public void ThenTheJsonContainsNonce(string expected) =>
         Assert.Contains($"\"nonce\":\"{expected}\"", _json);
 
-    [Then(@"the JSON contains proof ""(.*)""")]
+    [Then("""
+          the JSON contains proof "(.*)"
+          """)]
     public void ThenTheJsonContainsProof(string expected) =>
         Assert.Contains($"\"proof\":\"{expected}\"", _json);
 
-    [Then(@"the JSON contains aikCertificate ""(.*)""")]
+    [Then("""
+          the JSON contains aikCertificate "(.*)"
+          """)]
     public void ThenTheJsonContainsAikCertificate(string expected) =>
         Assert.Contains($"\"aikCertificate\":\"{expected}\"", _json);
 
-    [Then(@"the JSON contains deviceId ""(.*)""")]
+    [Then("""
+          the JSON contains deviceId "(.*)"
+          """)]
     public void ThenTheJsonContainsDeviceId(string expected) =>
         Assert.Contains($"\"deviceId\":\"{expected}\"", _json);
 
-    [Given(@"a JSON string with nonce ""(.*)"" proof ""(.*)"" aikCertificate ""(.*)"" deviceId ""(.*)""")]
+    [Given("""
+           a JSON string with nonce "(.*)" proof "(.*)" aikCertificate "(.*)" deviceId "(.*)"
+           """)]
     public void GivenAJsonStringWith(string nonce, string proof, string aikCertificate, string deviceId)
     {
         _json = $"{{\"nonce\":\"{nonce}\",\"proof\":\"{proof}\",\"aikCertificate\":\"{aikCertificate}\",\"deviceId\":\"{deviceId}\"}}";
@@ -65,28 +76,36 @@ public sealed class DeviceAttestModelsSteps
         _answer = JsonSerializer.Deserialize<DeviceAttestChallengeAnswer>(_json);
     }
 
-    [Then(@"the Nonce property is ""(.*)""")]
+    [Then("""
+          the Nonce property is "(.*)"
+          """)]
     public void ThenTheNoncePropertyIs(string expected)
     {
         Assert.NotNull(_answer);
         Assert.Equal(expected, _answer.Nonce);
     }
 
-    [Then(@"the Proof property is ""(.*)""")]
+    [Then("""
+          the Proof property is "(.*)"
+          """)]
     public void ThenTheProofPropertyIs(string expected)
     {
         Assert.NotNull(_answer);
         Assert.Equal(expected, _answer.Proof);
     }
 
-    [Then(@"the AikCertificate property is ""(.*)""")]
+    [Then("""
+          the AikCertificate property is "(.*)"
+          """)]
     public void ThenTheAikCertificatePropertyIs(string expected)
     {
         Assert.NotNull(_answer);
         Assert.Equal(expected, _answer.AikCertificate);
     }
 
-    [Then(@"the DeviceId property is ""(.*)""")]
+    [Then("""
+          the DeviceId property is "(.*)"
+          """)]
     public void ThenTheDeviceIdPropertyIs(string expected)
     {
         Assert.NotNull(_answer);
