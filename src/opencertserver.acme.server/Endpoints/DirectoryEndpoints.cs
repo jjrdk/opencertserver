@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Options;
+using OpenCertServer.Acme.Abstractions.Model;
 using OpenCertServer.Acme.Server.Configuration;
 
 public static class DirectoryEndpoints
@@ -37,12 +38,7 @@ public static class DirectoryEndpoints
                     CAAIdentities           = null,
                     TermsOfService          = options.TOS.RequireAgreement ? options.TOS.Url : null,
                     Website                 = options.WebsiteUrl,
-                    ChallengeTypesWithAdditionalContent =
-                    [
-                        "http-01",
-                        "dns-01",
-                        "device-attest-01"
-                    ]
+                    ChallengeTypesWithAdditionalContent = ChallengeTypes.AllTypes
                 }
             };
             AcmeInstruments.DirectorySuccesses.Add(1);

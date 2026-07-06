@@ -16,7 +16,7 @@ using OpenCertServer.Tpm2Lib;
 /// Checks: nonce match → TPM quote structure → AIK signature → AIK certificate chain.
 /// See: https://smallstep.com/blog/build-your-own-device-identity-solution/
 /// </summary>
-public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChallenges
+public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChallenges, IDisposable
 {
     private readonly IAttestationTrustProvider _trustProvider;
 
@@ -24,10 +24,27 @@ public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChalle
     // Key = nonce token (base64url), Value = time consumed.
     private readonly ConcurrentDictionary<string, DateTimeOffset> _consumedNonces = new();
 
+    // Periodically prune stale nonce entries to prevent unbounded memory growth.
+    private static readonly TimeSpan NonceTtl = TimeSpan.FromMinutes(5);
+    private readonly Timer _cleanupTimer;
+
     public DeviceAttestChallengeValidator(IAttestationTrustProvider trustProvider)
     {
         _trustProvider = trustProvider;
+        _cleanupTimer = new Timer(PruneExpiredNonces, null, NonceTtl, NonceTtl);
     }
+
+    private void PruneExpiredNonces(object? state)
+    {
+        var cutoff = DateTimeOffset.UtcNow - NonceTtl;
+        foreach (var key in _consumedNonces.Keys)
+        {
+            if (_consumedNonces.TryGetValue(key, out var consumed) && consumed < cutoff)
+                _consumedNonces.TryRemove(new KeyValuePair<string, DateTimeOffset>(key, consumed));
+        }
+    }
+
+    public void Dispose() => _cleanupTimer.Dispose();
 
     public Task<(bool IsValid, AcmeError? error)> ValidateChallenge(
         Challenge challenge,
