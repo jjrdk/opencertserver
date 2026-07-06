@@ -12,7 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 using RequestServices;
 using Services;
 using Stores;
-using System.Security.Cryptography.X509Certificates;
 using Workers;
 
 public static class ServiceCollectionExtensions
@@ -49,23 +48,11 @@ public static class ServiceCollectionExtensions
             services.AddScoped<ILookupClient, LookupClient>();
             services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();
             services.AddSingleton<IAttestationTrustProvider>(
-                new StaticAttestationTrustProvider(new X509Certificate2Collection()));
+                new StaticAttestationTrustProvider([]));
             services.AddScoped<IValidateDeviceAttestChallenges, DeviceAttestChallengeValidator>();
             services.AddScoped<IChallengeValidatorFactory, DefaultChallengeValidatorFactory>();
 
-//            services.AddScoped<AddNextNonceFilter>();
-
             services.AddHostedService<HostedValidationService>();
-//
-//            services.Configure<MvcOptions>(
-//                opt =>
-//                {
-//                    opt.Filters.Add(typeof(AcmeExceptionFilter));
-//                    opt.Filters.Add(typeof(ValidateAcmeRequestFilter));
-//                    opt.Filters.Add(typeof(AcmeIndexLinkFilter));
-//
-//                    opt.ModelBinderProviders.Insert(0, new AcmeModelBindingProvider());
-//                });
 
             var acmeServerConfig = configuration.GetSection(sectionName);
             acmeServerOptions ??= new AcmeServerOptions();

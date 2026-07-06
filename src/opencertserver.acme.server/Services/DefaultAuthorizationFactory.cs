@@ -24,5 +24,6 @@ public sealed class DefaultAuthorizationFactory : IAuthorizationFactory
         {
             _ = new Challenge(authorization, ChallengeTypes.Http01);
         }
+        _ = new Challenge(authorization, ChallengeTypes.DeviceAttest01);
     }
 }
