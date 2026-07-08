@@ -5,5 +5,5 @@ Feature: Intel SGX Attestation
 
   Scenario: End-to-end Intel attestation on Azure
     Given an active SGX enclave in Azure
-    When we request a verified identity token
+    When we request a verified identity token for Intel
     Then the system should retrieve PCK ID, fetch cert from https://pccs.confidentialcomputing.azure.com, verify via Root CA, and produce a signed quote

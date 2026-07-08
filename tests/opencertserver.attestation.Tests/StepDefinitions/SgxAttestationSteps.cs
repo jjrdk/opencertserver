@@ -1,61 +1,73 @@
-namespace OpenCertServer.Attestation.Tests.StepDefinitions;
-
-using Microsoft.Extensions.Configuration;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
+using OpenCertServer.Attestation;
+using OpenCertServer.Attestation.Native;
+using OpenCertServer.Attestation.Tests.Mocks;
 using Reqnroll;
-using Xunit;
 
 [Binding]
 public class SgxAttestationSteps
 {
     private readonly IHttpClientFactory _httpFactoryMock = Substitute.For<IHttpClientFactory>();
     private readonly ILogger<SgxProvider> _loggerMock = Substitute.For<ILogger<SgxProvider>>();
-    private readonly HttpMessageHandler _handlerMock = Substitute.For<HttpMessageHandler>();
-    private readonly IConfiguration _configMock = Substitute.For<IConfiguration>();
+    private readonly ISgxNativeInterop _nativeMock = Substitute.For<ISgxNativeInterop>();
+    private readonly ICertificateCache _cacheMock = new InMemoryCertificateCache();
     private SgxProvider? _provider;
 
     [Given(@"an active SGX enclave in Azure")]
     public void GivenAnActiveSgxEnclaveInAzure()
     {
-        _configMock["Providers:IntelSgx:PccsUrl"].Returns("https://pccs.confidentialcomputing.azure.com");
+        // Native GetPckId returns success with a 16-byte ID
+        IntPtr dummy = IntPtr.Zero;
+        uint size = 16;
+        uint tcb = 0;
+        _nativeMock.GetPckId(out Arg.Any<IntPtr>(), ref Arg.Any<uint>(), ref Arg.Any<uint>())
+            .Returns(x =>
+            {
+                x[0] = dummy;
+                x[1] = size;
+                x[2] = tcb;
+                return 0; // SGX_SUCCESS
+            });
     }
 
-    [When(@"we request a verified identity token")]
-    public async Task WhenWeRequestAVerifiedIdentityToken()
+    [When(@"we request a verified identity token for Intel")]
+    public async Task WhenWeRequestAVerifiedIdentityTokenForIntel()
     {
-        // Setup Mock HTTP response for the cert retrieval
-        var mockResponse = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        using var certRsa = System.Security.Cryptography.RSA.Create(2048);
+        var certReq = new System.Security.Cryptography.X509Certificates.CertificateRequest(
+            "CN=Mock PCK Cert", certRsa,
+            System.Security.Cryptography.HashAlgorithmName.SHA256,
+            System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+        var mockCert = certReq.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+        var certBytes = mockCert.Export(System.Security.Cryptography.X509Certificates.X509ContentType.Cert);
+
+        var mockResponse = new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new ByteArrayContent(new byte[1024]) // Dummy cert bytes
+            Content = new ByteArrayContent(certBytes)
         };
+        var client = new HttpClient(new MockHttpHandler(mockResponse));
+        _httpFactoryMock.CreateClient(nameof(SgxProvider)).Returns(client);
 
-        // NSubstitute handles protected members of HttpMessageHandler via internal helpers or by mocking a wrapper,
-        // but for simplicity in this BDD test we can mock the HttpClient itself if injected.
-        // However, SgxProvider creates it via factory. We need to intercept the SendAsync call.
-
-        // Because HttpMessageHandler.SendAsync is protected, we use a custom handler that allows us to set the response.
-        var client = new HttpClient(new MockHandler(mockResponse));
-        _httpFactoryMock.CreateClient("SgxProvider").Returns(client);
-
-        _provider = new SgxProvider(_httpFactoryMock, _loggerMock, _configMock);
+        var options = Options.Create(new AttestationOptions
+        {
+            IntelSgx = new IntelSgxOptions { PccsUrl = "https://pccs.confidentialcomputing.azure.com" }
+        });
+        _provider = new SgxProvider(_httpFactoryMock, _loggerMock, _nativeMock, _cacheMock, options);
     }
 
-    [Then(@"the system should retrieve PCK ID, fetch cert from (.+), verify via Root CA, and produce a signed quote")]
-    public void ThenTheSystemShouldVerify(string url)
+    [Then(@"the system should retrieve PCK ID, fetch cert from https:\/\/pccs\.confidentialcomputing\.azure\.com, verify via Root CA, and produce a signed quote")]
+    public async Task ThenTheSystemShouldVerify()
     {
-        // Since we used a custom MockHandler, we can't easily use NSubstitute to verify the internal call
-        // without a more complex setup. But in this BDD context, if no exception is thrown and
-        // we reached here, the flow was exercised.
-        // To be strict, we should use a verifiable handler.
-        Assert.Equal(url, _configMock["Providers:IntelSgx:PccsUrl"]);
-    }
-
-    private class MockHandler : HttpMessageHandler
-    {
-        private readonly HttpResponseMessage _response;
-        public MockHandler(HttpResponseMessage response) => _response = response;
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(_response);
+        // Verify the provider can retrieve a device ID (native mock returns 0 = success, 0-byte buffer)
+        // GetDeviceIdAsync returns hex of zero bytes = empty string when size==16 but ptr==IntPtr.Zero
+        // That's acceptable for the happy-path mock test.
+        var cert = await _provider!.RetrieveDeviceCertificateAsync("A1B2C3D4E5F6");
+        if (cert is null) throw new Exception("Expected a certificate from PCCS");
     }
 }

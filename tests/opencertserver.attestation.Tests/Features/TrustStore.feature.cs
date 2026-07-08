@@ -17,7 +17,7 @@ namespace OpenCertServer.Attestation.Tests.Features
     
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Reqnroll", "3.0.0.0")]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    public partial class IntelSGXAttestationFeature : object, Xunit.IClassFixture<IntelSGXAttestationFeature.FixtureData>, Xunit.IAsyncLifetime
+    public partial class GlobalTrustRootAndRevocationFeature : object, Xunit.IClassFixture<GlobalTrustRootAndRevocationFeature.FixtureData>, Xunit.IAsyncLifetime
     {
         
         private global::Reqnroll.ITestRunner testRunner;
@@ -26,14 +26,13 @@ namespace OpenCertServer.Attestation.Tests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "Intel SGX Attestation", "  As a cloud operator\n  I want to verify the identity of an Intel SGX enclave in " +
-                "Azure\n  So that I can ensure the hardware is genuine before issuing certificates" +
-                "", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "Global Trust Root and Revocation", "  As a security administrator\n  I want to verify trust chains against pinned root" +
+                " certificates\n  So that forged vendor certificates are rejected", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
-#line 1 "SgxAttestation.feature"
+#line 1 "TrustStore.feature"
 #line hidden
         
-        public IntelSGXAttestationFeature(IntelSGXAttestationFeature.FixtureData fixtureData, Xunit.ITestOutputHelper testOutputHelper)
+        public GlobalTrustRootAndRevocationFeature(GlobalTrustRootAndRevocationFeature.FixtureData fixtureData, Xunit.ITestOutputHelper testOutputHelper)
         {
             this._testOutputHelper = testOutputHelper;
         }
@@ -107,7 +106,7 @@ namespace OpenCertServer.Attestation.Tests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/SgxAttestation.feature.ndjson", 3);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/TrustStore.feature.ndjson", 3);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -135,15 +134,15 @@ namespace OpenCertServer.Attestation.Tests.Features
             await this.TestTearDownAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="End-to-end Intel attestation on Azure")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Intel SGX Attestation")]
-        [global::Xunit.TraitAttribute("Description", "End-to-end Intel attestation on Azure")]
-        public async global::System.Threading.Tasks.Task End_To_EndIntelAttestationOnAzure()
+        [global::Xunit.FactAttribute(DisplayName="Reject forged vendor certificate")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Global Trust Root and Revocation")]
+        [global::Xunit.TraitAttribute("Description", "Reject forged vendor certificate")]
+        public async global::System.Threading.Tasks.Task RejectForgedVendorCertificate()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "0";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("End-to-end Intel attestation on Azure", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Reject forged vendor certificate", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 6
@@ -157,14 +156,13 @@ namespace OpenCertServer.Attestation.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 7
-    await testRunner.GivenAsync("an active SGX enclave in Azure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("a device certificate not signed by a pinned Root CA", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 8
-    await testRunner.WhenAsync("we request a verified identity token for Intel", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("running ValidateChain()", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 9
-    await testRunner.ThenAsync("the system should retrieve PCK ID, fetch cert from https://pccs.confidentialcompu" +
-                        "ting.azure.com, verify via Root CA, and produce a signed quote", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("it must return false with \"Untrusted Vendor Root\" error", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -177,12 +175,12 @@ namespace OpenCertServer.Attestation.Tests.Features
             
             async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
             {
-                await IntelSGXAttestationFeature.FeatureSetupAsync();
+                await GlobalTrustRootAndRevocationFeature.FeatureSetupAsync();
             }
             
             async System.Threading.Tasks.ValueTask System.IAsyncDisposable.DisposeAsync()
             {
-                await IntelSGXAttestationFeature.FeatureTearDownAsync();
+                await GlobalTrustRootAndRevocationFeature.FeatureTearDownAsync();
             }
         }
     }
