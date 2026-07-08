@@ -15,9 +15,6 @@
     <File Path="README.md" />
     <File Path="Docker.md" />
   </Folder>
-  <Folder Name="/src/">
-    <Project Path="src/opencertserver.attestation/opencertserver.attestation.csproj" />
-  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/opencertserver.attestation.Tests/opencertserver.attestation.Tests.csproj" />
     <Project Path="tests/opencertserver.cli.tests/opencertserver.cli.tests.csproj" />
@@ -33,6 +30,9 @@
   </Folder>
   <Project Path="build\opencertserver.build\opencertserver.build.csproj" />
   <Project Path="src\opencertserver.cli\opencertserver.cli.csproj" />
+  <Project Path="src/opencertserver.attestation/opencertserver.attestation.csproj" />
+  <Project Path="src/OpenCertServer.Sgx.Native/OpenCertServer.Sgx.Native.csproj" />
+  <Project Path="src/OpenCertServer.Amd.Native/OpenCertServer.Amd.Native.csproj" />
   <Project Path="src\CertesSlim\CertesSlim.csproj" />
   <Project Path="src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
   <Project Path="src\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj" />

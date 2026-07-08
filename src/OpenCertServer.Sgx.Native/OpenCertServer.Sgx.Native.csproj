@@ -1,0 +1,76 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    OpenCertServer.Sgx.Native
+    ═══════════════════════════════════════════════════════════════════════════
+    NuGet package that ships libsgx_dcap_ql as a platform-native asset, using
+    the .NET RID convention so the runtime discovers it automatically:
+
+      runtimes/linux-x64/native/libsgx_dcap_ql.so
+      runtimes/linux-arm64/native/libsgx_dcap_ql.so
+
+    HOW TO POPULATE THE NATIVE BINARIES
+    ─────────────────────────────────────
+    The .so files are NOT committed to source control (they are owned by Intel).
+    Before packing, obtain them from Intel's DCAP package:
+
+      # Ubuntu/Debian
+      sudo apt-get install -y libsgx-dcap-ql-dev
+      cp /usr/lib/x86_64-linux-gnu/libsgx_dcap_ql.so \
+         runtimes/linux-x64/native/libsgx_dcap_ql.so
+
+    CI/CD: run fetch-native-sgx.sh (in this directory) before dotnet pack.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageId>OpenCertServer.Sgx.Native</PackageId>
+    <Version>1.0.0</Version>
+    <Description>Native Intel SGX DCAP libraries (libsgx_dcap_ql) packaged using .NET RID conventions.</Description>
+    <Authors>OpenCertServer</Authors>
+
+    <!-- This package has no managed output — only native assets. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- Prevent SDK from stripping runtimes/** from the package. -->
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <!-- Suppress the warning about no managed assembly. -->
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <!-- Prevent this package from requiring a specific TFM in consumers. -->
+    <DevelopmentDependency>true</DevelopmentDependency>
+  </PropertyGroup>
+
+  <!--
+    Native binaries are included in the NuGet package using PackagePath so
+    they land in runtimes/{rid}/native/. MSBuild / the .NET publish pipeline
+    copies the correct RID variant to the output directory automatically.
+
+    Files are only included when they actually exist (Condition), so the
+    project builds cleanly on macOS/Windows developer machines.
+  -->
+  <ItemGroup>
+    <None Include="runtimes/linux-x64/native/libsgx_dcap_ql.so"
+          Pack="true"
+          PackagePath="runtimes/linux-x64/native/libsgx_dcap_ql.so"
+          Condition="Exists('runtimes/linux-x64/native/libsgx_dcap_ql.so')" />
+    <None Include="runtimes/linux-arm64/native/libsgx_dcap_ql.so"
+          Pack="true"
+          PackagePath="runtimes/linux-arm64/native/libsgx_dcap_ql.so"
+          Condition="Exists('runtimes/linux-arm64/native/libsgx_dcap_ql.so')" />
+  </ItemGroup>
+
+  <!--
+    When this project is referenced directly (ProjectReference in the same
+    solution), copy any present native binaries into the consumer's output
+    directory under runtimes/{rid}/native so the .NET runtime can find them.
+  -->
+  <ItemGroup>
+    <Content Include="runtimes/linux-x64/native/libsgx_dcap_ql.so"
+             CopyToOutputDirectory="PreserveNewest"
+             Condition="Exists('runtimes/linux-x64/native/libsgx_dcap_ql.so')" />
+    <Content Include="runtimes/linux-arm64/native/libsgx_dcap_ql.so"
+             CopyToOutputDirectory="PreserveNewest"
+             Condition="Exists('runtimes/linux-arm64/native/libsgx_dcap_ql.so')" />
+  </ItemGroup>
+
+</Project>
