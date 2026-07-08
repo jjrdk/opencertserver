@@ -27,10 +27,16 @@ public static class ServiceCollectionExtensions
         // Certificate cache (shared across providers)
         services.TryAddSingleton<ICertificateCache, InMemoryCertificateCache>();
 
-        // Native interop implementations
+        // Native interop implementations — platform-aware selection
         services.TryAddSingleton<ISgxNativeInterop, SgxNativeInterop>();
         services.TryAddSingleton<IAmdSnpNativeInterop, AmdSnpNativeInterop>();
-        services.TryAddSingleton<IAppleAttestNativeInterop, AppleAttestNativeInterop>();
+
+        // For Apple: use SecurityFramework direct interop on macOS (no shim package required);
+        // fall back to the shim-based interop on iOS where the shim can be distributed.
+        if (OperatingSystem.IsMacOS())
+            services.TryAddSingleton<IAppleAttestNativeInterop, SecurityFrameworkAppleAttestInterop>();
+        else
+            services.TryAddSingleton<IAppleAttestNativeInterop, AppleAttestNativeInterop>();
 
         // Attestation providers
         services.AddTransient<IAttestationProvider, SgxProvider>();
