@@ -19,6 +19,22 @@
 
   <ItemGroup>
     <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
+
+    <!--
+      Native binary packages per spec section 3.2 (RID-based NuGet pattern).
+      ReferenceOutputAssembly=false: no managed assembly to reference.
+      OutputItemType=None / Private=false: prevents treating this as a managed dep.
+      The projects declare native binaries as Content CopyToOutputDirectory, so MSBuild
+      propagates the correct runtimes/{rid}/native/*.so to our output on publish.
+      Run src/OpenCertServer.Sgx.Native/fetch-native-sgx.sh (and the AMD equivalent)
+      on a Linux CI agent before building to populate the .so files.
+    -->
+    <ProjectReference Include="..\OpenCertServer.Sgx.Native\OpenCertServer.Sgx.Native.csproj"
+                      ReferenceOutputAssembly="false"
+                      SkipGetTargetFrameworkProperties="true" />
+    <ProjectReference Include="..\OpenCertServer.Amd.Native\OpenCertServer.Amd.Native.csproj"
+                      ReferenceOutputAssembly="false"
+                      SkipGetTargetFrameworkProperties="true" />
   </ItemGroup>
 
   <ItemGroup>
