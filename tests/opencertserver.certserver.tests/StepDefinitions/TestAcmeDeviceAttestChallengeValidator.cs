@@ -2,8 +2,8 @@ namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Threading;
 using System.Threading.Tasks;
-using OpenCertServer.Acme.Abstractions.Model;
-using OpenCertServer.Acme.Abstractions.Services;
+using Acme.Abstractions.Model;
+using Acme.Abstractions.Services;
 
 /// <summary>
 /// Test stub for device-attest-01 challenge validation.

@@ -64,7 +64,7 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
         try
         {
             var response = await _httpClient.GetAsync(new Uri(challengeUrl), cancellationToken).ConfigureAwait(false);
-            if (response.StatusCode != System.Net.HttpStatusCode.OK)
+            if (response.StatusCode != HttpStatusCode.OK)
             {
                 var error = new AcmeError("incorrectResponse", $"Got non 200 status code: {response.StatusCode}",
                     challenge.Authorization.Identifier);

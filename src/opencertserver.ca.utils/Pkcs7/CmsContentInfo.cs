@@ -2,7 +2,7 @@ namespace OpenCertServer.Ca.Utils.Pkcs7;
 
 using System.Formats.Asn1;
 using System.Security.Cryptography;
-using OpenCertServer.Ca.Utils.X509;
+using X509;
 
 /// <summary>
 /// Defines the content information for a CMS message, which is a more specific version of the PKCS#7 content information.

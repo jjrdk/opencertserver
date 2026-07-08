@@ -70,7 +70,7 @@ public sealed class TpmEcDsa : ECDsa
     }
 
     /// <inheritdoc />
-    protected override byte[] HashData(System.IO.Stream data, HashAlgorithmName hashAlgorithm)
+    protected override byte[] HashData(Stream data, HashAlgorithmName hashAlgorithm)
     {
         using var ih = IncrementalHash.CreateHash(hashAlgorithm);
         var buffer = new byte[4096];
@@ -98,7 +98,7 @@ public sealed class TpmEcDsa : ECDsa
     /// <inheritdoc />
     public override bool VerifyHash(byte[] hash, byte[] signature)
     {
-        using var softEcdsa = ECDsa.Create(ExportParameters(false));
+        using var softEcdsa = Create(ExportParameters(false));
         return softEcdsa.VerifyHash(hash, signature);
     }
 

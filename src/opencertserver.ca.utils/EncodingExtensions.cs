@@ -3,8 +3,8 @@
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Ca.Utils.X509;
-using OpenCertServer.Ca.Utils.X509Extensions;
+using X509;
+using X509Extensions;
 
 /// <summary>
 /// Defines extension methods for encoding and decoding various types.

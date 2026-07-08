@@ -6,13 +6,13 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Options;
-using OpenCertServer.Acme.Abstractions.Exceptions;
-using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
-using OpenCertServer.Acme.Abstractions.Model;
+using Abstractions.Exceptions;
+using Abstractions.HttpModel.Requests;
+using Abstractions.Model;
 using OpenCertServer.Acme.Abstractions.Services;
-using OpenCertServer.Acme.Server.Configuration;
-using OpenCertServer.Acme.Server.Extensions;
-using OpenCertServer.Acme.Server.Filters;
+using Configuration;
+using Extensions;
+using Filters;
 
 public static class OrderEndpoints
 {
@@ -42,7 +42,7 @@ public static class OrderEndpoints
             {
                 if (string.IsNullOrWhiteSpace(tosOptions.Url))
                 {
-                    throw new System.InvalidOperationException(
+                    throw new InvalidOperationException(
                         "ACME server configuration is invalid: TOS.Url must be configured when TOS agreement is required and TOS.LastUpdate is set.");
                 }
 
@@ -64,7 +64,7 @@ public static class OrderEndpoints
                 string.IsNullOrWhiteSpace(i.Type) || string.IsNullOrWhiteSpace(i.Value)))
                 throw new MalformedRequestException($"Malformed identifier: (Type: {i.Type}, Value: {i.Value})");
             var identifiers = orderRequest.Identifiers.Select(x =>
-                new OpenCertServer.Acme.Abstractions.Model.Identifier(x.Type!, x.Value!));
+                new Abstractions.Model.Identifier(x.Type!, x.Value!));
             var order = await orderService.CreateOrder(orderRequest.Profile, account, identifiers,
                 orderRequest.NotBefore,
                 orderRequest.NotAfter, cancellationToken).ConfigureAwait(false);

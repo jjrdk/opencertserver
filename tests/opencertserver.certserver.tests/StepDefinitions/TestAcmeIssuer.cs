@@ -1,8 +1,8 @@
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
-using OpenCertServer.Acme.Abstractions.IssuanceServices;
-using OpenCertServer.Acme.Abstractions.Model;
-using OpenCertServer.CertServer;
+using Acme.Abstractions.IssuanceServices;
+using Acme.Abstractions.Model;
+using CertServer;
 
 internal sealed class TestAcmeIssuer : IIssueCertificates
 {

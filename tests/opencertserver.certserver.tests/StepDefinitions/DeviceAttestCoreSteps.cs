@@ -3,13 +3,13 @@ namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 using System.Collections.Immutable;
 using CertesSlim.Acme.Resource;
 using Microsoft.IdentityModel.Tokens;
-using OpenCertServer.Acme.Server.Services;
+using Acme.Server.Services;
 using Reqnroll;
 using Xunit;
 using AcmeAccount = Acme.Abstractions.Model.Account;
 using AcmeIdentifier = Acme.Abstractions.Model.Identifier;
 using AcmeOrder = Acme.Abstractions.Model.Order;
-using ChallengeTypes = OpenCertServer.Acme.Abstractions.Model.ChallengeTypes;
+using ChallengeTypes = Acme.Abstractions.Model.ChallengeTypes;
 
 /// <summary>
 /// Step definitions for device-attest-core.feature.

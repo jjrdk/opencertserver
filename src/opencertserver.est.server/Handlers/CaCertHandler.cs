@@ -4,9 +4,9 @@ using System.Diagnostics;
 using System.Formats.Asn1;
 using System.Net;
 using Microsoft.AspNetCore.Http;
-using OpenCertServer.Ca.Utils;
-using OpenCertServer.Ca.Utils.Pkcs7;
-using OpenCertServer.Est.Server;
+using Ca.Utils;
+using Ca.Utils.Pkcs7;
+using Server;
 
 internal static class CaCertsHandler
 {

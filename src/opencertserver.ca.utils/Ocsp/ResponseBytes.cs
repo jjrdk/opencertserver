@@ -2,7 +2,7 @@ namespace OpenCertServer.Ca.Utils.Ocsp;
 
 using System.Formats.Asn1;
 using System.Security.Cryptography;
-using OpenCertServer.Ca.Utils.X509;
+using X509;
 
 /// <summary>
 /// Represents OCSP response bytes, including response type OID and encoded response payload.

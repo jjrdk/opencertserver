@@ -12,9 +12,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Ca.Utils;
-using OpenCertServer.Ca.Utils.Pkcs7;
-using OpenCertServer.Ca.Utils.X509.Templates;
-using OpenCertServer.Ca.Utils.X509Extensions;
+using Ca.Utils.Pkcs7;
+using Ca.Utils.X509.Templates;
+using Ca.Utils.X509Extensions;
 
 /// <summary>
 /// Defines an EST client for enrolling and re-enrolling certificates.

@@ -3,7 +3,7 @@ namespace OpenCertServer.Ca.Tests;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Ca.Utils.Pkcs7;
+using Utils.Pkcs7;
 using Xunit;
 
 public class SignedDataTests

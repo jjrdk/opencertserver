@@ -1,7 +1,7 @@
 namespace OpenCertServer.Ca.Utils.Ca;
 
 using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Ca.Utils.Ocsp;
+using Ocsp;
 
 /// <summary>
 /// Defines the IStoreCertificates interface.

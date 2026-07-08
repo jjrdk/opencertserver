@@ -8,7 +8,7 @@ using System.Diagnostics;
 using System.Net;
 using Microsoft.AspNetCore.Http;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.X509Extensions;
+using Utils.X509Extensions;
 
 public static class CsrHandler
 {

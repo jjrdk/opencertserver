@@ -1,8 +1,8 @@
 namespace OpenCertServer.Ca.Utils;
 
 using System.Formats.Asn1;
-using OpenCertServer.Ca.Utils.X509;
-using OpenCertServer.Ca.Utils.X509.Templates;
+using X509;
+using X509.Templates;
 
 /// <summary>
 /// Defines a template for a sequence of relative distinguished names.

@@ -3,7 +3,7 @@ using OpenCertServer.Est.Server.Response;
 namespace OpenCertServer.Est.Tests;
 
 using System.Security.Claims;
-using OpenCertServer.Est.Server.Handlers;
+using Server.Handlers;
 
 internal class TestCsrAttributesLoader : ICsrTemplateLoader
 {

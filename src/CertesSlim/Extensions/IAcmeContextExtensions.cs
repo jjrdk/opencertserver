@@ -1,6 +1,6 @@
 ﻿namespace CertesSlim.Extensions;
 
-using CertesSlim.Acme;
+using Acme;
 using Directory = CertesSlim.Acme.Resource.Directory;
 
 /// <summary>

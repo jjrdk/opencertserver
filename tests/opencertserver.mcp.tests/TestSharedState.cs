@@ -2,8 +2,8 @@ namespace OpenCertServer.Mcp.Tests;
 
 using OpenCertServer.Ca.Utils.Ca;
 using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Mcp;
-using OpenCertServer.Mcp.Tools;
+using Mcp;
+using Tools;
 
 /// <summary>
 /// Shared mutable state accessible from all step definition classes.

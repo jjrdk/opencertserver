@@ -1,12 +1,12 @@
 ﻿namespace CertesSlim;
 
-using CertesSlim.Acme;
-using CertesSlim.Acme.Resource;
-using CertesSlim.Extensions;
-using CertesSlim.Json;
+using Acme;
+using Acme.Resource;
+using Extensions;
+using Json;
 using Microsoft.IdentityModel.Tokens;
-using Identifier = CertesSlim.Acme.Resource.Identifier;
-using IdentifierType = CertesSlim.Acme.Resource.IdentifierType;
+using Identifier = Acme.Resource.Identifier;
+using IdentifierType = Acme.Resource.IdentifierType;
 
 /// <summary>
 /// Represents the context for ACME operations.

@@ -210,11 +210,11 @@ public class IOrderContextExtensionsTests
         var alternatepem =
             await File.ReadAllTextAsync("./Data/alternateLeaf.pem", TestContext.Current.CancellationToken);
 
-        var accountLoc = new System.Uri("http://acme.d/account/101");
-        var orderLoc = new System.Uri("http://acme.d/order/101");
-        var finalizeLoc = new System.Uri("http://acme.d/order/101/finalize");
-        var certDefaultLoc = new System.Uri("http://acme.d/order/101/cert/1234");
-        var certAlternateLoc = new System.Uri("http://acme.d/order/101/cert/1234/1");
+        var accountLoc = new Uri("http://acme.d/account/101");
+        var orderLoc = new Uri("http://acme.d/order/101");
+        var finalizeLoc = new Uri("http://acme.d/order/101/finalize");
+        var certDefaultLoc = new Uri("http://acme.d/order/101/cert/1234");
+        var certAlternateLoc = new Uri("http://acme.d/order/101/cert/1234/1");
 
         var alternates = new[]
         {

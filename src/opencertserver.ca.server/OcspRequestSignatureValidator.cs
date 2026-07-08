@@ -4,7 +4,7 @@ namespace OpenCertServer.Ca.Server;
 
 using System.Formats.Asn1;
 using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Ca.Utils.Ocsp;
+using Utils.Ocsp;
 
 /// <summary>
 /// Validates signed OCSP requests by verifying the signature on the TBSRequest.

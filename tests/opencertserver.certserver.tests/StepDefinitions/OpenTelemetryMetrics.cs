@@ -2,7 +2,7 @@ namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Diagnostics.Metrics;
 using System.Security.Cryptography;
-using OpenCertServer.Ca.Utils.Ocsp;
+using Ca.Utils.Ocsp;
 using Reqnroll;
 using Xunit;
 

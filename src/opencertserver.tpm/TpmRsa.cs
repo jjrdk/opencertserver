@@ -67,7 +67,7 @@ public sealed class TpmRsa : RSA
     }
 
     /// <inheritdoc />
-    protected override byte[] HashData(System.IO.Stream data, HashAlgorithmName hashAlgorithm)
+    protected override byte[] HashData(Stream data, HashAlgorithmName hashAlgorithm)
     {
         using var ih = IncrementalHash.CreateHash(hashAlgorithm);
         var buffer = new byte[4096];
@@ -102,7 +102,7 @@ public sealed class TpmRsa : RSA
         HashAlgorithmName hashAlgorithmName,
         RSASignaturePadding padding)
     {
-        using var softRsa = RSA.Create();
+        using var softRsa = Create();
         softRsa.ImportParameters(ExportParameters(false));
         return softRsa.VerifyHash(hash, signature, hashAlgorithmName, padding);
     }

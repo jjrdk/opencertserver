@@ -13,8 +13,8 @@ using Ca.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.Pkcs7;
-using OpenCertServer.Ca.Utils.X509Extensions;
+using Ca.Utils.Pkcs7;
+using Ca.Utils.X509Extensions;
 
 internal static class SimpleReEnrollHandler
 {

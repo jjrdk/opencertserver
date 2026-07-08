@@ -5,9 +5,9 @@ using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.DependencyInjection;
-using OpenCertServer.Ca.Utils;
+using Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.X509Extensions;
+using Ca.Utils.X509Extensions;
 using Reqnroll;
 using Xunit;
 

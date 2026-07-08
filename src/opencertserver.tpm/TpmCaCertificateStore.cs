@@ -13,14 +13,14 @@ public sealed class TpmCaCertificateStore
 {
     private const string SubjectPrefix = "tpm-ca-";
 
-    private readonly System.Security.Cryptography.X509Certificates.StoreName _storeName;
+    private readonly StoreName _storeName;
     private readonly StoreLocation _storeLocation;
 
     /// <summary>
     /// Creates a store accessor using the specified OS certificate store.
     /// </summary>
     public TpmCaCertificateStore(
-        System.Security.Cryptography.X509Certificates.StoreName storeName,
+        StoreName storeName,
         StoreLocation storeLocation)
     {
         _storeName = storeName;

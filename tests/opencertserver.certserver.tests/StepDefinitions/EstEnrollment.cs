@@ -3,7 +3,7 @@ namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Est.Client;
+using Est.Client;
 using Reqnroll;
 using Xunit;
 

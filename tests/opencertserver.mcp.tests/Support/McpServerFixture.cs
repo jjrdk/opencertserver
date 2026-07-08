@@ -5,12 +5,12 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using OpenCertServer.Ca;
-using OpenCertServer.Ca.Utils;
+using Ca;
+using Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.Ocsp;
-using OpenCertServer.Ca.Server;
-using OpenCertServer.Mcp;
+using Ca.Utils.Ocsp;
+using Ca.Server;
+using Mcp;
 using Microsoft.Extensions.Options;
 
 public class McpServerFixture : IDisposable
@@ -162,10 +162,10 @@ public class McpServerFixture : IDisposable
 /// <summary>
 /// A null chain validator that always passes - used for testing.
 /// </summary>
-internal class NullChainValidator : OpenCertServer.Ca.IValidateX509Chains
+internal class NullChainValidator : IValidateX509Chains
 {
-    public System.Threading.Tasks.Task<bool> Validate(System.Security.Cryptography.X509Certificates.X509Chain chain, System.Threading.CancellationToken cancellationToken = default)
+    public Task<bool> Validate(X509Chain chain, CancellationToken cancellationToken = default)
     {
-        return System.Threading.Tasks.Task.FromResult(true);
+        return Task.FromResult(true);
     }
 }

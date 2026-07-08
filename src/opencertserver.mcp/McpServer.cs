@@ -2,7 +2,7 @@ namespace OpenCertServer.Mcp;
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using OpenCertServer.Mcp.Transport;
+using Transport;
 
 /// <summary>
 /// The MCP server that hosts certificate authority tools.

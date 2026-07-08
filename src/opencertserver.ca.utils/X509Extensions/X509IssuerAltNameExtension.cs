@@ -2,7 +2,7 @@ namespace OpenCertServer.Ca.Utils.X509Extensions;
 
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Ca.Utils;
+using Utils;
 
 /// <summary>
 /// Defines the X509 Issuer Alternative Name Extension.

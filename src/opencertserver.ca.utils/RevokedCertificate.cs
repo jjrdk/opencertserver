@@ -4,7 +4,7 @@ namespace OpenCertServer.Ca.Utils;
 
 using System.Collections.ObjectModel;
 using System.Formats.Asn1;
-using OpenCertServer.Ca.Utils.X509;
+using X509;
 
 /// <summary>
 /// Represents an entry in a certificate revocation list (CRL).

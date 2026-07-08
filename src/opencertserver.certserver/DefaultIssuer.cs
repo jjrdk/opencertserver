@@ -1,7 +1,7 @@
 namespace OpenCertServer.CertServer;
 
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.X509Extensions;
+using Ca.Utils.X509Extensions;
 using System.Text;
 using Acme.Abstractions.IssuanceServices;
 using Acme.Abstractions.Model;

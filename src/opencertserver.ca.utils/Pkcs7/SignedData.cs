@@ -4,7 +4,7 @@ using System.Formats.Asn1;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Ca.Utils.X509;
+using X509;
 
 /// <summary>
 /// Defines the SignedData structure as per PKCS#7 standard.

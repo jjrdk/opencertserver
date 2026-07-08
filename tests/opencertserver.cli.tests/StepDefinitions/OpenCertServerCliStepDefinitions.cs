@@ -12,7 +12,7 @@ namespace opencertserver.cli.tests.StepDefinitions
     [Binding]
     public partial class OpenCertServerCliStepDefinitions : IDisposable
     {
-        private static readonly System.Threading.SemaphoreSlim CliExecutionLock = new(1, 1);
+        private static readonly SemaphoreSlim CliExecutionLock = new(1, 1);
 
         private string? _output;
         private string? _tempKeyPath;

@@ -1,8 +1,8 @@
 namespace OpenCertServer.Mcp.Tests.StepDefinitions;
 
 using System.Text.Json;
-using OpenCertServer.Mcp.Tests.Support;
-using OpenCertServer.Mcp.Tests;
+using Support;
+using Tests;
 using Reqnroll;
 using Xunit;
 using OpenCertServer.Ca.Utils.Ca;
