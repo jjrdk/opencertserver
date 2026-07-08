@@ -6,10 +6,10 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using OpenCertServer.Ca.Utils;
+using Utils;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.Ocsp;
-using OpenCertServer.Ca.Utils.X509;
+using Utils.Ocsp;
+using Utils.X509;
 
 public static class OcspHandler
 {

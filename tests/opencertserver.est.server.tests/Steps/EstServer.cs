@@ -15,13 +15,13 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using OpenCertServer.Ca;
+using Ca;
 using OpenCertServer.Ca.Server;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.X509.Templates;
-using OpenCertServer.Est.Client;
-using OpenCertServer.Est.Server;
-using OpenCertServer.Est.Tests.Configuration;
+using Ca.Utils.X509.Templates;
+using Client;
+using Server;
+using Configuration;
 using Reqnroll;
 using Xunit;
 

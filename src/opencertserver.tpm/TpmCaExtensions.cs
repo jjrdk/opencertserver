@@ -4,10 +4,10 @@ using System;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using OpenCertServer.Ca;
-using OpenCertServer.Ca.Server;
+using Ca;
+using Ca.Server;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.Ocsp;
+using Ca.Utils.Ocsp;
 
 /// <summary>
 /// Extension methods for registering TPM-backed CA services.

@@ -2,7 +2,7 @@ namespace OpenCertServer.Ca.Utils.Pkcs7;
 
 using System.Formats.Asn1;
 using System.Security.Cryptography;
-using OpenCertServer.Ca.Utils.X509;
+using X509;
 
 /// <summary>
 /// Defines the digest algorithm identifier for PKCS#7 content.

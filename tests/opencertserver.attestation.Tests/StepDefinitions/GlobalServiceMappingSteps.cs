@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using OpenCertServer.Attestation;
 using OpenCertServer.Attestation.Tests.Mocks;
 using Reqnroll;
 using Xunit;

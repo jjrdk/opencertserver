@@ -3,9 +3,9 @@ using OpenCertServer.Est.Server.Response;
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Security.Claims;
-using OpenCertServer.Ca.Utils;
-using OpenCertServer.Ca.Utils.X509.Templates;
-using OpenCertServer.Est.Server.Handlers;
+using Ca.Utils;
+using Ca.Utils.X509.Templates;
+using Est.Server.Handlers;
 
 internal static class TestCsrAttributesLoaderConfiguration
 {

@@ -4,7 +4,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
-using OpenCertServer.Ca.Utils.X509;
+using X509;
 
 /// <summary>
 /// Defines extension methods for <see cref="X509Certificate2"/>.

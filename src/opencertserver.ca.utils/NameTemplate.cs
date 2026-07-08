@@ -1,7 +1,7 @@
 namespace OpenCertServer.Ca.Utils;
 
 using System.Formats.Asn1;
-using OpenCertServer.Ca.Utils.X509;
+using X509;
 
 /// <summary>
 /// Defines the NameTemplate structure.

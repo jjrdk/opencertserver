@@ -5,10 +5,10 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using CertesSlim.Acme.Resource;
 using Microsoft.IdentityModel.Tokens;
-using OpenCertServer.Acme.Abstractions.Exceptions;
-using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
+using Abstractions.Exceptions;
+using Abstractions.HttpModel.Requests;
 using OpenCertServer.Acme.Abstractions.Services;
-using OpenCertServer.Acme.Abstractions.Storage;
+using Abstractions.Storage;
 using OpenCertServer.Ca.Utils.Ca;
 
 public sealed class DefaultRevocationService : IRevocationService

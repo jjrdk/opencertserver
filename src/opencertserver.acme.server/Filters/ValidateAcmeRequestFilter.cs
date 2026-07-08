@@ -4,7 +4,7 @@ using OpenCertServer.Acme.Server.Extensions;
 namespace OpenCertServer.Acme.Server.Filters;
 
 using Abstractions.RequestServices;
-using OpenCertServer.Acme.Abstractions.Exceptions;
+using Abstractions.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Routing;

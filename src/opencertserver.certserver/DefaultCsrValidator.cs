@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Ca.Utils;
+using Ca.Utils;
 using Acme.Abstractions.IssuanceServices;
 using Acme.Abstractions.Model;
 

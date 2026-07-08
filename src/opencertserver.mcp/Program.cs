@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using OpenCertServer.Ca;
-using OpenCertServer.Ca.Server;
+using Ca;
+using Ca.Server;
 
 /// <summary>
 /// Entry point for the MCP certificate server (stdio transport).

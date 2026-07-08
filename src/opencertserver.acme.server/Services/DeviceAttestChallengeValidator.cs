@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.Model;
 using Abstractions.Services;
-using OpenCertServer.Tpm2Lib;
+using Tpm2Lib;
 
 /// <summary>
 /// Validates device-attest-01 ACME challenges by verifying attestation evidence.

@@ -2,7 +2,7 @@ namespace OpenCertServer.Ca.Utils.Pkcs7;
 
 using System.Formats.Asn1;
 using System.Numerics;
-using OpenCertServer.Ca.Utils.X509;
+using X509;
 
 /// <summary>
 /// Defines the SignerInfo structure as per PKCS#7 standard.

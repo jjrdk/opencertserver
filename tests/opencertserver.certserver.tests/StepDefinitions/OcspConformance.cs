@@ -5,10 +5,10 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.DependencyInjection;
-using OpenCertServer.Ca.Utils;
+using Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.Ocsp;
-using OpenCertServer.Ca.Utils.X509;
+using Ca.Utils.Ocsp;
+using Ca.Utils.X509;
 using Reqnroll;
 using Xunit;
 

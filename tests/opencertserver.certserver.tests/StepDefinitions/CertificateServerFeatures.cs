@@ -15,17 +15,17 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.CodeAnalysis;
-using OpenCertServer.Acme.Abstractions.IssuanceServices;
-using OpenCertServer.Acme.Abstractions.Services;
-using OpenCertServer.Acme.AspNetClient.Certes;
-using OpenCertServer.Acme.AspNetClient.Persistence;
-using OpenCertServer.Acme.Server;
-using OpenCertServer.Acme.Server.Configuration;
-using OpenCertServer.Acme.Server.Extensions;
-using OpenCertServer.Ca.Server;
+using Acme.Abstractions.IssuanceServices;
+using Acme.Abstractions.Services;
+using Acme.AspNetClient.Certes;
+using Acme.AspNetClient.Persistence;
+using Acme.Server;
+using Acme.Server.Configuration;
+using Acme.Server.Extensions;
+using Ca.Server;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.Ocsp;
-using OpenCertServer.Est.Server;
+using Ca.Utils.Ocsp;
+using Est.Server;
 using Reqnroll;
 using Xunit;
 
@@ -78,7 +78,7 @@ public partial class CertificateServerFeatures
                 .AddSelfSignedCertificateAuthority(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"], crlUrls: _crlUrls, strictOcspHttpBinding: _strictOcspHttpBinding, ocspFreshnessWindow: _ocspFreshnessWindow)
                 .AddEstServer<TestCsrAttributesLoader>()
                 .AddSingleton<TestManualAuthorizationStrategy>()
-                .Replace(ServiceDescriptor.Singleton<OpenCertServer.Est.Server.Handlers.IManualAuthorizationStrategy>(sp =>
+                .Replace(ServiceDescriptor.Singleton<Est.Server.Handlers.IManualAuthorizationStrategy>(sp =>
                     sp.GetRequiredService<TestManualAuthorizationStrategy>()))
                 .AddSingleton(sp => sp.GetRequiredService<ICertificateAuthority>().GetRootCertificates())
                 .AddAcmeServer(ctx.Configuration, _ => _server.CreateClient(),

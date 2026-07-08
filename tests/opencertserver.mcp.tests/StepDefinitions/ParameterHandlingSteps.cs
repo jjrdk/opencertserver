@@ -5,8 +5,8 @@ namespace OpenCertServer.Mcp.Tests.StepDefinitions;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
-using OpenCertServer.Ca;
-using OpenCertServer.Mcp.Tests.Support;
+using Ca;
+using Support;
 using Reqnroll;
 using Xunit;
 

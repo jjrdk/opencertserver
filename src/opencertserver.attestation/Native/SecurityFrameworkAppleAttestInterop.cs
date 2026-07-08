@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
 namespace OpenCertServer.Attestation.Native;

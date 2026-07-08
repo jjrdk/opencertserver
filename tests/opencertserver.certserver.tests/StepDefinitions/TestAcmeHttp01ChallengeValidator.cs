@@ -1,8 +1,8 @@
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
-using OpenCertServer.Acme.Abstractions.Model;
-using OpenCertServer.Acme.Abstractions.Services;
-using OpenCertServer.Acme.Server.Services;
+using Acme.Abstractions.Model;
+using Acme.Abstractions.Services;
+using Acme.Server.Services;
 
 internal sealed class TestAcmeHttp01ChallengeValidator : TokenChallengeValidator, IValidateHttp01Challenges
 {

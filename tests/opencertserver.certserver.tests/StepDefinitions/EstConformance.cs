@@ -11,11 +11,11 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
-using OpenCertServer.Ca.Utils;
-using OpenCertServer.Ca.Utils.Pkcs7;
-using OpenCertServer.Ca.Utils.X509;
-using OpenCertServer.Ca.Utils.X509.Templates;
-using OpenCertServer.Est.Client;
+using Ca.Utils;
+using Ca.Utils.Pkcs7;
+using Ca.Utils.X509;
+using Ca.Utils.X509.Templates;
+using Est.Client;
 using Reqnroll;
 using Xunit;
 
@@ -1817,24 +1817,24 @@ public partial class CertificateServerFeatures
                 candidateBytes = Convert.FromBase64String(normalized);
             }
 
-            var reader = new System.Formats.Asn1.AsnReader(candidateBytes,
-                System.Formats.Asn1.AsnEncodingRules.DER,
-                new System.Formats.Asn1.AsnReaderOptions { SkipSetSortOrderVerification = true });
+            var reader = new AsnReader(candidateBytes,
+                AsnEncodingRules.DER,
+                new AsnReaderOptions { SkipSetSortOrderVerification = true });
             try
             {
                 var contentInfo = new CmsContentInfo(reader);
                 if (contentInfo.ContentType.Value == Oids.Pkcs7Signed)
                 {
-                    reader = new System.Formats.Asn1.AsnReader(contentInfo.EncodedContent,
-                        System.Formats.Asn1.AsnEncodingRules.DER,
-                        new System.Formats.Asn1.AsnReaderOptions { SkipSetSortOrderVerification = true });
+                    reader = new AsnReader(contentInfo.EncodedContent,
+                        AsnEncodingRules.DER,
+                        new AsnReaderOptions { SkipSetSortOrderVerification = true });
                 }
             }
             catch
             {
-                reader = new System.Formats.Asn1.AsnReader(candidateBytes,
-                    System.Formats.Asn1.AsnEncodingRules.DER,
-                    new System.Formats.Asn1.AsnReaderOptions { SkipSetSortOrderVerification = true });
+                reader = new AsnReader(candidateBytes,
+                    AsnEncodingRules.DER,
+                    new AsnReaderOptions { SkipSetSortOrderVerification = true });
             }
 
             ConformanceState.SignedData = new SignedData(reader);
@@ -2023,9 +2023,9 @@ public partial class CertificateServerFeatures
                 return;
             }
 
-            var reader = new System.Formats.Asn1.AsnReader(responseBytes,
-                System.Formats.Asn1.AsnEncodingRules.DER,
-                new System.Formats.Asn1.AsnReaderOptions { SkipSetSortOrderVerification = true });
+            var reader = new AsnReader(responseBytes,
+                AsnEncodingRules.DER,
+                new AsnReaderOptions { SkipSetSortOrderVerification = true });
             ConformanceState.Template = new CertificateSigningRequestTemplate(reader);
         }
         catch

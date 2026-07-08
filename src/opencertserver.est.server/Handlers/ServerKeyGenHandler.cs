@@ -9,10 +9,10 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using OpenCertServer.Ca.Utils;
+using Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.Pkcs7;
-using OpenCertServer.Est.Server.Response;
+using Ca.Utils.Pkcs7;
+using Response;
 
 internal static class ServerKeyGenHandler
 {

@@ -13,10 +13,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using OpenCertServer.Ca.Utils;
+using Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.Pkcs7;
-using OpenCertServer.Ca.Utils.X509Extensions;
+using Ca.Utils.Pkcs7;
+using Ca.Utils.X509Extensions;
 
 internal static class SimpleEnrollHandler
 {

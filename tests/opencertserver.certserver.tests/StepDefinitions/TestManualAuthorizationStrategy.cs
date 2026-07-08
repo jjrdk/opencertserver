@@ -4,7 +4,7 @@ namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
-using OpenCertServer.Est.Server.Handlers;
+using Est.Server.Handlers;
 
 internal sealed class TestManualAuthorizationStrategy : IManualAuthorizationStrategy
 {

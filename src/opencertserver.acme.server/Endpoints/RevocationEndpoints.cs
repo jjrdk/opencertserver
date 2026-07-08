@@ -5,10 +5,10 @@ using CertesSlim.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using OpenCertServer.Acme.Abstractions.Exceptions;
-using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
+using Abstractions.Exceptions;
+using Abstractions.HttpModel.Requests;
 using OpenCertServer.Acme.Abstractions.Services;
-using OpenCertServer.Acme.Server.Extensions;
+using Extensions;
 
 public static class RevocationEndpoints
 {

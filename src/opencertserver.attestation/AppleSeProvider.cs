@@ -57,7 +57,7 @@ public sealed class AppleSeProvider : IAttestationProvider
                 "client as part of the attestation object.");
         }
 
-        _logger.LogInformation("Generating Secure Enclave key via DCAppAttestService.");
+        _logger.LogInformation("Generating Secure Enclave key via DCAppAttestService");
         return await _native.GenerateKeyAsync();
     }
 
@@ -95,11 +95,11 @@ public sealed class AppleSeProvider : IAttestationProvider
 
     private async Task<byte[]> GenerateAttestationOnDeviceAsync(byte[] challenge)
     {
-        _logger.LogInformation("Generating App Attest attestation object on Apple device.");
+        _logger.LogInformation("Generating App Attest attestation object on Apple device");
         var keyId = await _native.GenerateKeyAsync();
         var clientDataHash = SHA256.HashData(challenge);
         var attestationObject = await _native.AttestKeyAsync(keyId, clientDataHash);
-        _logger.LogInformation("Attestation object generated for key {KeyId}.", keyId);
+        _logger.LogInformation("Attestation object generated for key {KeyId}", keyId);
         return attestationObject;
     }
 

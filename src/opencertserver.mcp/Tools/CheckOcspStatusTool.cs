@@ -1,7 +1,7 @@
 namespace OpenCertServer.Mcp.Tools;
 
 using System.Security.Cryptography;
-using OpenCertServer.Ca.Utils.X509;
+using Ca.Utils.X509;
 
 /// <summary>
 /// Check the status of a certificate using OCSP-style logic.

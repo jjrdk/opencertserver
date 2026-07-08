@@ -12,9 +12,9 @@ using CertesSlim.Acme;
 using CertesSlim.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
-using OpenCertServer.Acme.Abstractions.Model;
-using OpenCertServer.Acme.Abstractions.Services;
-using OpenCertServer.Acme.Abstractions.Storage;
+using Acme.Abstractions.Model;
+using Acme.Abstractions.Services;
+using Acme.Abstractions.Storage;
 using Reqnroll;
 using Xunit;
 using AcmeAccount = CertesSlim.Acme.Resource.Account;
@@ -377,7 +377,7 @@ public partial class CertificateServerFeatures
     [Given("the ACME server requires agreement to terms of service")]
     public void GivenTheAcmeServerRequiresAgreementToTermsOfService()
     {
-        var options = GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenCertServer.Acme.Server.Configuration.AcmeServerOptions>>().Value;
+        var options = GetRequiredService<Microsoft.Extensions.Options.IOptions<Acme.Server.Configuration.AcmeServerOptions>>().Value;
         options.TOS.RequireAgreement = true;
         options.TOS.Url = "https://localhost/tos";
         AcmeState.RequiresTermsOfServiceAgreement = true;
@@ -386,7 +386,7 @@ public partial class CertificateServerFeatures
     [Given("the ACME server requires external account binding")]
     public void GivenTheAcmeServerRequiresExternalAccountBinding()
     {
-        var options = GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenCertServer.Acme.Server.Configuration.AcmeServerOptions>>().Value;
+        var options = GetRequiredService<Microsoft.Extensions.Options.IOptions<Acme.Server.Configuration.AcmeServerOptions>>().Value;
         options.ExternalAccountRequired = true;
         AcmeState.RequiresExternalAccountBinding = true;
     }
@@ -452,7 +452,7 @@ public partial class CertificateServerFeatures
     [When("the client fetches an authorization")]
     public async Task WhenTheClientFetchesAnAuthorization()
     {
-        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+        await EnsurePendingAuthorizationChallengeAsync(ChallengeTypes.Http01)
             .ConfigureAwait(false);
         await FetchCurrentAuthorizationAsync().ConfigureAwait(false);
     }
@@ -460,7 +460,7 @@ public partial class CertificateServerFeatures
     [When("the client fetches a challenge")]
     public async Task WhenTheClientFetchesAChallenge()
     {
-        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+        await EnsurePendingAuthorizationChallengeAsync(ChallengeTypes.Http01)
             .ConfigureAwait(false);
         await FetchCurrentChallengeAsync().ConfigureAwait(false);
     }
@@ -468,10 +468,10 @@ public partial class CertificateServerFeatures
     [When("the client acknowledges a pending challenge")]
     public async Task WhenTheClientAcknowledgesAPendingChallenge()
     {
-        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+        await EnsurePendingAuthorizationChallengeAsync(ChallengeTypes.Http01)
             .ConfigureAwait(false);
 
-        var orderService = GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>();
+        var orderService = GetRequiredService<IOrderService>();
         var account = await LoadCurrentAccountModelAsync().ConfigureAwait(false);
         await orderService.ProcessChallenge(account, GetOrderId(), GetAuthorizationId(), GetChallengeId(), CancellationToken.None)
             .ConfigureAwait(false);
@@ -486,10 +486,10 @@ public partial class CertificateServerFeatures
     [When("the client POSTs an authorization object with status \"deactivated\" to its authorization URL")]
     public async Task WhenTheClientPostsAnAuthorizationObjectWithStatusDeactivatedToItsAuthorizationUrl()
     {
-        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+        await EnsurePendingAuthorizationChallengeAsync(ChallengeTypes.Http01)
             .ConfigureAwait(false);
 
-        var orderService = GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>();
+        var orderService = GetRequiredService<IOrderService>();
         var account = await LoadCurrentAccountModelAsync().ConfigureAwait(false);
         await orderService.DeactivateAuthorization(account, GetOrderId(), GetAuthorizationId(), CancellationToken.None)
             .ConfigureAwait(false);
@@ -500,7 +500,7 @@ public partial class CertificateServerFeatures
     [When("challenge validation fails")]
     public async Task WhenChallengeValidationFails()
     {
-        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+        await EnsurePendingAuthorizationChallengeAsync(ChallengeTypes.Http01)
             .ConfigureAwait(false);
 
         var validationState = GetRequiredService<TestAcmeChallengeValidationState>();
@@ -509,7 +509,7 @@ public partial class CertificateServerFeatures
         validationState.FailureType = "incorrectResponse";
         validationState.FailureDetail = "Simulated challenge validation failure.";
 
-        var orderService = GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>();
+        var orderService = GetRequiredService<IOrderService>();
         var account = await LoadCurrentAccountModelAsync().ConfigureAwait(false);
         await orderService.ProcessChallenge(account, GetOrderId(), GetAuthorizationId(), GetChallengeId(), CancellationToken.None)
             .ConfigureAwait(false);
@@ -524,14 +524,14 @@ public partial class CertificateServerFeatures
     [Given("the ACME server offers the \"http-01\" challenge for a non-wildcard DNS identifier")]
     public async Task GivenTheAcmeServerOffersTheHttp01ChallengeForANonWildcardDnsIdentifier()
     {
-        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+        await EnsurePendingAuthorizationChallengeAsync(ChallengeTypes.Http01)
             .ConfigureAwait(false);
     }
 
     [When("the client provisions the HTTP challenge response")]
     public async Task WhenTheClientProvisionsTheHttpChallengeResponse()
     {
-        var orderService = GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>();
+        var orderService = GetRequiredService<IOrderService>();
         var account = await LoadCurrentAccountModelAsync().ConfigureAwait(false);
         await orderService.ProcessChallenge(account, GetOrderId(), GetAuthorizationId(), GetChallengeId(), CancellationToken.None)
             .ConfigureAwait(false);
@@ -544,14 +544,14 @@ public partial class CertificateServerFeatures
     [Given("the ACME server offers the \"dns-01\" challenge")]
     public async Task GivenTheAcmeServerOffersTheDns01Challenge()
     {
-        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Dns01)
+        await EnsurePendingAuthorizationChallengeAsync(ChallengeTypes.Dns01)
             .ConfigureAwait(false);
     }
 
     [When("the client provisions the DNS TXT challenge response")]
     public async Task WhenTheClientProvisionsTheDnsTxtChallengeResponse()
     {
-        var orderService = GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>();
+        var orderService = GetRequiredService<IOrderService>();
         var account = await LoadCurrentAccountModelAsync().ConfigureAwait(false);
         await orderService.ProcessChallenge(account, GetOrderId(), GetAuthorizationId(), GetChallengeId(), CancellationToken.None)
             .ConfigureAwait(false);
@@ -564,7 +564,7 @@ public partial class CertificateServerFeatures
     [When("the ACME server generates a challenge token")]
     public async Task WhenTheAcmeServerGeneratesAChallengeToken()
     {
-        await EnsurePendingAuthorizationChallengeAsync(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01)
+        await EnsurePendingAuthorizationChallengeAsync(ChallengeTypes.Http01)
             .ConfigureAwait(false);
         AcmeState.GeneratedChallengeToken = AcmeState.ChallengeResponse?.Token;
     }
@@ -574,7 +574,7 @@ public partial class CertificateServerFeatures
     [When("the terms of service are subsequently updated on the server")]
     public async Task WhenTheTermsOfServiceAreSubsequentlyUpdatedOnTheServer()
     {
-        var options = GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenCertServer.Acme.Server.Configuration.AcmeServerOptions>>().Value;
+        var options = GetRequiredService<Microsoft.Extensions.Options.IOptions<Acme.Server.Configuration.AcmeServerOptions>>().Value;
         var account = await LoadCurrentAccountModelAsync().ConfigureAwait(false);
         options.TOS.RequireAgreement = true;
         options.TOS.Url ??= "https://localhost/tos";
@@ -615,7 +615,7 @@ public partial class CertificateServerFeatures
     [Then("the ACME server MUST accept the updated terms of service agreement")]
     public void ThenTheAcmeServerMustAcceptTheUpdatedTermsOfServiceAgreement()
     {
-        Assert.Equal(System.Net.HttpStatusCode.OK, AcmeState.Response?.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, AcmeState.Response?.StatusCode);
         Assert.NotNull(AcmeState.AccountResponse);
         Assert.Equal(AcmeAccountStatus.Valid, AcmeState.AccountResponse!.Status);
     }
@@ -627,7 +627,7 @@ public partial class CertificateServerFeatures
             "/new-order",
             new { identifiers = new[] { new { type = "dns", value = "localhost" } } })
             .ConfigureAwait(false);
-        Assert.Equal(System.Net.HttpStatusCode.Created, AcmeState.Response?.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, AcmeState.Response?.StatusCode);
     }
 
     [Given("the ACME server implements the \"keyChange\" resource")]
@@ -1326,9 +1326,9 @@ public partial class CertificateServerFeatures
         var alternateKey = KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
         var alternateAccountUrl = await CreateAdditionalAccountAsync(alternateKey).ConfigureAwait(false);
         var alternateAccount = await LoadAccountByUrlAsync(alternateAccountUrl).ConfigureAwait(false);
-        var orderService = GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>();
+        var orderService = GetRequiredService<IOrderService>();
 
-        await Assert.ThrowsAsync<OpenCertServer.Acme.Abstractions.Exceptions.NotAllowedException>(() =>
+        await Assert.ThrowsAsync<Acme.Abstractions.Exceptions.NotAllowedException>(() =>
             orderService.ProcessChallenge(alternateAccount, GetOrderId(), GetAuthorizationId(), GetChallengeId(), CancellationToken.None));
     }
 
@@ -1386,7 +1386,7 @@ public partial class CertificateServerFeatures
     [Then("the ACME server MUST query the \"_acme-challenge\" TXT record for the identifier")]
     public void ThenTheAcmeServerMustQueryTheAcmeChallengeTxtRecordForTheIdentifier()
     {
-        Assert.Equal(OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Dns01,
+        Assert.Equal(ChallengeTypes.Dns01,
             GetRequiredService<TestAcmeChallengeValidationState>().LastValidatedChallengeType);
     }
 
@@ -1657,7 +1657,7 @@ public partial class CertificateServerFeatures
     [Then("the order MUST remain \"pending\" or become \"invalid\"")]
     public async Task ThenTheOrderMustRemainPendingOrBecomeInvalid()
     {
-        var order = await GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreOrders>()
+        var order = await GetRequiredService<IStoreOrders>()
             .LoadOrder(GetOrderId(), CancellationToken.None)
             .ConfigureAwait(false);
 
@@ -1773,7 +1773,7 @@ public partial class CertificateServerFeatures
     {
         Assert.NotNull(AcmeState.AuthorizationResponse);
         Assert.DoesNotContain(AcmeState.AuthorizationResponse!.Challenges, challenge =>
-            string.Equals(challenge.Type, OpenCertServer.Acme.Abstractions.Model.ChallengeTypes.Http01, StringComparison.Ordinal));
+            string.Equals(challenge.Type, ChallengeTypes.Http01, StringComparison.Ordinal));
     }
 
     [Then("the token MUST contain at least {int} bits of entropy")]
@@ -2437,7 +2437,7 @@ public partial class CertificateServerFeatures
     {
         await CreatePendingOrderAsync().ConfigureAwait(false);
 
-        var order = await GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreOrders>()
+        var order = await GetRequiredService<IStoreOrders>()
             .LoadOrder(GetOrderId(), CancellationToken.None)
             .ConfigureAwait(false)
             ?? throw new InvalidOperationException("Could not load the ACME order from the store.");
@@ -2461,7 +2461,7 @@ public partial class CertificateServerFeatures
     {
         await CreatePendingOrderAsync(identifiers, notBefore, notAfter).ConfigureAwait(false);
 
-        var orderStore = GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreOrders>();
+        var orderStore = GetRequiredService<IStoreOrders>();
         var orderId = GetOrderId();
         var order = await orderStore.LoadOrder(orderId, CancellationToken.None).ConfigureAwait(false)
             ?? throw new InvalidOperationException("Could not load the pending order from the store.");
@@ -2545,28 +2545,28 @@ public partial class CertificateServerFeatures
 
         StoreSignedRequest(HttpMethod.Post, signedPayload, "application/jose+json");
 
-        var orderStore = GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreOrders>();
+        var orderStore = GetRequiredService<IStoreOrders>();
         var storedOrder = await orderStore.LoadOrder(GetOrderId(), CancellationToken.None).ConfigureAwait(false)
             ?? throw new InvalidOperationException("Could not load the current ACME order from the store.");
-        var account = await GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IAccountService>()
+        var account = await GetRequiredService<IAccountService>()
             .LoadAccount(storedOrder.AccountId, CancellationToken.None)
             .ConfigureAwait(false)
             ?? throw new InvalidOperationException("Could not load the ACME account for the current order.");
 
         try
         {
-            var updatedOrder = await GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>()
+            var updatedOrder = await GetRequiredService<IOrderService>()
                 .ProcessCsr(account, storedOrder.OrderId, csr, CancellationToken.None)
                 .ConfigureAwait(false);
 
             AcmeState.OrderResponse = MapOrder(updatedOrder);
             SetJsonResponse(HttpStatusCode.OK, AcmeState.OrderResponse);
         }
-        catch (OpenCertServer.Acme.Abstractions.Exceptions.BadCsrException ex)
+        catch (Acme.Abstractions.Exceptions.BadCsrException ex)
         {
             SetProblemResponse(HttpStatusCode.BadRequest, "badCSR", ex.Message);
         }
-        catch (OpenCertServer.Acme.Abstractions.Exceptions.ConflictRequestException ex)
+        catch (Acme.Abstractions.Exceptions.ConflictRequestException ex)
         {
             SetProblemResponse(HttpStatusCode.Conflict, "orderNotReady", ex.Message);
         }
@@ -2624,16 +2624,16 @@ public partial class CertificateServerFeatures
 
     private async Task DownloadCurrentCertificateAsync()
     {
-        var storedOrder = await GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreOrders>()
+        var storedOrder = await GetRequiredService<IStoreOrders>()
             .LoadOrder(GetOrderId(), CancellationToken.None)
             .ConfigureAwait(false)
             ?? throw new InvalidOperationException("Could not load the current ACME order from the store.");
-        var account = await GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IAccountService>()
+        var account = await GetRequiredService<IAccountService>()
             .LoadAccount(storedOrder.AccountId, CancellationToken.None)
             .ConfigureAwait(false)
             ?? throw new InvalidOperationException("Could not load the ACME account for the current order.");
 
-        var certificateBytes = await GetRequiredService<OpenCertServer.Acme.Abstractions.Services.IOrderService>()
+        var certificateBytes = await GetRequiredService<IOrderService>()
             .GetCertificate(account, storedOrder.OrderId, CancellationToken.None)
             .ConfigureAwait(false);
 
@@ -2710,22 +2710,22 @@ public partial class CertificateServerFeatures
     private async Task RunValidationWorkerAsync()
     {
         using var scope = _server.Services.CreateScope();
-        var validationWorker = scope.ServiceProvider.GetRequiredService<OpenCertServer.Acme.Abstractions.Workers.IValidationWorker>();
+        var validationWorker = scope.ServiceProvider.GetRequiredService<Acme.Abstractions.Workers.IValidationWorker>();
         await validationWorker.Run(CancellationToken.None).ConfigureAwait(false);
     }
 
-    private async Task<OpenCertServer.Acme.Abstractions.Model.Order> LoadCurrentOrderModelAsync()
-        => await GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreOrders>()
+    private async Task<Order> LoadCurrentOrderModelAsync()
+        => await GetRequiredService<IStoreOrders>()
                .LoadOrder(GetOrderId(), CancellationToken.None)
                .ConfigureAwait(false)
            ?? throw new InvalidOperationException("Could not load the current ACME order from the store.");
 
-    private async Task<OpenCertServer.Acme.Abstractions.Model.Account> LoadCurrentAccountModelAsync()
+    private async Task<Account> LoadCurrentAccountModelAsync()
     {
         if (AcmeState.OrderUrl != null)
         {
             var order = await LoadCurrentOrderModelAsync().ConfigureAwait(false);
-            return await GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreAccounts>()
+            return await GetRequiredService<IStoreAccounts>()
                        .LoadAccount(order.AccountId, CancellationToken.None)
                        .ConfigureAwait(false)
                    ?? throw new InvalidOperationException($"Could not load the ACME account '{order.AccountId}' from the store.");
@@ -2736,10 +2736,10 @@ public partial class CertificateServerFeatures
         return await LoadAccountByUrlAsync(accountUrl!).ConfigureAwait(false);
     }
 
-    private async Task<OpenCertServer.Acme.Abstractions.Model.Account> LoadAccountByUrlAsync(Uri accountUrl)
+    private async Task<Account> LoadAccountByUrlAsync(Uri accountUrl)
     {
         var accountId = accountUrl.Segments.Last().TrimEnd('/');
-        return await GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreAccounts>()
+        return await GetRequiredService<IStoreAccounts>()
                    .LoadAccount(accountId, CancellationToken.None)
                    .ConfigureAwait(false)
                ?? throw new InvalidOperationException($"Could not load the ACME account '{accountId}' from the store.");
@@ -2758,8 +2758,8 @@ public partial class CertificateServerFeatures
     }
 
     private AcmeAuthorization MapAuthorization(
-        OpenCertServer.Acme.Abstractions.Model.Order order,
-        OpenCertServer.Acme.Abstractions.Model.Authorization authorization)
+        Order order,
+        Acme.Abstractions.Model.Authorization authorization)
     {
         return new AcmeAuthorization
         {
@@ -2776,9 +2776,9 @@ public partial class CertificateServerFeatures
     }
 
     private AcmeChallenge MapChallenge(
-        OpenCertServer.Acme.Abstractions.Model.Order order,
-        OpenCertServer.Acme.Abstractions.Model.Authorization authorization,
-        OpenCertServer.Acme.Abstractions.Model.Challenge challenge)
+        Order order,
+        Acme.Abstractions.Model.Authorization authorization,
+        Challenge challenge)
     {
         return new AcmeChallenge
         {
@@ -2855,7 +2855,7 @@ public partial class CertificateServerFeatures
         AcmeState.Response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/problem+json");
     }
 
-    private AcmeOrder MapOrder(OpenCertServer.Acme.Abstractions.Model.Order order)
+    private AcmeOrder MapOrder(Order order)
     {
         var orderId = order.OrderId;
         return new AcmeOrder
@@ -3167,7 +3167,7 @@ public partial class CertificateServerFeatures
         var signatureBytes = key.SecurityKey switch
         {
             ECDsaSecurityKey e => e.ECDsa.SignData(signingBytes, key.HashAlgorithm),
-            RsaSecurityKey r => r.Rsa.SignData(signingBytes, key.HashAlgorithm, rsaSignaturePadding ?? System.Security.Cryptography.RSASignaturePadding.Pss),
+            RsaSecurityKey r => r.Rsa.SignData(signingBytes, key.HashAlgorithm, rsaSignaturePadding ?? RSASignaturePadding.Pss),
             _ => throw new NotSupportedException("Unsupported key type.")
         };
 

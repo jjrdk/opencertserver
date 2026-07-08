@@ -17,10 +17,10 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using OpenCertServer.Acme.Server;
-using OpenCertServer.Acme.Server.Extensions;
-using OpenCertServer.Ca;
-using OpenCertServer.Ca.Server;
+using Acme.Server;
+using Acme.Server.Extensions;
+using Ca;
+using Ca.Server;
 
 internal static class Program
 {

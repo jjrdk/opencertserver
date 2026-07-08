@@ -23,8 +23,8 @@ public sealed class McpServerCertificateQuerySteps
         var request = new System.Security.Cryptography.X509Certificates.CertificateRequest(
             new System.Security.Cryptography.X509Certificates.X500DistinguishedName($"CN={cn}"),
             rsa,
-            System.Security.Cryptography.HashAlgorithmName.SHA256,
-            System.Security.Cryptography.RSASignaturePadding.Pss);
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pss);
         var csr = Convert.ToBase64String(request.CreateSigningRequest());
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr });
         Assert.True(result.IsSuccess, $"sign_certificate failed: {result.ErrorMessage}");

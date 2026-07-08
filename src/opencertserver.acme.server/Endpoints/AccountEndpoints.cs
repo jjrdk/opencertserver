@@ -13,13 +13,13 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using OpenCertServer.Acme.Abstractions.Exceptions;
-using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
+using Abstractions.Exceptions;
+using Abstractions.HttpModel.Requests;
 using OpenCertServer.Acme.Abstractions.Services;
-using OpenCertServer.Acme.Server.Configuration;
-using OpenCertServer.Acme.Server.Extensions;
-using OpenCertServer.Acme.Server.Filters;
-using Account = OpenCertServer.Acme.Abstractions.HttpModel.Account;
+using Configuration;
+using Extensions;
+using Filters;
+using Account = Abstractions.HttpModel.Account;
 
 public static class AccountEndpoints
 {
@@ -266,7 +266,7 @@ public static class AccountEndpoints
             // Consume the EAB key before creating the account so single-use keys
             // cannot be raced and a failed key save does not leave an orphan account.
             var eabStore = context.RequestServices
-                .GetRequiredService<OpenCertServer.Acme.Abstractions.Storage.IStoreExternalAccountKeys>();
+                .GetRequiredService<Abstractions.Storage.IStoreExternalAccountKeys>();
             var eabKey = await eabStore.LoadKey(externalAccountId, cancellationToken).ConfigureAwait(false);
             if (eabKey != null)
             {
