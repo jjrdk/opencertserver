@@ -47,7 +47,8 @@ public sealed class AmdSnpProvider : IAttestationProvider
                 vendorErrorName: name);
         }
 
-        return Task.FromResult(PointerToHex(chipIdPtr, (int)size));
+        var hex = PointerToHex(chipIdPtr, (int)size);
+        return Task.FromResult(hex);
     }
 
     public async Task<X509Certificate2> RetrieveDeviceCertificateAsync(string deviceId)
