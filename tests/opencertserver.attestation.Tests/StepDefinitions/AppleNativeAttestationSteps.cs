@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using System.Text;
-using OpenCertServer.Attestation;
 using OpenCertServer.Attestation.Native;
 using Reqnroll;
 using Xunit;
@@ -24,6 +23,8 @@ public sealed class AppleNativeAttestationSteps : IDisposable
     private string? _keyId;
     private byte[]? _attestationObject1;
     private byte[]? _attestationObject2;
+    private byte[]? _challengeHash1;
+    private byte[]? _challengeHash2;
 
     // ── Given ─────────────────────────────────────────────────────────────────
 
@@ -67,9 +68,10 @@ public sealed class AppleNativeAttestationSteps : IDisposable
         if (!_platformAvailable) return;
         Assert.NotNull(_keyId);
 
-        var challenge = Encoding.UTF8.GetBytes("server-challenge-nonce-" + Guid.NewGuid());
-        var hash = SHA256.HashData(challenge);
-        _attestationObject1 = await _interop!.AttestKeyAsync(_keyId, hash);
+        // Use a deterministic challenge so we can verify the signature in the Then step
+        var challenge = Encoding.UTF8.GetBytes("apple-native-attestation-challenge");
+        _challengeHash1 = SHA256.HashData(challenge);
+        _attestationObject1 = await _interop!.AttestKeyAsync(_keyId, _challengeHash1);
     }
 
     [When(@"the key is attested with challenge ""(.*)""")]
@@ -80,17 +82,29 @@ public sealed class AppleNativeAttestationSteps : IDisposable
 
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(challengeText));
         if (_attestationObject1 is null)
+        {
+            _challengeHash1 = hash;
             _attestationObject1 = await _interop!.AttestKeyAsync(_keyId, hash);
+        }
         else
+        {
+            _challengeHash2 = hash;
             _attestationObject2 = await _interop!.AttestKeyAsync(_keyId, hash);
+        }
     }
 
     [When(@"GenerateKeyAsync is called on SecurityFrameworkAppleAttestInterop")]
     public async Task WhenGenerateKeyCalledOnNonApple()
     {
         using var interop = new SecurityFrameworkAppleAttestInterop();
-        try { await interop.GenerateKeyAsync(); }
-        catch (Exception ex) { _thrownException = ex; }
+        try
+        {
+            await interop.GenerateKeyAsync();
+        }
+        catch (Exception ex)
+        {
+            _thrownException = ex;
+        }
     }
 
     // ── Then ──────────────────────────────────────────────────────────────────
@@ -131,32 +145,27 @@ public sealed class AppleNativeAttestationSteps : IDisposable
     {
         if (!_platformAvailable) return;
         Assert.NotNull(_attestationObject1);
+        Assert.NotNull(_challengeHash1);
 
-        // Re-derive the challenge hash that was used in "When the key is attested with a SHA-256 hash"
-        // The When step used a random challenge, but the attestation object contains the signature
-        // and public key. We verify that the signature is structurally valid by using the
-        // SecurityFrameworkAppleAttestInterop.VerifyAttestationObject helper.
-        //
-        // Note: We cannot re-derive the exact hash without storing it in the When step.
-        // So we verify that the attestation object parses correctly and that the public key
-        // is a valid P-256 uncompressed point.
-
+        // Actually verify the ECDSA signature against the challenge hash we stored in the When step
+        // This implements Apple's validation step: verify the signature matches the authenticated data
         int sigLen = BitConverter.ToInt32(_attestationObject1!, 0);
-        var pubKeyBytes = _attestationObject1!.AsSpan(4 + sigLen);
+        var signatureBytes = _attestationObject1!.AsSpan(4, sigLen).ToArray();
 
-        // Verify the public key is importable as a P-256 ECDsa key
+        var pubKeyBytes = _attestationObject1!.AsSpan(4 + sigLen).ToArray();
         var ecParams = new ECParameters
         {
             Curve = ECCurve.NamedCurves.nistP256,
             Q = new ECPoint
             {
-                X = pubKeyBytes.Slice(1, 32).ToArray(),
-                Y = pubKeyBytes.Slice(33, 32).ToArray()
+                X = pubKeyBytes.AsSpan(1, 32).ToArray(),
+                Y = pubKeyBytes.AsSpan(33, 32).ToArray()
             }
         };
-        // This throws if the key parameters are invalid
+
         using var ecdsa = ECDsa.Create(ecParams);
-        Assert.NotNull(ecdsa);
+        bool isValid = ecdsa.VerifyHash(_challengeHash1!, signatureBytes, DSASignatureFormat.Rfc3279DerSequence);
+        Assert.True(isValid, "ECDSA signature does not verify against the challenge hash.");
     }
 
     [Then(@"the two attestation signatures are different")]
