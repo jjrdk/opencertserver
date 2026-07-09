@@ -66,9 +66,9 @@ public sealed class TrustStore
             return;
         }
 
-        var certBytes = new byte[stream.Length];
-        _ = stream.Read(certBytes, 0, certBytes.Length);
-        _pinnedRoots[vendor] = X509CertificateLoader.LoadCertificate(certBytes);
+var certBytes = new byte[stream.Length];
+stream.ReadExactly(certBytes);
+_pinnedRoots[vendor] = X509CertificateLoader.LoadCertificate(certBytes);
         _logger.LogInformation("Pinned {Vendor} root CA loaded from embedded resources.", vendor);
     }
 
