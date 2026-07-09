@@ -34,15 +34,22 @@ public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChalle
         _cleanupTimer = new Timer(PruneExpiredNonces, null, NonceTtl, NonceTtl);
     }
 
-    private void PruneExpiredNonces(object? state)
+private void PruneExpiredNonces(object? state)
+{
+    try
     {
         var cutoff = DateTimeOffset.UtcNow - NonceTtl;
-        foreach (var key in _consumedNonces.Keys)
+        foreach (var (key, consumed) in _consumedNonces)
         {
-            if (_consumedNonces.TryGetValue(key, out var consumed) && consumed < cutoff)
-                _consumedNonces.TryRemove(new KeyValuePair<string, DateTimeOffset>(key, consumed));
+            if (consumed < cutoff)
+                _consumedNonces.TryRemove(key, out _);
         }
     }
+    catch
+    {
+        // Never allow timer callbacks to bring down the process.
+    }
+}
 
     public void Dispose() => _cleanupTimer.Dispose();
 
