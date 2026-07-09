@@ -48,7 +48,8 @@ public sealed class SgxProvider : IAttestationProvider
                 vendorErrorName: name);
         }
 
-        return Task.FromResult(PointerToHex(pckIdPtr, (int)size));
+        var hex = PointerToHex(pckIdPtr, (int)size);
+        return Task.FromResult(hex);
     }
 
     public async Task<X509Certificate2> RetrieveDeviceCertificateAsync(string deviceId)
@@ -60,7 +61,8 @@ public sealed class SgxProvider : IAttestationProvider
             return cached;
         }
 
-        _logger.LogInformation("Fetching PCK certificate from PCCS: {Url}/certs/{DeviceId}", _options.PccsUrl, deviceId);
+        _logger.LogInformation("Fetching PCK certificate from PCCS: {Url}/certs/{DeviceId}", _options.PccsUrl,
+            deviceId);
         var endpoint = new Uri($"{_options.PccsUrl}/certs/{deviceId}");
         HttpResponseMessage response;
         try
@@ -119,6 +121,7 @@ public sealed class SgxProvider : IAttestationProvider
         {
             new ReadOnlySpan<byte>((byte*)ptr.ToPointer(), length).CopyTo(buffer);
         }
+
         return Convert.ToHexString(buffer);
     }
 }
