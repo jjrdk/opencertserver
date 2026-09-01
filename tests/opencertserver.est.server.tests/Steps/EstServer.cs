@@ -1,10 +1,13 @@
 namespace OpenCertServer.Est.Tests.Steps;
 
+using System.Formats.Asn1;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Numerics;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -18,6 +21,9 @@ using Microsoft.Extensions.Hosting;
 using Ca;
 using OpenCertServer.Ca.Server;
 using OpenCertServer.Ca.Utils.Ca;
+using Ca.Utils;
+using Ca.Utils.Pkcs7;
+using Ca.Utils.X509;
 using Ca.Utils.X509.Templates;
 using Client;
 using Server;
@@ -196,6 +202,81 @@ public class EstServer
         _context["enrolledCertificate"] = cert;
     }
 
+    [When(
+        """^a client submits a valid (.+?) certificate signing request \(CSR\) containing a SAN URI using the "(.+?)" certificate profile$""")]
+    public async Task WhenAClientSubmitsAValidCsrContainingASanUriUsingTheCertificateProfile(
+        string profile,
+        string profileName)
+    {
+        // Mirrors the real-world case (SyntoGo device enrollment) of a urn:uuid SAN entry that must survive simpleenroll.
+        var sanUri = new Uri($"urn:uuid:{Guid.NewGuid()}");
+        _context["requestedSanUri"] = sanUri;
+        var sanBuilder = new SubjectAlternativeNameBuilder();
+        sanBuilder.AddUri(sanUri);
+
+        var subjectName = new X500DistinguishedName("CN=Test, OU=Test Department");
+        CertificateRequest request;
+        X509Certificate2 clientCertificate;
+        switch (profile.ToLowerInvariant())
+        {
+            case "rsa":
+                var rsa = RSA.Create();
+                clientCertificate = await GetCertificate(rsa);
+                request = new CertificateRequest(subjectName, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+                break;
+            case "ecdsa":
+                var ecDsa = ECDsa.Create();
+                clientCertificate = await GetCertificate(ecDsa);
+                request = new CertificateRequest(subjectName, ecDsa, HashAlgorithmName.SHA256);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(profile), profile, null);
+        }
+
+        request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
+        request.CertificateExtensions.Add(new X509KeyUsageExtension(
+            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment, false));
+        request.CertificateExtensions.Add(sanBuilder.Build());
+
+        var (_, cert) = await SubmitSimpleEnrollAsync(request, profile.ToLowerInvariant(), clientCertificate);
+        _context["enrolledCertificate"] = cert;
+    }
+
+    private async Task<(string? Error, X509Certificate2Collection? Certificates)> SubmitSimpleEnrollAsync(
+        CertificateRequest request,
+        string profileName,
+        X509Certificate2 clientCertificate)
+    {
+        using var handler = new TestMessageHandler(_server, clientCertificate);
+        using var httpClient = new HttpClient(handler);
+        var requestMessage = new HttpRequestMessage
+        {
+            Method = HttpMethod.Post,
+            RequestUri = new Uri($"https://localhost/.well-known/est/{profileName}/simpleenroll"),
+            Content = new StringContent(request.ToPkcs10Base64(), Encoding.UTF8, "application/pkcs10")
+        };
+        requestMessage.Headers.TransferEncoding.Add(new TransferCodingHeaderValue("base64"));
+
+        var response = await httpClient.SendAsync(requestMessage);
+        if (!response.IsSuccessStatusCode)
+        {
+            return (await response.Content.ReadAsStringAsync(), null);
+        }
+
+        var b64 = await response.Content.ReadAsStringAsync();
+        var bytes = b64.Base64DecodeBytes();
+        var reader = new AsnReader(bytes, AsnEncodingRules.DER);
+        var contentInfo = new CmsContentInfo(reader);
+        if (contentInfo.ContentType.Value != Oids.Pkcs7Signed)
+        {
+            throw new InvalidOperationException("Expected signed data from server");
+        }
+
+        reader = new AsnReader(contentInfo.EncodedContent, AsnEncodingRules.DER);
+        var signedData = new SignedData(reader);
+        return (null, new X509Certificate2Collection(signedData.Certificates ?? []));
+    }
+
     [When(@"^an unauthenticated client submits a valid (.+?) certificate signing request \(CSR\)$")]
     public async Task WhenAnUnauthenticatedClientSubmitsAValidRsaCertificateSigningRequestCsr(string profile)
     {
@@ -256,6 +337,35 @@ public class EstServer
     public void ThenTheServerReturnsASignedCertificate()
     {
         Assert.NotNull(_context["enrolledCertificate"]);
+    }
+
+    [Then("the issued certificate contains the key usage extension requested in the CSR")]
+    public void ThenTheIssuedCertificateContainsTheKeyUsageExtensionRequestedInTheCsr()
+    {
+        var certificates = Assert.IsType<X509Certificate2Collection>(_context["enrolledCertificate"]);
+        var keyUsage = certificates[0].Extensions.OfType<X509KeyUsageExtension>().SingleOrDefault();
+
+        Assert.NotNull(keyUsage);
+        Assert.Equal(
+            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
+            keyUsage.KeyUsages);
+    }
+
+    [Then("the issued certificate contains the SAN URI requested in the CSR")]
+    public void ThenTheIssuedCertificateContainsTheSanUriRequestedInTheCsr()
+    {
+        var certificates = Assert.IsType<X509Certificate2Collection>(_context["enrolledCertificate"]);
+        var requestedSanUri = Assert.IsType<Uri>(_context["requestedSanUri"]);
+
+        var sanExtension = certificates[0].Extensions.SingleOrDefault(ext => ext.Oid?.Value == "2.5.29.17");
+        Assert.NotNull(sanExtension);
+
+        var sanUris = new GeneralNames(sanExtension.RawData).Names
+            .Where(name => name.Type == GeneralName.GeneralNameType.UniformResourceIdentifier)
+            .Select(name => ((AsnString)name.Value).Value)
+            .ToArray();
+
+        Assert.Contains(requestedSanUri.ToString(), sanUris);
     }
 
     [When("^the (.+) client uses the previously issued certificate for re-enrollment$")]

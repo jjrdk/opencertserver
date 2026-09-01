@@ -10,6 +10,26 @@ Feature: Certificate server compliance with EST (RFC 7030)
           | rsa     |
           | ecdsa   |
 
+    Scenario Outline: Enrollment honors the extensions requested in the CSR
+        Given a certificate server that complies with EST (RFC 7030)
+        When a client submits a valid <profile> certificate signing request (CSR) using the "<profile>" certificate profile
+        Then the issued certificate contains the key usage extension requested in the CSR
+
+        Examples:
+          | profile |
+          | rsa     |
+          | ecdsa   |
+
+    Scenario Outline: Enrollment honors the subject alternative name URI requested in the CSR
+        Given a certificate server that complies with EST (RFC 7030)
+        When a client submits a valid <profile> certificate signing request (CSR) containing a SAN URI using the "<profile>" certificate profile
+        Then the issued certificate contains the SAN URI requested in the CSR
+
+        Examples:
+          | profile |
+          | rsa     |
+          | ecdsa   |
+
     Scenario Outline: Successful re-enrollment of a new certificate
         Given a certificate server that complies with EST (RFC 7030)
         When a client submits a valid <profile> certificate signing request (CSR) using the "<profile>" certificate profile
