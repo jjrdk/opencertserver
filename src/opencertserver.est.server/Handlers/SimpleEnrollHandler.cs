@@ -102,6 +102,7 @@ internal static class SimpleEnrollHandler
             var csr = CertificateRequest.LoadSigningRequest(
                     csrDer,
                     HashAlgorithmName.SHA256,
+                    CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
                     signerSignaturePadding: RSASignaturePadding.Pss);
 
             if (manualAuthorizationStrategy.TryGetPendingAuthorization(
