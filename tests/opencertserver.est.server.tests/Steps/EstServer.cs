@@ -208,7 +208,7 @@ public class EstServer
         string profile,
         string profileName)
     {
-        // Mirrors the real-world case (SyntoGo device enrollment) of a urn:uuid SAN entry that must survive simpleenroll.
+        // Mirrors the real-world case of a urn:uuid SAN entry that must survive simpleenroll.
         var sanUri = new Uri($"urn:uuid:{Guid.NewGuid()}");
         _context["requestedSanUri"] = sanUri;
         var sanBuilder = new SubjectAlternativeNameBuilder();
