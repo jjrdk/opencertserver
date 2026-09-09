@@ -28,9 +28,9 @@ namespace OpenCertServer.CertServer.Tests.Features
         private static string[] featureTags = new string[] {
                 "caa-rfc8657"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "RFC 8657 CAA account URI and validation method binding", "    RFC 8657 defines the \"accounturi\" and \"validationmethods\" parameters on\r\n    " +
-                "CAA \"issue\" and \"issuewild\" properties, refining which ACME account and\r\n    whi" +
-                "ch validation method a CA may use to authorize issuance.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "RFC 8657 CAA account URI and validation method binding", "    RFC 8657 defines the \"accounturi\" and \"validationmethods\" parameters on\n    C" +
+                "AA \"issue\" and \"issuewild\" properties, refining which ACME account and\n    which" +
+                " validation method a CA may use to authorize issuance.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
 #line 1 "AcmeCaaRfc8657.feature"
 #line hidden
