@@ -5,6 +5,7 @@ namespace OpenCertServer.Acme.Server.Filters;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using OpenCertServer.Acme.Abstractions.Exceptions;
@@ -80,7 +81,12 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
             Status = (HttpStatusCode)statusCode
         };
 
-        return Results.Json(problem, contentType: "application/problem+json", statusCode: statusCode);
+        var jsonOptions = new JsonSerializerOptions
+        {
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+
+        return Results.Json(problem, jsonOptions, contentType: "application/problem+json", statusCode: statusCode);
     }
 
     private static int MapStatusCode(AcmeException exception)
