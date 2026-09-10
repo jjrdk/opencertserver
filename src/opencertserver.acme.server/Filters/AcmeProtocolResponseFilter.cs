@@ -83,7 +83,8 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
 
         var jsonOptions = new JsonSerializerOptions
         {
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
         return Results.Json(problem, jsonOptions, contentType: "application/problem+json", statusCode: statusCode);
