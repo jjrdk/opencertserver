@@ -122,7 +122,7 @@ public sealed class CertificateStorePersistenceStrategy : ICertificatePersistenc
 
             var match = store.Certificates
                   .Find(X509FindType.FindBySubjectName, subject, validOnly: false)
-                  .Where(c => c.HasPrivateKey)
+                  .Where(c => c.HasPrivateKey && string.Equals(c.GetNameInfo(X509NameType.SimpleName, false), subject, StringComparison.OrdinalIgnoreCase))
                   .OrderByDescending(c => c.NotAfter)
                   .FirstOrDefault();
 
