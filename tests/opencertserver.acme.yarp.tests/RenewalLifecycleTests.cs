@@ -58,7 +58,7 @@ public sealed class RenewalLifecycleTests
             host, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
 
           [Fact]
-    public async Task InitialIssuranceOnServiceStart()
+    public async Task InitialIssuanceOnServiceStart()
             {
         var source = new InMemoryAcmeRouteConfigurationSource(
                [
