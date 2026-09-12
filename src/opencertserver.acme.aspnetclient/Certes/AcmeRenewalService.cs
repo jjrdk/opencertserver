@@ -114,8 +114,9 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
                  try
                       {
                      var current = _routeScope.GetCertificate(route.RouteId);
-                       var outcome = await _certificateProvider.RenewCertificateIfNeeded(
-                             password, route.RouteId, route.Hosts, current).ConfigureAwait(false);
+                     IReadOnlyList<string> hosts = route.Hosts.Count > 0 ? route.Hosts : _options.Domains;
+                     var outcome = await _certificateProvider.RenewCertificateIfNeeded(
+                           password, route.RouteId, hosts, current).ConfigureAwait(false);
                          ApplyOutcome(route.RouteId, outcome);
                        await WarmChain(outcome).ConfigureAwait(false);
                        await FireRenewalSucceededHooks(outcome).ConfigureAwait(false);
