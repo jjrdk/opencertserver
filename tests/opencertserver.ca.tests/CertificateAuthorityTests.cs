@@ -104,6 +104,53 @@ public sealed class CertificateAuthorityTests : IDisposable
                     .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)));
     }
 
+    [Fact]
+    public async Task IssuedCertificateHasAuthorityKeyIdentifierOfIssuer()
+    {
+        using var rsa = RSA.Create(2048);
+
+        var req = CreateCertificateRequest(rsa);
+        var response =
+            await _authority.SignCertificateRequestPem(
+                req.ToPkcs10Pem(),
+                cancellationToken: CancellationToken.None) as SignCertificateResponse.Success;
+
+        var issued = response!.Certificate;
+        var issuer = response.Issuers[0];
+
+        var aki = issued.Extensions.OfType<X509AuthorityKeyIdentifierExtension>().Single();
+        var ski = issuer.Extensions.OfType<X509SubjectKeyIdentifierExtension>().Single();
+
+        Assert.NotNull(aki.KeyIdentifier);
+        Assert.Equal(
+            Convert.ToHexString(ski.SubjectKeyIdentifierBytes.Span),
+            Convert.ToHexString(aki.KeyIdentifier!.Value.Span));
+    }
+
+    [Fact]
+    public async Task IssuedCertificateChainsToIssuer()
+    {
+        using var rsa = RSA.Create(2048);
+
+        var req = CreateCertificateRequest(rsa);
+        var response =
+            await _authority.SignCertificateRequestPem(
+                req.ToPkcs10Pem(),
+                cancellationToken: CancellationToken.None) as SignCertificateResponse.Success;
+
+        using var chain = new X509Chain();
+        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        chain.ChainPolicy.VerificationFlags = X509VerificationFlags.IgnoreNotTimeValid;
+        chain.ChainPolicy.CustomTrustStore.AddRange(response!.Issuers);
+
+        var built = chain.Build(response.Certificate);
+
+        Assert.True(
+            built,
+            string.Join(", ", chain.ChainStatus.Select(s => s.StatusInformation.Trim())));
+    }
+
     private static CertificateRequest CreateCertificateRequest(RSA rsa)
     {
         var req = new CertificateRequest(

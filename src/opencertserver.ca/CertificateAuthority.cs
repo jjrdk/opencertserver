@@ -170,8 +170,10 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         }
 
         request.CertificateExtensions.Add(
-            X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(request.PublicKey
-                .ExportSubjectPublicKeyInfo()));
+            X509AuthorityKeyIdentifierExtension.CreateFromCertificate(
+                profile.CertificateChain[0],
+                includeKeyIdentifier: true,
+                includeIssuerAndSerial: false));
 
         var profilePrivateKey = profile.PrivateKey;
         var x509SignatureGenerator = profilePrivateKey switch
@@ -446,8 +448,10 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     {
         var request = CreateCaCertificateRequest(distinguishedName, usageFlags, subjectPrivateKey);
         request.CertificateExtensions.Add(
-            X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier(
-                ExportSubjectPublicKeyInfo(issuerCertificate)));
+            X509AuthorityKeyIdentifierExtension.CreateFromCertificate(
+                issuerCertificate,
+                includeKeyIdentifier: true,
+                includeIssuerAndSerial: false));
 
         var signatureGenerator = issuerPrivateKey switch
         {
