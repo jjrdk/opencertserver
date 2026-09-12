@@ -120,7 +120,7 @@ public sealed partial class CertificateProvider : IProvideCertificates
 
           await Persist(pfxCertificateBytes, scope, cancellationToken).ConfigureAwait(false);
 
-                return X509CertificateLoader.LoadCertificate(pfxCertificateBytes.RawData);
+                return pfxCertificateBytes;
                }
           catch (TaskCanceledException canceled)
              {
