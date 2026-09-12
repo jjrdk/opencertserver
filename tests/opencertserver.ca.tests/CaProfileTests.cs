@@ -71,16 +71,19 @@ public sealed class CaProfileTests : IDisposable
             [_profile.CertificateChain[0].SubjectName.Name] = SubjectKeyIdentifierOf(_profile.CertificateChain[0])
         };
 
-        var (newPrivateKey, newCertificate) = CreateCertificateAuthority("CN=Test Root CA 2");
+var (newPrivateKey, newCertificate) = CreateCertificateAuthority("CN=Test Root CA 2");
+AsymmetricAlgorithm? rolloverKey = newPrivateKey;
 
-        try
-        {
-            _profile.RollOver(newCertificate, newPrivateKey);
-        }
-        finally
-        {
-            newCertificate.Dispose();
-        }
+try
+{
+    _profile.RollOver(newCertificate, rolloverKey);
+    rolloverKey = null; // ownership transferred to _profile
+}
+finally
+{
+    newCertificate.Dispose();
+    rolloverKey?.Dispose();
+}
 
         known[_profile.CertificateChain[0].SubjectName.Name] = SubjectKeyIdentifierOf(_profile.CertificateChain[0]);
 
