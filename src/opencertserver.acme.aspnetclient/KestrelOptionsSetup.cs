@@ -1,33 +1,93 @@
 ﻿namespace OpenCertServer.Acme.AspNetClient;
 
 using Certes;
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenCertServer.Acme.Abstractions.Acme;
 
 internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptions>
 {
-    private readonly AcmeRenewalService _renewalService;
+    private readonly IAcmeRenewalService _renewalService;
+    private readonly AcmeRouteScope _routeScope;
+    private readonly IAcmeRouteConfigurationSource _routeConfigurationSource;
     private readonly ILogger<KestrelOptionsSetup> _logger;
 
-    public KestrelOptionsSetup(AcmeRenewalService renewalService, ILogger<KestrelOptionsSetup> logger)
-    {
+    public KestrelOptionsSetup(
+        IAcmeRenewalService renewalService,
+        AcmeRouteScope routeScope,
+        IAcmeRouteConfigurationSource routeConfigurationSource,
+        ILogger<KestrelOptionsSetup> logger)
+       {
         _renewalService = renewalService;
+        _routeScope = routeScope;
+        _routeConfigurationSource = routeConfigurationSource;
         _logger = logger;
-    }
+       }
 
     public void Configure(KestrelServerOptions options)
-    {
-        if (_renewalService.Certificate != null)
         {
-            options.ConfigureHttpsDefaults(o =>
+         options.ConfigureHttpsDefaults(o =>
+             {
+             o.ServerCertificateSelector = (_, hostName) =>
+                      {
+                 return SelectCertificateFor(hostName);
+                  };
+                });
+         }
+
+        /// <summary>
+        /// The SNI selection logic used by <see cref="Configure"/>. Given an incoming SNI host
+        /// name it returns the leaf for the ACME route whose hosts contain that host, falling back
+        /// to the renewal service's current leaf and then to the default-route leaf. Extracted so
+        /// the selection behaviour can be verified without binding a Kestrel listener.
+        /// </summary>
+    internal X509Certificate2? SelectCertificateFor(string? hostName)
+         {
+          var hostToRouteId = BuildHostIndex();
+          var fallback = _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
+
+         return SelectCertificate(hostName, hostToRouteId)
+              ?? _renewalService.Certificate
+              ?? fallback;
+          }
+
+       private X509Certificate2? SelectCertificate(string? hostName, IReadOnlyDictionary<string, string> hostToRouteId)
+        {
+      if (string.IsNullOrEmpty(hostName))
+             {
+            return null;
+             }
+
+      if (hostToRouteId.TryGetValue(hostName, out var routeId))
             {
-                o.ServerCertificateSelector = (_, _) => _renewalService.Certificate;
-            });
+            var cert = _routeScope.GetCertificate(routeId);
+             if (cert != null)
+                {
+                 return cert;
+                 }
+
+                _logger.LogWarning("No certificate is available yet for route {RouteId} matching SNI host {Host}", routeId, hostName);
+                return _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
+              }
+
+        // SNI host not in any ACME route -> fall back to the default leaf and warn.
+        _logger.LogWarning("No ACME route matches SNI host {Host}; serving default certificate", hostName);
+        return _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
         }
-        else //if(AcmeRenewalService.Certificate != null)
-        {
-            _logger.LogError("This certificate cannot be used with Kestrel");
+
+       private IReadOnlyDictionary<string, string> BuildHostIndex()
+       {
+        var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var route in _routeConfigurationSource.GetRouteConfigurations())
+            {
+            foreach (var host in route.Hosts)
+               {
+             index[host] = route.RouteId;
+               }
+            }
+
+        return index;
         }
-    }
 }

@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("opencertserver.acme.aspnetclient.tests")]
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
+[assembly: InternalsVisibleTo("opencertserver.acme.yarp.tests")]
 namespace OpenCertServer.Acme.AspNetClient;
 
 using System.Diagnostics.CodeAnalysis;
@@ -13,17 +14,26 @@ using Microsoft.Extensions.Options;
 using OpenCertServer.Acme.AspNetClient.Certes;
 using OpenCertServer.Acme.AspNetClient.Certificates;
 using OpenCertServer.Acme.AspNetClient.Persistence;
+using OpenCertServer.Acme.Abstractions.Acme;
 
 public static class RegistrationExtensions
 {
     extension(IServiceCollection services)
     {
         private IServiceCollection AddAcmePersistenceService()
-        {
-            return services.Any(x => x.ServiceType == typeof(IPersistenceService))
-                ? services
-                : services.AddSingleton<IPersistenceService, PersistenceService>();
-        }
+           {
+          return services.Any(x => x.ServiceType == typeof(IPersistenceService))
+                   ? services
+                   : services.AddSingleton<IPersistenceService, PersistenceService>();
+           }
+
+        private IServiceCollection AddAcmeRouteConfigurationSource()
+             {
+           return services.Any(x => x.ServiceType == typeof(IAcmeRouteConfigurationSource))
+                     ? services
+                     : services.AddSingleton<IAcmeRouteConfigurationSource>(
+                          new InMemoryAcmeRouteConfigurationSource(Array.Empty<IAcmeRouteConfiguration>()));
+             }
 
         public IServiceCollection AddAcmeRenewalLifecycleHook<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
@@ -123,22 +133,24 @@ public static class RegistrationExtensions
 
         public IServiceCollection AddAcmeClient<TOptions>(TOptions options)
             where TOptions : AcmeOptions
-        {
-            if (options.Domains?.Distinct().Any() != true)
-            {
+              {
+      if (!options.Domains.Distinct().Any())
+                    {
                 throw new ArgumentException("Domains configuration invalid");
-            }
+                }
 
-            return services.AddTransient<IConfigureOptions<KestrelServerOptions>, KestrelOptionsSetup>()
-                .AddAcmePersistenceService()
-                .AddSingleton(options)
-                .AddSingleton<AcmeOptions>(sp => sp.GetRequiredService<TOptions>())
-                .AddSingleton<IValidateCertificates, CertificateValidator>()
-                .AddSingleton<IProvideCertificates, CertificateProvider>()
-                .AddTransient<IHostedService>(sp => sp.GetRequiredService<IAcmeRenewalService>())
-                .AddSingleton<IAcmeRenewalService, AcmeRenewalService>()
-                .AddSingleton<IAcmeClientFactory, AcmeClientFactory>();
-        }
+        return services.AddTransient<IConfigureOptions<KestrelServerOptions>, KestrelOptionsSetup>()
+                    .AddAcmePersistenceService()
+                    .AddAcmeRouteConfigurationSource()
+                    .AddSingleton(options)
+                    .AddSingleton<AcmeOptions>(sp => sp.GetRequiredService<TOptions>())
+                    .AddSingleton<IValidateCertificates, CertificateValidator>()
+                    .AddSingleton<IProvideCertificates, CertificateProvider>()
+                    .AddSingleton<AcmeRouteScope>()
+                    .AddTransient<IHostedService>(sp => sp.GetRequiredService<IAcmeRenewalService>())
+                    .AddSingleton<IAcmeRenewalService, AcmeRenewalService>()
+                    .AddSingleton<IAcmeClientFactory, AcmeClientFactory>();
+              }
     }
 
     extension(IApplicationBuilder app)
