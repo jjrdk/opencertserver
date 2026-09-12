@@ -29,13 +29,17 @@ public static class RouteAcmeMetadataExtensions
      public static global::Yarp.ReverseProxy.Configuration.RouteConfig WithAcmeRoute(
         global::Yarp.ReverseProxy.Configuration.RouteConfig route,
         RouteAcmeOptions options)
-             => route with
-                {
-               Metadata = new Dictionary<string, string>
-                   {
-                            { AcmeRouteMetadataKeys.Options, JsonSerializer.Serialize(options, RouteAcmeOptionsSerializerContext.Default.RouteAcmeOptions) }
-                        }
-                   };
+     {
+         var metadata = route.Metadata is null
+             ? new Dictionary<string, string>()
+             : new Dictionary<string, string>(route.Metadata);
+
+         metadata[AcmeRouteMetadataKeys.Options] = JsonSerializer.Serialize(
+             options,
+             RouteAcmeOptionsSerializerContext.Default.RouteAcmeOptions);
+
+         return route with { Metadata = metadata };
+     }
 
             /// <summary>
             /// Reads the <see cref="RouteAcmeOptions"/> attached to a route, if any. Returns null
