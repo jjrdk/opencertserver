@@ -281,10 +281,19 @@ public partial class CertificateServerFeatures
     }
 
     [When("multiple identifiers in one request fail for different reasons")]
-    public void WhenMultipleIdentifiersInOneRequestFailForDifferentReasons()
+    public async Task WhenMultipleIdentifiersInOneRequestFailForDifferentReasons()
     {
-        SetProblemResponse(HttpStatusCode.BadRequest, "malformed",
-            "The current test host does not emit subproblems for this synthetic multi-identifier failure.");
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
+        await SendKidSignedRequestAsync(
+            "/new-order",
+            new
+            {
+                identifiers = new[]
+                {
+                    new { type = "dns", value = "rejected-a.local" },
+                    new { type = "dns", value = "rejected-b.local" }
+                }
+            }).ConfigureAwait(false);
     }
 
     [When("an ACME client creates a new account")]

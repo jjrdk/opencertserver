@@ -5,6 +5,7 @@ namespace OpenCertServer.Acme.Server.Filters;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using OpenCertServer.Acme.Abstractions.Exceptions;
@@ -80,7 +81,27 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
             Status = (HttpStatusCode)statusCode
         };
 
-        return Results.Json(problem, contentType: "application/problem+json", statusCode: statusCode);
+        // RFC 8555 §6.7.1: when multiple identifiers are rejected, the problem document
+        // SHOULD include an array of subproblems, each carrying the detail of the failure
+        // and the identifier it applies to.
+        if (exception is RejectedIdentifierException { RejectedIdentifiers.Count: > 0 } rejected)
+        {
+            problem.Subproblems = rejected.RejectedIdentifiers
+                .Select(x => new AcmeError
+                {
+                    Type = problem.Type,
+                    Detail = x.Reason,
+                    Identifier = x.Identifier
+                })
+                .ToList();
+        }
+
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+
+        return Results.Json(problem, jsonOptions, contentType: "application/problem+json", statusCode: statusCode);
     }
 
     private static int MapStatusCode(AcmeException exception)
@@ -95,6 +116,7 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
             NotFoundException => StatusCodes.Status404NotFound,
             NotAllowedException => StatusCodes.Status403Forbidden,
             NotAuthorizedException => StatusCodes.Status403Forbidden,
+            RejectedIdentifierException => StatusCodes.Status400BadRequest,
             UserActionRequiredException => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status400BadRequest
         };

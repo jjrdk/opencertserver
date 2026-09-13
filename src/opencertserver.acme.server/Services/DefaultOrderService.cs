@@ -20,17 +20,20 @@ public sealed class DefaultOrderService : IOrderService
     private readonly IAuthorizationFactory _authorizationFactory;
     private readonly ICsrValidator _csrValidator;
     private readonly IIssueCertificates _issuer;
+    private readonly IAllowedIdentifiersPolicy _identifierPolicy;
 
     public DefaultOrderService(
         IStoreOrders orderStore,
         IAuthorizationFactory authorizationFactory,
         ICsrValidator csrValidator,
-        IIssueCertificates issuer)
+        IIssueCertificates issuer,
+        IAllowedIdentifiersPolicy identifierPolicy)
     {
         _orderStore = orderStore;
         _authorizationFactory = authorizationFactory;
         _csrValidator = csrValidator;
         _issuer = issuer;
+        _identifierPolicy = identifierPolicy;
     }
 
     public async Task<Order> CreateOrder(
@@ -49,6 +52,8 @@ public sealed class DefaultOrderService : IOrderService
         }
 
         var order = new Order(account, identifiers, profile) { NotBefore = notBefore, NotAfter = notAfter };
+
+        ValidateIdentifiers(order.Identifiers);
 
         _authorizationFactory.CreateAuthorizations(order);
         order.Expires = order.Authorizations.Min(a => a.Expires);
@@ -204,6 +209,46 @@ public sealed class DefaultOrderService : IOrderService
         if (account.Status != AccountStatus.Valid)
         {
             throw new ConflictRequestException(AccountStatus.Valid, account.Status);
+        }
+    }
+
+    /// <summary>
+    /// Validates the identifiers of a new order. Rejects orders that carry no identifiers
+    /// or malformed identifiers, and rejects individual identifiers the CA is not willing
+    /// to issue for, per RFC 8555 §6.7 (rejectedIdentifier).
+    /// </summary>
+    private void ValidateIdentifiers(IEnumerable<Identifier> identifiers)
+    {
+        ArgumentNullException.ThrowIfNull(identifiers);
+
+        var identifierList = identifiers as IList<Identifier> ?? identifiers.ToList();
+        if (identifierList.Count == 0)
+        {
+            throw new MalformedRequestException("No identifiers submitted.");
+        }
+
+        foreach (var identifier in identifierList)
+        {
+            if (string.IsNullOrWhiteSpace(identifier.Value))
+            {
+                throw new MalformedRequestException(
+                    $"Malformed identifier: (Type: {identifier.Type}, Value: {identifier.Value})");
+            }
+        }
+
+        var rejected = new List<RejectedIdentifier>();
+        foreach (var identifier in identifierList)
+        {
+            var reason = _identifierPolicy.GetRejectionReason(identifier);
+            if (reason != null)
+            {
+                rejected.Add(new RejectedIdentifier(identifier, reason));
+            }
+        }
+
+        if (rejected.Count > 0)
+        {
+            throw new RejectedIdentifierException(rejected);
         }
     }
 
