@@ -17,7 +17,7 @@ public class CertificateChain
         var certificates = certificateChain
             .Split(["-----END CERTIFICATE-----"], StringSplitOptions.RemoveEmptyEntries)
             .Where(c => !string.IsNullOrWhiteSpace(c))
-            .Select(c => c + "-----END CERTIFICATE-----")
+            .Select(c => $"{c}-----END CERTIFICATE-----")
             .ToArray();
 
         Certificate = X509Certificate2.CreateFromPem(certificates[0]);

@@ -35,6 +35,9 @@ public sealed class CertificateStorePersistenceStrategy : ICertificatePersistenc
     private readonly StoreName _storeName;
     private readonly StoreLocation _storeLocation;
 
+    private const char RouteSeparator = ':';
+    private const string FriendlyNamePrefix = "OpenCertServer:";
+
      /// <summary>
      /// Initialises a new instance of <see cref="CertificateStorePersistenceStrategy"/>.
      /// </summary>
@@ -107,56 +110,103 @@ public sealed class CertificateStorePersistenceStrategy : ICertificatePersistenc
         return RetrieveSiteCertificate(AcmeRouteConstants.DefaultRouteId);
       }
 
-     /// <summary>
-     /// Searches the OS certificate store for a certificate whose subject contains the route-scoped
-     /// subject name (<c>{subjectName}@{routeId}</c>) and that has an accessible private key. When
-     /// multiple matches exist, the one with the latest expiry date is returned.
-     /// </summary>
-    public Task<X509Certificate2?> RetrieveSiteCertificate(string routeId)
-      {
-        var subject = RouteSubject(routeId);
-        try
+      /// <summary>
+      /// Searches the OS certificate store for the certificate persisted for <paramref name="routeId"/>
+      /// that has an accessible private key. On Windows the entry is disambiguated by
+      /// <see cref="X509Certificate2.FriendlyName"/>; on other platforms the route-scoped subject
+      /// composite (<c>{subjectName}:{routeId}</c>) is used. When multiple matches exist, the one
+      /// with the latest expiry date is returned.
+      /// </summary>
+     public Task<X509Certificate2?> RetrieveSiteCertificate(string routeId)
+        {
+         var subject = RouteSubject(routeId);
+         try
+            {
+             using var store = new X509Store(_storeName, _storeLocation);
+             store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
+
+              var match = store.Certificates
+                    .Where(c => HasPrivateKey(c) && MatchesSubject(c, subject))
+                    .OrderByDescending(c => c.NotAfter)
+                    .FirstOrDefault();
+
+             return Task.FromResult(match);
+            }
+         catch (CryptographicException)
+            {
+                // The store does not exist yet (can happen on first run with a custom store name).
+             return Task.FromResult<X509Certificate2?>(null);
+            }
+        }
+
+       /// <summary>
+       /// The route-scoped store key. The default route uses the bare
+       /// <see cref="_subjectName"/>; every other route is composed with a colon, which is not a
+       /// valid domain character so the composite is unambiguous even when the subject or route id
+       /// contains characters such as <c>@</c>.
+       /// </summary>
+      private string RouteSubject(string routeId)
+        {
+         return string.Equals(routeId, AcmeRouteConstants.DefaultRouteId, StringComparison.Ordinal)
+               ? _subjectName
+               : $"{_subjectName}{RouteSeparator}{routeId}";
+        }
+
+      private bool MatchesSubject(X509Certificate2 certificate, string subject)
           {
-            using var store = new X509Store(_storeName, _storeLocation);
-            store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
+           // On Windows the entry is tagged with a FriendlyName so it is matched exactly there.
+          if (OperatingSystem.IsWindows()
+                   && !string.IsNullOrEmpty(certificate.FriendlyName))
+                  {
+                return string.Equals(certificate.FriendlyName, FriendlyNameFor(subject), StringComparison.OrdinalIgnoreCase);
+                  }
 
-            var match = store.Certificates
-                  .Find(X509FindType.FindBySubjectName, subject, validOnly: false)
-                  .Where(c => c.HasPrivateKey && string.Equals(c.GetNameInfo(X509NameType.SimpleName, false), subject, StringComparison.OrdinalIgnoreCase))
-                  .OrderByDescending(c => c.NotAfter)
-                  .FirstOrDefault();
-
-            return Task.FromResult(match);
+                 // On non-Windows the FriendlyName is not preserved by the store, so match by subject.
+               return string.Equals(certificate.GetNameInfo(X509NameType.SimpleName, false), subject, StringComparison.OrdinalIgnoreCase);
           }
-        catch (CryptographicException)
-          {
-              // The store does not exist yet (can happen on first run with a custom store name).
-            return Task.FromResult<X509Certificate2?>(null);
-          }
-      }
 
-     private string RouteSubject(string routeId)
-      {
-        return string.Equals(routeId, AcmeRouteConstants.DefaultRouteId, StringComparison.Ordinal)
-              ? _subjectName
-              : $"{_subjectName}@{routeId}";
-      }
+      private static string FriendlyNameFor(string subject)
+        {
+         return OperatingSystem.IsWindows()
+              ? $"{FriendlyNamePrefix}{subject}"
+              : subject;
+        }
 
-     private void StoreCertificate(X509Certificate2 certificate, string subject)
-      {
-        using var store = new X509Store(_storeName, _storeLocation);
+      private static bool HasPrivateKey(X509Certificate2 certificate)
+        {
+          try
+             {
+              return certificate.HasPrivateKey;
+             }
+          catch (CryptographicException)
+              {
+               return false;
+               }
+        }
+
+      private void StoreCertificate(X509Certificate2 certificate, string subject)
+        {
+         using var store = new X509Store(_storeName, _storeLocation);
         store.Open(OpenFlags.ReadWrite);
 
-         // Remove any previously stored certificates with the same subject to avoid accumulation
-         // of stale entries across renewal cycles.
-        var existing = store.Certificates
-             .Find(X509FindType.FindBySubjectName, subject, validOnly: false);
+          // Remove any previously stored certificates matching this route to avoid accumulation
+          // of stale entries across renewal cycles.
+         var existing = store.Certificates
+               .Where(c => MatchesSubject(c, subject));
 
-        foreach (var old in existing)
-          {
-            store.Remove(old);
-          }
+         foreach (var old in existing)
+            {
+             store.Remove(old);
+            }
 
-        store.Add(certificate);
-      }
+          // On Windows the FriendlyName is the disambiguating key; it is not preserved by the
+          // store on macOS/Linux, so the colon-separated subject composite is used there instead.
+          var toAdd = certificate;
+         if (OperatingSystem.IsWindows())
+            {
+             toAdd.FriendlyName = FriendlyNameFor(subject);
+            }
+
+        store.Add(toAdd);
+        }
 }

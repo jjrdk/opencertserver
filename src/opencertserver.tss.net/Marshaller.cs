@@ -135,7 +135,7 @@ public class Marshaller
         {
             DataRepresentation.Tpm => Globs.NetToHostValue(tp, data),
             DataRepresentation.LittleEndian => Globs.FromBytes(tp, data),
-            _ => throw new Exception("FromNetValueType: Unsupported marshaling type " + Repr)
+            _ => throw new Exception($"FromNetValueType: Unsupported marshaling type {Repr}")
         };
         // Unsupported type
     }
@@ -256,7 +256,7 @@ public class Marshaller
     public void PutUintPrependedArray(byte[] x, string name)
     {
         var l = (uint)x.Length;
-        Put(l, name + "_length");
+        Put(l, $"{name}_length");
         Put(x, name);
     }
 
@@ -280,7 +280,7 @@ public class Marshaller
             var o = FromNetValueType(tp);
             return o;
         }
-        throw new NotImplementedException("Get: Not supported type " + tp);
+        throw new NotImplementedException($"Get: Not supported type {tp}");
     }
 
     public T Get<T>()
@@ -342,7 +342,7 @@ public class Marshaller
         {
             Buffer.Append(Globs.GetBytes(o));
         }
-        throw new Exception("ToNetValueType: Unsupported marshaling type " + Repr);
+        throw new Exception($"ToNetValueType: Unsupported marshaling type {Repr}");
     }
 
     public void PushLength(int numBytes)
@@ -365,7 +365,7 @@ public class Marshaller
                 ToNet(0xFFFFFFFFFFFFFFFF);
                 return;
             default:
-                throw new ArgumentException("PushLength: Invalid length " + numBytes);
+                throw new ArgumentException($"PushLength: Invalid length {numBytes}");
         }
     }
 
@@ -386,7 +386,7 @@ public class Marshaller
                 Buffer.SetBytesInMiddle(Globs.HostToNet((ulong)len), sp.StartPos);
                 return;
             default:
-                throw new ArgumentException("PopAndSetLengthImpl: Invalid length " + sp.Length);
+                throw new ArgumentException($"PopAndSetLengthImpl: Invalid length {sp.Length}");
         }
     }
     public void PopAndSetLength()

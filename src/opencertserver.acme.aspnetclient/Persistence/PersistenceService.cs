@@ -43,17 +43,28 @@ public sealed partial class PersistenceService : IPersistenceService
           return PersistSiteCertificate(certificate, AcmeRouteConstants.DefaultRouteId, cancellationToken);
             }
 
-     public async Task PersistSiteCertificate(
+      public async Task PersistSiteCertificate(
         X509Certificate2 certificate,
         string? routeId,
         CancellationToken cancellationToken = default)
-          {
+           {
         var scope = NormalizeRouteId(routeId);
         LogPersistingTypeCertificateThroughStrategies(CertificateType.Site);
         var tasks = _certificatePersistenceStrategies.Select(x => x.PersistSiteCertificate(certificate, scope));
         await Task.WhenAll(tasks).ConfigureAwait(false);
         LogCertificatePersistedForLaterUse();
-         }
+           }
+
+      public async Task PersistSiteCertificateChain(
+        X509Certificate2Collection chain,
+        string? routeId,
+        CancellationToken cancellationToken = default)
+           {
+        var scope = NormalizeRouteId(routeId);
+        var tasks = _certificatePersistenceStrategies.Select(x => x.PersistSiteCertificateChain(chain, scope));
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+        LogCertificatePersistedForLaterUse();
+           }
 
     public async Task PersistChallenges(ChallengeDto[] challenges)
      {
@@ -138,11 +149,33 @@ public sealed partial class PersistenceService : IPersistenceService
         return null;
      }
 
-     public async Task<ChallengeDto[]> GetPersistedChallenges()
-     {
+      public async Task<ChallengeDto[]> GetPersistedChallenges()
+      {
         var challenges = await GetPersistedChallengesAsync(_challengePersistenceStrategies).ConfigureAwait(false);
         return challenges.ToArray();
-     }
+      }
+
+      public async Task<string?> GetPersistedRouteKey(string routeId, CancellationToken cancellationToken = default)
+         {
+        var scope = NormalizeRouteId(routeId);
+        foreach (var strategy in _certificatePersistenceStrategies)
+             {
+            var key = await strategy.GetPersistedRouteKey(scope, cancellationToken).ConfigureAwait(false);
+            if (key != null)
+                {
+                return key;
+                }
+             }
+
+        return null;
+         }
+
+      public Task PersistRouteKey(string routeId, string keyPem, CancellationToken cancellationToken = default)
+        {
+        var scope = NormalizeRouteId(routeId);
+        var tasks = _certificatePersistenceStrategies.Select(x => x.PersistRouteKey(scope, keyPem, cancellationToken));
+        return Task.WhenAll(tasks);
+        }
 
      private async Task<IEnumerable<ChallengeDto>> GetPersistedChallengesAsync(
          IChallengePersistenceStrategy[] strategies)

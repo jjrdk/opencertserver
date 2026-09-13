@@ -2,8 +2,10 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 public sealed class FileCertificatePersistenceStrategy : ICertificatePersistenceStrategy
@@ -26,28 +28,66 @@ public sealed class FileCertificatePersistenceStrategy : ICertificatePersistence
             await File.WriteAllBytesAsync(GetCertificatePath(CertificateType.Site), certificate.RawData).ConfigureAwait(false);
            }
 
-        public async Task PersistSiteCertificate(X509Certificate2 certificate, string routeId)
-           {
-            var leafDir = GetDir(routeId, "leaves");
-            var chainDir = GetDir(routeId, "chains");
-            var keyDir = GetDir(routeId, "keys");
-
-            if (certificate.HasPrivateKey)
+         public async Task PersistSiteCertificate(X509Certificate2 certificate, string routeId)
               {
-                var pfx = certificate.Export(X509ContentType.Pkcs12, string.Empty);
-                await File.WriteAllBytesAsync(Path.Combine(leafDir, "server.pfx"), pfx).ConfigureAwait(false);
-               }
+             var leafDir = GetDir(routeId, "leaves");
+             var chainDir = GetDir(routeId, "chains");
+             var keyDir = GetDir(routeId, "keys");
 
-            await File.WriteAllBytesAsync(Path.Combine(leafDir, "server.crt"), certificate.RawData).ConfigureAwait(false);
+             if (certificate.HasPrivateKey)
+                 {
+                 var pfx = certificate.Export(X509ContentType.Pkcs12, string.Empty);
+                 await File.WriteAllBytesAsync(Path.Combine(leafDir, "server.pfx"), pfx).ConfigureAwait(false);
+                  }
 
-            var chainPem = certificate.ExportCertificatePem();
-            await File.WriteAllBytesAsync(Path.Combine(chainDir, "server.crt"), Encoding.UTF8.GetBytes(chainPem)).ConfigureAwait(false);
+             await File.WriteAllBytesAsync(Path.Combine(leafDir, "server.crt"), certificate.RawData).ConfigureAwait(false);
 
-            var keyPem = ToPrivateKeyPem(certificate);
-            if (keyPem != null)
-                {
-                await File.WriteAllBytesAsync(Path.Combine(keyDir, "server.key"), Encoding.UTF8.GetBytes(keyPem)).ConfigureAwait(false);
+             // Leaf-only fallback: when no issuers are available the leaf PEM is written to the
+             // chains directory so the artifact path always exists. The real issuer chain is written
+             // by <see cref="PersistSiteCertificateChain"/>.
+             var chainPem = certificate.ExportCertificatePem();
+             await File.WriteAllBytesAsync(Path.Combine(chainDir, "server.crt"), Encoding.UTF8.GetBytes(chainPem)).ConfigureAwait(false);
+
+             var keyPem = ToPrivateKeyPem(certificate);
+             if (keyPem != null)
+                   {
+                 await File.WriteAllBytesAsync(Path.Combine(keyDir, "server.key"), Encoding.UTF8.GetBytes(keyPem)).ConfigureAwait(false);
+                   }
                 }
+
+        public async Task PersistSiteCertificateChain(X509Certificate2Collection chain, string routeId)
+             {
+             var leafDir = GetDir(routeId, "leaves");
+             var chainDir = GetDir(routeId, "chains");
+             var keyDir = GetDir(routeId, "keys");
+
+             var leaf = chain[0];
+             var issuers = chain.Count > 1 ? chain.Cast<X509Certificate2>().Skip(1) : [];
+
+             var tasks = new List<Task>
+                 {
+                  File.WriteAllBytesAsync(Path.Combine(leafDir, "server.crt"), leaf.RawData)
+                };
+
+             if (leaf.HasPrivateKey)
+                  {
+                 var pfx = leaf.Export(X509ContentType.Pkcs12, string.Empty);
+                 tasks.Add(File.WriteAllBytesAsync(Path.Combine(leafDir, "server.pfx"), pfx));
+
+                 var keyPem = ToPrivateKeyPem(leaf);
+                 if (keyPem != null)
+                      {
+                       tasks.Add(File.WriteAllBytesAsync(Path.Combine(keyDir, "server.key"), Encoding.UTF8.GetBytes(keyPem)));
+                      }
+                  }
+
+             var chainPem = string.Concat(issuers.Select(c => $"{c.ExportCertificatePem()}\n"));
+             if (!string.IsNullOrEmpty(chainPem))
+                  {
+                 tasks.Add(File.WriteAllBytesAsync(Path.Combine(chainDir, "server.crt"), Encoding.UTF8.GetBytes(chainPem)));
+                  }
+
+             await Task.WhenAll(tasks);
              }
 
         public async Task<byte[]?> RetrieveAccountCertificate()
@@ -62,24 +102,41 @@ public sealed class FileCertificatePersistenceStrategy : ICertificatePersistence
             return bytes == null ? null : X509CertificateLoader.LoadCertificate(bytes);
            }
 
-        public async Task<X509Certificate2?> RetrieveSiteCertificate(string routeId)
-           {
-            var pfxPath = Path.Combine(_root, routeId, "leaves", "server.pfx");
-            if (File.Exists(pfxPath))
-               {
-                var pfx = await File.ReadAllBytesAsync(pfxPath).ConfigureAwait(false);
-                 return X509CertificateLoader.LoadPkcs12(pfx, null);
-              }
+     public async Task<X509Certificate2?> RetrieveSiteCertificate(string routeId)
+         {
+             var pfxPath = Path.Combine(_root, routeId, "leaves", "server.pfx");
+             if (File.Exists(pfxPath))
+                 {
+                 var pfx = await File.ReadAllBytesAsync(pfxPath).ConfigureAwait(false);
+                  return X509CertificateLoader.LoadPkcs12(pfx, null);
+                }
 
-            var leafPath = Path.Combine(_root, routeId, "leaves", "server.crt");
-            if (!File.Exists(leafPath))
-               {
-                return null;
-              }
+             var leafPath = Path.Combine(_root, routeId, "leaves", "server.crt");
+             if (!File.Exists(leafPath))
+                 {
+                 return null;
+                }
 
-            var bytes = await File.ReadAllBytesAsync(leafPath).ConfigureAwait(false);
-            return X509CertificateLoader.LoadCertificate(bytes);
-           }
+             var bytes = await File.ReadAllBytesAsync(leafPath).ConfigureAwait(false);
+             return X509CertificateLoader.LoadCertificate(bytes);
+             }
+
+         public async Task<string?> GetPersistedRouteKey(string routeId, CancellationToken cancellationToken = default)
+             {
+             var path = Path.Combine(_root, routeId, "keys", "server.key");
+             if (!File.Exists(path))
+                 {
+                 return null;
+                 }
+
+             return await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
+             }
+
+         public async Task PersistRouteKey(string routeId, string keyPem, CancellationToken cancellationToken = default)
+             {
+             var dir = GetDir(routeId, "keys");
+             await File.WriteAllTextAsync(Path.Combine(dir, "server.key"), keyPem, cancellationToken).ConfigureAwait(false);
+             }
 
         private static string? ToPrivateKeyPem(X509Certificate2 certificate)
             {

@@ -39,7 +39,9 @@ builder.Services.AddAcmeClient(options)
 ;
 
 // 3. Declare the YARP routes. Each route that carries an `acme` metadata bag is registered as an
-//    independent ACME order; its Match.Hosts become the certificate SANs.
+//    independent ACME order; its Match.Hosts become the certificate SANs. The ACME options are
+//    attached to the RouteConfig metadata in code via WithAcmeRoute — they are NOT read from a
+//    "AcmeProxy" section of appsettings.json (which is not wired up).
 var alpha = RouteAcmeMetadataExtensions.WithAcmeRoute(
     new RouteConfig
      {
@@ -67,12 +69,12 @@ var clusters = new List<ClusterConfig>
 
 // 4. Wire the ACME route config filter into YARP and load the routes/clusters. `AddAcmeProxy`
 //    registers the route registry (exposed as IAcmeRouteConfigurationSource) that the renewal
-//    service and Kestrel SNI selector read; `UseAcmeProxy` attaches the config filter that
+//    service and Kestrel SNI selector read; `WithAcmeRouteFilter` attaches the config filter that
 //    discovers the `acme` metadata bag on each route; `LoadFromMemory` loads the config, running
 //    the filter and registering each ACME route as a renewal descriptor.
 builder.Services.AddAcmeProxy()
-      .UseAcmeProxy()
-      .LoadFromMemory(routes, clusters);
+        .WithAcmeRouteFilter()
+        .LoadFromMemory(routes, clusters);
 
 var app = builder.Build();
 

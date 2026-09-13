@@ -50,22 +50,45 @@ public sealed class InMemoryAcmeClient : IAcmeClient
           return Task.FromResult(new PlacedOrder(challengeDtos, order, challengeContexts));
              }
 
-        public Task<X509Certificate2> FinalizeOrder(PlacedOrder placedOrder, string password)
-           {
-          var domains = placedOrder.Challenges
-                .Where(c => c.Domains is not null)
-                .SelectMany(c => c.Domains!)
-                .Where(d => !string.IsNullOrWhiteSpace(d))
-                .Distinct()
-                .OrderBy(d => d, StringComparer.Ordinal)
-                .ToArray();
+         public Task<(X509Certificate2 Certificate, string KeyPem, X509Certificate2Collection Collection)> FinalizeOrder(
+             PlacedOrder placedOrder,
+             string password,
+             string? existingKeyPem = null)
+              {
+              var domains = placedOrder.Challenges
+                     .Where(c => c.Domains is not null)
+                     .SelectMany(c => c.Domains!)
+                     .Where(d => !string.IsNullOrWhiteSpace(d))
+                     .Distinct()
+                     .OrderBy(d => d, StringComparer.Ordinal)
+                     .ToArray();
 
-          var commonName = domains.Length > 0 ? domains[0] : "self-signed.example.com";
+              var commonName = domains.Length > 0 ? domains[0] : "self-signed.example.com";
 
-          var cert = Mint(commonName);
+              var cert = Mint(commonName);
+              var keyPem = ExportKeyPem(cert);
 
-          return Task.FromResult(cert);
-             }
+              var collection = new X509Certificate2Collection { cert };
+
+              return Task.FromResult<(X509Certificate2, string, X509Certificate2Collection)>((cert, keyPem, collection));
+               }
+
+      private static string ExportKeyPem(X509Certificate2 cert)
+            {
+            var rsa = cert.GetRSAPrivateKey();
+            if (rsa != null)
+                    {
+                  return rsa.ExportRSAPrivateKeyPem();
+                    }
+
+            var ecdsa = cert.GetECDsaPrivateKey();
+            if (ecdsa != null)
+                    {
+                  return ecdsa.ExportECPrivateKeyPem();
+                    }
+
+            return string.Empty;
+               }
 
         private static X509Certificate2 Mint(string commonName)
             {

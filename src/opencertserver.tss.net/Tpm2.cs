@@ -2482,7 +2482,7 @@ public sealed partial class Tpm2 : IDisposable
 
         for (var j = 0; j < handles.Length; j++)
         {
-            temp.Put(handles[j].Name, "name + " + j);
+            temp.Put(handles[j].Name, $"name + {j}");
         }
 
         temp.Put(commandParms, "commandParms");
@@ -2536,7 +2536,7 @@ public sealed partial class Tpm2 : IDisposable
             return;
         }
 
-        Debug.WriteLine("COMMAND " + Enum.GetName(typeof(TpmCc), commandCode));
+        Debug.WriteLine($"COMMAND {Enum.GetName(typeof(TpmCc), commandCode)}");
         switch (outOrIn)
         {
             case 0:
@@ -2953,7 +2953,7 @@ public class CommandProcessor
         }
 
         response += "Header:\n";
-        response += commandHeader + "\n";
+        response += $"{commandHeader}\n";
 
         var m2 = new Marshaller();
         foreach (var h in inHandles)
@@ -2965,8 +2965,8 @@ public class CommandProcessor
         var m = new Marshaller(commandParmsWithHandles);
         var inParms = m.Get(command.InStructType, "");
         response += "Command Parameters:\n";
-        response += inParms + "\n";
-        response += "Sessions [" + inSessions.Length + "]\n";
+        response += $"{inParms}\n";
+        response += $"Sessions [{inSessions.Length}]\n";
         for (var j = 0; j < inSessions.Length; j++)
         {
             // ReSharper disable once FormatStringProblem

@@ -177,7 +177,7 @@ public static class CryptoLib
                     return h4.ComputeHash(data);
                 }
             default:
-                throw new ArgumentException("Hmac(): Unsupported hash algorithm " + hashAlgId);
+                throw new ArgumentException($"Hmac(): Unsupported hash algorithm {hashAlgId}");
         }
     }
 
@@ -185,11 +185,11 @@ public static class CryptoLib
     {
         if (symAlg != TpmAlgId.Aes)
         {
-            throw new ArgumentException("CryptoLib.Mac(): Unsupported symmetric algorithm" + symAlg);
+            throw new ArgumentException($"CryptoLib.Mac(): Unsupported symmetric algorithm{symAlg}");
         }
         if (macScheme != TpmAlgId.Cmac)
         {
-            throw new ArgumentException("CryptoLib.Mac(): Unsupported MAC scheme " + macScheme);
+            throw new ArgumentException($"CryptoLib.Mac(): Unsupported MAC scheme {macScheme}");
         }
 
         var mac = new BouncyCastleCMAC();

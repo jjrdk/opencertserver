@@ -131,8 +131,8 @@ public class ByteBuf
     {
         if (_getPos + num > _putPos)
         {
-            throw new ArgumentOutOfRangeException("ByteBuf exception removing "
-              + num + " bytes at position " + _getPos + " from an array of " + _putPos);
+            throw new ArgumentOutOfRangeException(
+                $"ByteBuf exception removing {num} bytes at position {_getPos} from an array of {_putPos}");
         }
 
         var ret = new byte[num];
@@ -198,7 +198,7 @@ public class Prng
     {
         if (numBytes > RandMaxBytes)
         {
-            throw new ArgumentException("GetRandomBytes: Too many bytes requested " + numBytes);
+            throw new ArgumentException($"GetRandomBytes: Too many bytes requested {numBytes}");
         }
 
         // Make sure that the RNG is properly seeded
@@ -319,13 +319,13 @@ internal class TpmStructPrinter
             if (dd.Contains('|'))
             {
                 // Split enum OR onto multiple lines
-                dd = dd.Replace("|", "|\n" + new string(' ', firstTab + 1));
+                dd = dd.Replace("|", $"|\n{new string(' ', firstTab + 1)}");
             }
 
             if (dd.Contains(".."))
             {
                 // Split hex array
-                dd = dd.Replace("..", "..\n" + new string(' ', firstTab + 2));
+                dd = dd.Replace("..", $"..\n{new string(' ', firstTab + 2)}");
             }
 
             data[1] = dd;
@@ -436,7 +436,7 @@ internal class TpmStructPrinter
         // ReSharper disable once CanBeReplacedWithTryCastAndCheckForNull
         if (o is not Array)
         {
-            throw new NotImplementedException("Print: Unknown type " + o.GetType());
+            throw new NotImplementedException($"Print: Unknown type {o.GetType()}");
         }
 
         var a = (Array)o;
@@ -444,7 +444,7 @@ internal class TpmStructPrinter
         if (elementType == typeof(byte))
         {
             // Byte arrays as special -
-            var hexString = "0x" + Globs.HexFromByteArray((byte[])a, 8);
+            var hexString = $"0x{Globs.HexFromByteArray((byte[])a, 8)}";
             var typeString = $"byte[{a.Length}]";
             AddLine(_b, "{0}@{1}#{2}", name, hexString, typeString);
         }

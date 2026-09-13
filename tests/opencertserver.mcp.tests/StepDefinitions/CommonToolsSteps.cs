@@ -55,7 +55,7 @@ public sealed class CommonToolsSteps : IDisposable
 
         if (!ok)
         {
-            string reason = "r=" + (r?.IsSuccess + "");
+            string reason = $"r={(r?.IsSuccess + "")}";
             if (cert != null)
             {
                 reason += " cert=notnull";

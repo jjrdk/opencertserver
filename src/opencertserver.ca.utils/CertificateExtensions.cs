@@ -79,7 +79,7 @@ public static class CertificateExtensions
 
                     if (exponent is { Length: > 0 })
                     {
-                        var expHex = "0x" + BitConverter.ToString(exponent).Replace("-", "");
+                        var expHex = $"0x{BitConverter.ToString(exponent).Replace("-", "")}";
                         string expStr;
                         if (exponent.Length <= 8)
                         {
@@ -177,7 +177,7 @@ public static class CertificateExtensions
         var parts = raw.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).ToArray();
         if (parts.Length == 0)
         {
-            return indent + "<empty>\n";
+            return $"{indent}<empty>\n";
         }
 
         var sb = new StringBuilder();
@@ -217,7 +217,7 @@ public static class CertificateExtensions
     {
         if (data.Length == 0)
         {
-            return indent + "<none>\n";
+            return $"{indent}<none>\n";
         }
 
         var sb = new StringBuilder();
