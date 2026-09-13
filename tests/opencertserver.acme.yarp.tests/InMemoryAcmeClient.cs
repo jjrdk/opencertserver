@@ -7,7 +7,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Acme.AspNetClient.Certes;
 using Acme.AspNetClient.Persistence;
-using CertesSlim;
 using CertesSlim.Acme;
 using NSubstitute;
 
@@ -20,86 +19,86 @@ using NSubstitute;
 /// </summary>
 public sealed class InMemoryAcmeClient : IAcmeClient
 {
-     public InMemoryAcmeClient()
-         {
+    public InMemoryAcmeClient()
+    {
         ThrownDuringPlaceOrder = null;
-         }
+    }
 
-        /// <summary>When non-null, <see cref="PlaceOrder"/> throws with this exception (for failure-isolation tests).</summary>
-     public Exception? ThrownDuringPlaceOrder { get; set; }
+    /// <summary>When non-null, <see cref="PlaceOrder"/> throws with this exception (for failure-isolation tests).</summary>
+    public Exception? ThrownDuringPlaceOrder { get; set; }
 
-        /// <summary>The last set of domains (route SANs) the client was asked to order a certificate for.</summary>
-     public string[]? LastOrderDomains { get; private set; }
+    /// <summary>The last set of domains (route SANs) the client was asked to order a certificate for.</summary>
+    public string[]? LastOrderDomains { get; private set; }
 
-        public Task<PlacedOrder> PlaceOrder(string[] domains)
-           {
-          if (ThrownDuringPlaceOrder != null)
-                {
-             return Task.FromException<PlacedOrder>(ThrownDuringPlaceOrder);
-                 }
+    public Task<PlacedOrder> PlaceOrder(string[] domains)
+    {
+        if (ThrownDuringPlaceOrder != null)
+        {
+            return Task.FromException<PlacedOrder>(ThrownDuringPlaceOrder);
+        }
 
-          LastOrderDomains = [.. domains];
+        LastOrderDomains = [.. domains];
 
-          var challengeDtos = domains
-                .Select(d => new ChallengeDto(Guid.NewGuid().ToString(), d, [d]))
-                .ToArray();
+        var challengeDtos = domains
+              .Select(d => new ChallengeDto(Guid.NewGuid().ToString(), d, [d]))
+              .ToArray();
 
-          var order = Substitute.For<IOrderContext>();
-          var challengeContexts = Array.Empty<IChallengeContext>();
+        var order = Substitute.For<IOrderContext>();
+        var challengeContexts = Array.Empty<IChallengeContext>();
 
-          return Task.FromResult(new PlacedOrder(challengeDtos, order, challengeContexts));
-             }
+        return Task.FromResult(new PlacedOrder(challengeDtos, order, challengeContexts));
+    }
 
-         public Task<(X509Certificate2 Certificate, string KeyPem, X509Certificate2Collection Collection)> FinalizeOrder(
-             PlacedOrder placedOrder,
-             string password,
-             string? existingKeyPem = null)
-              {
-              var domains = placedOrder.Challenges
-                     .Where(c => c.Domains is not null)
-                     .SelectMany(c => c.Domains!)
-                     .Where(d => !string.IsNullOrWhiteSpace(d))
-                     .Distinct()
-                     .OrderBy(d => d, StringComparer.Ordinal)
-                     .ToArray();
+    public Task<(X509Certificate2 Certificate, string KeyPem, X509Certificate2Collection Collection)> FinalizeOrder(
+        PlacedOrder placedOrder,
+        string password,
+        string? existingKeyPem = null)
+    {
+        var domains = placedOrder.Challenges
+               .Where(c => c.Domains is not null)
+               .SelectMany(c => c.Domains!)
+               .Where(d => !string.IsNullOrWhiteSpace(d))
+               .Distinct()
+               .OrderBy(d => d, StringComparer.Ordinal)
+               .ToArray();
 
-              var commonName = domains.Length > 0 ? domains[0] : "self-signed.example.com";
+        var commonName = domains.Length > 0 ? domains[0] : "self-signed.example.com";
 
-              var cert = Mint(commonName);
-              var keyPem = ExportKeyPem(cert);
+        var cert = Mint(commonName);
+        var keyPem = ExportKeyPem(cert);
 
-              var collection = new X509Certificate2Collection { cert };
+        var collection = new X509Certificate2Collection { cert };
 
-              return Task.FromResult<(X509Certificate2, string, X509Certificate2Collection)>((cert, keyPem, collection));
-               }
+        return Task.FromResult<(X509Certificate2, string, X509Certificate2Collection)>((cert, keyPem, collection));
+    }
 
-      private static string ExportKeyPem(X509Certificate2 cert)
-            {
-            var rsa = cert.GetRSAPrivateKey();
-            if (rsa != null)
-                    {
-                  return rsa.ExportRSAPrivateKeyPem();
-                    }
+    private static string ExportKeyPem(X509Certificate2 cert)
+    {
+        var rsa = cert.GetRSAPrivateKey();
+        if (rsa != null)
+        {
+            return rsa.ExportRSAPrivateKeyPem();
+        }
 
-            var ecdsa = cert.GetECDsaPrivateKey();
-            if (ecdsa != null)
-                    {
-                  return ecdsa.ExportECPrivateKeyPem();
-                    }
+        var ecdsa = cert.GetECDsaPrivateKey();
+        if (ecdsa != null)
+        {
+            return ecdsa.ExportECPrivateKeyPem();
+        }
 
-            return string.Empty;
-               }
+        return string.Empty;
+    }
 
-        private static X509Certificate2 Mint(string commonName)
-            {
-            using var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-            var request = new CertificateRequest($"CN={commonName}", ecdsa, HashAlgorithmName.SHA256);
+    private static X509Certificate2 Mint(string commonName)
+    {
+        using var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var request = new CertificateRequest($"CN={commonName}", ecdsa, HashAlgorithmName.SHA256);
 
-            using var certificate = request.CreateSelfSigned(
-                DateTimeOffset.UtcNow.AddDays(-1),
-             DateTimeOffset.UtcNow.AddDays(90));
+        using var certificate = request.CreateSelfSigned(
+            DateTimeOffset.UtcNow.AddDays(-1),
+         DateTimeOffset.UtcNow.AddDays(90));
 
-            var pfx = certificate.Export(X509ContentType.Pkcs12, string.Empty);
-            return X509CertificateLoader.LoadPkcs12(pfx, string.Empty);
-             }
+        var pfx = certificate.Export(X509ContentType.Pkcs12, string.Empty);
+        return X509CertificateLoader.LoadPkcs12(pfx, string.Empty);
+    }
 }

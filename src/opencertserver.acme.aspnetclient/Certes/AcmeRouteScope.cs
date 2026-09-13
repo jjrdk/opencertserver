@@ -20,47 +20,47 @@ public sealed class AcmeRouteScope
     private readonly ConcurrentDictionary<string, X509Certificate2?> _certificates = new();
     private readonly ConcurrentDictionary<string, string> _keyPems = new();
 
-public X509Certificate2? GetCertificate(string? routeId)
-       {
-         var key = routeId ?? AcmeRouteConstants.DefaultRouteId;
-         return _certificates.TryGetValue(key, out var cert) ? cert : null;
-       }
+    public X509Certificate2? GetCertificate(string? routeId)
+    {
+        var key = routeId ?? AcmeRouteConstants.DefaultRouteId;
+        return _certificates.TryGetValue(key, out var cert) ? cert : null;
+    }
 
-public X509Certificate2 GetCertificateOrElseThrow(string? routeId)
-       {
-         var key = routeId ?? AcmeRouteConstants.DefaultRouteId;
-         return _certificates.TryGetValue(key, out var cert) && cert != null
-               ? cert
-               : throw new InvalidOperationException(
-                    $"No certificate is available for route '{key}'. Renewal may not have completed yet.");
-       }
+    public X509Certificate2 GetCertificateOrElseThrow(string? routeId)
+    {
+        var key = routeId ?? AcmeRouteConstants.DefaultRouteId;
+        return _certificates.TryGetValue(key, out var cert) && cert != null
+              ? cert
+              : throw new InvalidOperationException(
+                   $"No certificate is available for route '{key}'. Renewal may not have completed yet.");
+    }
 
-public void SetCertificate(string? routeId, X509Certificate2? certificate)
-       {
-         var key = routeId ?? AcmeRouteConstants.DefaultRouteId;
-         _certificates[key] = certificate;
-       }
+    public void SetCertificate(string? routeId, X509Certificate2? certificate)
+    {
+        var key = routeId ?? AcmeRouteConstants.DefaultRouteId;
+        _certificates[key] = certificate;
+    }
 
-public string? GetKeyPem(string? routeId)
-       {
-         var key = routeId ?? AcmeRouteConstants.DefaultRouteId;
-         return _keyPems.TryGetValue(key, out var pem) ? pem : null;
-       }
+    public string? GetKeyPem(string? routeId)
+    {
+        var key = routeId ?? AcmeRouteConstants.DefaultRouteId;
+        return _keyPems.TryGetValue(key, out var pem) ? pem : null;
+    }
 
-public void SetKeyPem(string? routeId, string pem)
-       {
-         var key = routeId ?? AcmeRouteConstants.DefaultRouteId;
-         _keyPems[key] = pem;
-       }
+    public void SetKeyPem(string? routeId, string pem)
+    {
+        var key = routeId ?? AcmeRouteConstants.DefaultRouteId;
+        _keyPems[key] = pem;
+    }
 
-public IEnumerable<IAcmeRouteConfiguration> GetRoutes(IAcmeRouteConfigurationSource source)
-       {
-         var routes = source.GetRouteConfigurations().ToList();
-         if (routes.Count > 0)
-           {
-             return routes;
-           }
-
-         return [new RouteConfiguration(AcmeRouteConstants.DefaultRouteId, [])];
+    public IEnumerable<IAcmeRouteConfiguration> GetRoutes(IAcmeRouteConfigurationSource source)
+    {
+        var routes = source.GetRouteConfigurations().ToList();
+        if (routes.Count > 0)
+        {
+            return routes;
         }
+
+        return [new RouteConfiguration(AcmeRouteConstants.DefaultRouteId, [])];
+    }
 }

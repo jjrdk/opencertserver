@@ -5,9 +5,9 @@ namespace OpenCertServer.Acme.Abstractions.Acme;
 /// </summary>
 public interface IAcmeRouteConfigurationSource
 {
-     /// <summary>
-     /// Gets all registered ACME route configurations. An empty sequence means that no
-     /// route is ACME-tagged and the renewal service falls back to the default route scope.
-     /// </summary>
+    /// <summary>
+    /// Gets all registered ACME route configurations. An empty sequence means that no
+    /// route is ACME-tagged and the renewal service falls back to the default route scope.
+    /// </summary>
     IEnumerable<IAcmeRouteConfiguration> GetRouteConfigurations();
 }

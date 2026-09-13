@@ -2085,12 +2085,12 @@ public partial class CertificateServerFeatures
 
         byte[] signature;
         using (var hmac = algorithm.ToUpperInvariant() switch
-            {
-                "HS256" => (HMAC)new HMACSHA256(macKeyBytes),
-                "HS384" => new HMACSHA384(macKeyBytes),
-                "HS512" => new HMACSHA512(macKeyBytes),
-                _ => throw new NotSupportedException($"Unsupported HMAC algorithm: {algorithm}")
-            })
+        {
+            "HS256" => (HMAC)new HMACSHA256(macKeyBytes),
+            "HS384" => new HMACSHA384(macKeyBytes),
+            "HS512" => new HMACSHA512(macKeyBytes),
+            _ => throw new NotSupportedException($"Unsupported HMAC algorithm: {algorithm}")
+        })
         {
             signature = hmac.ComputeHash(signingInput);
         }

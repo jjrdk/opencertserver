@@ -16,52 +16,52 @@ using Xunit;
 /// </summary>
 public sealed class BackwardCompatibilityTests
 {
-     private static X509Certificate2 CertFor(string host)
-            => SelfSignedCertificate.MakeWithSubject(
-              host, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
+    private static X509Certificate2 CertFor(string host)
+           => SelfSignedCertificate.MakeWithSubject(
+             host, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
 
-           [Fact]
+    [Fact]
     public async Task AcmeRenewalServiceLoadsTheLeafFromTheDefaultRouteScope()
-            {
-         var source = new InMemoryAcmeRouteConfigurationSource(Array.Empty<IAcmeRouteConfiguration>());
-         var scope = new AcmeRouteScope();
+    {
+        var source = new InMemoryAcmeRouteConfigurationSource(Array.Empty<IAcmeRouteConfiguration>());
+        var scope = new AcmeRouteScope();
 
-          // With no ACME-tagged route, the source falls back to the __default__ route.
-          var routes = scope.GetRoutes(source).ToList();
-          var defaultRoute = routes.Single();
-          Assert.Equal(AcmeRouteConstants.DefaultRouteId, defaultRoute.RouteId);
+        // With no ACME-tagged route, the source falls back to the __default__ route.
+        var routes = scope.GetRoutes(source).ToList();
+        var defaultRoute = routes.Single();
+        Assert.Equal(AcmeRouteConstants.DefaultRouteId, defaultRoute.RouteId);
 
-            // Drive a renewal of the default route and confirm the leaf is loaded from that scope.
-          var provider = new RoutingCertificateProvider(async (routeId, ct) =>
-               {
-             Assert.Equal(AcmeRouteConstants.DefaultRouteId, routeId);
-             return CertFor("default.example.com");
-                });
-
-          var service = new AcmeRenewalService(
-             provider,
-             Array.Empty<ICertificateRenewalLifecycleHook>(),
-             new FakeHostApplicationLifetime(),
-             NullLogger<AcmeRenewalService>.Instance,
-             new TestAcmeOptions
-                {
-                AccountPassword = "test",
-                Domains = ["anything.example.com"],
-                CertificateSigningRequest = new CertesSlim.Extensions.CsrInfo()
-                },
-             source,
-             scope);
-
-          await service.StartAsync(TestContext.Current.CancellationToken);
-
-          var leaf = service.Certificate;
-          Assert.NotNull(leaf);
-             }
-
-
-       [Fact]
-    public void KestrelServesTheDefaultLeafForAnySniHostWhenNoRouteIsTagged()
+        // Drive a renewal of the default route and confirm the leaf is loaded from that scope.
+        var provider = new RoutingCertificateProvider(async (routeId, ct) =>
              {
+                 Assert.Equal(AcmeRouteConstants.DefaultRouteId, routeId);
+                 return CertFor("default.example.com");
+             });
+
+        var service = new AcmeRenewalService(
+           provider,
+           Array.Empty<ICertificateRenewalLifecycleHook>(),
+           new FakeHostApplicationLifetime(),
+           NullLogger<AcmeRenewalService>.Instance,
+           new TestAcmeOptions
+           {
+               AccountPassword = "test",
+               Domains = ["anything.example.com"],
+               CertificateSigningRequest = new CertesSlim.Extensions.CsrInfo()
+           },
+           source,
+           scope);
+
+        await service.StartAsync(TestContext.Current.CancellationToken);
+
+        var leaf = service.Certificate;
+        Assert.NotNull(leaf);
+    }
+
+
+    [Fact]
+    public void KestrelServesTheDefaultLeafForAnySniHostWhenNoRouteIsTagged()
+    {
         var scope = new AcmeRouteScope();
         var defaultCert = CertFor("default.example.com");
         scope.SetCertificate(AcmeRouteConstants.DefaultRouteId, defaultCert);
@@ -80,5 +80,5 @@ public sealed class BackwardCompatibilityTests
         var selected = setup.SelectCertificateFor("anything.example.com");
 
         Assert.Equal(defaultCert.Thumbprint, selected!.Thumbprint);
-             }
+    }
 }

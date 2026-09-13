@@ -21,25 +21,25 @@ public sealed class FileCertificatePersistenceRouteScopedTests : IDisposable
     {
         _root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         _strategy = new FileCertificatePersistenceStrategy(_root);
-     }
+    }
 
     public void Dispose()
-     {
+    {
         try
-         {
+        {
             Directory.Delete(_root, true);
-         }
+        }
         catch
-         {
-         }
-     }
+        {
+        }
+    }
 
     private static X509Certificate2 MakeCert(DateTimeOffset notBefore, DateTimeOffset notAfter)
         => SelfSignedCertificate.MakeWithSubject("route", notBefore, notAfter);
 
-     [Fact]
+    [Fact]
     public async Task EachRoutePersistsASeparateLeafCertificateOnDisk()
-     {
+    {
         var alpha = MakeCert(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
         var beta = MakeCert(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(91));
 
@@ -62,11 +62,11 @@ public sealed class FileCertificatePersistenceRouteScopedTests : IDisposable
 
         Assert.Equal(alpha.Thumbprint, backAlpha!.Thumbprint);
         Assert.Equal(beta.Thumbprint, backBeta!.Thumbprint);
-     }
+    }
 
-     [Fact]
+    [Fact]
     public async Task LeafChainAndKeyAreCoLocatedPerRoute()
-     {
+    {
         var cert = MakeCert(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
         Assert.True(cert.HasPrivateKey);
 
@@ -79,11 +79,11 @@ public sealed class FileCertificatePersistenceRouteScopedTests : IDisposable
         Assert.True(File.Exists(keyFile));
         Assert.True(File.Exists(chainFile));
         Assert.True(File.Exists(leafFile));
-     }
+    }
 
-     [Fact]
+    [Fact]
     public async Task RenewingTheSameRouteReplacesRatherThanDuplicates()
-     {
+    {
         var first = MakeCert(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
         var second = MakeCert(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(91));
         var third = MakeCert(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(92));
@@ -99,5 +99,5 @@ public sealed class FileCertificatePersistenceRouteScopedTests : IDisposable
 
         var mostRecent = await _strategy.RetrieveSiteCertificate("route.alpha");
         Assert.Equal(third.Thumbprint, mostRecent!.Thumbprint);
-     }
+    }
 }

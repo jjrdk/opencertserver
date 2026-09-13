@@ -3,7 +3,6 @@ namespace OpenCertServer.Acme.Yarp.Tests;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Acme.Abstractions.Acme;
 using Xunit;
 using global::Yarp.ReverseProxy.Configuration;
@@ -15,45 +14,45 @@ using global::Yarp.ReverseProxy.Configuration;
 /// </summary>
 public sealed class PerRouteRegistrationTests
 {
-     private static RouteConfig Route(
-        string routeId,
-        IEnumerable<string> hosts,
-        RouteAcmeOptions? acme = null)
-         {
+    private static RouteConfig Route(
+       string routeId,
+       IEnumerable<string> hosts,
+       RouteAcmeOptions? acme = null)
+    {
         var route = new RouteConfig
-              {
-             RouteId = routeId,
-             Match = new RouteMatch
-              {
-             Hosts = hosts is null ? null : [.. hosts]
-             }
-             };
+        {
+            RouteId = routeId,
+            Match = new RouteMatch
+            {
+                Hosts = hosts is null ? null : [.. hosts]
+            }
+        };
 
         if (acme is not null)
-              {
+        {
             return RouteAcmeMetadataExtensions.WithAcmeRoute(route, acme);
-              }
+        }
 
         return route;
-          }
+    }
 
-        private static AcmeRouteConfigurationRegistry RunFilter(params RouteConfig[] routes)
-            {
-            var registry = new AcmeRouteConfigurationRegistry();
-            var filter = new AddAcmeRoutesConfigFilter(registry, Microsoft.Extensions.Logging.Abstractions.NullLogger<AddAcmeRoutesConfigFilter>.Instance);
+    private static AcmeRouteConfigurationRegistry RunFilter(params RouteConfig[] routes)
+    {
+        var registry = new AcmeRouteConfigurationRegistry();
+        var filter = new AddAcmeRoutesConfigFilter(registry, Microsoft.Extensions.Logging.Abstractions.NullLogger<AddAcmeRoutesConfigFilter>.Instance);
 
-            var cts = CancellationToken.None;
-            foreach (var route in routes)
-                {
-                 _ = filter.ConfigureRouteAsync(route, null, cts).AsTask().GetAwaiter().GetResult();
-                  }
+        var cts = CancellationToken.None;
+        foreach (var route in routes)
+        {
+            _ = filter.ConfigureRouteAsync(route, null, cts).AsTask().GetAwaiter().GetResult();
+        }
 
-            return registry;
-             }
+        return registry;
+    }
 
-        [Fact]
+    [Fact]
     public void EachAcmeRouteRegistersADistinctDescriptor()
-         {
+    {
         var alpha = Route("route.alpha", ["alpha.example.com"], new RouteAcmeOptions());
         var beta = Route("route.beta", ["beta.example.com"], new RouteAcmeOptions());
 
@@ -64,11 +63,11 @@ public sealed class PerRouteRegistrationTests
         Assert.Equal(2, descriptors.Length);
         Assert.Equal("alpha.example.com", string.Join(",", descriptors.First(d => d.RouteId == "route.alpha").Hosts));
         Assert.Equal("beta.example.com", string.Join(",", descriptors.First(d => d.RouteId == "route.beta").Hosts));
-         }
+    }
 
-         [Fact]
+    [Fact]
     public void ARouteWithoutAcmeMetadataDoesNotRegister()
-           {
+    {
         var alpha = Route("route.alpha", ["alpha.example.com"], new RouteAcmeOptions());
         var beta = Route("route.beta", ["beta.example.com"]);
 
@@ -78,11 +77,11 @@ public sealed class PerRouteRegistrationTests
 
         Assert.Single(descriptors);
         Assert.Equal("route.alpha", descriptors[0].RouteId);
-          }
+    }
 
-        [Fact]
+    [Fact]
     public void RouteHostsMapToCertificateSans()
-         {
+    {
         var multi = Route(
              "route.multi",
             new[] { "multi1.example.com", "multi2.example.com" },
@@ -95,5 +94,5 @@ public sealed class PerRouteRegistrationTests
         Assert.Equal(2, descriptor.Hosts.Count);
         Assert.Contains("multi1.example.com", descriptor.Hosts);
         Assert.Contains("multi2.example.com", descriptor.Hosts);
-            }
+    }
 }

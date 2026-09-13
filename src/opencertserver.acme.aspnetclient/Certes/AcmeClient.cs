@@ -51,7 +51,7 @@ public sealed partial class AcmeClient : IAcmeClient
         PlacedOrder placedOrder,
         string password,
         string? existingKeyPem = null)
-      {
+    {
         await ValidateChallenges(placedOrder.ChallengeContexts).ConfigureAwait(false);
 
         LogAcquiringCertificateThroughSigningRequest();
@@ -65,9 +65,9 @@ public sealed partial class AcmeClient : IAcmeClient
 
         var pfxCollection = new X509Certificate2Collection { certificateChain.Certificate };
         foreach (var cert in certificateChain.Issuers)
-            {
+        {
             pfxCollection.Add(cert);
-            }
+        }
 
         var pfxBytes =
             pfxCollection.ExportPkcs12(Pkcs12ExportPbeParameters.Default, password);
@@ -75,17 +75,17 @@ public sealed partial class AcmeClient : IAcmeClient
 
         var certificate = X509CertificateLoader.LoadPkcs12(pfxBytes, null);
 
-         // The collection handed to persistence: the leaf (with its private key, loaded back from
-         // the PFX) first, followed by the public issuer certificates so chains/server.crt holds
-         // the real chain rather than a duplicate of the leaf.
+        // The collection handed to persistence: the leaf (with its private key, loaded back from
+        // the PFX) first, followed by the public issuer certificates so chains/server.crt holds
+        // the real chain rather than a duplicate of the leaf.
         var chain = new X509Certificate2Collection { certificate };
         foreach (var issuer in certificateChain.Issuers)
-             {
-              chain.Add(issuer);
-               }
+        {
+            chain.Add(issuer);
+        }
 
         return (certificate, keyPair.ToPem(), chain);
-        }
+    }
 
     private async Task ValidateChallenges(IChallengeContext[] challengeContexts)
     {

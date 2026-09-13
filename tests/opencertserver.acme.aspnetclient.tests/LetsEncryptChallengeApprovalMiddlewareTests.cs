@@ -135,31 +135,31 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareTests
             PlacedOrder placedOrder,
             string password,
             string? existingKeyPem = null)
-           {
-             await Task.Delay(500);
+        {
+            await Task.Delay(500);
 
-             OrderFinalizedCts.CancelAfter(250);
-             var certificate = X509CertificateLoader.LoadCertificate(FakeCert.RawData.AsSpan());
-             var keyPem = existingKeyPem ?? ExportKeyPem(certificate);
-             var collection = new X509Certificate2Collection { certificate };
-             return (certificate, keyPem, collection);
-             }
+            OrderFinalizedCts.CancelAfter(250);
+            var certificate = X509CertificateLoader.LoadCertificate(FakeCert.RawData.AsSpan());
+            var keyPem = existingKeyPem ?? ExportKeyPem(certificate);
+            var collection = new X509Certificate2Collection { certificate };
+            return (certificate, keyPem, collection);
+        }
 
         private static string ExportKeyPem(X509Certificate2 certificate)
-          {
-             var rsa = certificate.GetRSAPrivateKey();
-             if (rsa != null)
-                  {
-                  return rsa.ExportRSAPrivateKeyPem();
-                   }
+        {
+            var rsa = certificate.GetRSAPrivateKey();
+            if (rsa != null)
+            {
+                return rsa.ExportRSAPrivateKeyPem();
+            }
 
-             var ecdsa = certificate.GetECDsaPrivateKey();
-             if (ecdsa != null)
-                  {
-                  return ecdsa.ExportECPrivateKeyPem();
-                   }
+            var ecdsa = certificate.GetECDsaPrivateKey();
+            if (ecdsa != null)
+            {
+                return ecdsa.ExportECPrivateKeyPem();
+            }
 
-             return string.Empty;
-          }
+            return string.Empty;
+        }
     }
 }

@@ -60,94 +60,94 @@ public sealed class LetsEncryptClientTests
         DateTime.Now.AddDays(-180),
         DateTime.Now.AddDays(-90));
 
-      [Fact]
-     public async Task Should_TolerateNullInput()
-      {
-          _persistenceService.GetPersistedSiteCertificate(
-               Arg.Any<string>(),
-               TestContext.Current.CancellationToken)!.Returns(Task.FromResult(ValidCert));
+    [Fact]
+    public async Task Should_TolerateNullInput()
+    {
+        _persistenceService.GetPersistedSiteCertificate(
+             Arg.Any<string>(),
+             TestContext.Current.CancellationToken)!.Returns(Task.FromResult(ValidCert));
 
-         var output =
-             await _sut.RenewCertificateIfNeeded("test", cancellationToken: TestContext.Current.CancellationToken);
+        var output =
+            await _sut.RenewCertificateIfNeeded("test", cancellationToken: TestContext.Current.CancellationToken);
 
-         Assert.Equal(CertificateRenewalStatus.LoadedFromStore, output.Status);
-         Assert.Equal(ValidCert, output.Certificate);
-      }
+        Assert.Equal(CertificateRenewalStatus.LoadedFromStore, output.Status);
+        Assert.Equal(ValidCert, output.Certificate);
+    }
 
-      [Fact]
-     public async Task OnValidMemoryCertificate_ShouldNotAttemptRenewal()
-      {
-         var input = ValidCert;
-         var output = await _sut.RenewCertificateIfNeeded("test", input, TestContext.Current.CancellationToken);
+    [Fact]
+    public async Task OnValidMemoryCertificate_ShouldNotAttemptRenewal()
+    {
+        var input = ValidCert;
+        var output = await _sut.RenewCertificateIfNeeded("test", input, TestContext.Current.CancellationToken);
 
-         Assert.Equal(CertificateRenewalStatus.Unchanged, output.Status);
-         Assert.True(ReferenceEquals(input, output.Certificate));
-      }
+        Assert.Equal(CertificateRenewalStatus.Unchanged, output.Status);
+        Assert.True(ReferenceEquals(input, output.Certificate));
+    }
 
-      [Fact]
-     public async Task OnValidPersistedCertificate_ShouldNotAttemptRenewal()
-      {
-         var input = InvalidCert;
-         var stored = ValidCert;
+    [Fact]
+    public async Task OnValidPersistedCertificate_ShouldNotAttemptRenewal()
+    {
+        var input = InvalidCert;
+        var stored = ValidCert;
 
-         _persistenceService.GetPersistedSiteCertificate(Arg.Any<string>(), TestContext.Current.CancellationToken)!.Returns(
-             Task.FromResult(stored));
+        _persistenceService.GetPersistedSiteCertificate(Arg.Any<string>(), TestContext.Current.CancellationToken)!.Returns(
+            Task.FromResult(stored));
 
-         var output = await _sut.RenewCertificateIfNeeded("test", input, TestContext.Current.CancellationToken);
+        var output = await _sut.RenewCertificateIfNeeded("test", input, TestContext.Current.CancellationToken);
 
-         Assert.Equal(CertificateRenewalStatus.LoadedFromStore, output.Status);
-         Assert.Equal(stored, output.Certificate);
-      }
+        Assert.Equal(CertificateRenewalStatus.LoadedFromStore, output.Status);
+        Assert.Equal(stored, output.Certificate);
+    }
 
-      [Fact]
-     public async Task OnNoValidCertificateAvailable_ShouldRenewCertificate()
-      {
-          // arrange
-          _persistenceService.GetPersistedSiteCertificate(
-               Arg.Any<string>(), TestContext.Current.CancellationToken)!.Returns(Task.FromResult(InvalidCert));
+    [Fact]
+    public async Task OnNoValidCertificateAvailable_ShouldRenewCertificate()
+    {
+        // arrange
+        _persistenceService.GetPersistedSiteCertificate(
+             Arg.Any<string>(), TestContext.Current.CancellationToken)!.Returns(Task.FromResult(InvalidCert));
 
-         var dtos = new[] { new ChallengeDto("ping", "pong", ["test.com"]) };
-         var placedOrder = new PlacedOrder(dtos, Substitute.For<IOrderContext>(), []);
+        var dtos = new[] { new ChallengeDto("ping", "pong", ["test.com"]) };
+        var placedOrder = new PlacedOrder(dtos, Substitute.For<IOrderContext>(), []);
 
-          _letsEncryptClient.PlaceOrder([]).Returns(Task.FromResult(placedOrder));
-          _persistenceService.PersistChallenges(dtos).Returns(Task.CompletedTask);
-          _persistenceService.DeleteChallenges(dtos).Returns(Task.CompletedTask);
+        _letsEncryptClient.PlaceOrder([]).Returns(Task.FromResult(placedOrder));
+        _persistenceService.PersistChallenges(dtos).Returns(Task.CompletedTask);
+        _persistenceService.DeleteChallenges(dtos).Returns(Task.CompletedTask);
 
-         var newCertBytes = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90)).RawData;
-         var mockCollection = new X509Certificate2Collection();
+        var newCertBytes = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90)).RawData;
+        var mockCollection = new X509Certificate2Collection();
 
-            _letsEncryptClient.FinalizeOrder(placedOrder, "test")
-                .Returns(Task.FromResult((
-                    X509CertificateLoader.LoadCertificate(newCertBytes),
-                    string.Empty,
-                    mockCollection)));
+        _letsEncryptClient.FinalizeOrder(placedOrder, "test")
+            .Returns(Task.FromResult((
+                X509CertificateLoader.LoadCertificate(newCertBytes),
+                string.Empty,
+                mockCollection)));
 
-           _persistenceService.PersistSiteCertificateChain(mockCollection, "__default__", TestContext.Current.CancellationToken)
-               .Returns(Task.CompletedTask);
-             _persistenceService.GetPersistedRouteKey("__default__", TestContext.Current.CancellationToken)
-                 .Returns(Task.FromResult<string?>(null));
-             _persistenceService.PersistRouteKey(Arg.Any<string>(), Arg.Any<string>(), TestContext.Current.CancellationToken)
-                 .Returns(Task.CompletedTask);
+        _persistenceService.PersistSiteCertificateChain(mockCollection, "__default__", TestContext.Current.CancellationToken)
+            .Returns(Task.CompletedTask);
+        _persistenceService.GetPersistedRouteKey("__default__", TestContext.Current.CancellationToken)
+            .Returns(Task.FromResult<string?>(null));
+        _persistenceService.PersistRouteKey(Arg.Any<string>(), Arg.Any<string>(), TestContext.Current.CancellationToken)
+            .Returns(Task.CompletedTask);
 
-           // act
+        // act
 
-         var output = await _sut.RenewCertificateIfNeeded("test", current: null, cancellationToken: TestContext.Current.CancellationToken);
+        var output = await _sut.RenewCertificateIfNeeded("test", current: null, cancellationToken: TestContext.Current.CancellationToken);
 
-           // assert
+        // assert
 
-         Assert.Equal(CertificateRenewalStatus.Renewed, output.Status);
-         Assert.Equivalent(newCertBytes, output.Certificate?.RawData);
+        Assert.Equal(CertificateRenewalStatus.Renewed, output.Status);
+        Assert.Equivalent(newCertBytes, output.Certificate?.RawData);
 
-           _certificateValidator.Received(1).IsCertificateValid(null);
-         await _persistenceService.Received(1).GetPersistedSiteCertificate(Arg.Any<string>(), TestContext.Current.CancellationToken);
-           _certificateValidator.Received(1).IsCertificateValid(InvalidCert);
-         await _letsEncryptClient.Received(1).PlaceOrder([]);
-         await _persistenceService.Received(1).PersistChallenges(dtos);
-         await _persistenceService.Received(1).DeleteChallenges(dtos);
-         await _persistenceService.Received(1).PersistChallenges(dtos);
-         await _letsEncryptClient.Received(1).FinalizeOrder(placedOrder, "test");
-         await _letsEncryptClientFactory.Received(1).GetClient();
-      }
+        _certificateValidator.Received(1).IsCertificateValid(null);
+        await _persistenceService.Received(1).GetPersistedSiteCertificate(Arg.Any<string>(), TestContext.Current.CancellationToken);
+        _certificateValidator.Received(1).IsCertificateValid(InvalidCert);
+        await _letsEncryptClient.Received(1).PlaceOrder([]);
+        await _persistenceService.Received(1).PersistChallenges(dtos);
+        await _persistenceService.Received(1).DeleteChallenges(dtos);
+        await _persistenceService.Received(1).PersistChallenges(dtos);
+        await _letsEncryptClient.Received(1).FinalizeOrder(placedOrder, "test");
+        await _letsEncryptClientFactory.Received(1).GetClient();
+    }
 
     [Fact]
     public async Task CheckAllChallengesValidated()
@@ -191,7 +191,7 @@ public sealed class LetsEncryptClientTests
 
         var (result, _, _) = await client.FinalizeOrder(placedOrder, "");
 
-          // assert
+        // assert
         var cert = X509CertificateLoader.LoadCertificate(result.RawData.AsSpan());
         Assert.Equal(CertToPem(cert), pemCert);
         await challenge1.Received().Validate();

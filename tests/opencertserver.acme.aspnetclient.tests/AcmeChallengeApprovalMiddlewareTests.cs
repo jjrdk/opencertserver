@@ -29,7 +29,7 @@ public sealed class AcmeChallengeApprovalMiddlewareTests : IDisposable
     private readonly HttpClient _client;
 
     public AcmeChallengeApprovalMiddlewareTests()
-        {
+    {
         var persistence = Substitute.For<IPersistenceService>();
         persistence.GetPersistedChallenges().Returns(new[]
             {
@@ -38,50 +38,50 @@ public sealed class AcmeChallengeApprovalMiddlewareTests : IDisposable
 
         var builder = new HostBuilder().ConfigureWebHost(webBuilder =>
             {
-             webBuilder
-               .UseTestServer()
-               .ConfigureServices(services =>
-               {
-                services.AddSingleton(persistence);
-               })
-               .Configure(app =>
-               {
-                app.UseMiddleware<AcmeChallengeApprovalMiddleware>();
-                app.Run(async context =>
-                    {
-                    context.Response.StatusCode = 404;
-                    await context.Response.WriteAsync("Not found");
-                    });
-               })
-               .ConfigureLogging(l => l.AddFilter((_, level) => false));
+                webBuilder
+                  .UseTestServer()
+                  .ConfigureServices(services =>
+                  {
+                      services.AddSingleton(persistence);
+                  })
+                  .Configure(app =>
+                  {
+                      app.UseMiddleware<AcmeChallengeApprovalMiddleware>();
+                      app.Run(async context =>
+                       {
+                           context.Response.StatusCode = 404;
+                           await context.Response.WriteAsync("Not found");
+                       });
+                  })
+                  .ConfigureLogging(l => l.AddFilter((_, level) => false));
             });
 
         _host = builder.Build();
         _host.Start();
         var server = _host.GetTestServer();
         _client = server.CreateClient();
-        }
+    }
 
     public void Dispose()
-         {
+    {
         _host.Dispose();
         _client.Dispose();
-        }
+    }
 
-       [Fact]
+    [Fact]
     public async Task KnownTokenReturns200AndTokenBody()
-         {
+    {
         var response = await _client.GetAsync($"/.well-known/acme-challenge/{Token}", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(Response, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
-       }
+    }
 
-       [Fact]
+    [Fact]
     public async Task UnknownTokenReturns410Gone()
-         {
+    {
         var response = await _client.GetAsync("/.well-known/acme-challenge/does-not-exist", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Gone, response.StatusCode);
-        }
+    }
 }

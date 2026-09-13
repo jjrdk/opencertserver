@@ -22,95 +22,95 @@ internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptio
         AcmeRouteScope routeScope,
         IAcmeRouteConfigurationSource routeConfigurationSource,
         ILogger<KestrelOptionsSetup> logger)
-       {
+    {
         _renewalService = renewalService;
         _routeScope = routeScope;
         _routeConfigurationSource = routeConfigurationSource;
         _logger = logger;
-       }
+    }
 
     public void Configure(KestrelServerOptions options)
+    {
+        options.ConfigureHttpsDefaults(o =>
+            {
+                o.ServerCertificateSelector = (_, hostName) =>
+                          {
+                         return SelectCertificateFor(hostName);
+                     };
+            });
+    }
+
+    /// <summary>
+    /// The SNI selection logic used by <see cref="Configure"/>. Given an incoming SNI host
+    /// name it returns the leaf for the ACME route whose hosts contain that host, falling back
+    /// to the renewal service's current leaf and then to the default-route leaf. Extracted so
+    /// the selection behaviour can be verified without binding a Kestrel listener.
+    /// </summary>
+    internal X509Certificate2? SelectCertificateFor(string? hostName)
+    {
+        var hostToRouteId = GetHostIndex();
+        var fallback = _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
+
+        return SelectCertificate(hostName, hostToRouteId)
+             ?? _renewalService.Certificate
+             ?? fallback;
+    }
+
+    private IReadOnlyDictionary<string, string> GetHostIndex()
+    {
+        if (_cachedHostIndex != null)
         {
-         options.ConfigureHttpsDefaults(o =>
-             {
-             o.ServerCertificateSelector = (_, hostName) =>
-                      {
-                 return SelectCertificateFor(hostName);
-                  };
-                });
-         }
+            return _cachedHostIndex;
+        }
 
-        /// <summary>
-        /// The SNI selection logic used by <see cref="Configure"/>. Given an incoming SNI host
-        /// name it returns the leaf for the ACME route whose hosts contain that host, falling back
-        /// to the renewal service's current leaf and then to the default-route leaf. Extracted so
-        /// the selection behaviour can be verified without binding a Kestrel listener.
-        /// </summary>
-     internal X509Certificate2? SelectCertificateFor(string? hostName)
-           {
-           var hostToRouteId = GetHostIndex();
-           var fallback = _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
-
-          return SelectCertificate(hostName, hostToRouteId)
-               ?? _renewalService.Certificate
-               ?? fallback;
+        lock (_indexLock)
+        {
+            if (_cachedHostIndex != null)
+            {
+                return _cachedHostIndex;
             }
 
-        private IReadOnlyDictionary<string, string> GetHostIndex()
-              {
-             if (_cachedHostIndex != null)
-                  {
-                  return _cachedHostIndex;
-                   }
-
-           lock (_indexLock)
-                 {
-             if (_cachedHostIndex != null)
-                      {
-                      return _cachedHostIndex;
-                       }
-
             _cachedHostIndex = BuildHostIndex();
-                 }
+        }
 
-           return _cachedHostIndex;
-              }
+        return _cachedHostIndex;
+    }
 
-       private X509Certificate2? SelectCertificate(string? hostName, IReadOnlyDictionary<string, string> hostToRouteId)
+    private X509Certificate2? SelectCertificate(string? hostName, IReadOnlyDictionary<string, string> hostToRouteId)
+    {
+        if (string.IsNullOrEmpty(hostName))
         {
-      if (string.IsNullOrEmpty(hostName))
-             {
             return null;
-             }
+        }
 
-      if (hostToRouteId.TryGetValue(hostName, out var routeId))
-            {
+        if (hostToRouteId.TryGetValue(hostName, out var routeId))
+        {
             var cert = _routeScope.GetCertificate(routeId);
-             if (cert != null)
-                {
-                 return cert;
-                 }
+            if (cert != null)
+            {
+                return cert;
+            }
 
-                _logger.LogWarning("No certificate is available yet for route {RouteId} matching SNI host {Host}", routeId, hostName);
-                return _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
-              }
+            _logger.LogWarning("No certificate is available yet for route {RouteId} matching SNI host {Host}", routeId, hostName);
+            return _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
+        }
 
         // SNI host not in any ACME route -> fall back to the default leaf and warn.
         _logger.LogWarning("No ACME route matches SNI host {Host}; serving default certificate", hostName);
         return _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
-        }
+    }
 
-       private IReadOnlyDictionary<string, string> BuildHostIndex()
-       {
+    private IReadOnlyDictionary<string, string> BuildHostIndex()
+    {
         var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var route in _routeConfigurationSource.GetRouteConfigurations())
-            {
+        {
             foreach (var host in route.Hosts)
-               {
-             index[host] = route.RouteId;
-               }
+            {
+                index[host] = route.RouteId;
             }
+        }
 
         return index;
-        }
+    }
 }

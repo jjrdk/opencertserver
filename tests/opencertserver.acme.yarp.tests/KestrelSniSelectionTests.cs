@@ -1,8 +1,6 @@
 namespace OpenCertServer.Acme.Yarp.Tests;
 
 using System;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using Acme.Abstractions.Acme;
 using Acme.AspNetClient;
 using Acme.AspNetClient.Certes;
@@ -17,25 +15,25 @@ using Xunit;
 /// </summary>
 public sealed class KestrelSniSelectionTests
 {
-     private static KestrelOptionsSetup BuildSetup(
-        IAcmeRouteConfigurationSource source,
-        AcmeRouteScope scope,
-        IAcmeRenewalService renewalService)
-             {
-            var setup = new KestrelOptionsSetup(
-                renewalService,
-             scope,
-              source,
-               NullLogger<KestrelOptionsSetup>.Instance);
+    private static KestrelOptionsSetup BuildSetup(
+       IAcmeRouteConfigurationSource source,
+       AcmeRouteScope scope,
+       IAcmeRenewalService renewalService)
+    {
+        var setup = new KestrelOptionsSetup(
+            renewalService,
+         scope,
+          source,
+           NullLogger<KestrelOptionsSetup>.Instance);
 
-            setup.Configure(new Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions());
+        setup.Configure(new Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions());
 
-            return setup;
-              }
+        return setup;
+    }
 
-         [Fact]
+    [Fact]
     public void SniSelectsTheCertificateWhoseHostIsInTheRoute()
-          {
+    {
         var scope = new AcmeRouteScope();
 
         var alphaCert = SelfSignedCertificate.MakeWithSubject("alpha.example.com", DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
@@ -55,11 +53,11 @@ public sealed class KestrelSniSelectionTests
         var selected = setup.SelectCertificateFor("alpha.example.com");
 
         Assert.Equal(alphaCert.Thumbprint, selected!.Thumbprint);
-          }
+    }
 
-         [Fact]
+    [Fact]
     public void SniRejectsAnUnknownHostWithADefaultFallback()
-           {
+    {
         var scope = new AcmeRouteScope();
 
         var defaultCert = SelfSignedCertificate.MakeWithSubject("__default__", DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
@@ -75,11 +73,11 @@ public sealed class KestrelSniSelectionTests
         var selected = setup.SelectCertificateFor("unknown.example.com");
 
         Assert.Equal(defaultCert.Thumbprint, selected!.Thumbprint);
-           }
+    }
 
-         [Fact]
+    [Fact]
     public void ARenewedCertificateIsPickedUpOnTheNextHandshake()
-      {
+    {
         var scope = new AcmeRouteScope();
 
         var v1 = SelfSignedCertificate.MakeWithSubject("alpha.example.com", DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(89));
@@ -101,5 +99,5 @@ public sealed class KestrelSniSelectionTests
 
         var after = setup.SelectCertificateFor("alpha.example.com");
         Assert.Equal(v2.Thumbprint, after!.Thumbprint);
-      }
+    }
 }

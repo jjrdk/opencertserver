@@ -1,7 +1,6 @@
 namespace OpenCertServer.Acme.Yarp.Tests;
 
 using Acme.AspNetClient.Certes;
-using CertesSlim.Extensions;
 
 /// <summary>
 /// A minimal <see cref="AcmeOptions"/> implementation that points at a loopback ACME server and
@@ -11,5 +10,5 @@ using CertesSlim.Extensions;
 /// </summary>
 public sealed class TestAcmeOptions : AcmeOptions
 {
-      public override Uri AcmeServerUri { get; } = new("http://localhost/directory", UriKind.Absolute);
+    public override Uri AcmeServerUri { get; } = new("http://localhost/directory", UriKind.Absolute);
 }

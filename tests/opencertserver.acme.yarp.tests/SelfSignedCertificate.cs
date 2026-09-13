@@ -10,10 +10,10 @@ using System.Security.Cryptography.X509Certificates;
 /// </summary>
 public static class SelfSignedCertificate
 {
-     public static X509Certificate2 MakeWithSubject(string subjectName, DateTimeOffset from, DateTimeOffset to)
-         {
+    public static X509Certificate2 MakeWithSubject(string subjectName, DateTimeOffset from, DateTimeOffset to)
+    {
         using var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         var req = new CertificateRequest($"CN={subjectName}", ecdsa, HashAlgorithmName.SHA256);
         return req.CreateSelfSigned(from, to);
-         }
+    }
 }

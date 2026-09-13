@@ -10,29 +10,29 @@ using System.Collections.Generic;
 /// </summary>
 public sealed class RouteAcmeOptions
 {
-      /// <summary>
-       /// When true the route participates in ACME. Defaults to true when present.
-       /// </summary>
-      public bool Enabled { get; init; } = true;
+    /// <summary>
+    /// When true the route participates in ACME. Defaults to true when present.
+    /// </summary>
+    public bool Enabled { get; init; } = true;
 
-        /// <summary>
-        /// The hostnames this route's certificate is requested for (SANs). When null or empty the
-        /// route's <c>Match.Hosts</c> are used as the SANs.
-        /// </summary>
-     public List<string> Hosts { get; init; } = [];
+    /// <summary>
+    /// The hostnames this route's certificate is requested for (SANs). When null or empty the
+    /// route's <c>Match.Hosts</c> are used as the SANs.
+    /// </summary>
+    public List<string> Hosts { get; init; } = [];
 
-        /// <summary>
-        /// Optional common name. When null the first host is used.
-        /// </summary>
-     public string? CommonName { get; init; }
+    /// <summary>
+    /// Optional common name. When null the first host is used.
+    /// </summary>
+    public string? CommonName { get; init; }
 
-        /// <summary>
-        /// Optional country code (X.509 <c>C</c>) override for this route.
-        /// </summary>
-     public string? CountryName { get; init; }
+    /// <summary>
+    /// Optional country code (X.509 <c>C</c>) override for this route.
+    /// </summary>
+    public string? CountryName { get; init; }
 
-        /// <summary>
-        /// Optional organization (X.509 <c>O</c>) override for this route.
-        /// </summary>
-     public string? Organization { get; init; }
+    /// <summary>
+    /// Optional organization (X.509 <c>O</c>) override for this route.
+    /// </summary>
+    public string? Organization { get; init; }
 }

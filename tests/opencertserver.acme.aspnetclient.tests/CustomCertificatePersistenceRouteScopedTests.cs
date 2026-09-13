@@ -14,54 +14,54 @@ public sealed class CustomCertificatePersistenceRouteScopedTests
 {
     [Fact]
     public async Task RouteScopedSiteCertificateReadsSiteMaterialNotAccount()
-        {
-      byte[]? site = null;
-      byte[]? account = null;
+    {
+        byte[]? site = null;
+        byte[]? account = null;
 
-      var strategy = new CustomCertificatePersistenceStrategy(
-            (type, data) =>
-            {
-             if (type == CertificateType.Site)
-                {
-                 site = data;
-                 }
-             else
-                {
-                 account = data;
-                 }
+        var strategy = new CustomCertificatePersistenceStrategy(
+              (type, data) =>
+              {
+                  if (type == CertificateType.Site)
+                  {
+                      site = data;
+                  }
+                  else
+                  {
+                      account = data;
+                  }
 
-             return Task.CompletedTask;
-             },
-            type => Task.FromResult(type == CertificateType.Site ? site : account));
+                  return Task.CompletedTask;
+              },
+              type => Task.FromResult(type == CertificateType.Site ? site : account));
 
-      var cert = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90));
+        var cert = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90));
 
-      await strategy.PersistSiteCertificate(cert, "route.alpha");
+        await strategy.PersistSiteCertificate(cert, "route.alpha");
 
-      var retrieved = await strategy.RetrieveSiteCertificate("route.alpha");
+        var retrieved = await strategy.RetrieveSiteCertificate("route.alpha");
 
-      Assert.NotNull(retrieved);
-      Assert.Equal(cert.Thumbprint, retrieved.Thumbprint);
-        }
+        Assert.NotNull(retrieved);
+        Assert.Equal(cert.Thumbprint, retrieved.Thumbprint);
+    }
 
     [Fact]
     public async Task DistinctRoutesAreRoutedByThePersistDelegate()
-        {
-      var store = new Dictionary<string, byte[]>();
+    {
+        var store = new Dictionary<string, byte[]>();
 
-      var strategy = new CustomCertificatePersistenceStrategy(
-            (_, data) =>
-            {
-             return Task.Run(() => { store["site"] = data; });
-             },
-            _ => Task.FromResult(store.TryGetValue("site", out var bytes) ? bytes : null));
+        var strategy = new CustomCertificatePersistenceStrategy(
+              (_, data) =>
+              {
+                  return Task.Run(() => { store["site"] = data; });
+              },
+              _ => Task.FromResult(store.TryGetValue("site", out var bytes) ? bytes : null));
 
-      var cert = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90));
+        var cert = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90));
 
-      await strategy.PersistSiteCertificate(cert, "route.alpha");
+        await strategy.PersistSiteCertificate(cert, "route.alpha");
 
-      var retrieved = await strategy.RetrieveSiteCertificate("route.alpha");
+        var retrieved = await strategy.RetrieveSiteCertificate("route.alpha");
 
-      Assert.Equal(cert.Thumbprint, retrieved!.Thumbprint);
-        }
+        Assert.Equal(cert.Thumbprint, retrieved!.Thumbprint);
+    }
 }

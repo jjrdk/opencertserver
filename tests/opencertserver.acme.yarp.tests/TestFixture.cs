@@ -12,28 +12,28 @@ using Microsoft.Extensions.Hosting;
 /// </summary>
 internal sealed class FakeHostApplicationLifetime : IHostApplicationLifetime
 {
-     public CancellationToken ApplicationStarted { get; } = CancellationToken.None;
+    public CancellationToken ApplicationStarted { get; } = CancellationToken.None;
 
-     public CancellationToken ApplicationStopping { get; } = CancellationToken.None;
+    public CancellationToken ApplicationStopping { get; } = CancellationToken.None;
 
-     public CancellationToken ApplicationStopped { get; } = CancellationToken.None;
+    public CancellationToken ApplicationStopped { get; } = CancellationToken.None;
 
-        public CancellationToken RegisterStarted(Action applicationStarted)
-           => CancellationToken.None;
+    public CancellationToken RegisterStarted(Action applicationStarted)
+        => CancellationToken.None;
 
-        public CancellationToken RegisterStopping(Action applicationStopping)
-             => CancellationToken.None;
+    public CancellationToken RegisterStopping(Action applicationStopping)
+        => CancellationToken.None;
 
-        public CancellationToken RegisterStopped(Action applicationStopped)
-             => CancellationToken.None;
+    public CancellationToken RegisterStopped(Action applicationStopped)
+        => CancellationToken.None;
 
-        public void StartApplication()
-            {
-            }
+    public void StartApplication()
+    {
+    }
 
-        public void StopApplication()
-             {
-             }
+    public void StopApplication()
+    {
+    }
 }
 
 /// <summary>
@@ -43,13 +43,13 @@ internal sealed class FakeHostApplicationLifetime : IHostApplicationLifetime
 /// </summary>
 internal sealed class TestAcmeClientFactory : IAcmeClientFactory
 {
-     private readonly IAcmeClient _client;
+    private readonly IAcmeClient _client;
 
-     public TestAcmeClientFactory(IAcmeClient client)
-         {
-         _client = client;
-          }
+    public TestAcmeClientFactory(IAcmeClient client)
+    {
+        _client = client;
+    }
 
-        public Task<IAcmeClient> GetClient()
-             => Task.FromResult(_client);
+    public Task<IAcmeClient> GetClient()
+        => Task.FromResult(_client);
 }

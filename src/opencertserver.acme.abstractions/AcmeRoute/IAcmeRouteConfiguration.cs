@@ -13,25 +13,25 @@ using CertesSlim.Extensions;
 /// </remarks>
 public interface IAcmeRouteConfiguration
 {
-     /// <summary>
-     /// The route identifier. For a YARP route this is the <c>RouteConfig.RouteId</c>;
-     /// it is also used as the persistence storage key for the route's leaf/chain/key.
-     /// </summary>
+    /// <summary>
+    /// The route identifier. For a YARP route this is the <c>RouteConfig.RouteId</c>;
+    /// it is also used as the persistence storage key for the route's leaf/chain/key.
+    /// </summary>
     string RouteId { get; }
 
-     /// <summary>
-     /// The hostnames this route serves. These become the certificate SANs. For a YARP
-     /// route this mirrors <c>RouteConfig.Match.Hosts</c>.
-     /// </summary>
+    /// <summary>
+    /// The hostnames this route serves. These become the certificate SANs. For a YARP
+    /// route this mirrors <c>RouteConfig.Match.Hosts</c>.
+    /// </summary>
     IReadOnlyList<string> Hosts { get; }
 
-     /// <summary>
-     /// Optional common name for the certificate. When null the first host is used.
-     /// </summary>
+    /// <summary>
+    /// Optional common name for the certificate. When null the first host is used.
+    /// </summary>
     string? CommonName { get; }
 
-     /// <summary>
-     /// Optional CSR override for this route. When null the global CSR is used.
-     /// </summary>
+    /// <summary>
+    /// Optional CSR override for this route. When null the global CSR is used.
+    /// </summary>
     CsrInfo? CertificateSigningRequest { get; }
 }

@@ -5,10 +5,10 @@ namespace OpenCertServer.Acme.Abstractions.Acme;
 /// </summary>
 public static class AcmeRouteConstants
 {
-      /// <summary>
-      /// The route id used when no YARP route is ACME-tagged. This preserves the legacy
-      /// single-listener behaviour: a certificate persisted under this id is served for any
-      /// SNI host that does not match a registered ACME route.
-      /// </summary>
+    /// <summary>
+    /// The route id used when no YARP route is ACME-tagged. This preserves the legacy
+    /// single-listener behaviour: a certificate persisted under this id is served for any
+    /// SNI host that does not match a registered ACME route.
+    /// </summary>
     public const string DefaultRouteId = "__default__";
 }

@@ -22,14 +22,14 @@ using Xunit;
 /// </summary>
 public sealed class AcmeChallengeApprovalMiddlewareTests : IDisposable
 {
-     private const string Token = "tok-abc";
-     private const string Response = "tok-abc-keyauthz-response";
+    private const string Token = "tok-abc";
+    private const string Response = "tok-abc-keyauthz-response";
 
-     private readonly IHost _host;
-     private readonly HttpClient _client;
+    private readonly IHost _host;
+    private readonly HttpClient _client;
 
-     public AcmeChallengeApprovalMiddlewareTests()
-          {
+    public AcmeChallengeApprovalMiddlewareTests()
+    {
         var persistence = Substitute.For<IPersistenceService>();
         persistence.GetPersistedChallenges().Returns(new[]
              {
@@ -38,50 +38,50 @@ public sealed class AcmeChallengeApprovalMiddlewareTests : IDisposable
 
         var builder = new HostBuilder().ConfigureWebHost(webBuilder =>
              {
-             webBuilder
-                .UseTestServer()
-                .ConfigureServices(services =>
-                 {
-                  services.AddSingleton(persistence);
-                 })
-                .Configure(app =>
-                 {
-                  app.UseMiddleware<AcmeChallengeApprovalMiddleware>();
-                  app.Run(async context =>
-                    {
-                  context.Response.StatusCode = 404;
-                  await context.Response.WriteAsync("Not found");
-                     });
-                 })
-                .ConfigureLogging(l => l.AddFilter((_, level) => false));
+                 webBuilder
+                    .UseTestServer()
+                    .ConfigureServices(services =>
+                     {
+                         services.AddSingleton(persistence);
+                     })
+                    .Configure(app =>
+                     {
+                         app.UseMiddleware<AcmeChallengeApprovalMiddleware>();
+                         app.Run(async context =>
+                       {
+                            context.Response.StatusCode = 404;
+                            await context.Response.WriteAsync("Not found");
+                        });
+                     })
+                    .ConfigureLogging(l => l.AddFilter((_, level) => false));
              });
 
-          _host = builder.Build();
-          _host.Start();
-          var server = _host.GetTestServer();
-          _client = server.CreateClient();
-          }
+        _host = builder.Build();
+        _host.Start();
+        var server = _host.GetTestServer();
+        _client = server.CreateClient();
+    }
 
-     public void Dispose()
-            {
-         _host.Dispose();
-         _client.Dispose();
-         }
+    public void Dispose()
+    {
+        _host.Dispose();
+        _client.Dispose();
+    }
 
-        [Fact]
+    [Fact]
     public async Task KnownTokenResolvesForAnyRoute()
-            {
+    {
         var response = await _client.GetAsync($"/.well-known/acme-challenge/{Token}", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(Response, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
-         }
+    }
 
-       [Fact]
+    [Fact]
     public async Task UnknownTokenYields410Gone()
-            {
+    {
         var response = await _client.GetAsync("/.well-known/acme-challenge/doesnotexist", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Gone, response.StatusCode);
-         }
+    }
 }
