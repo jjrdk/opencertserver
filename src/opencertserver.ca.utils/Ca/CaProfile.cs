@@ -213,7 +213,7 @@ public record CaProfile : IDisposable
 
         var signatureGenerator = issuerPrivateKey switch
         {
-            RSA rsa => X509SignatureGenerator.CreateForRSA(rsa, RSASignaturePadding.Pss),
+            RSA rsa => X509SignatureGenerator.CreateForRSA(rsa, RSASignaturePadding.Pkcs1),
             ECDsa ecdsa => X509SignatureGenerator.CreateForECDsa(ecdsa),
             _ => throw new NotSupportedException()
         };

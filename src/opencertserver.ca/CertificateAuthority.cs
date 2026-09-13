@@ -178,7 +178,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         var profilePrivateKey = profile.PrivateKey;
         var x509SignatureGenerator = profilePrivateKey switch
         {
-            RSA rsa => X509SignatureGenerator.CreateForRSA(rsa, RSASignaturePadding.Pss),
+            RSA rsa => X509SignatureGenerator.CreateForRSA(rsa, RSASignaturePadding.Pkcs1),
             ECDsa ecdsa => X509SignatureGenerator.CreateForECDsa(ecdsa),
             _ => throw new NotSupportedException()
         };
