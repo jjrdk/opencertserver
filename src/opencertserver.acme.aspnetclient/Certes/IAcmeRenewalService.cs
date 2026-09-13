@@ -17,9 +17,9 @@ public interface IAcmeRenewalService : IHostedService, IDisposable
     /// </summary>
      X509Certificate2? Certificate { get; }
 
-       /// <summary>
-       /// Runs a single renewal pass for every registered ACME route. A failure on one route does
-       /// not block the others; each route's outcome is returned.
-       /// </summary>
-     Task RunAllRoutesOnce(string password);
+      /// <summary>
+      /// Runs a single renewal pass for every registered ACME route. A failure on one route does
+      /// not block the others; each route's outcome is returned.
+      /// </summary>
+      Task RunAllRoutesOnce(string password, CancellationToken cancellationToken = default);
 }

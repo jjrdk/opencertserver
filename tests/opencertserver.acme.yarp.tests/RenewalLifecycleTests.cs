@@ -119,7 +119,7 @@ public sealed class RenewalLifecycleTests
                 return Task.FromResult<X509Certificate2?>(CertFor("beta.example.com"));
                     });
 
-        await service.RunAllRoutesOnce("test");
+        await service.RunAllRoutesOnce("test", TestContext.Current.CancellationToken);
 
         Assert.Equal(existingAlpha.Thumbprint, scope.GetCertificate("route.alpha")!.Thumbprint);
         Assert.NotEqual(existingAlpha.Thumbprint, scope.GetCertificate("route.beta")!.Thumbprint);

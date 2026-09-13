@@ -92,55 +92,43 @@ public sealed partial class CertificateProvider : IProvideCertificates
           return new CertificateRenewalResult(newCertificate, CertificateRenewalStatus.Renewed);
             }
 
-      private Task<X509Certificate2?> GetPersisted(string scope, CancellationToken cancellationToken)
-         {
-        // Preserve the legacy single-listener call shape for the default route so that
-        // pre-existing behaviour (and its call assertions) are unchanged.
-      return string.Equals(scope, AcmeRouteConstants.DefaultRouteId, StringComparison.Ordinal)
-         ? _persistenceService.GetPersistedSiteCertificate(cancellationToken)
-         : _persistenceService.GetPersistedSiteCertificate(scope, cancellationToken);
-        }
+    private Task<X509Certificate2?> GetPersisted(string scope, CancellationToken cancellationToken)
+             => _persistenceService.GetPersistedSiteCertificate(scope, cancellationToken);
 
-      private async Task<X509Certificate2?> RequestNewLetsEncryptCertificate(
-         string password,
-         string scope,
-         IReadOnlyList<string> hosts,
-         CancellationToken cancellationToken)
-            {
-          var client = await _clientFactory.GetClient().ConfigureAwait(false);
+         private async Task<X509Certificate2?> RequestNewLetsEncryptCertificate(
+             string password,
+             string scope,
+             IReadOnlyList<string> hosts,
+             CancellationToken cancellationToken)
+                {
+             var client = await _clientFactory.GetClient().ConfigureAwait(false);
 
-           var orderDomains = hosts.Count > 0 ? [.. hosts] : Array.Empty<string>();
-           var placedOrder = await client.PlaceOrder(orderDomains).ConfigureAwait(false);
+              var orderDomains = hosts.Count > 0 ? [.. hosts] : Array.Empty<string>();
+              var placedOrder = await client.PlaceOrder(orderDomains).ConfigureAwait(false);
 
-          await _persistenceService.PersistChallenges(placedOrder.Challenges).ConfigureAwait(false);
+             await _persistenceService.PersistChallenges(placedOrder.Challenges).ConfigureAwait(false);
 
-          try
-             {
-           var pfxCertificateBytes = await client.FinalizeOrder(placedOrder, password).ConfigureAwait(false);
+             var existingKeyPem = await _persistenceService.GetPersistedRouteKey(scope, cancellationToken).ConfigureAwait(false);
 
-          await Persist(pfxCertificateBytes, scope, cancellationToken).ConfigureAwait(false);
+             try
+                   {
+              var (certificate, usedKeyPem, collection) = await client.FinalizeOrder(placedOrder, password, existingKeyPem).ConfigureAwait(false);
 
-                return pfxCertificateBytes;
-               }
-          catch (TaskCanceledException canceled)
-             {
-             LogCancelledPersistingSiteCertificate(canceled);
-             return null;
-               }
-          finally
-             {
-             await _persistenceService.DeleteChallenges(placedOrder.Challenges).ConfigureAwait(false);
-               }
-         }
+              await _persistenceService.PersistSiteCertificateChain(collection, scope, cancellationToken).ConfigureAwait(false);
+              await _persistenceService.PersistRouteKey(scope, usedKeyPem, cancellationToken).ConfigureAwait(false);
 
-      private Task Persist(X509Certificate2 certificate, string scope, CancellationToken cancellationToken)
-           {
-         // Preserve the legacy single-listener call shape for the default route so that
-          // pre-existing behaviour (and its call assertions) are unchanged.
-       return string.Equals(scope, AcmeRouteConstants.DefaultRouteId, StringComparison.Ordinal)
-       ? _persistenceService.PersistSiteCertificate(certificate, cancellationToken)
-       : _persistenceService.PersistSiteCertificate(certificate, scope, cancellationToken);
-          }
+                     return certificate;
+                      }
+             catch (TaskCanceledException canceled)
+                 {
+                LogCancelledPersistingSiteCertificate(canceled);
+                return null;
+                    }
+             finally
+                 {
+                await _persistenceService.DeleteChallenges(placedOrder.Challenges).ConfigureAwait(false);
+                    }
+             }
 
       private static string NormalizeRouteId(string? routeId)
          {

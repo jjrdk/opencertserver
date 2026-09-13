@@ -42,7 +42,7 @@ var routes = new List<RouteConfig>
       new RouteAcmeOptions { CommonName = "beta.example.com" })
 };
 
-builder.Services.AddAcmeProxy().UseAcmeProxy().LoadFromMemory(routes, clusters);
+builder.Services.AddAcmeProxy().WithAcmeRouteFilter().LoadFromMemory(routes, clusters);
 
 var app = builder.Build();
 app.UseAcmeClient();       // HTTP-01 challenge middleware
@@ -57,6 +57,14 @@ root `README.md` "Using ACME with YARP" section.
 
 When no route is ACME-tagged, the renewal engine and Kestrel selector fall back to the
 `__default__` route, preserving the legacy single-listener `UseAcmeClient()` behaviour.
+
+## Known limitations
+
+- **No runtime route removal (v1).** `AcmeRouteConfigurationRegistry.AddConfiguration` only adds or
+  updates descriptors. If a YARP route is removed via hot-config-reload, its ACME descriptor remains
+  registered until the process restarts, and the renewal service and SNI selector keep servicing it.
+  Runtime removal is tracked as a future enhancement and will be wired to the YARP
+  `IProxyConfigProvider` change token when hot-reload is implemented.
 
 ## Tests
 

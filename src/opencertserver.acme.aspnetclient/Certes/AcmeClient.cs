@@ -47,28 +47,45 @@ public sealed partial class AcmeClient : IAcmeClient
         return new PlacedOrder(dtos, order, challengeContexts);
     }
 
-    public async Task<X509Certificate2> FinalizeOrder(PlacedOrder placedOrder, string password)
-    {
+    public async Task<(X509Certificate2 Certificate, string KeyPem, X509Certificate2Collection Collection)> FinalizeOrder(
+        PlacedOrder placedOrder,
+        string password,
+        string? existingKeyPem = null)
+      {
         await ValidateChallenges(placedOrder.ChallengeContexts).ConfigureAwait(false);
 
         LogAcquiringCertificateThroughSigningRequest();
 
-        var keyPair = KeyFactory.NewKey(_options.KeyAlgorithm);
+        var keyPair = existingKeyPem != null
+             ? KeyFactory.FromPem(existingKeyPem)
+             : KeyFactory.NewKey(_options.KeyAlgorithm);
 
         var certificateChain =
             await placedOrder.Order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10).ConfigureAwait(false);
-        var collection = new X509Certificate2Collection { certificateChain.Certificate };
+
+        var pfxCollection = new X509Certificate2Collection { certificateChain.Certificate };
         foreach (var cert in certificateChain.Issuers)
-        {
-            collection.Add(cert);
-        }
+            {
+            pfxCollection.Add(cert);
+            }
 
         var pfxBytes =
-            collection.ExportPkcs12(Pkcs12ExportPbeParameters.Default, password);
+            pfxCollection.ExportPkcs12(Pkcs12ExportPbeParameters.Default, password);
         LogCertificateAcquired();
 
-        return X509CertificateLoader.LoadPkcs12(pfxBytes, null);
-    }
+        var certificate = X509CertificateLoader.LoadPkcs12(pfxBytes, null);
+
+         // The collection handed to persistence: the leaf (with its private key, loaded back from
+         // the PFX) first, followed by the public issuer certificates so chains/server.crt holds
+         // the real chain rather than a duplicate of the leaf.
+        var chain = new X509Certificate2Collection { certificate };
+        foreach (var issuer in certificateChain.Issuers)
+             {
+              chain.Add(issuer);
+               }
+
+        return (certificate, keyPair.ToPem(), chain);
+        }
 
     private async Task ValidateChallenges(IChallengeContext[] challengeContexts)
     {

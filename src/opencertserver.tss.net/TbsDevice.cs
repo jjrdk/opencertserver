@@ -44,7 +44,7 @@ public sealed class TbsDevice : Tpm2Device
 
         if (result != TbsWrapper.TbsResult.Success)
         {
-            throw new Exception("Failed to create TBS context: Error {" + result + "}");
+            throw new Exception($"Failed to create TBS context: Error {{{result}}}");
         }
 
         _tbsHandle = tbsContext;
@@ -162,7 +162,7 @@ public sealed class TbsDevice : Tpm2Device
         if (result != TbsWrapper.TbsResult.Success)
         {
             Debug.WriteLine("TbsStubs.Tbsip_Cancel_Command error 0x{0:x}", result);
-            throw new Exception("Tbsip_Cancel_Command() failed. Error {" + result + "}");
+            throw new Exception($"Tbsip_Cancel_Command() failed. Error {{{result}}}");
         }
     }
     private byte[] GetTpmAuth(TbsAuthType authType)

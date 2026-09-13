@@ -55,7 +55,7 @@ public sealed class SymCipher : IDisposable
         }
         if (symDef.Algorithm != TpmAlgId.Aes)
         {
-            throw new ArgumentException("Unsupported algorithm " + symDef.Algorithm);
+            throw new ArgumentException($"Unsupported algorithm {symDef.Algorithm}");
         }
         return 16;
     }

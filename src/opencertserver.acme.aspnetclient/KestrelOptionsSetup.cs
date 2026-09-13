@@ -14,6 +14,9 @@ internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptio
     private readonly IAcmeRouteConfigurationSource _routeConfigurationSource;
     private readonly ILogger<KestrelOptionsSetup> _logger;
 
+    private IReadOnlyDictionary<string, string>? _cachedHostIndex;
+    private readonly object _indexLock = new();
+
     public KestrelOptionsSetup(
         IAcmeRenewalService renewalService,
         AcmeRouteScope routeScope,
@@ -43,15 +46,35 @@ internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptio
         /// to the renewal service's current leaf and then to the default-route leaf. Extracted so
         /// the selection behaviour can be verified without binding a Kestrel listener.
         /// </summary>
-    internal X509Certificate2? SelectCertificateFor(string? hostName)
-         {
-          var hostToRouteId = BuildHostIndex();
-          var fallback = _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
+     internal X509Certificate2? SelectCertificateFor(string? hostName)
+           {
+           var hostToRouteId = GetHostIndex();
+           var fallback = _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
 
-         return SelectCertificate(hostName, hostToRouteId)
-              ?? _renewalService.Certificate
-              ?? fallback;
-          }
+          return SelectCertificate(hostName, hostToRouteId)
+               ?? _renewalService.Certificate
+               ?? fallback;
+            }
+
+        private IReadOnlyDictionary<string, string> GetHostIndex()
+              {
+             if (_cachedHostIndex != null)
+                  {
+                  return _cachedHostIndex;
+                   }
+
+           lock (_indexLock)
+                 {
+             if (_cachedHostIndex != null)
+                      {
+                      return _cachedHostIndex;
+                       }
+
+            _cachedHostIndex = BuildHostIndex();
+                 }
+
+           return _cachedHostIndex;
+              }
 
        private X509Certificate2? SelectCertificate(string? hostName, IReadOnlyDictionary<string, string> hostToRouteId)
         {

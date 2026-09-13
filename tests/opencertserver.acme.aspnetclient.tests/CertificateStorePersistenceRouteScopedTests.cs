@@ -8,8 +8,8 @@ using Xunit;
 
 /// <summary>
 /// Covers §4.2 for the OS certificate store strategy: each route is stored under its own
-/// subject (<c>{subjectName}@{routeId}</c>) so that distinct routes never collide in the store,
-/// while the default route keeps the bare subject.
+/// subject (<c>{subjectName}:{routeId}</c> on non-Windows, a FriendlyName on Windows) so that
+/// distinct routes never collide in the store, while the default route keeps the bare subject.
 /// </summary>
 public sealed class CertificateStorePersistenceRouteScopedTests : IAsyncLifetime
 {
@@ -40,8 +40,8 @@ public sealed class CertificateStorePersistenceRouteScopedTests : IAsyncLifetime
             using var store = new X509Store(StoreName.CertificateAuthority, StoreLocation.CurrentUser);
             store.Open(OpenFlags.ReadWrite);
 
-            foreach (var subject in new[] { _subjectName, $"{_subjectName}@route.alpha", $"{_subjectName}@route.beta" })
-                 {
+            foreach (var subject in new[] { _subjectName, $"{_subjectName}:route.alpha", $"{_subjectName}:route.beta" })
+                {
                  var matches = store.Certificates.Find(X509FindType.FindBySubjectName, subject, validOnly: false);
                  foreach (var old in matches)
                      {
@@ -61,9 +61,9 @@ public sealed class CertificateStorePersistenceRouteScopedTests : IAsyncLifetime
       Assert.Null(await _strategy.RetrieveSiteCertificate("route.beta"));
 
       var alpha = SelfSignedCertificate.MakeWithSubject(
-           $"{_subjectName}@route.alpha", DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
+            $"{_subjectName}:route.alpha", DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
       var beta = SelfSignedCertificate.MakeWithSubject(
-           $"{_subjectName}@route.beta", DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(91));
+            $"{_subjectName}:route.beta", DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(91));
 
       await _strategy.PersistSiteCertificate(alpha, "route.alpha");
       await _strategy.PersistSiteCertificate(beta, "route.beta");
@@ -80,16 +80,16 @@ public sealed class CertificateStorePersistenceRouteScopedTests : IAsyncLifetime
     public async Task RenewingARouteDoesNotAccumulateStoreEntries()
        {
       var older = SelfSignedCertificate.MakeWithSubject(
-           $"{_subjectName}@route.alpha", DateTimeOffset.UtcNow.AddDays(-2), DateTimeOffset.UtcNow.AddDays(30));
+            $"{_subjectName}:route.alpha", DateTimeOffset.UtcNow.AddDays(-2), DateTimeOffset.UtcNow.AddDays(30));
       var newer = SelfSignedCertificate.MakeWithSubject(
-           $"{_subjectName}@route.alpha", DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
+            $"{_subjectName}:route.alpha", DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
 
       await _strategy.PersistSiteCertificate(older, "route.alpha");
       await _strategy.PersistSiteCertificate(newer, "route.alpha");
 
       using var store = new X509Store(StoreName.CertificateAuthority, StoreLocation.CurrentUser);
       store.Open(OpenFlags.ReadOnly);
-      var matches = store.Certificates.Find(X509FindType.FindBySubjectName, $"{_subjectName}@route.alpha", validOnly: false);
+      var matches = store.Certificates.Find(X509FindType.FindBySubjectName, $"{_subjectName}:route.alpha", validOnly: false);
 
       Assert.Single(matches);
 

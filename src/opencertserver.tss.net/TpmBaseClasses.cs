@@ -162,14 +162,14 @@ public abstract partial class TpmStructureBase
     TpmStructMemberInfo[] GetFieldsToMarshal(bool trackTags = false)
     {
         var t = GetType();
-        var caption = (trackTags ? "Unmarshaling" : "Marshaling") + " " + t.Name;
+        var caption = $"{(trackTags ? "Unmarshaling" : "Marshaling")} {t.Name}";
         if (!t.GetTypeInfo().IsValueType)
         {
             var b = t.GetTypeInfo().BaseType;
             if (b != null && b != typeof(TpmStructureBase) && b != typeof(object))
             {
                 t = b;
-                caption += " as " + b.Name;
+                caption += $" as {b.Name}";
             }
         }
         dbg.Trace(caption);
@@ -222,8 +222,8 @@ public abstract partial class TpmStructureBase
                     {
                         tsmi.SizeName = (string)a.ConstructorArguments[2].Value;
                         tsmi.SizeLength = (int)a.ConstructorArguments[3].Value;
-                        dbg.Trace("Preproc " + (mt == MarshalType.SizedStruct ? "Struct " : "Array ")
-                          + mi.Name + " with size tag " + tsmi.SizeName + "=" + tsmi.SizeLength);
+                        dbg.Trace(
+                            $"Preproc {(mt == MarshalType.SizedStruct ? "Struct " : "Array ")}{mi.Name} with size tag {tsmi.SizeName}={tsmi.SizeLength}");
                     }
 
                     if (trackTags)
@@ -234,13 +234,13 @@ public abstract partial class TpmStructureBase
                             case MarshalType.UnionSelector:
                                 {
                                     tags.Add(mi.Name, tsmi);
-                                    dbg.Trace("Preproc Selector: " + mi.Name);
+                                    dbg.Trace($"Preproc Selector: {mi.Name}");
                                     break;
                                 }
                             case MarshalType.Union:
                                 {
                                     var selector = a.ConstructorArguments[2].Value;
-                                    dbg.Trace("Preproc Union " + mi.Name + " with selector " + selector);
+                                    dbg.Trace($"Preproc Union {mi.Name} with selector {selector}");
                                     tsmi.Tag = tags[(string)selector];
                                     break;
                                 }
@@ -284,13 +284,13 @@ public abstract partial class TpmStructureBase
         {
             var mem = members[i];
             var memVal = Globs.GetMember(mem, this);
-            dbg.Trace(i + ": " + mem.Name + " = " + memVal);
+            dbg.Trace($"{i}: {mem.Name} = {memVal}");
             if (mem.SizeLength > 0)
             {
                 var arr = mem.WireType == MarshalType.VariableLengthArray;
                 var len = arr ? ((Array)memVal)?.Length ?? 0
                     : Marshaller.GetTpmRepresentation(memVal).Length;
-                dbg.Trace("Sending " + (arr ? "Array " : "Struct ") + mem.Name + " of size " + len);
+                dbg.Trace($"Sending {(arr ? "Array " : "Struct ")}{mem.Name} of size {len}");
                 m.PutSizeTag(len, mem.SizeLength, mem.SizeName);
             }
             m.Put(memVal, mem.Name);
@@ -334,8 +334,7 @@ public abstract partial class TpmStructureBase
             {
                 case MarshalType.Union:
                     {
-                        dbg.Trace("Union " + memType.Name +
-                            " with selector " + memInfo.Tag.Value);
+                        dbg.Trace($"Union {memType.Name} with selector {memInfo.Tag.Value}");
                         var elt = UnionElementFromSelector(memType, memInfo.Tag.Value);
                         memInfo.Value = m.Get(elt, memType.Name);
                         break;
@@ -408,8 +407,7 @@ public abstract partial class TpmStructureBase
                     }
                     break;
             }
-            dbg.Trace((i + 1) + ": " + wireType + " " + memInfo.Name +
-                (size != -1 ? " of size " + size : ""));
+            dbg.Trace($"{(i + 1)}: {wireType} {memInfo.Name}{(size != -1 ? $" of size {size}" : "")}");
             // Some property values are dynamically obtained from their linked fields.
             // Correspondingly, they do not have a setter, so we bypass them here.
             Debug.Assert(wireType != MarshalType.LengthOfStruct && wireType != MarshalType.ArrayCount);

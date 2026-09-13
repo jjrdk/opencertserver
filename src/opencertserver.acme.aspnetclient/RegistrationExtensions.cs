@@ -45,11 +45,37 @@ public static class RegistrationExtensions
         }
 
         public IServiceCollection AddAcmeCertificatePersistence(
-            Func<CertificateType, byte[], Task> persistAsync,
-            Func<CertificateType, Task<byte[]?>> retrieveAsync)
-        {
-            return services.AddAcmeCertificatePersistence(new CustomCertificatePersistenceStrategy(persistAsync, retrieveAsync));
-        }
+             Func<CertificateType, byte[], Task> persistAsync,
+             Func<CertificateType, Task<byte[]?>> retrieveAsync)
+          {
+             return services.AddAcmeCertificatePersistence(new CustomCertificatePersistenceStrategy(persistAsync, retrieveAsync));
+          }
+
+         /// <summary>
+         /// Registers a route-aware custom persistence strategy that supports per-route certificate
+         /// storage and per-route key persistence, so each YARP route keeps its own leaf/chain/key.
+         /// The route-scoped delegates accept the normalised route id; supply the key delegates so
+         /// the renewal engine can reuse a route's private key across renewals.
+         /// </summary>
+        public IServiceCollection AddAcmeCertificatePersistence(
+             Func<string, CertificateType, byte[], Task> persistWithRouteAsync,
+             Func<string, CertificateType, Task<byte[]?>> retrieveWithRouteAsync,
+             Func<string, System.Threading.CancellationToken, Task<string?>>? getRouteKeyAsync = null,
+             Func<string, string, System.Threading.CancellationToken, Task>? persistRouteKeyAsync = null)
+             {
+                var persistAsync = (CertificateType persistenceType, byte[] data) =>
+                 persistWithRouteAsync(AcmeRouteConstants.DefaultRouteId, persistenceType, data);
+             var retrieveAsync = (CertificateType persistenceType) =>
+                 retrieveWithRouteAsync(AcmeRouteConstants.DefaultRouteId, persistenceType);
+
+             return services.AddAcmeCertificatePersistence(new CustomCertificatePersistenceStrategy(
+                 persistAsync,
+                 retrieveAsync,
+                 persistWithRouteAsync,
+                 retrieveWithRouteAsync,
+                 getRouteKeyAsync,
+                 persistRouteKeyAsync));
+             }
 
         public IServiceCollection AddAcmeCertificatePersistence(ICertificatePersistenceStrategy certificatePersistenceStrategy)
         {
@@ -133,13 +159,12 @@ public static class RegistrationExtensions
 
         public IServiceCollection AddAcmeClient<TOptions>(TOptions options)
             where TOptions : AcmeOptions
-              {
-      if (!options.Domains.Distinct().Any())
-                    {
-                throw new ArgumentException("Domains configuration invalid");
-                }
-
-        return services.AddTransient<IConfigureOptions<KestrelServerOptions>, KestrelOptionsSetup>()
+                {
+         // A non-empty Domains array is no longer required here: in the per-route YARP path each
+         // route's Match.Hosts supply the SANs, so Domains may be empty. The empty-Domains check is
+         // deferred to AcmeRenewalService.StartAsync, where the route source can be inspected, so a
+         // YARP-only deployment is not forced to provide redundant per-route domains.
+         return services.AddTransient<IConfigureOptions<KestrelServerOptions>, KestrelOptionsSetup>()
                     .AddAcmePersistenceService()
                     .AddAcmeRouteConfigurationSource()
                     .AddSingleton(options)

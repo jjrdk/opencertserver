@@ -21,10 +21,10 @@ internal sealed class TestRenewalService : IAcmeRenewalService
      public bool StopCalled { get; private set; }
 
         public Task RunOnce(string password)
-             => Task.CompletedTask;
+               => Task.CompletedTask;
 
-        public Task RunAllRoutesOnce(string password)
-              => Task.CompletedTask;
+        public Task RunAllRoutesOnce(string password, CancellationToken cancellationToken = default)
+                => Task.CompletedTask;
 
         public Task StartAsync(CancellationToken cancellationToken)
               {

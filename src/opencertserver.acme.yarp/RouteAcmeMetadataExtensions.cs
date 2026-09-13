@@ -61,19 +61,21 @@ public static class RouteAcmeMetadataExtensions
             return JsonSerializer.Deserialize<RouteAcmeOptions>(json, RouteAcmeOptionsSerializerContext.Default.RouteAcmeOptions);
            }
 
-       /// <summary>
-        /// Reads the <see cref="RouteAcmeOptions"/> attached to a route, defaulting to an
-        /// <see cref="RouteAcmeOptions"/> with <see cref="RouteAcmeOptions.Enabled"/> true when the
-        /// metadata bag is absent.
-        /// </summary>
-     public static RouteAcmeOptions ReadOptions(global::Yarp.ReverseProxy.Configuration.RouteConfig route)
-        {
-            var options = TryReadOptions(route);
-             if (options != null)
-                 {
-              return options;
-                }
+         /// <summary>
+         /// Reads the <see cref="RouteAcmeOptions"/> attached to a route, defaulting to a disabled
+         /// <see cref="RouteAcmeOptions"/> (<see cref="RouteAcmeOptions.Enabled"/> false) when the
+         /// metadata bag is absent so an unannotated route is not silently enrolled in issuance.
+         /// Prefer <see cref="TryReadOptions"/> when <see langword="null"/> is the correct "no
+         /// options" signal.
+         /// </summary>
+      public static RouteAcmeOptions ReadOptionsOrDefault(global::Yarp.ReverseProxy.Configuration.RouteConfig route)
+             {
+             var options = TryReadOptions(route);
+              if (options != null)
+                    {
+                return options;
+                  }
 
-            return new RouteAcmeOptions();
-          }
+             return new RouteAcmeOptions { Enabled = false };
+             }
 }

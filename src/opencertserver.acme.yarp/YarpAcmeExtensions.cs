@@ -23,25 +23,27 @@ public static class YarpAcmeExtensions
         return services.AddReverseProxy();
           }
 
-        /// <summary>
+       /// <summary>
         /// Attaches the ACME route config filter to an existing YARP proxy builder so that every
-        /// ACME-enabled route is registered for renewal.
+        /// ACME-enabled route is registered for renewal. This is a config-filter registration on the
+        /// proxy <em>builder</em> (not a request-pipeline <c>Use*</c>); the name follows the YARP
+        /// <c>Add*</c>/<c>With*</c> convention accordingly.
         /// </summary>
-    public static IReverseProxyBuilder UseAcmeProxy(this IReverseProxyBuilder builder)
-         {
-          return builder.AddConfigFilter<AddAcmeRoutesConfigFilter>();
-            }
+     public static IReverseProxyBuilder WithAcmeRouteFilter(this IReverseProxyBuilder builder)
+            {
+           return builder.AddConfigFilter<AddAcmeRoutesConfigFilter>();
+             }
 
-        /// <summary>
-        /// Loads the supplied YARP routes (each possibly carrying an ACME metadata bag) into the
-        /// proxy and attaches the ACME config filter.
-        /// </summary>
-    public static IReverseProxyBuilder UseReverseProxyAcme(
+         /// <summary>
+          /// Loads the supplied YARP routes (each possibly carrying an ACME metadata bag) into the
+          /// proxy and attaches the ACME config filter.
+          /// </summary>
+     public static IReverseProxyBuilder UseReverseProxyAcme(
         this IReverseProxyBuilder builder,
         IReadOnlyList<RouteConfig> routes)
-         {
-          return builder
-                .UseAcmeProxy()
-                .LoadFromMemory(routes, []);
-            }
+            {
+           return builder
+                  .WithAcmeRouteFilter()
+                  .LoadFromMemory(routes, []);
+              }
 }

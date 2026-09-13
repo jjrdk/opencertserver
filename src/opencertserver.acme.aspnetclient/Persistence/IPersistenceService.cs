@@ -34,9 +34,29 @@ public interface IPersistenceService
       /// </summary>
       Task PersistSiteCertificate(X509Certificate2 certificate, string? routeId, CancellationToken cancellationToken = default);
 
+      /// <summary>
+       /// Persists the full certificate <paramref name="chain"/> (leaf followed by issuers) scoped to
+       /// <paramref name="routeId"/> so the route's <c>chains/server.crt</c> holds the real issuer
+       /// bundle rather than a copy of the leaf.
+      /// </summary>
+      Task PersistSiteCertificateChain(X509Certificate2Collection chain, string? routeId, CancellationToken cancellationToken = default);
+
       Task PersistAccountCertificate(IKey certificate);
 
-     Task PersistChallenges(ChallengeDto[] challenges);
+      Task PersistChallenges(ChallengeDto[] challenges);
 
-     Task DeleteChallenges(ChallengeDto[] challenges);
+      Task DeleteChallenges(ChallengeDto[] challenges);
+
+      /// <summary>
+      /// Returns the PEM-encoded leaf private key previously persisted for <paramref name="routeId"/>,
+      /// or null when no key has been persisted yet. Used by the renewal engine to reuse a route's
+      /// private key across renewals so the public key stays stable.
+      /// </summary>
+      Task<string?> GetPersistedRouteKey(string routeId, CancellationToken cancellationToken = default);
+
+      /// <summary>
+      /// Persists the PEM-encoded leaf private key for <paramref name="routeId"/> so that subsequent
+      /// renewals of the same route reuse it.
+      /// </summary>
+      Task PersistRouteKey(string routeId, string keyPem, CancellationToken cancellationToken = default);
 }
