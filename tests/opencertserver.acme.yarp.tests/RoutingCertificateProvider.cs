@@ -1,3 +1,5 @@
+using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
 namespace OpenCertServer.Acme.Yarp.Tests;
 
 using System;
@@ -5,7 +7,6 @@ using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
-using Acme.Abstractions.Acme;
 using Acme.AspNetClient.Certificates;
 
 /// <summary>

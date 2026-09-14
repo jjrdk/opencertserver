@@ -1,9 +1,10 @@
+using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
 namespace OpenCertServer.Acme.Yarp;
 
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using OpenCertServer.Acme.Abstractions.Acme;
 using global::Yarp.ReverseProxy.Configuration;
 
 /// <summary>

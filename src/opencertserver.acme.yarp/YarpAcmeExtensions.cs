@@ -1,3 +1,5 @@
+using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
 namespace OpenCertServer.Acme.Yarp;
 
 using System.Collections.Generic;
@@ -17,7 +19,7 @@ public static class YarpAcmeExtensions
     public static IReverseProxyBuilder AddAcmeProxy(this IServiceCollection services)
     {
         services.AddSingleton<AcmeRouteConfigurationRegistry>();
-        services.AddSingleton<OpenCertServer.Acme.Abstractions.Acme.IAcmeRouteConfigurationSource>(
+        services.AddSingleton<IAcmeRouteConfigurationSource>(
             sp => sp.GetRequiredService<AcmeRouteConfigurationRegistry>());
 
         return services.AddReverseProxy();

@@ -1,11 +1,12 @@
-﻿namespace OpenCertServer.Acme.AspNetClient;
+﻿using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
+namespace OpenCertServer.Acme.AspNetClient;
 
 using Certes;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using OpenCertServer.Acme.Abstractions.Acme;
 
 internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptions>
 {
@@ -35,8 +36,8 @@ internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptio
             {
                 o.ServerCertificateSelector = (_, hostName) =>
                           {
-                         return SelectCertificateFor(hostName);
-                     };
+                              return SelectCertificateFor(hostName);
+                          };
             });
     }
 

@@ -1,6 +1,6 @@
-namespace OpenCertServer.Acme.Abstractions.Acme;
-
 using CertesSlim.Extensions;
+
+namespace OpenCertServer.Acme.Abstractions.AcmeRoute;
 
 /// <summary>
 /// A concrete, immutable <see cref="IAcmeRouteConfiguration"/>.

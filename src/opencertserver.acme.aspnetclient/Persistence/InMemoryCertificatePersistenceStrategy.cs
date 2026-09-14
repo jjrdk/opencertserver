@@ -1,10 +1,11 @@
-﻿namespace OpenCertServer.Acme.AspNetClient.Persistence;
+﻿using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
+namespace OpenCertServer.Acme.AspNetClient.Persistence;
 
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
-using OpenCertServer.Acme.Abstractions.Acme;
 
 internal sealed class InMemoryCertificatePersistenceStrategy : ICertificatePersistenceStrategy
 {

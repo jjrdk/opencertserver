@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Acme.AspNetClient.Persistence;
+﻿using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
+namespace OpenCertServer.Acme.AspNetClient.Persistence;
 
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
@@ -6,7 +8,6 @@ using System.Text;
 using System.Threading.Tasks;
 using CertesSlim;
 using Microsoft.Extensions.Logging;
-using OpenCertServer.Acme.Abstractions.Acme;
 
 public sealed partial class PersistenceService : IPersistenceService
 {

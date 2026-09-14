@@ -1,4 +1,4 @@
-namespace OpenCertServer.Acme.Abstractions.Acme;
+namespace OpenCertServer.Acme.Abstractions.AcmeRoute;
 
 /// <summary>
 /// Well-known route identifiers used by the per-route ACME model.

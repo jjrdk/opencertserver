@@ -1,3 +1,5 @@
+using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
 namespace OpenCertServer.Acme.AspNetClient.Persistence;
 
 using System;
@@ -5,7 +7,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
-using OpenCertServer.Acme.Abstractions.Acme;
 
 /// <summary>
 /// Persists the ACME site certificate in the operating system's X.509 certificate store.

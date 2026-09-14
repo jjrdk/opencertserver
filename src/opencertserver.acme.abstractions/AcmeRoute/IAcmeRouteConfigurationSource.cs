@@ -1,4 +1,4 @@
-namespace OpenCertServer.Acme.Abstractions.Acme;
+namespace OpenCertServer.Acme.Abstractions.AcmeRoute;
 
 /// <summary>
 /// Provides the set of ACME route configurations that the renewal service iterates.

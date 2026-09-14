@@ -1,7 +1,8 @@
+using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
 namespace OpenCertServer.Acme.Yarp;
 
 using System.Collections.Concurrent;
-using OpenCertServer.Acme.Abstractions.Acme;
 
 /// <summary>
 /// A thread-safe, mutable <see cref="IAcmeRouteConfigurationSource"/>. The

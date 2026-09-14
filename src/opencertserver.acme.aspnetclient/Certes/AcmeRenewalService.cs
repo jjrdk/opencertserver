@@ -1,3 +1,5 @@
+using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using System;
@@ -8,7 +10,6 @@ using System.Threading.Tasks;
 using Certificates;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using OpenCertServer.Acme.Abstractions.Acme;
 using static Certificates.CertificateRenewalStatus;
 
 public sealed partial class AcmeRenewalService : IAcmeRenewalService

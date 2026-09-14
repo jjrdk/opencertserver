@@ -30,6 +30,13 @@ public sealed class InMemoryAcmeClient : IAcmeClient
     /// <summary>The last set of domains (route SANs) the client was asked to order a certificate for.</summary>
     public string[]? LastOrderDomains { get; private set; }
 
+    /// <summary>
+    /// Every <see cref="PlaceOrder"/> call, recorded in order. Each entry is the exact set of
+    /// domains (route SANs) a single ACME order was placed for, so a test can prove that a
+    /// distinct order was placed per route.
+    /// </summary>
+    public IReadOnlyList<string[]> Orders { get; private set; } = [];
+
     public Task<PlacedOrder> PlaceOrder(string[] domains)
     {
         if (ThrownDuringPlaceOrder != null)
@@ -37,6 +44,7 @@ public sealed class InMemoryAcmeClient : IAcmeClient
             return Task.FromException<PlacedOrder>(ThrownDuringPlaceOrder);
         }
 
+        Orders = [.. Orders, [.. domains]];
         LastOrderDomains = [.. domains];
 
         var challengeDtos = domains
@@ -94,11 +102,8 @@ public sealed class InMemoryAcmeClient : IAcmeClient
         using var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         var request = new CertificateRequest($"CN={commonName}", ecdsa, HashAlgorithmName.SHA256);
 
-        using var certificate = request.CreateSelfSigned(
+        return request.CreateSelfSigned(
             DateTimeOffset.UtcNow.AddDays(-1),
-         DateTimeOffset.UtcNow.AddDays(90));
-
-        var pfx = certificate.Export(X509ContentType.Pkcs12, string.Empty);
-        return X509CertificateLoader.LoadPkcs12(pfx, string.Empty);
+             DateTimeOffset.UtcNow.AddDays(90));
     }
 }

@@ -1,3 +1,5 @@
+using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
 namespace OpenCertServer.Acme.AspNetClient.Certificates;
 
 using System.Security.Cryptography.X509Certificates;
@@ -5,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Certes;
 using Microsoft.Extensions.Logging;
-using OpenCertServer.Acme.Abstractions.Acme;
 using Persistence;
 
 public sealed partial class CertificateProvider : IProvideCertificates

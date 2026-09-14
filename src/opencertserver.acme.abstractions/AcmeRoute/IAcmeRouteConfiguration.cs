@@ -1,6 +1,6 @@
-namespace OpenCertServer.Acme.Abstractions.Acme;
-
 using CertesSlim.Extensions;
+
+namespace OpenCertServer.Acme.Abstractions.AcmeRoute;
 
 /// <summary>
 /// Describes a single ACME certificate request that is scoped to a YARP route.

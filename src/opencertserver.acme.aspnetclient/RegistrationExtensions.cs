@@ -1,4 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
+using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
 [assembly: InternalsVisibleTo("opencertserver.acme.aspnetclient.tests")]
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 [assembly: InternalsVisibleTo("opencertserver.acme.yarp.tests")]
@@ -14,7 +16,6 @@ using Microsoft.Extensions.Options;
 using OpenCertServer.Acme.AspNetClient.Certes;
 using OpenCertServer.Acme.AspNetClient.Certificates;
 using OpenCertServer.Acme.AspNetClient.Persistence;
-using OpenCertServer.Acme.Abstractions.Acme;
 
 public static class RegistrationExtensions
 {

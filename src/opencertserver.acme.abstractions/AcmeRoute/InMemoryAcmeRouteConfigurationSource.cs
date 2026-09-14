@@ -1,7 +1,6 @@
-namespace OpenCertServer.Acme.Abstractions.Acme;
-
-using System.Collections.Generic;
 using System.Collections.Immutable;
+
+namespace OpenCertServer.Acme.Abstractions.AcmeRoute;
 
 /// <summary>
 /// A simple in-memory <see cref="IAcmeRouteConfigurationSource"/>. Used by tests and by the

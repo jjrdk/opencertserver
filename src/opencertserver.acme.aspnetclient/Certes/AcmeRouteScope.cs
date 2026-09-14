@@ -1,8 +1,9 @@
+using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using System.Collections.Concurrent;
 using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Acme.Abstractions.Acme;
 
 /// <summary>
 /// Holds the per-route in-memory certificate state for the <see cref="AcmeRenewalService"/>.
