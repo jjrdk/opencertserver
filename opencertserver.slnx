@@ -3,7 +3,6 @@
     <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
     <Project Path="src/opencertserver.mcp/opencertserver.mcp.csproj" />
       <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
-      <Project Path="src/opencertserver.acme.yarp/opencertserver.acme.yarp.csproj" />
     <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
     <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
   </Folder>
@@ -33,6 +32,7 @@
   <Project Path="src\opencertserver.cli\opencertserver.cli.csproj" />
   <Project Path="src/opencertserver.attestation/opencertserver.attestation.csproj" />
   <Project Path="src/OpenCertServer.Sgx.Native/OpenCertServer.Sgx.Native.csproj" />
+  <Project Path="src/opencertserver.acme.yarp/opencertserver.acme.yarp.csproj" />
   <Project Path="src/OpenCertServer.Amd.Native/OpenCertServer.Amd.Native.csproj" />
   <Project Path="src\CertesSlim\CertesSlim.csproj" />
   <Project Path="src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
