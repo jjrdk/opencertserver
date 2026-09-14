@@ -4,7 +4,7 @@ using System.Net;
 using CertesSlim.Acme.Resource;
 
 /// <summary>
-/// Represents an error returned from ACME server.
+/// Represents an error returned from an ACME server.
 /// </summary>
 public class AcmeError
 {

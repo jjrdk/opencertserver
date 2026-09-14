@@ -4,10 +4,12 @@
 
 OpenCertServer is a modular certificate authority platform supporting the following open standards:
 
-- **EST** – Enrollment over Secure Transport ([RFC 7030](https://datatracker.ietf.org/doc/html/rfc7030))
-- **ACME** – Automatic Certificate Management Environment ([RFC 8555](https://www.rfc-editor.org/rfc/rfc8555))
-- **OCSP** – Online Certificate Status Protocol ([RFC 6960](https://datatracker.ietf.org/doc/html/rfc6960))
-- **CRL** – Certificate Revocation Lists ([RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280))
+- **EST** – Enrollment over Secure Transport ([RFC 7030](https://www.rfc-editor.org/rfc/rfc7030)), with the EST clarifications ([RFC 8951](https://www.rfc-editor.org/rfc/rfc8951)) and the enhanced CSR attributes response ([RFC 9908](https://www.rfc-editor.org/rfc/rfc9908))
+- **ACME** – Automatic Certificate Management Environment ([RFC 8555](https://www.rfc-editor.org/rfc/rfc8555)), gated by CAA ([RFC 8659](https://www.rfc-editor.org/rfc/rfc8659)) and the CAA `accounturi` / `validationmethods` extensions ([RFC 8657](https://www.rfc-editor.org/rfc/rfc8657))
+- **OCSP** – Online Certificate Status Protocol ([RFC 6960](https://www.rfc-editor.org/rfc/rfc6960))
+- **CRL** – Certificate Revocation Lists ([RFC 5280](https://www.rfc-editor.org/rfc/rfc5280))
+
+Supporting standards used throughout the implementation: JWS request serialization ([RFC 7515](https://www.rfc-editor.org/rfc/rfc7515)), PKCS#10 certificate requests ([RFC 4211](https://www.rfc-editor.org/rfc/rfc4211)), Base16/32/64 encodings ([RFC 4648](https://www.rfc-editor.org/rfc/rfc4648)), domain-based PKIX identity over TLS ([RFC 6125](https://www.rfc-editor.org/rfc/rfc6125)), and PROBLEM-DETAILS error bodies ([RFC 7807](https://www.rfc-editor.org/rfc/rfc7807)).
 
 The ACME implementation is derived from the [PKISharp ACME Server](https://github.com/PKISharp/ACME-Server) and [FluffySpoon EncryptWeMust](https://github.com/ffMathy/FluffySpoon.AspNet.EncryptWeMust) projects, both MIT licensed.
 
@@ -204,6 +206,8 @@ The EST implementation conforms to [RFC 7030](https://datatracker.ietf.org/doc/h
 - **`/serverkeygen` (Section 4.4):** The server generates a new ECDSA key pair on behalf of the client, signs the corresponding certificate, and returns both the private key (PKCS#8) and the certificate as a `multipart/mixed` response.
 - **Per-profile paths (Section 3.2.2):** All operations are available with an optional `/{profile}/` path segment, allowing a single server to act as multiple logical CAs.
 - **Authentication:** Both TLS client certificate authentication and JWT bearer tokens are accepted, matching the dual-scheme requirement of the RFC.
+- **`Content-Transfer-Encoding` & whitespace (RFC 8951, §3.2/§3.3):** EST endpoint responses ignore the `Content-Transfer-Encoding` header and tolerate stray whitespace in base64 payloads, per the EST clarifications in [RFC 8951](https://www.rfc-editor.org/rfc/rfc8951).
+- **CSR attributes templates (RFC 9908, §3.2):** The `/csrattrs` response can return `CsrAttrs` templates (`CsrAttributesResponse`) that constrain the extension requirements of the client's unstructured CSR, per [RFC 9908](https://www.rfc-editor.org/rfc/rfc9908).
 
 ### ACME – RFC 8555
 
@@ -219,6 +223,9 @@ The ACME implementation conforms to [RFC 8555](https://www.rfc-editor.org/rfc/rf
 - **Certificate issuance:** After a successful finalize, the server issues a certificate chain signed by the configured CA. The certificate is returned as `application/pem-certificate-chain`.
 - **Profile support:** Orders can carry an optional `profile` field that maps to a named CA profile, enabling multiple certificate types from a single ACME server.
 - **Storage:** The server ships with an in-memory store (default) and a file-backed store (`AddAcmeFileStore`). Custom persistence can be provided by implementing `IStoreAccounts`, `IStoreOrders`, and `INonceStore`.
+- **CAA (RFC 8659, §2):** Before issuing a certificate, the issuer validates the domain's Certification Authority Authorization records in DNS so that only listed authorities (the `issue` / `issuewild` records) may issue for it.
+- **CAA `accounturi` / `validationmethods` (RFC 8657, §3.1/§3.2):** The CAA `accounturi` and `validationmethods` parameters restrict which ACME account (and which challenge types) are permitted to obtain a certificate for the domain.
+- **Problem details (RFC 7807):** Errors are returned as `problem+json` (PROBLEM-DETAILS) documents with `type`, `detail`, and `status` members, consistent with [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807).
 
 ### OCSP – RFC 6960
 
