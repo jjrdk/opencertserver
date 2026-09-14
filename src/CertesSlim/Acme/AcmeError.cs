@@ -50,5 +50,5 @@ public class AcmeError
     /// <value>
     /// The HTTP status.
     /// </value>
-    public HttpStatusCode Status { get; set; }
+    public HttpStatusCode? Status { get; set; }
 }
