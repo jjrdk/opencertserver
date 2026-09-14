@@ -229,6 +229,11 @@ public sealed class DefaultOrderService : IOrderService
 
         foreach (var identifier in identifierList)
         {
+            if (identifier == null)
+            {
+                throw new MalformedRequestException("Malformed identifier: null identifier entry.");
+            }
+
             if (string.IsNullOrWhiteSpace(identifier.Value))
             {
                 throw new MalformedRequestException(
