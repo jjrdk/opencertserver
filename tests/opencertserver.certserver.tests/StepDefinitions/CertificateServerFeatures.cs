@@ -84,6 +84,7 @@ public partial class CertificateServerFeatures
                 .AddAcmeServer(ctx.Configuration, _ => _server.CreateClient(),
                     new AcmeServerOptions
                     { HostedWorkers = new BackgroundServiceOptions { EnableIssuanceService = false } })
+                .Replace(ServiceDescriptor.Singleton<IAllowedIdentifiersPolicy>(new TestAllowedIdentifiersPolicy()))
                 .AddSingleton<ICsrValidator, DefaultCsrValidator>()
                 .AddAcmeInMemoryStore()
                 .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()

@@ -81,6 +81,21 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
             Status = (HttpStatusCode)statusCode
         };
 
+        // RFC 8555 §6.7.1: when multiple identifiers are rejected, the problem document
+        // SHOULD include an array of subproblems, each carrying the detail of the failure
+        // and the identifier it applies to.
+        if (exception is RejectedIdentifierException { RejectedIdentifiers.Count: > 0 } rejected)
+        {
+            problem.Subproblems = rejected.RejectedIdentifiers
+                .Select(x => new AcmeError
+                {
+                    Type = problem.Type,
+                    Detail = x.Reason,
+                    Identifier = x.Identifier
+                })
+                .ToList();
+        }
+
         var jsonOptions = new JsonSerializerOptions
         {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -102,6 +117,7 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
             NotFoundException => StatusCodes.Status404NotFound,
             NotAllowedException => StatusCodes.Status403Forbidden,
             NotAuthorizedException => StatusCodes.Status403Forbidden,
+            RejectedIdentifierException => StatusCodes.Status400BadRequest,
             UserActionRequiredException => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status400BadRequest
         };

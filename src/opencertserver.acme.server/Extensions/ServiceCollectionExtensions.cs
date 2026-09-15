@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
             services.AddScoped<IExternalAccountBindingService, DefaultExternalAccountBindingService>();
 
             services.AddScoped<IAuthorizationFactory, DefaultAuthorizationFactory>();
+            services.AddScoped<IAllowedIdentifiersPolicy, DefaultAllowedIdentifiersPolicy>();
 
             services.AddScoped<IValidationWorker, ValidationWorker>();
 
