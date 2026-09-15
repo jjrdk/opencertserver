@@ -32,6 +32,7 @@ public sealed class PackTask : FrostingTask<BuildContext>
             "opencertserver.acme.abstractions",
             "opencertserver.acme.aspnetclient",
             "opencertserver.acme.server",
+            "opencertserver.acme.yarp",
             "opencertserver.ca",
             "opencertserver.ca.utils",
             "opencertserver.est.client",
