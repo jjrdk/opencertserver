@@ -300,8 +300,8 @@ public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChalle
         var s = new string(input).Replace('-', '+').Replace('_', '/');
         return (s.Length % 4) switch
         {
-            2 => s + "==",
-            3 => s + "=",
+            2 => $"{s}==",
+            3 => $"{s}=",
             _ => s
         };
     }

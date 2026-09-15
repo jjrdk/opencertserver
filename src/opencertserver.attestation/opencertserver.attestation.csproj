@@ -1,45 +1,45 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <RootNamespace>OpenCertServer.Attestation</RootNamespace>
-    <NoWarn>$(NoWarn);IL2026;IL3050</NoWarn>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>OpenCertServer.Attestation</RootNamespace>
+        <NoWarn>$(NoWarn);IL2026;IL3050</NoWarn>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Configuration" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
-    <PackageReference Include="Microsoft.Extensions.Http" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Configuration"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+        <PackageReference Include="Microsoft.Extensions.Http"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj"/>
 
-    <!--
-      Native binary packages per spec section 3.2 (RID-based NuGet pattern).
-      ReferenceOutputAssembly=false: no managed assembly to reference.
-      OutputItemType=None / Private=false: prevents treating this as a managed dep.
-      The projects declare native binaries as Content CopyToOutputDirectory, so MSBuild
-      propagates the correct runtimes/{rid}/native/*.so to our output on publish.
-      Run src/OpenCertServer.Sgx.Native/fetch-native-sgx.sh (and the AMD equivalent)
-      on a Linux CI agent before building to populate the .so files.
-    -->
-    <ProjectReference Include="..\OpenCertServer.Sgx.Native\OpenCertServer.Sgx.Native.csproj"
-                      ReferenceOutputAssembly="false"
-                      SkipGetTargetFrameworkProperties="true" />
-    <ProjectReference Include="..\OpenCertServer.Amd.Native\OpenCertServer.Amd.Native.csproj"
-                      ReferenceOutputAssembly="false"
-                      SkipGetTargetFrameworkProperties="true" />
-  </ItemGroup>
+        <!--
+          Native binary packages per spec section 3.2 (RID-based NuGet pattern).
+          ReferenceOutputAssembly=false: no managed assembly to reference.
+          OutputItemType=None / Private=false: prevents treating this as a managed dep.
+          The projects declare native binaries as Content CopyToOutputDirectory, so MSBuild
+          propagates the correct runtimes/{rid}/native/*.so to our output on publish.
+          Run src/OpenCertServer.Sgx.Native/fetch-native-sgx.sh (and the AMD equivalent)
+          on a Linux CI agent before building to populate the .so files.
+        -->
+        <ProjectReference Include="..\OpenCertServer.Sgx.Native\OpenCertServer.Sgx.Native.csproj"
+                          ReferenceOutputAssembly="false"
+                          SkipGetTargetFrameworkProperties="true"/>
+        <ProjectReference Include="..\OpenCertServer.Amd.Native\OpenCertServer.Amd.Native.csproj"
+                          ReferenceOutputAssembly="false"
+                          SkipGetTargetFrameworkProperties="true"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-      <_Parameter1>OpenCertServer.Attestation.Tests</_Parameter1>
-    </AssemblyAttribute>
-  </ItemGroup>
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+            <_Parameter1>OpenCertServer.Attestation.Tests</_Parameter1>
+        </AssemblyAttribute>
+    </ItemGroup>
 </Project>

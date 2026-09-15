@@ -4861,9 +4861,9 @@ public abstract partial class TpmStructureBase
         }
         else
         {
-            throw new Exception("Unknown union interface type " + unionInterface.Name);
+            throw new Exception($"Unknown union interface type {unionInterface.Name}");
         }
-        throw new Exception("Unknown selector value" + selector + " for " + unionInterface.Name + " union");
+        throw new Exception($"Unknown selector value{selector} for {unionInterface.Name} union");
     }
 }
 

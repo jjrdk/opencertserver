@@ -490,7 +490,7 @@ public sealed class Tbs : IDisposable
         }
         if (!match)
         {
-            var message = "Handle set did not survive " + stateTransition;
+            var message = $"Handle set did not survive {stateTransition}";
             throw new Exception(message);
         }
     }

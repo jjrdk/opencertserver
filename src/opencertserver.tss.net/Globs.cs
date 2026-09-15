@@ -123,7 +123,7 @@ public class Globs
     {
         if (x.Length != 8)
         {
-            throw new ArgumentException("Globs.NetToHost8: Wrong input buffer length " + x.Length);
+            throw new ArgumentException($"Globs.NetToHost8: Wrong input buffer length {x.Length}");
         }
         return x[7] + (x[6] << 8) + (x[5] << 16) + (x[4] << 24) +
             (x[3] << 32) + (x[2] << 40) + (x[1] << 48) + (x[0] << 56);
@@ -133,7 +133,7 @@ public class Globs
     {
         if (x.Length != 8)
         {
-            throw new ArgumentException("Globs.NetToHost8U: Wrong input buffer length " + x.Length);
+            throw new ArgumentException($"Globs.NetToHost8U: Wrong input buffer length {x.Length}");
         }
         return x[7] + ((ulong)x[6] << 8) + ((ulong)x[5] << 16) + ((ulong)x[4] << 24) +
             ((ulong)x[3] << 32) + ((ulong)x[2] << 40) + ((ulong)x[1] << 48) + ((ulong)x[0] << 56);
@@ -143,7 +143,7 @@ public class Globs
     {
         if (x.Length != 4)
         {
-            throw new ArgumentException("Globs.NetToHost4: Wrong input buffer length " + x.Length);
+            throw new ArgumentException($"Globs.NetToHost4: Wrong input buffer length {x.Length}");
         }
         return x[3] + (x[2] << 8) + (x[1] << 16) + (x[0] << 24);
     }
@@ -152,7 +152,7 @@ public class Globs
     {
         if (x.Length != 4)
         {
-            throw new ArgumentException("Globs.NetToHost4U: Wrong input buffer length " + x.Length);
+            throw new ArgumentException($"Globs.NetToHost4U: Wrong input buffer length {x.Length}");
         }
         return x[3] + (uint)(x[2] << 8) + (uint)(x[1] << 16) + (uint)(x[0] << 24);
     }
@@ -161,7 +161,7 @@ public class Globs
     {
         if (x.Length != 2)
         {
-            throw new ArgumentException("Globs.NetToHost2: Wrong input buffer length " + x.Length);
+            throw new ArgumentException($"Globs.NetToHost2: Wrong input buffer length {x.Length}");
         }
         return (short)(x[1] + (x[0] << 8));
     }
@@ -170,7 +170,7 @@ public class Globs
     {
         if (x.Length != 2)
         {
-            throw new ArgumentException("Globs.NetToHost2U: Wrong input buffer length " + x.Length);
+            throw new ArgumentException($"Globs.NetToHost2U: Wrong input buffer length {x.Length}");
         }
         return (ushort)(x[1] + (x[0] << 8));
     }
@@ -185,7 +185,7 @@ public class Globs
         {
             return NetToHost4U(x);
         }
-        throw new ArgumentException("Globs.NetToHostVar(): Unsupported array length " + x.Length);
+        throw new ArgumentException($"Globs.NetToHostVar(): Unsupported array length {x.Length}");
     }
 
     public static object NetToHostValue(Type t, byte[] data)
@@ -223,7 +223,7 @@ public class Globs
             return (sbyte)data[0];
         }
         // Unsupported type
-        throw new ArgumentException("Globs.NetToHostValue(): Unsupported type " + t);
+        throw new ArgumentException($"Globs.NetToHostValue(): Unsupported type {t}");
     }
 
     public static object FromBytes(Type t, byte[] data)
@@ -263,7 +263,7 @@ public class Globs
             return (sbyte)data[0];
         }
         // Unsupported type
-        throw new ArgumentException("Globs.FromBytes(): Unsupported type " + t);
+        throw new ArgumentException($"Globs.FromBytes(): Unsupported type {t}");
     }
 
     public static int SizeOf(Type t)
@@ -287,7 +287,7 @@ public class Globs
             return sizeof(ulong);
         }
         // Unsupported type
-        throw new ArgumentException("Globs.SizeOf(): Unsupported type " + t);
+        throw new ArgumentException($"Globs.SizeOf(): Unsupported type {t}");
     }
 
     // RNG used when seeded random numbers are required
@@ -339,7 +339,7 @@ public class Globs
         var temp = hexString;
         if ((temp.Length / 2) * 2 != temp.Length)
         {
-            temp = "0" + temp;
+            temp = $"0{temp}";
         }
 
         var pos = 0;
@@ -392,7 +392,7 @@ public class Globs
     {
         if (buf == null || buf.Length == 0)
         {
-            return label + "<EMPTY>";
+            return $"{label}<EMPTY>";
         }
 
         var eol = "\n";
@@ -446,7 +446,7 @@ public class Globs
         {
             return 10 + char.ToLower(c) - 'a';
         }
-        throw new ArgumentException("Character + " + c + "is not hex");
+        throw new ArgumentException($"Character + {c}is not hex");
     }
 
     public static bool BigEndianArraysAreEqual(byte[] a1, byte[] a2)
@@ -653,7 +653,7 @@ public class Globs
         }
         catch (Exception)
         {
-            return name + "[[NOTE: string resource is missing]]";
+            return $"{name}[[NOTE: string resource is missing]]";
         }
     }
 

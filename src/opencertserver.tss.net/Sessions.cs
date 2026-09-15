@@ -348,8 +348,7 @@ public class AuthSession : SessionBase
     {
         if (Salt == _saltNeeded)
         {
-            throw new Exception("Unencrypted salt value must be provided for the session" +
-                Handle.handle.ToString("X8"));
+            throw new Exception($"Unencrypted salt value must be provided for the session{Handle.handle:X8}");
         }
 
         // Compute Handle.Auth in accordance with Part 1, 19.6.8.

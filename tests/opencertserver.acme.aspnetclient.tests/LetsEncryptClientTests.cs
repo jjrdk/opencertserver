@@ -63,8 +63,9 @@ public sealed class LetsEncryptClientTests
     [Fact]
     public async Task Should_TolerateNullInput()
     {
-        _persistenceService.GetPersistedSiteCertificate(TestContext.Current.CancellationToken)!
-            .Returns(Task.FromResult(ValidCert));
+        _persistenceService.GetPersistedSiteCertificate(
+             Arg.Any<string>(),
+             TestContext.Current.CancellationToken)!.Returns(Task.FromResult(ValidCert));
 
         var output =
             await _sut.RenewCertificateIfNeeded("test", cancellationToken: TestContext.Current.CancellationToken);
@@ -89,7 +90,7 @@ public sealed class LetsEncryptClientTests
         var input = InvalidCert;
         var stored = ValidCert;
 
-        _persistenceService.GetPersistedSiteCertificate(TestContext.Current.CancellationToken)!.Returns(
+        _persistenceService.GetPersistedSiteCertificate(Arg.Any<string>(), TestContext.Current.CancellationToken)!.Returns(
             Task.FromResult(stored));
 
         var output = await _sut.RenewCertificateIfNeeded("test", input, TestContext.Current.CancellationToken);
@@ -102,8 +103,8 @@ public sealed class LetsEncryptClientTests
     public async Task OnNoValidCertificateAvailable_ShouldRenewCertificate()
     {
         // arrange
-        _persistenceService.GetPersistedSiteCertificate(TestContext.Current.CancellationToken)!.Returns(
-            Task.FromResult(InvalidCert));
+        _persistenceService.GetPersistedSiteCertificate(
+             Arg.Any<string>(), TestContext.Current.CancellationToken)!.Returns(Task.FromResult(InvalidCert));
 
         var dtos = new[] { new ChallengeDto("ping", "pong", ["test.com"]) };
         var placedOrder = new PlacedOrder(dtos, Substitute.For<IOrderContext>(), []);
@@ -113,14 +114,19 @@ public sealed class LetsEncryptClientTests
         _persistenceService.DeleteChallenges(dtos).Returns(Task.CompletedTask);
 
         var newCertBytes = SelfSignedCertificate.Make(DateTime.Now, DateTime.Now.AddDays(90)).RawData;
+        var mockCollection = new X509Certificate2Collection();
 
         _letsEncryptClient.FinalizeOrder(placedOrder, "test")
-            .Returns(Task.FromResult(
-                X509CertificateLoader.LoadCertificate(newCertBytes)
-            ));
+            .Returns(Task.FromResult((
+                X509CertificateLoader.LoadCertificate(newCertBytes),
+                string.Empty,
+                mockCollection)));
 
-        var newCertificate = X509CertificateLoader.LoadCertificate(newCertBytes);
-        _persistenceService.PersistSiteCertificate(newCertificate, TestContext.Current.CancellationToken)
+        _persistenceService.PersistSiteCertificateChain(mockCollection, "__default__", TestContext.Current.CancellationToken)
+            .Returns(Task.CompletedTask);
+        _persistenceService.GetPersistedRouteKey("__default__", TestContext.Current.CancellationToken)
+            .Returns(Task.FromResult<string?>(null));
+        _persistenceService.PersistRouteKey(Arg.Any<string>(), Arg.Any<string>(), TestContext.Current.CancellationToken)
             .Returns(Task.CompletedTask);
 
         // act
@@ -133,7 +139,7 @@ public sealed class LetsEncryptClientTests
         Assert.Equivalent(newCertBytes, output.Certificate?.RawData);
 
         _certificateValidator.Received(1).IsCertificateValid(null);
-        await _persistenceService.Received(1).GetPersistedSiteCertificate(TestContext.Current.CancellationToken);
+        await _persistenceService.Received(1).GetPersistedSiteCertificate(Arg.Any<string>(), TestContext.Current.CancellationToken);
         _certificateValidator.Received(1).IsCertificateValid(InvalidCert);
         await _letsEncryptClient.Received(1).PlaceOrder([]);
         await _persistenceService.Received(1).PersistChallenges(dtos);
@@ -183,7 +189,7 @@ public sealed class LetsEncryptClientTests
 
         // act
 
-        var result = await client.FinalizeOrder(placedOrder, "");
+        var (result, _, _) = await client.FinalizeOrder(placedOrder, "");
 
         // assert
         var cert = X509CertificateLoader.LoadCertificate(result.RawData.AsSpan());
@@ -195,9 +201,8 @@ public sealed class LetsEncryptClientTests
 
     private static string CertToPem(X509Certificate2 cert)
     {
-        return string.Concat("-----BEGIN CERTIFICATE-----\n",
-            Convert.ToBase64String(cert.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks),
-            "\n-----END CERTIFICATE-----");
+        return
+            $"-----BEGIN CERTIFICATE-----\n{Convert.ToBase64String(cert.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks)}\n-----END CERTIFICATE-----";
     }
 
     private static T RefEq<T>(T it) => Arg.Is<T>(x => ReferenceEquals(x, it));

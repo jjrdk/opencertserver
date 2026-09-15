@@ -43,7 +43,8 @@ internal sealed class DefaultIssuer : IIssueCertificates
                 Encoding.UTF8.GetBytes(success.Certificate.ToPemChain(success.Issuers)), null),
             SignCertificateResponse.Error error => (null, new AcmeError
             {
-                Type = "multiple", Detail = string.Join(", ", error.Errors)
+                Type = "multiple",
+                Detail = string.Join(", ", error.Errors)
             }),
             _ => throw new ArgumentException("Invalid response")
         };

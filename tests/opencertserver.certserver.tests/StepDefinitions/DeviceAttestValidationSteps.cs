@@ -80,8 +80,8 @@ public sealed class DeviceAttestValidationSteps : IDisposable
         var s = input.Replace('-', '+').Replace('_', '/');
         return (s.Length % 4) switch
         {
-            2 => Convert.FromBase64String(s + "=="),
-            3 => Convert.FromBase64String(s + "="),
+            2 => Convert.FromBase64String($"{s}=="),
+            3 => Convert.FromBase64String($"{s}="),
             _ => Convert.FromBase64String(s)
         };
     }

@@ -52,8 +52,7 @@ public sealed class GlobalAttestationService
         return _serviceProvider.GetServices<IAttestationProvider>()
             .FirstOrDefault(p => string.Equals(p.VendorName, vendor, StringComparison.OrdinalIgnoreCase))
             ?? throw new NotSupportedException(
-                $"No '{vendor}' attestation provider is registered. " +
-                $"Ensure the provider is added via AddAttestationServices().");
+                $"No '{vendor}' attestation provider is registered. Ensure the provider is added via AddAttestationServices().");
     }
 
     /// <summary>
@@ -93,7 +92,6 @@ public sealed class GlobalAttestationService
             return defaultVendor;
 
         throw new NotSupportedException(
-            $"Cloud context '{_options.CloudContext}' has no default vendor mapping. " +
-            $"Set 'VendorPreference' in configuration to specify the vendor explicitly.");
+            $"Cloud context '{_options.CloudContext}' has no default vendor mapping. Set 'VendorPreference' in configuration to specify the vendor explicitly.");
     }
 }

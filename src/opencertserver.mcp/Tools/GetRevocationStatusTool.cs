@@ -115,7 +115,7 @@ public class GetRevocationStatusTool
 
         try
         {
-            var normalized = hex.Length % 2 == 0 ? hex : "0" + hex;
+            var normalized = hex.Length % 2 == 0 ? hex : $"0{hex}";
             return Convert.FromHexString(normalized);
         }
         catch

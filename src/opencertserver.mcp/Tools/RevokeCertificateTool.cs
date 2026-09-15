@@ -27,10 +27,7 @@ public class RevokeCertificateTool
         if (!Enum.TryParse(reason, ignoreCase: true, out X509RevocationReason revocationReason))
         {
             throw new McpException(
-                $"Invalid revocation reason: {reason}. " +
-                "Valid values: Unspecified, KeyCompromise, CACompromise, " +
-                "AffiliationChanged, Superseded, CessationOfOperation, " +
-                "CertificateHold, RemoveFromCRL, PrivilegeWithdrawn, AACompromise");
+                $"Invalid revocation reason: {reason}. Valid values: Unspecified, KeyCompromise, CACompromise, AffiliationChanged, Superseded, CessationOfOperation, CertificateHold, RemoveFromCRL, PrivilegeWithdrawn, AACompromise");
         }
 
         var result = await ca.RevokeCertificate(serialNumber, revocationReason, cancellationToken);

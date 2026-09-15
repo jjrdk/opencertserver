@@ -1,7 +1,8 @@
-﻿namespace OpenCertServer.Acme.AspNetClient.Persistence;
+﻿using OpenCertServer.Acme.Abstractions.AcmeRoute;
+
+namespace OpenCertServer.Acme.AspNetClient.Persistence;
 
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
@@ -33,15 +34,35 @@ public sealed partial class PersistenceService : IPersistenceService
         await PersistCertificate(
             CertificateType.Account,
             Encoding.UTF8.GetBytes(certificate.ToPem()),
-            _certificatePersistenceStrategies).ConfigureAwait(false);
+             _certificatePersistenceStrategies).ConfigureAwait(false);
     }
 
-    public async Task PersistSiteCertificate(
+    public Task PersistSiteCertificate(
         X509Certificate2 certificate,
         CancellationToken cancellationToken = default)
     {
+        return PersistSiteCertificate(certificate, AcmeRouteConstants.DefaultRouteId, cancellationToken);
+    }
+
+    public async Task PersistSiteCertificate(
+      X509Certificate2 certificate,
+      string? routeId,
+      CancellationToken cancellationToken = default)
+    {
+        var scope = NormalizeRouteId(routeId);
         LogPersistingTypeCertificateThroughStrategies(CertificateType.Site);
-        var tasks = _certificatePersistenceStrategies.Select(x => x.PersistSiteCertificate(certificate));
+        var tasks = _certificatePersistenceStrategies.Select(x => x.PersistSiteCertificate(certificate, scope));
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+        LogCertificatePersistedForLaterUse();
+    }
+
+    public async Task PersistSiteCertificateChain(
+      X509Certificate2Collection chain,
+      string? routeId,
+      CancellationToken cancellationToken = default)
+    {
+        var scope = NormalizeRouteId(routeId);
+        var tasks = _certificatePersistenceStrategies.Select(x => x.PersistSiteCertificateChain(chain, scope));
         await Task.WhenAll(tasks).ConfigureAwait(false);
         LogCertificatePersistedForLaterUse();
     }
@@ -61,7 +82,7 @@ public sealed partial class PersistenceService : IPersistenceService
     //{
     //	var dnsName = Regex.Replace(domain, WildcardRegex, String.Empty);
     //	dnsName = String.Format(DnsChallengeNameFormat, dnsName);
-
+    //
     //	return dnsName;
     //}
 
@@ -92,11 +113,18 @@ public sealed partial class PersistenceService : IPersistenceService
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
-    public async Task<X509Certificate2?> GetPersistedSiteCertificate(CancellationToken cancellationToken = default)
+    public Task<X509Certificate2?> GetPersistedSiteCertificate(CancellationToken cancellationToken = default)
+    {
+        return GetPersistedSiteCertificate(AcmeRouteConstants.DefaultRouteId, cancellationToken);
+    }
+
+    public async Task<X509Certificate2?> GetPersistedSiteCertificate(
+      string routeId,
+      CancellationToken cancellationToken = default)
     {
         foreach (var strategy in _certificatePersistenceStrategies)
         {
-            var certificate = await strategy.RetrieveSiteCertificate().ConfigureAwait(false);
+            var certificate = await strategy.RetrieveSiteCertificate(routeId).ConfigureAwait(false);
             if (certificate != null)
             {
                 return certificate;
@@ -126,6 +154,28 @@ public sealed partial class PersistenceService : IPersistenceService
     {
         var challenges = await GetPersistedChallengesAsync(_challengePersistenceStrategies).ConfigureAwait(false);
         return challenges.ToArray();
+    }
+
+    public async Task<string?> GetPersistedRouteKey(string routeId, CancellationToken cancellationToken = default)
+    {
+        var scope = NormalizeRouteId(routeId);
+        foreach (var strategy in _certificatePersistenceStrategies)
+        {
+            var key = await strategy.GetPersistedRouteKey(scope, cancellationToken).ConfigureAwait(false);
+            if (key != null)
+            {
+                return key;
+            }
+        }
+
+        return null;
+    }
+
+    public Task PersistRouteKey(string routeId, string keyPem, CancellationToken cancellationToken = default)
+    {
+        var scope = NormalizeRouteId(routeId);
+        var tasks = _certificatePersistenceStrategies.Select(x => x.PersistRouteKey(scope, keyPem, cancellationToken));
+        return Task.WhenAll(tasks);
     }
 
     private async Task<IEnumerable<ChallengeDto>> GetPersistedChallengesAsync(
@@ -158,6 +208,11 @@ public sealed partial class PersistenceService : IPersistenceService
         var tasks = strategies.Select(x => x.Delete(challenges));
 
         await Task.WhenAll(tasks).ConfigureAwait(false);
+    }
+
+    private static string NormalizeRouteId(string? routeId)
+    {
+        return string.IsNullOrEmpty(routeId) ? AcmeRouteConstants.DefaultRouteId : routeId;
     }
 
     [LoggerMessage(LogLevel.Information, "Certificate persisted for later use")]

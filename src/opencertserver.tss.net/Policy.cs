@@ -114,8 +114,7 @@ public class PolicyTree
                 {
                     if (branchIdDict.ContainsKey(branchId))
                     {
-                        throw new ArgumentException("CreateNormalizedPolicy: " +
-                            "Repeated branch-identifier " + branchId);
+                        throw new ArgumentException($"CreateNormalizedPolicy: Repeated branch-identifier {branchId}");
                     }
                     branchIdDict.Add(branchId, "");
                 }
@@ -260,7 +259,7 @@ public class PolicyTree
 
             if (BranchIdCollection.Contains(ace.BranchID))
             {
-                throw new Exception("CheckPolicyIdInternal: Replicated BranchID " + ace.BranchID);
+                throw new Exception($"CheckPolicyIdInternal: Replicated BranchID {ace.BranchID}");
             }
 
             BranchIdCollection.Add(ace.BranchID);

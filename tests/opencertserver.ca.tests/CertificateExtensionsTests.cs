@@ -90,7 +90,7 @@ namespace OpenCertServer.Ca.Tests
             var serial = cert.SerialNumber;
             if (serial.Length % 2 != 0)
             {
-                serial = "0" + serial;
+                serial = $"0{serial}";
             }
 
             var colonSerial = string.Join(

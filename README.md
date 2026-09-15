@@ -395,6 +395,19 @@ Retrieves the CA certificates from the EST `/cacerts` endpoint and prints them i
 
 ---
 
+## Using ACME with YARP
+
+`opencertserver.acme.yarp` adds **per-route ACME certification** for a
+[YARP](https://github.com/microsoft/reverse-proxy) reverse proxy. A single HTTPS listener can serve
+a distinct X.509 certificate for each YARP route, selected by SNI, with each certificate stored in a
+route-scoped location and renewed independently. Each route's `Match.Hosts` become the certificate's
+subject alternative names (SANs).
+
+See [`src/opencertserver.acme.yarp/README.md`](src/opencertserver.acme.yarp/README.md) and the
+illustrative [`sample/Program.cs`](src/opencertserver.acme.yarp/sample/Program.cs).
+
+---
+
 ## Reporting Issues and Bugs
 
 When reporting issues and bugs, please provide a clear set of steps to reproduce the issue. The best way is to provide a failing test case as a pull request.

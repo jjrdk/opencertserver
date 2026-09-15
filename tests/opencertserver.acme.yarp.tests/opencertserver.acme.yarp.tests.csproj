@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+      <PropertyGroup>
+          <IsPackable>false</IsPackable>
+          <RootNamespace>OpenCertServer.Acme.Yarp.Tests</RootNamespace>
+          <AssemblyName>opencertserver.acme.yarp.tests</AssemblyName>
+          <IsTrimmable>false</IsTrimmable>
+          <IsAotCompatible>false</IsAotCompatible>
+          <OutputType>exe</OutputType>
+          <CollectionBehavior>DisableTestParallelization</CollectionBehavior>
+      </PropertyGroup>
+
+      <ItemGroup>
+          <PackageReference Include="Microsoft.AspNetCore.TestHost"/>
+          <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+          <PackageReference Include="NSubstitute"/>
+          <PackageReference Include="Reqnroll.xUnit.v3"/>
+          <PackageReference Include="xunit.v3.mtp-v2"/>
+      </ItemGroup>
+
+      <ItemGroup>
+          <ProjectReference Include="..\..\src\opencertserver.acme.yarp\opencertserver.acme.yarp.csproj"/>
+          <ProjectReference Include="..\..\src\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj"/>
+          <ProjectReference Include="..\..\src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj"/>
+      </ItemGroup>
+
+  </Project>
