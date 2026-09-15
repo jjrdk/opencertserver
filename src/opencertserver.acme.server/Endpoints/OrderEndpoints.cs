@@ -55,18 +55,10 @@ public static class OrderEndpoints
                 }
 
                 var orderRequest = payload.ToPayload<CreateOrderRequest>();
-                if (orderRequest?.Identifiers == null || orderRequest.Identifiers?.Count == 0)
-                {
-                    throw new MalformedRequestException("No identifiers submitted.");
-                }
-
-                foreach (var i in orderRequest.Identifiers?.Where(i =>
-                        string.IsNullOrWhiteSpace(i.Value)) ?? [])
-                    throw new MalformedRequestException($"Malformed identifier: (Type: {i.Type}, Value: {i.Value})");
-                var order = await orderService.CreateOrder(orderRequest.Profile, account,
-                    orderRequest.Identifiers ?? [],
-                    orderRequest.NotBefore,
-                    orderRequest.NotAfter, cancellationToken).ConfigureAwait(false);
+                var order = await orderService.CreateOrder(orderRequest?.Profile, account,
+                    orderRequest?.Identifiers ?? [],
+                    orderRequest?.NotBefore,
+                    orderRequest?.NotAfter, cancellationToken).ConfigureAwait(false);
                 GetOrderUrls(context, links, order, out var authorizationUrls, out var finalizeUrl,
                     out var certificateUrl);
                 var orderResponse =
