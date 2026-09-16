@@ -1540,51 +1540,51 @@ public static class Oids
     /// <summary>
     /// Represents the member.
     /// </summary>
-    private const string Pkcs12PbePrefix = Pkcs12Prefix + "1.";
+    private const string Pkcs12PbePrefix = $"{Pkcs12Prefix}1.";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string Pkcs12PbeWithShaAnd3Key3Des = Pkcs12PbePrefix + "3";
+    public const string Pkcs12PbeWithShaAnd3Key3Des = $"{Pkcs12PbePrefix}3";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string Pkcs12PbeWithShaAnd2Key3Des = Pkcs12PbePrefix + "4";
+    public const string Pkcs12PbeWithShaAnd2Key3Des = $"{Pkcs12PbePrefix}4";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string Pkcs12PbeWithShaAnd128BitRC2 = Pkcs12PbePrefix + "5";
+    public const string Pkcs12PbeWithShaAnd128BitRC2 = $"{Pkcs12PbePrefix}5";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string Pkcs12PbeWithShaAnd40BitRC2 = Pkcs12PbePrefix + "6";
+    public const string Pkcs12PbeWithShaAnd40BitRC2 = $"{Pkcs12PbePrefix}6";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    private const string Pkcs12BagTypesPrefix = Pkcs12Prefix + "10.1.";
+    private const string Pkcs12BagTypesPrefix = $"{Pkcs12Prefix}10.1.";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string Pkcs12KeyBag = Pkcs12BagTypesPrefix + "1";
+    public const string Pkcs12KeyBag = $"{Pkcs12BagTypesPrefix}1";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string Pkcs12ShroudedKeyBag = Pkcs12BagTypesPrefix + "2";
+    public const string Pkcs12ShroudedKeyBag = $"{Pkcs12BagTypesPrefix}2";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string Pkcs12CertBag = Pkcs12BagTypesPrefix + "3";
+    public const string Pkcs12CertBag = $"{Pkcs12BagTypesPrefix}3";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string Pkcs12CrlBag = Pkcs12BagTypesPrefix + "4";
+    public const string Pkcs12CrlBag = $"{Pkcs12BagTypesPrefix}4";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string Pkcs12SecretBag = Pkcs12BagTypesPrefix + "5";
+    public const string Pkcs12SecretBag = $"{Pkcs12BagTypesPrefix}5";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string Pkcs12SafeContentsBag = Pkcs12BagTypesPrefix + "6";
+    public const string Pkcs12SafeContentsBag = $"{Pkcs12BagTypesPrefix}6";
     /// <summary>
     /// Represents the member.
     /// </summary>
@@ -1610,27 +1610,27 @@ public static class Oids
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string PbeWithMD5AndDESCBC = Pkcs5Prefix + "3";
+    public const string PbeWithMD5AndDESCBC = $"{Pkcs5Prefix}3";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string PbeWithMD5AndRC2CBC = Pkcs5Prefix + "6";
+    public const string PbeWithMD5AndRC2CBC = $"{Pkcs5Prefix}6";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string PbeWithSha1AndDESCBC = Pkcs5Prefix + "10";
+    public const string PbeWithSha1AndDESCBC = $"{Pkcs5Prefix}10";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string PbeWithSha1AndRC2CBC = Pkcs5Prefix + "11";
+    public const string PbeWithSha1AndRC2CBC = $"{Pkcs5Prefix}11";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string Pbkdf2 = Pkcs5Prefix + "12";
+    public const string Pbkdf2 = $"{Pkcs5Prefix}12";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string PasswordBasedEncryptionScheme2 = Pkcs5Prefix + "13";
+    public const string PasswordBasedEncryptionScheme2 = $"{Pkcs5Prefix}13";
 
     /// <summary>
     /// Represents the member.
@@ -1639,19 +1639,19 @@ public static class Oids
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string HmacWithSha1 = RsaDsiDigestAlgorithmPrefix + "7";
+    public const string HmacWithSha1 = $"{RsaDsiDigestAlgorithmPrefix}7";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string HmacWithSha256 = RsaDsiDigestAlgorithmPrefix + "9";
+    public const string HmacWithSha256 = $"{RsaDsiDigestAlgorithmPrefix}9";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string HmacWithSha384 = RsaDsiDigestAlgorithmPrefix + "10";
+    public const string HmacWithSha384 = $"{RsaDsiDigestAlgorithmPrefix}10";
     /// <summary>
     /// Represents the member.
     /// </summary>
-    public const string HmacWithSha512 = RsaDsiDigestAlgorithmPrefix + "11";
+    public const string HmacWithSha512 = $"{RsaDsiDigestAlgorithmPrefix}11";
 
     // Elliptic Curve curve identifiers
     /// <summary>

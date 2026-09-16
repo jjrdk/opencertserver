@@ -95,8 +95,7 @@ public class TpmHelpers
         if (!Enum.TryParse(newName, out val)
          && !Enum.TryParse(oldName, out val))
         {
-            throw new Exception("Invalid enumerator names " + oldName + ", "
-              + newName + " for enum " + typeof(E));
+            throw new Exception($"Invalid enumerator names {oldName}, {newName} for enum {typeof(E)}");
         }
         return val;
     }

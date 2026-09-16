@@ -76,7 +76,8 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
 
         var problem = new AcmeError
         {
-            Type = $"{exception.UrnBase}:{exception.ErrorType}", Detail = exception.Message,
+            Type = $"{exception.UrnBase}:{exception.ErrorType}",
+            Detail = exception.Message,
 
             Status = (HttpStatusCode)statusCode
         };

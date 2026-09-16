@@ -5,10 +5,10 @@
         <RootNamespace>OpenCertServer.Build</RootNamespace>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Cake.Frosting"/>
-        <PackageReference Include="Cake.Docker"/>
-        <PackageReference Include="NuGet.Packaging"/>
-        <PackageReference Include="NuGet.Protocol"/>
+        <PackageReference Include="Cake.Frosting" />
+        <PackageReference Include="Cake.Docker" />
+        <PackageReference Include="NuGet.Packaging" />
+        <PackageReference Include="NuGet.Protocol" />
         <PackageReference Include="GitVersion.MsBuild">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

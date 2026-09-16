@@ -77,8 +77,7 @@ public class SignCertificateTool
         {
             var pem = includePem ? success.Certificate.ExportCertificatePem() : null;
             var pemChain = includePem
-                ? success.Certificate.ExportCertificatePem() + "\n" +
-                string.Join("\n", success.Issuers.Select(c => c.ExportCertificatePem()))
+                ? $"{success.Certificate.ExportCertificatePem()}\n{string.Join("\n", success.Issuers.Select(c => c.ExportCertificatePem()))}"
                 : null;
 
             return new McpCertificateItem

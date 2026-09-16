@@ -50,11 +50,15 @@ public sealed class AcmeChallengeApprovalMiddleware : ILetsEncryptChallengeAppro
         var matchingChallenge = allChallenges.FirstOrDefault(x => x.Token == requestedToken);
         if (matchingChallenge == null)
         {
+            // An unknown ACME challenge token means the pending order is not (or no longer) in
+            // flight, so the resource is gone. Respond 410 Gone rather than falling through to
+            // the rest of the pipeline.
             _logger.LogInformation(
                 "The given challenge did not match {ChallengePath} among {AllChallenges}",
-                safePathForLog,
-                allChallenges);
-            await _next(context).ConfigureAwait(false);
+               safePathForLog,
+               allChallenges);
+            context.Response.StatusCode = 410;
+            context.Response.ContentType = "application/octet-stream";
             return;
         }
 

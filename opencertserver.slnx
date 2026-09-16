@@ -2,7 +2,7 @@
   <Folder Name="/servers/">
     <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
     <Project Path="src/opencertserver.mcp/opencertserver.mcp.csproj" />
-    <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
+      <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
     <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
     <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
   </Folder>
@@ -21,7 +21,8 @@
     <Project Path="tests/opencertserver.mcp.tests/opencertserver.mcp.tests.csproj" />
     <Project Path="tests\CertesSlim.tests\CertesSlim.tests.csproj" />
     <Project Path="tests\opencertserver.acme.abstractions.tests\opencertserver.acme.abstractions.tests.csproj" />
-    <Project Path="tests\opencertserver.acme.aspnetclient.tests\opencertserver.acme.aspnetclient.tests.csproj" />
+       <Project Path="tests\opencertserver.acme.aspnetclient.tests\opencertserver.acme.aspnetclient.tests.csproj" />
+       <Project Path="tests/opencertserver.acme.yarp.tests/opencertserver.acme.yarp.tests.csproj" />
     <Project Path="tests\opencertserver.ca.tests\opencertserver.ca.tests.csproj" />
     <Project Path="tests\opencertserver.certserver.tests\opencertserver.certserver.tests.csproj" />
     <Project Path="tests\opencertserver.est.server.tests\opencertserver.est.server.tests.csproj" />
@@ -31,6 +32,7 @@
   <Project Path="src\opencertserver.cli\opencertserver.cli.csproj" />
   <Project Path="src/opencertserver.attestation/opencertserver.attestation.csproj" />
   <Project Path="src/OpenCertServer.Sgx.Native/OpenCertServer.Sgx.Native.csproj" />
+  <Project Path="src/opencertserver.acme.yarp/opencertserver.acme.yarp.csproj" />
   <Project Path="src/OpenCertServer.Amd.Native/OpenCertServer.Amd.Native.csproj" />
   <Project Path="src\CertesSlim\CertesSlim.csproj" />
   <Project Path="src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />

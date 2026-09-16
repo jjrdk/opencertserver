@@ -185,8 +185,8 @@ public partial class CertificateServerFeatures
     [Then(@"the client receives a certificate")]
     public async Task ThenTheClientReceivesACertificate()
     {
-        var cert = await _acmeClient.FinalizeOrder(_scenarioContext["placedOrder"]! as PlacedOrder
-         ?? throw new InvalidOperationException());
+        var (cert, _, _) = await _acmeClient.FinalizeOrder(_scenarioContext["placedOrder"]! as PlacedOrder
+           ?? throw new InvalidOperationException());
 
         Assert.NotNull(cert);
     }

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+   <PropertyGroup>
+     <RootNamespace>OpenCertServer.Acme.Yarp</RootNamespace>
+     <AssemblyName>opencertserver.acme.yarp</AssemblyName>
+   </PropertyGroup>
+
+    <ItemGroup>
+      <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+     <!-- The sample/Program.cs is illustrative (top-level statements) and is not compiled into the
+          library assembly. -->
+    <ItemGroup>
+      <Compile Remove="sample\**\*.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Yarp.ReverseProxy" />
+    </ItemGroup>
+
+
+   <ItemGroup>
+     <ProjectReference Include="..\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj" />
+     <ProjectReference Include="..\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
+   </ItemGroup>
+
+</Project>

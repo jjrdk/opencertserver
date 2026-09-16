@@ -724,12 +724,12 @@ public sealed class TcpTpmDevice : Tpm2Device
         {
             if (endTag == 1)
             {
-                throw new Exception("Operation " + operation + " failed");
+                throw new Exception($"Operation {operation} failed");
             }
             // ReSharper disable once RedundantIfElseBlock
             else
             {
-                throw new Exception("Bad end tag " + endTag + " for operation " + operation);
+                throw new Exception($"Bad end tag {endTag} for operation {operation}");
             }
         }
     }

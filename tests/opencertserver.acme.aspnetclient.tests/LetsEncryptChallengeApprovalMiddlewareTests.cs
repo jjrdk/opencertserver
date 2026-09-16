@@ -131,12 +131,35 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareTests
                 []));
         }
 
-        public async Task<X509Certificate2> FinalizeOrder(PlacedOrder placedOrder, string password)
+        public async Task<(X509Certificate2 Certificate, string KeyPem, X509Certificate2Collection Collection)> FinalizeOrder(
+            PlacedOrder placedOrder,
+            string password,
+            string? existingKeyPem = null)
         {
             await Task.Delay(500);
 
             OrderFinalizedCts.CancelAfter(250);
-            return X509CertificateLoader.LoadCertificate(FakeCert.RawData.AsSpan());
+            var certificate = X509CertificateLoader.LoadCertificate(FakeCert.RawData.AsSpan());
+            var keyPem = existingKeyPem ?? ExportKeyPem(certificate);
+            var collection = new X509Certificate2Collection { certificate };
+            return (certificate, keyPem, collection);
+        }
+
+        private static string ExportKeyPem(X509Certificate2 certificate)
+        {
+            var rsa = certificate.GetRSAPrivateKey();
+            if (rsa != null)
+            {
+                return rsa.ExportRSAPrivateKeyPem();
+            }
+
+            var ecdsa = certificate.GetECDsaPrivateKey();
+            if (ecdsa != null)
+            {
+                return ecdsa.ExportECPrivateKeyPem();
+            }
+
+            return string.Empty;
         }
     }
 }
