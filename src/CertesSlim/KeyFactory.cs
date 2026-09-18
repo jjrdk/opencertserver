@@ -19,7 +19,7 @@ public static class KeyFactory
         switch (algorithm)
         {
             case SecurityAlgorithms.EcdsaSha256:
-                var jwk = new ECDsaSecurityKey(ECDsa.Create());
+                var jwk = new ECDsaSecurityKey(ECDsa.Create(ECCurve.NamedCurves.nistP256));
                 return new Key(SecurityAlgorithms.EcdsaSha256, jwk, HashAlgorithmName.SHA256);
             case SecurityAlgorithms.EcdsaSha384:
                 var ecdsa384Jwk = new ECDsaSecurityKey(ECDsa.Create(ECCurve.NamedCurves.nistP384));
