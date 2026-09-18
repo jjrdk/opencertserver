@@ -5,7 +5,6 @@
         <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
       <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
       <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
-      <Project Path="src\opencertserver.yarp.server\opencertserver.yarp.server.csproj" />
     </Folder>
   <Folder Name="/Solution Items/">
     <File Path="build.ps1" />
