@@ -68,4 +68,3 @@ public sealed class TpmCaCertificateStore
 
     private static string SubjectTag(string profileName) => $"{SubjectPrefix}{profileName}";
 }
-

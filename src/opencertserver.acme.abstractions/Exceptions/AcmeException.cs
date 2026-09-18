@@ -10,7 +10,9 @@ public abstract class AcmeException : Exception
     /// </summary>
     /// <param name="message">The message that describes the ACME error condition.</param>
     protected AcmeException(string message)
-        : base(message) { }
+        : base(message)
+    {
+    }
 
     /// <summary>
     /// Gets the base URN used when composing the ACME error type returned to clients.

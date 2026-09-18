@@ -60,5 +60,4 @@ public class Authorization
     /// </value>
     [JsonPropertyName("wildcard")]
     public bool? Wildcard { get; set; }
-
 }

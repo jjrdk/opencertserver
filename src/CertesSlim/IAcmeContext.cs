@@ -1,7 +1,6 @@
 ﻿namespace CertesSlim;
 
 using Directory = CertesSlim.Acme.Resource.Directory;
-
 using CertesSlim.Acme;
 using CertesSlim.Acme.Resource;
 using CertesSlim.Json;
@@ -11,7 +10,6 @@ using CertesSlim.Json;
 /// </summary>
 public interface IAcmeContext
 {
-
     /// <summary>
     /// Gets the number of retries on a badNonce error.
     /// </summary>
@@ -69,7 +67,12 @@ public interface IAcmeContext
     /// <returns>
     /// The account created.
     /// </returns>
-    Task<IAccountContext> NewAccount(IList<string> contact, bool termsOfServiceAgreed = false, string? eabKeyId = null, string? eabKey = null, string? eabKeyAlg = null);
+    Task<IAccountContext> NewAccount(
+        IList<string> contact,
+        bool termsOfServiceAgreed = false,
+        string? eabKeyId = null,
+        string? eabKey = null,
+        string? eabKeyAlg = null);
 
     /// <summary>
     /// Revokes the certificate.
@@ -80,7 +83,10 @@ public interface IAcmeContext
     /// <returns>
     /// The awaitable.
     /// </returns>
-    Task RevokeCertificate(Memory<byte> certificate, RevocationReason reason = RevocationReason.Unspecified, IKey? certificatePrivateKey = null);
+    Task RevokeCertificate(
+        Memory<byte> certificate,
+        RevocationReason reason = RevocationReason.Unspecified,
+        IKey? certificatePrivateKey = null);
 
     /// <summary>
     /// Changes the account key.
@@ -99,7 +105,11 @@ public interface IAcmeContext
     /// <returns>
     /// The order context created.
     /// </returns>
-    Task<IOrderContext> NewOrder(string? profile, IList<string> identifiers, DateTimeOffset? notBefore = null, DateTimeOffset? notAfter = null);
+    Task<IOrderContext> NewOrder(
+        string? profile,
+        IList<string> identifiers,
+        DateTimeOffset? notBefore = null,
+        DateTimeOffset? notAfter = null);
 
     /// <summary>
     /// Signs the data with account key.

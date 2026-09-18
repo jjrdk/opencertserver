@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Diagnostics;
@@ -28,6 +29,7 @@ public sealed class TbsDevice : Tpm2Device
         {
             _tbsHandle = h;
         }
+
         return _tbsHandle;
     }
 
@@ -111,14 +113,13 @@ public sealed class TbsDevice : Tpm2Device
         var resultBuf = new byte[4096];
         var resultByteCount = (uint)resultBuf.Length;
         var result = TpmRc.Success;
-        var tbsRes = TbsWrapper.NativeMethods.
-            Tbsip_Submit_Command(_tbsHandle,
-                (TbsWrapper.TbsCommandLocality)active.ActiveLocality,
-                active.ActivePriority,
-                inBuf,
-                (uint)inBuf.Length,
-                resultBuf,
-                ref resultByteCount);
+        var tbsRes = TbsWrapper.NativeMethods.Tbsip_Submit_Command(_tbsHandle,
+            (TbsWrapper.TbsCommandLocality)active.ActiveLocality,
+            active.ActivePriority,
+            inBuf,
+            (uint)inBuf.Length,
+            resultBuf,
+            ref resultByteCount);
         if (tbsRes == TbsWrapper.TbsResult.Success)
         {
             if (resultByteCount != 0)
@@ -127,6 +128,7 @@ public sealed class TbsDevice : Tpm2Device
                 Array.Copy(resultBuf, outBuf, (int)resultByteCount);
                 return;
             }
+
             result = TpmRc.TbsUnknownError;
         }
         else
@@ -165,6 +167,7 @@ public sealed class TbsDevice : Tpm2Device
             throw new Exception($"Tbsip_Cancel_Command() failed. Error {{{result}}}");
         }
     }
+
     private byte[] GetTpmAuth(TbsAuthType authType)
     {
 #if false
@@ -178,18 +181,18 @@ public sealed class TbsDevice : Tpm2Device
         //Console.WriteLine("GetTpmAuth: Retrieving auth value {0}", authType);
         var resultBuf = new byte[256];
         var resultByteCount = (uint)resultBuf.Length;
-        var result = TbsWrapper.NativeMethods.
-            Tbsi_Get_OwnerAuth(_tbsHandle,
-                (uint)authType,
-                resultBuf,
-                ref resultByteCount);
+        var result = TbsWrapper.NativeMethods.Tbsi_Get_OwnerAuth(_tbsHandle,
+            (uint)authType,
+            resultBuf,
+            ref resultByteCount);
         if (result != TbsWrapper.TbsResult.Success)
         {
 #if false
                 Console.WriteLine($"Trying to read LockoutAuth from the registry...");
                 try
                 {
-                    string lockoutAuthBase64 = (string)Registry.GetValue(@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TPM\WMI\Admin", "LockoutHash", null);
+                    string lockoutAuthBase64 =
+ (string)Registry.GetValue(@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TPM\WMI\Admin", "LockoutHash", null);
                     if (lockoutAuthBase64 != null)
                     {
                         resultBuf = Convert.FromBase64String(lockoutAuthBase64);
@@ -241,9 +244,9 @@ public enum TbsCommandPriority : uint
 
 public enum TbsAuthType : uint
 {
-    Lockout = 1,        // TBS_OWNERAUTH_TYPE_FULL
-    Endorsement = 12,   // TBS_OWNERAUTH_TYPE_ENDORSEMENT_20
-    Owner = 13          // TBS_OWNERAUTH_TYPE_STORAGE_20
+    Lockout = 1, // TBS_OWNERAUTH_TYPE_FULL
+    Endorsement = 12, // TBS_OWNERAUTH_TYPE_ENDORSEMENT_20
+    Owner = 13 // TBS_OWNERAUTH_TYPE_STORAGE_20
 }
 
 internal class TbsWrapper
@@ -266,7 +269,7 @@ internal class TbsWrapper
             UIntPtr hContext,
             uint ownerAuthType,
             [System.Runtime.InteropServices.MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 3), Out]
-            byte[]                  outBuf,
+            byte[] outBuf,
             ref uint outBufLen
             );
 
@@ -283,10 +286,10 @@ internal class TbsWrapper
             TbsCommandLocality locality,
             TbsCommandPriority priority,
             [System.Runtime.InteropServices.MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 4), In]
-            byte[]                  inBuffer,
+            byte[] inBuffer,
             uint inBufferSize,
             [System.Runtime.InteropServices.MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 6), Out]
-            byte[]                  outBuf,
+            byte[] outBuf,
             ref uint outBufLen
             );
 
@@ -295,7 +298,6 @@ internal class TbsWrapper
             Tbsip_Cancel_Commands(
             UIntPtr context
             );
-
     }
 
     public enum TbsResult : uint
@@ -458,6 +460,7 @@ public sealed class InprocTpm : Tpm2Device
         {
             return;
         }
+
         TpmDllWrapper.NativeMethods._plat__Signal_PowerOff();
         _powerIsOn = false;
     }
@@ -468,6 +471,7 @@ public sealed class InprocTpm : Tpm2Device
         {
             return;
         }
+
         TpmDllWrapper.NativeMethods._plat__Signal_PowerOn();
         TpmDllWrapper.NativeMethods._TPM_Init();
         TpmDllWrapper.NativeMethods._plat__SetNvAvail();
@@ -510,6 +514,7 @@ public sealed class InprocTpm : Tpm2Device
         {
             return;
         }
+
         if (assertPhysicalPresence)
         {
             TpmDllWrapper.NativeMethods._plat__Signal_PhysicalPresenceOn();
@@ -517,7 +522,6 @@ public sealed class InprocTpm : Tpm2Device
         else
         {
             TpmDllWrapper.NativeMethods._plat__Signal_PhysicalPresenceOff();
-
         }
     }
 
@@ -532,6 +536,7 @@ public sealed class InprocTpm : Tpm2Device
         {
             return;
         }
+
         TpmDllWrapper.NativeMethods._plat__SetCancel();
     }
 
@@ -541,6 +546,7 @@ public sealed class InprocTpm : Tpm2Device
         {
             return;
         }
+
         TpmDllWrapper.NativeMethods._plat__ClearCancel();
     }
 
@@ -550,6 +556,7 @@ public sealed class InprocTpm : Tpm2Device
         {
             return;
         }
+
         TpmDllWrapper.NativeMethods._plat__NVEnable(IntPtr.Zero);
     }
 
@@ -559,6 +566,7 @@ public sealed class InprocTpm : Tpm2Device
         {
             return;
         }
+
         TpmDllWrapper.NativeMethods._plat__NVDisable();
     }
 
@@ -568,6 +576,7 @@ public sealed class InprocTpm : Tpm2Device
         {
             return;
         }
+
         TpmDllWrapper.NativeMethods._plat__RsaKeyCacheControl(1);
     }
 
@@ -577,6 +586,7 @@ public sealed class InprocTpm : Tpm2Device
         {
             return;
         }
+
         TpmDllWrapper.NativeMethods._plat__RsaKeyCacheControl(0);
     }
 
@@ -586,6 +596,7 @@ public sealed class InprocTpm : Tpm2Device
         {
             return;
         }
+
         TpmDllWrapper.NativeMethods.Signal_Hash_Start();
     }
 
@@ -595,6 +606,7 @@ public sealed class InprocTpm : Tpm2Device
         {
             return;
         }
+
         TpmDllWrapper.NativeMethods.Signal_Hash_Data((uint)data.Length, data);
     }
 
@@ -604,6 +616,7 @@ public sealed class InprocTpm : Tpm2Device
         {
             return;
         }
+
         TpmDllWrapper.NativeMethods.Signal_Hash_End();
     }
 
@@ -619,6 +632,7 @@ public sealed class InprocTpm : Tpm2Device
             outBuf = [];
             return;
         }
+
         var respSize = _responseBufSize;
         var respBuf = _responseBuf;
 

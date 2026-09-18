@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Diagnostics;
@@ -54,6 +55,7 @@ public class Globs
         {
             ++bitIdx;
         }
+
         return byteIdx * 8 + bitIdx;
     }
 
@@ -71,6 +73,7 @@ public class Globs
                 return false;
             }
         }
+
         return true;
     }
 
@@ -86,34 +89,42 @@ public class Globs
         {
             return [(byte)o];
         }
+
         if (t == typeof(ushort))
         {
             return BitConverter.GetBytes((ushort)o);
         }
+
         if (t == typeof(uint))
         {
             return BitConverter.GetBytes((uint)o);
         }
+
         if (t == typeof(ulong))
         {
             return BitConverter.GetBytes((ulong)o);
         }
+
         if (t == typeof(short))
         {
             return BitConverter.GetBytes((short)o);
         }
+
         if (t == typeof(int))
         {
             return BitConverter.GetBytes((int)o);
         }
+
         if (t == typeof(long))
         {
             return BitConverter.GetBytes((long)o);
         }
+
         if (t == typeof(sbyte))
         {
             return [(byte)(sbyte)o];
         }
+
         // Unsupported type
         Debug.Assert(false);
         return null;
@@ -125,6 +136,7 @@ public class Globs
         {
             throw new ArgumentException($"Globs.NetToHost8: Wrong input buffer length {x.Length}");
         }
+
         return x[7] + (x[6] << 8) + (x[5] << 16) + (x[4] << 24) +
             (x[3] << 32) + (x[2] << 40) + (x[1] << 48) + (x[0] << 56);
     }
@@ -135,6 +147,7 @@ public class Globs
         {
             throw new ArgumentException($"Globs.NetToHost8U: Wrong input buffer length {x.Length}");
         }
+
         return x[7] + ((ulong)x[6] << 8) + ((ulong)x[5] << 16) + ((ulong)x[4] << 24) +
             ((ulong)x[3] << 32) + ((ulong)x[2] << 40) + ((ulong)x[1] << 48) + ((ulong)x[0] << 56);
     }
@@ -145,6 +158,7 @@ public class Globs
         {
             throw new ArgumentException($"Globs.NetToHost4: Wrong input buffer length {x.Length}");
         }
+
         return x[3] + (x[2] << 8) + (x[1] << 16) + (x[0] << 24);
     }
 
@@ -154,6 +168,7 @@ public class Globs
         {
             throw new ArgumentException($"Globs.NetToHost4U: Wrong input buffer length {x.Length}");
         }
+
         return x[3] + (uint)(x[2] << 8) + (uint)(x[1] << 16) + (uint)(x[0] << 24);
     }
 
@@ -163,6 +178,7 @@ public class Globs
         {
             throw new ArgumentException($"Globs.NetToHost2: Wrong input buffer length {x.Length}");
         }
+
         return (short)(x[1] + (x[0] << 8));
     }
 
@@ -172,6 +188,7 @@ public class Globs
         {
             throw new ArgumentException($"Globs.NetToHost2U: Wrong input buffer length {x.Length}");
         }
+
         return (ushort)(x[1] + (x[0] << 8));
     }
 
@@ -181,10 +198,12 @@ public class Globs
         {
             return NetToHost2U(x);
         }
+
         if (x.Length == 4)
         {
             return NetToHost4U(x);
         }
+
         throw new ArgumentException($"Globs.NetToHostVar(): Unsupported array length {x.Length}");
     }
 
@@ -194,34 +213,42 @@ public class Globs
         {
             return data[0];
         }
+
         if (t == typeof(ushort))
         {
             return NetToHost2U(data);
         }
+
         if (t == typeof(uint))
         {
             return NetToHost4U(data);
         }
+
         if (t == typeof(ulong))
         {
             return NetToHost8U(data);
         }
+
         if (t == typeof(short))
         {
             return NetToHost2(data);
         }
+
         if (t == typeof(int))
         {
             return NetToHost4(data);
         }
+
         if (t == typeof(long))
         {
             return NetToHost8(data);
         }
+
         if (t == typeof(sbyte))
         {
             return (sbyte)data[0];
         }
+
         // Unsupported type
         throw new ArgumentException($"Globs.NetToHostValue(): Unsupported type {t}");
     }
@@ -234,34 +261,42 @@ public class Globs
         {
             return data[0];
         }
+
         if (t == typeof(ushort))
         {
             return BitConverter.ToUInt16(data, 0);
         }
+
         if (t == typeof(uint))
         {
             return BitConverter.ToUInt32(data, 0);
         }
+
         if (t == typeof(ulong))
         {
             return BitConverter.ToUInt64(data, 0);
         }
+
         if (t == typeof(short))
         {
             return BitConverter.ToInt16(data, 0);
         }
+
         if (t == typeof(int))
         {
             return BitConverter.ToInt32(data, 0);
         }
+
         if (t == typeof(long))
         {
             return BitConverter.ToInt64(data, 0);
         }
+
         if (t == typeof(sbyte))
         {
             return (sbyte)data[0];
         }
+
         // Unsupported type
         throw new ArgumentException($"Globs.FromBytes(): Unsupported type {t}");
     }
@@ -274,18 +309,22 @@ public class Globs
         {
             return sizeof(byte);
         }
+
         if (t == typeof(ushort) || t == typeof(short))
         {
             return sizeof(ushort);
         }
+
         if (t == typeof(uint) || t == typeof(int))
         {
             return sizeof(uint);
         }
+
         if (t == typeof(ulong) || t == typeof(long))
         {
             return sizeof(ulong);
         }
+
         // Unsupported type
         throw new ArgumentException($"Globs.SizeOf(): Unsupported type {t}");
     }
@@ -335,6 +374,7 @@ public class Globs
                 hexString = hexString.Replace(" ", "");
             } while (lastLen != hexString.Length);
         }
+
         var res = new byte[1 + (hexString.Length - 1) / 2];
         var temp = hexString;
         if ((temp.Length / 2) * 2 != temp.Length)
@@ -349,6 +389,7 @@ public class Globs
             res[posx] = (byte)(HexNibbleToInt(temp[pos++]) << 4);
             res[posx] |= (byte)HexNibbleToInt(temp[pos++]);
         }
+
         return res;
     }
 
@@ -381,14 +422,20 @@ public class Globs
 
                 continue;
             }
+
             s.AppendFormat("{0:x2}", b[j]);
         }
+
         return s.ToString();
     }
 
-    public static string FormatBytes(string label, byte[] buf,
-        int bytesPerRow = 16, string separator = " ",
-        string linePrefix = "    ", string lineSuffix = "")
+    public static string FormatBytes(
+        string label,
+        byte[] buf,
+        int bytesPerRow = 16,
+        string separator = " ",
+        string linePrefix = "    ",
+        string lineSuffix = "")
     {
         if (buf == null || buf.Length == 0)
         {
@@ -421,8 +468,10 @@ public class Globs
                     res += separator;
                 }
             }
+
             res += lineSuffix + eol;
         }
+
         return res;
     }
 
@@ -433,6 +482,7 @@ public class Globs
         {
             x[j] = val;
         }
+
         return x;
     }
 
@@ -442,10 +492,12 @@ public class Globs
         {
             return c - '0';
         }
+
         if (char.ToLower(c) >= 'a' && char.ToLower(c) <= 'f')
         {
             return 10 + char.ToLower(c) - 'a';
         }
+
         throw new ArgumentException($"Character + {c}is not hex");
     }
 
@@ -459,6 +511,7 @@ public class Globs
                 return false;
             }
         }
+
         // Rest of the other array must be all zeros
         if (a1.Length > a2.Length)
         {
@@ -470,6 +523,7 @@ public class Globs
                 }
             }
         }
+
         if (a2.Length > a1.Length)
         {
             for (var j = 0; j < a2.Length - a1.Length; j++)
@@ -480,6 +534,7 @@ public class Globs
                 }
             }
         }
+
         return true;
     }
 
@@ -506,10 +561,12 @@ public class Globs
         {
             return null;
         }
+
         if (len == -1)
         {
             len = from.Length - start;
         }
+
         var to = new byte[len];
         Array.Copy(from, start, to, 0, len);
         return to;
@@ -521,6 +578,7 @@ public class Globs
         {
             return false;
         }
+
         return !a1.Cast<object>().Where((t, j) => !a1.GetValue(j).Equals(a2.GetValue(j))).Any();
     }
 
@@ -530,6 +588,7 @@ public class Globs
         {
             return null;
         }
+
         var to = new ElementType[from.Length];
         Array.Copy(from, to, from.Length);
         return to;
@@ -543,6 +602,7 @@ public class Globs
         {
             dstList.Add(conv(elt));
         }
+
         return dstList;
     }
 
@@ -562,9 +622,11 @@ public class Globs
             {
                 continue;
             }
+
             Array.Copy(t, 0, temp, pos, t.Length);
             pos += t.Length;
         }
+
         return temp;
     }
 
@@ -582,6 +644,7 @@ public class Globs
         {
             throw new ArgumentException("ShiftRightInternal: Can only shift up to 7 bits");
         }
+
         var numCarryBits = 8 - numBits;
         var y = new byte[x.Length];
         for (var j = x.Length - 1; j >= 0; j--)
@@ -592,6 +655,7 @@ public class Globs
                 y[j] |= (byte)(x[j - 1] << numCarryBits);
             }
         }
+
         return y;
     }
 
@@ -610,6 +674,7 @@ public class Globs
         {
             b2[j] = b[len - 1 - j];
         }
+
         return b2;
     }
 
@@ -641,11 +706,13 @@ public class Globs
             var thisAsm = typeof(Globs).GetTypeInfo().Assembly;
             _resMgr = new ResourceManager("Tpm2Lib.Messages", thisAsm);
         }
+
         // We use *message to avoid the lookup for use of strings in internal debugging
         if (!IsAlphanumeric(name))
         {
             return name;
         }
+
         try
         {
             var res = _resMgr.GetString(name);
@@ -667,6 +734,7 @@ public class Globs
                 return false;
             }
         }
+
         return true;
     }
 
@@ -676,21 +744,82 @@ public class Globs
         {
             typeName = typeName[..^2];
         }
-        if (typeName == "bool") { return "bool"; }
-        if (typeName == "Byte") { return "byte"; }
-        if (typeName == "SByte") { return "sbyte"; }
-        if (typeName == "Char") { return "char"; }
-        if (typeName == "Decimal") { return "decimal"; }
-        if (typeName == "Double") { return "double"; }
-        if (typeName == "Single") { return "float"; }
-        if (typeName == "Int32") { return "int"; }
-        if (typeName == "UInt32") { return "uint"; }
-        if (typeName == "Int64") { return "long"; }
-        if (typeName == "UInt64") { return "ulong"; }
-        if (typeName == "Object") { return "object"; }
-        if (typeName == "Int16") { return "short"; }
-        if (typeName == "UInt16") { return "ushort"; }
-        if (typeName == "String") { return "string"; }
+
+        if (typeName == "bool")
+        {
+            return "bool";
+        }
+
+        if (typeName == "Byte")
+        {
+            return "byte";
+        }
+
+        if (typeName == "SByte")
+        {
+            return "sbyte";
+        }
+
+        if (typeName == "Char")
+        {
+            return "char";
+        }
+
+        if (typeName == "Decimal")
+        {
+            return "decimal";
+        }
+
+        if (typeName == "Double")
+        {
+            return "double";
+        }
+
+        if (typeName == "Single")
+        {
+            return "float";
+        }
+
+        if (typeName == "Int32")
+        {
+            return "int";
+        }
+
+        if (typeName == "UInt32")
+        {
+            return "uint";
+        }
+
+        if (typeName == "Int64")
+        {
+            return "long";
+        }
+
+        if (typeName == "UInt64")
+        {
+            return "ulong";
+        }
+
+        if (typeName == "Object")
+        {
+            return "object";
+        }
+
+        if (typeName == "Int16")
+        {
+            return "short";
+        }
+
+        if (typeName == "UInt16")
+        {
+            return "ushort";
+        }
+
+        if (typeName == "String")
+        {
+            return "string";
+        }
+
         return typeName;
     }
 
@@ -714,6 +843,7 @@ public class Globs
         {
             return propertyInfo.PropertyType;
         }
+
         return null;
     }
 
@@ -734,6 +864,7 @@ public class Globs
         {
             return propertyInfo.GetValue(containingObject);
         }
+
         return null;
     }
 
@@ -795,7 +926,8 @@ public class Globs
                 else if (ls == 1)
                 {
                     ulong k = 1;
-                    do ++k; while (k < P && k * k % P != A % P);
+                    do ++k;
+                    while (k < P && k * k % P != A % P);
                     if (k >= P)
                     {
                         return false;
@@ -812,6 +944,7 @@ public class Globs
                 }
             }
         }
+
         return true;
     }
 
@@ -826,8 +959,11 @@ public class Globs
             y = _y;
         }
 
-        internal static Fp2Point Mul(Fp2Point a, Fp2Point b,
-            BigInteger p, BigInteger w2)
+        internal static Fp2Point Mul(
+            Fp2Point a,
+            Fp2Point b,
+            BigInteger p,
+            BigInteger w2)
         {
             return new Fp2Point((a.x * b.x + a.y * b.y * w2) % p,
                 (a.x * b.y + b.x * a.y) % p);
@@ -843,7 +979,7 @@ public class Globs
     public static BigInteger ModSqrt(BigInteger N, BigInteger p)
     {
         BigInteger a = 0,
-                    w2 = 0;
+                   w2 = 0;
         BigInteger ls = 0;
 
         // Pick up any value 'a' such that 'w^2 = a^2 - N' is a non-quadratic
@@ -864,6 +1000,7 @@ public class Globs
             {
                 r = Fp2Point.Mul(r, s, p, w2);
             }
+
             s = Fp2Point.Mul(s, s, p, w2);
         }
 
@@ -880,7 +1017,6 @@ public class Globs
 
         return r.x;
     } // ModSqrt
-
 } // class Globs
 
 public static class ExtensionMethods

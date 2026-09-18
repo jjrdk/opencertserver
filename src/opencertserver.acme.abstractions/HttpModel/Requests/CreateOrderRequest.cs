@@ -14,14 +14,17 @@ public sealed class CreateOrderRequest
     /// Gets or sets the list of identifiers for the order.
     /// </summary>
     public List<Identifier>? Identifiers { get; set; }
+
     /// <summary>
     /// Gets or sets the requested certificate profile, if any.
     /// </summary>
     public string? Profile { get; set; }
+
     /// <summary>
     /// Gets or sets the not-before date/time for the requested certificate, if any.
     /// </summary>
     public DateTimeOffset? NotBefore { get; set; }
+
     /// <summary>
     /// Gets or sets the not-after date/time for the requested certificate, if any.
     /// </summary>

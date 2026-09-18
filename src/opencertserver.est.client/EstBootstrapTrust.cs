@@ -34,6 +34,3 @@ public sealed class EstBootstrapTrust
     /// </summary>
     public IReadOnlyList<string> Fingerprints { get; }
 }
-
-
-

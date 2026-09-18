@@ -295,13 +295,15 @@ internal static partial class Program
                 case "server-auth":
                 case "tlsserver":
                 case "tls-server":
-                    oids.Add(Oids.ServerAuthenticationPurpose.InitializeOid(Oids.ServerAuthenticationPurposeFriendlyName));
+                    oids.Add(Oids.ServerAuthenticationPurpose.InitializeOid(
+                        Oids.ServerAuthenticationPurposeFriendlyName));
                     break;
                 case "clientauth":
                 case "client-auth":
                 case "tlsclient":
                 case "tls-client":
-                    oids.Add(Oids.ClientAuthenticationPurpose.InitializeOid(Oids.ClientAuthenticationPurposeFriendlyName));
+                    oids.Add(Oids.ClientAuthenticationPurpose.InitializeOid(
+                        Oids.ClientAuthenticationPurposeFriendlyName));
                     break;
                 case "emailprotection":
                 case "email-protection":

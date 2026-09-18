@@ -4,7 +4,6 @@ namespace OpenCertServer.Acme.Abstractions.Model;
 
 using CertesSlim.Acme.Resource;
 using OpenCertServer.Acme.Abstractions.Exceptions;
-
 using System;
 using System.Collections.Generic;
 

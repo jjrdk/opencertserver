@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Collections;
@@ -27,6 +28,7 @@ public partial class TpmHash
             {
                 throw new ArgumentException("TpmHash.HashAlg: Invalid hash alg ID");
             }
+
             hashAlg = value;
             digest = new byte[CryptoLib.DigestSize(hashAlg)];
         }
@@ -44,6 +46,7 @@ public partial class TpmHash
             {
                 throw new Exception("TpmHash.HashData: Inconsistent data length");
             }
+
             return digest;
         }
         set
@@ -52,6 +55,7 @@ public partial class TpmHash
             {
                 throw new ArgumentException("TpmHash.HashData: Incorrect data length");
             }
+
             digest = Globs.CopyData(value);
         }
     }
@@ -59,7 +63,10 @@ public partial class TpmHash
     /// <summary>
     /// Get the number of bytes of the hash output
     /// </summary>
-    public int Length { get { return digest.Length; } }
+    public int Length
+    {
+        get { return digest.Length; }
+    }
 
     /// <summary>
     /// Create an all-zeroes TpmHash with the named hash algorithm
@@ -142,7 +149,8 @@ public partial class TpmHash
     /// <returns></returns>
     public static bool operator ==(TpmHash? lhs, TpmHash? rhs)
     {
-        return (object)lhs == null ? (object)rhs == null
+        return (object)lhs == null
+            ? (object)rhs == null
             : (object)rhs != null &&
             (lhs.hashAlg == TpmAlgId.None || rhs.hashAlg == TpmAlgId.None ||
                 lhs.hashAlg == rhs.hashAlg) &&
@@ -202,6 +210,7 @@ public partial class TpmHash
         {
             bb[j] = 0xFF;
         }
+
         return new TpmHash(alg, bb);
     }
 
@@ -217,6 +226,7 @@ public partial class TpmHash
         {
             throw new ArgumentException("TpmHash.FromData: Not a hash algorithm");
         }
+
         return new TpmHash(hashAlg, CryptoLib.HashData(hashAlg, dataToHash));
     }
 
@@ -231,6 +241,7 @@ public partial class TpmHash
         {
             throw new ArgumentException("TpmHash.FromRandom: Not a hash algorithm");
         }
+
         return new TpmHash(hashAlg, CryptoLib.HashData(hashAlg, Globs.GetRandomBytes(
             DigestSize(hashAlg))));
     }
@@ -247,6 +258,7 @@ public partial class TpmHash
         {
             throw new ArgumentException("TpmHash.FromString: Not a hash algorithm");
         }
+
         return new TpmHash(hashAlg, CryptoLib.HashData(hashAlg, Encoding.Unicode.GetBytes(message)));
     }
 
@@ -391,7 +403,8 @@ public class AuthValue : TpmStructureBase
     /// <returns></returns>
     public static bool operator ==(AuthValue lhs, AuthValue rhs)
     {
-        return (object)lhs == null ? (object)rhs == null
+        return (object)lhs == null
+            ? (object)rhs == null
             : (object)rhs != null &&
             Globs.ArraysAreEqual(lhs.AuthVal, rhs.AuthVal);
     }
@@ -445,6 +458,7 @@ public class AuthValue : TpmStructureBase
         {
             trial = Globs.GetRandomBytes(numBytes);
         } while (trial[numBytes - 1] == 0);
+
         return new AuthValue(trial);
     }
 
@@ -488,7 +502,10 @@ public class TpmHandleX
 {
     internal TpmHandle Handle;
 
-    public TpmHandleX(TpmHandle h) { Handle = h; }
+    public TpmHandleX(TpmHandle h)
+    {
+        Handle = h;
+    }
 
     public byte[] Name
     {
@@ -502,8 +519,15 @@ public class TpmHandleX
         set { Handle.Auth = value; }
     }
 
-    public static implicit operator TpmHandleX(TpmHandle from) { return new TpmHandleX(from); }
-    public static implicit operator TpmHandle(TpmHandleX from) { return from.Handle; }
+    public static implicit operator TpmHandleX(TpmHandle from)
+    {
+        return new TpmHandleX(from);
+    }
+
+    public static implicit operator TpmHandle(TpmHandleX from)
+    {
+        return from.Handle;
+    }
 }
 
 #if false
@@ -594,12 +618,14 @@ public partial class TpmHandle
                 tpm.NvReadPublic(this, out _Name);
                 return _Name;
             }
+
             if (ht is Ht.Transient or Ht.Persistent)
             {
                 tpm.ReadPublic(this, out _Name, out _);
                 return _Name;
             }
         }
+
         return GetName();
     }
 
@@ -649,14 +675,8 @@ public partial class TpmHandle
     /// </summary>
     public byte[]? Auth
     {
-        get
-        {
-            return _AuthValue;
-        }
-        set
-        {
-            _AuthValue = Globs.CopyData(value);
-        }
+        get { return _AuthValue; }
+        set { _AuthValue = Globs.CopyData(value); }
     }
 
     /// <summary>
@@ -665,7 +685,8 @@ public partial class TpmHandle
     /// <param name="reservedHandle"></param>
     public TpmHandle(TpmRh reservedHandle)
         : this((uint)reservedHandle)
-    { }
+    {
+    }
 
     /// <summary>
     /// Create a handle of the given type with the given uint index (in the range
@@ -675,7 +696,8 @@ public partial class TpmHandle
     /// <param name="index"></param>
     public TpmHandle(Ht handleType, uint index)
         : this(((uint)handleType << 24) + index)
-    { }
+    {
+    }
 
     /// <summary>
     /// Create a handle of the given type with the given uint index (in the range
@@ -685,7 +707,8 @@ public partial class TpmHandle
     /// <param name="index"></param>
     public TpmHandle(Ht handleType, int index)
         : this(((uint)handleType << 24) + (uint)index)
-    { }
+    {
+    }
 
     /// <summary>
     /// Returns true if the two arguments either are both null references or
@@ -696,7 +719,8 @@ public partial class TpmHandle
     /// <returns></returns>
     public static bool operator ==(TpmHandle? lhs, TpmHandle? rhs)
     {
-        return (object)lhs == null ? (object)rhs == null
+        return (object)lhs == null
+            ? (object)rhs == null
             : (object)rhs != null && (lhs.handle == rhs.handle);
     }
 
@@ -741,6 +765,7 @@ public partial class TpmHandle
                 CryptoLib.HashData(pub.nameAlg, [runningName, thisName])
             );
         }
+
         return runningName;
     }
 
@@ -861,6 +886,7 @@ public partial class TpmHandle
         {
             return 0x00FFFFFF;
         }
+
         return 1U << 24;
     }
 
@@ -869,21 +895,45 @@ public partial class TpmHandle
         return new TpmHandle(reservedHandle);
     }
 
-    static public TpmHandle RhOwner { get { return new TpmHandle(TpmRh.Owner); } }
+    static public TpmHandle RhOwner
+    {
+        get { return new TpmHandle(TpmRh.Owner); }
+    }
 
-    public static TpmHandle RhNull { get { return new TpmHandle(TpmRh.Null); } }
+    public static TpmHandle RhNull
+    {
+        get { return new TpmHandle(TpmRh.Null); }
+    }
 
-    public static TpmHandle RhPlatform { get { return new TpmHandle(TpmRh.Platform); } }
+    public static TpmHandle RhPlatform
+    {
+        get { return new TpmHandle(TpmRh.Platform); }
+    }
 
-    public static TpmHandle RhPlatformNv { get { return new TpmHandle(TpmRh.PlatformNv); } }
+    public static TpmHandle RhPlatformNv
+    {
+        get { return new TpmHandle(TpmRh.PlatformNv); }
+    }
 
-    public static TpmHandle RhEndorsement { get { return new TpmHandle(TpmRh.Endorsement); } }
+    public static TpmHandle RhEndorsement
+    {
+        get { return new TpmHandle(TpmRh.Endorsement); }
+    }
 
-    public static TpmHandle RhLockout { get { return new TpmHandle(TpmRh.Lockout); } }
+    public static TpmHandle RhLockout
+    {
+        get { return new TpmHandle(TpmRh.Lockout); }
+    }
 
-    public static TpmHandle RhInvalid { get { return new TpmHandle(uint.MaxValue); } }
+    public static TpmHandle RhInvalid
+    {
+        get { return new TpmHandle(uint.MaxValue); }
+    }
 
-    public static TpmHandle RhAct0 { get { return new TpmHandle(TpmRh.Act0); } }
+    public static TpmHandle RhAct0
+    {
+        get { return new TpmHandle(TpmRh.Act0); }
+    }
 
     internal static bool IsNull(TpmHandle h)
     {
@@ -999,6 +1049,7 @@ public partial class PcrSelect
                 ret[c2++] = (int)j;
             }
         }
+
         return ret;
     }
 } // partial class PcrSelect
@@ -1041,6 +1092,7 @@ public partial class PcrSelection
             {
                 PcrCount = MaxPcrs;
             }
+
             pcrSelect = new byte[(PcrCount + 7) / 8];
         }
         else
@@ -1056,7 +1108,12 @@ public partial class PcrSelection
         FinishInit();
         var res = false;
         pcrSelect = pcrSelect.Zip(rhs.pcrSelect,
-                (x, y) => { x &= (byte)~y; res |= x != 0; return x; })
+                (x, y) =>
+                {
+                    x &= (byte)~y;
+                    res |= x != 0;
+                    return x;
+                })
             .ToArray();
         return res;
     }
@@ -1083,6 +1140,7 @@ public partial class PcrSelection
         {
             pcrs[i] = (uint)i;
         }
+
         return new PcrSelection(hashAlg, pcrs, pcrCount);
     }
 
@@ -1094,6 +1152,7 @@ public partial class PcrSelection
         {
             allBanks[i++] = FullPcrBank(hashAlg, pcrCount == 0 ? MaxPcrs : pcrCount);
         }
+
         return allBanks;
     }
 
@@ -1148,6 +1207,7 @@ public partial class PcrSelection
                 ++count;
             }
         }
+
         return count;
     }
 
@@ -1162,6 +1222,7 @@ public partial class PcrSelection
                 selectedPcr[count++] = i;
             }
         }
+
         return selectedPcr;
     }
 } // partial class PcrSelection
@@ -1171,17 +1232,13 @@ public partial class PcrValue
     // PcrValue contains {uint Index, TpmHash Value}
     public TpmAlgId AlgId
     {
-        get
-        {
-            return value.HashAlg;
-        }
+        get { return value.HashAlg; }
     }
 
     public TpmHash Event(byte[] dataToExtend)
     {
         return value.Event(dataToExtend);
     }
-
 }
 
 /// <summary>
@@ -1239,12 +1296,14 @@ public class PcrValueCollection : TpmStructureBase
                 referencedAlgs.Add(v.value.HashAlg);
             }
         }
+
         var selection = new PcrSelection[referencedAlgs.Count];
         var count = 0;
         foreach (var algId in referencedAlgs)
         {
             selection[count++] = new PcrSelection(algId, new uint[0]);
         }
+
         uint bankNum = 0;
         foreach (var algId in referencedAlgs)
         {
@@ -1254,16 +1313,20 @@ public class PcrValueCollection : TpmStructureBase
                 {
                     continue;
                 }
+
                 // Do we already have a PcrValue with the same {alg, pcrNum?}
                 if (selection[bankNum].IsPcrSelected(val.index))
                 {
                     throw new Exception("PcrValueCollection.GetPcrSelectionArray: PCR is referenced more than once");
                 }
+
                 // Else select it
                 selection[bankNum].SelectPcr(val.index);
             }
+
             bankNum++;
         }
+
         return selection;
     }
 
@@ -1296,6 +1359,7 @@ public class PcrValueCollection : TpmStructureBase
                 m.Put(v.value.HashData, "hash");
             }
         }
+
         var valueHash = new TpmHash(hashAlg, CryptoLib.HashData(hashAlg, m.GetBytes()));
         return valueHash;
     }
@@ -1309,6 +1373,7 @@ public class PcrValueCollection : TpmStructureBase
                 return v;
             }
         }
+
         throw new Exception("PcrValueCollection.GetSpecificValue: PCR not found");
     }
 }
@@ -1323,7 +1388,8 @@ public partial class Attest
 
 public partial class SymDef : TpmStructureBase
 {
-    [Obsolete("Use 'new SymDef()' for TpmAlgId.Null params or 'new SymDef(TpmAlgId alg, ushort keyBits, TpmAlgId mode)' otherwise")]
+    [Obsolete(
+        "Use 'new SymDef()' for TpmAlgId.Null params or 'new SymDef(TpmAlgId alg, ushort keyBits, TpmAlgId mode)' otherwise")]
     public SymDef(TpmAlgId theAlg, TpmAlgId hmacHash)
     {
         Algorithm = theAlg;
@@ -1394,6 +1460,7 @@ public partial class SymDefObject : IPublicParmsUnion
         {
             return null;
         }
+
         return Marshaller.FromTpmRepresentation<SymDef>(Marshaller.GetTpmRepresentation(src));
     }
 
@@ -1408,6 +1475,7 @@ public partial class SymDefObject : IPublicParmsUnion
         {
             return null;
         }
+
         return Marshaller.FromTpmRepresentation<SymDefObject>(Marshaller.GetTpmRepresentation(src));
     }
 
@@ -1422,11 +1490,13 @@ public partial class SymDefObject : IPublicParmsUnion
         {
             throw new NotImplementedException("SymDefObject.ToNet: XOR is not supported");
         }
+
         m.Put(Algorithm, "algorithm");
         if (Algorithm is TpmAlgId.None or TpmAlgId.Null)
         {
             return;
         }
+
         m.Put(KeyBits, "keyBits");
         m.Put(Mode, "mode");
     }
@@ -1438,6 +1508,7 @@ public partial class SymDefObject : IPublicParmsUnion
         {
             return;
         }
+
         KeyBits = (ushort)m.Get(typeof(ushort), "keyBits");
         Mode = (TpmAlgId)m.Get(typeof(TpmAlgId), "mode");
     }
@@ -1471,7 +1542,8 @@ public partial class EccPoint
     /// <param name="rhs">Right-hand side operand</param>
     public static bool operator ==(EccPoint? lhs, EccPoint? rhs)
     {
-        return (object)lhs == null ? (object)rhs == null
+        return (object)lhs == null
+            ? (object)rhs == null
             : (object)rhs != null &&
             Globs.ArraysAreEqual(lhs.x, rhs.x) &&
             Globs.ArraysAreEqual(lhs.y, rhs.y);

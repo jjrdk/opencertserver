@@ -33,4 +33,3 @@ public interface IStoreExternalAccountKeys
     /// <returns>The active external account key, or null.</returns>
     Task<ExternalAccountKey?> FindActiveKey(string keyId, CancellationToken cancellationToken);
 }
-

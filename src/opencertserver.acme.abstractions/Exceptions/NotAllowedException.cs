@@ -10,5 +10,6 @@ public sealed class NotAllowedException : MalformedRequestException
     /// </summary>
     public NotAllowedException()
         : base("The requested resoruce may not be accessed.")
-    { }
+    {
+    }
 }

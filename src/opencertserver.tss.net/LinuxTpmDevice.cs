@@ -1,7 +1,8 @@
-/* 
+/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
+
 #if WINDOWS_UWP
 #else
 #endif
@@ -29,35 +30,45 @@ internal class AbrmdWrapper
         string cfg
         );
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi/*, Pack = 8*/)]
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi /*, Pack = 8*/)]
     public class TctiProvInfo
     {
         public uint version;
+
         [Interop.MarshalAs(UnmanagedType.LPStr)]
         public string name;
+
         [Interop.MarshalAs(UnmanagedType.LPStr)]
         public string descr;
+
         [Interop.MarshalAs(UnmanagedType.LPStr)]
         public string help;
+
         public tcti_init_fn init;
     };
 
-    public delegate TpmRc transmit_fn(IntPtr ctx,
+    public delegate TpmRc transmit_fn(
+        IntPtr ctx,
         ulong cmd_size,
         [Interop.MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1), In]
         byte[] command);
-    public delegate TpmRc receive_fn(IntPtr ctx,
+
+    public delegate TpmRc receive_fn(
+        IntPtr ctx,
         ref ulong resp_size,
         [Interop.MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1), Out]
         byte[] response,
         int timeout);
+
     public delegate void finalize_fn(IntPtr ctx);
 
     public delegate TpmRc cancel_fn(IntPtr ctx);
+
     public delegate TpmRc getPollHandles_fn(IntPtr ctx, IntPtr handles, ref uint num_handles);
+
     public delegate TpmRc setLocality_fn(IntPtr ctx, byte locality);
 
-    [StructLayout(LayoutKind.Sequential/*, Pack = 8*/)]
+    [StructLayout(LayoutKind.Sequential /*, Pack = 8*/)]
     public class TctiContext
     {
         public ulong magic;
@@ -158,7 +169,8 @@ public sealed class LinuxTpmDevice : Tpm2Device
                 // If the first attempt to connect was to the kernel mode TRM,
                 // then try to connect to the raw TPM device, and vice versa.
                 _tpmDevicePath = _tpmDevicePath.Contains("/dev/tpmrm")
-                    ? _tpmDevicePath.Replace("/dev/tpmrm", "/dev/tpm") : "/dev/tpmrm0";
+                    ? _tpmDevicePath.Replace("/dev/tpmrm", "/dev/tpm")
+                    : "/dev/tpmrm0";
                 try
                 {
                     Connect();
@@ -173,6 +185,7 @@ public sealed class LinuxTpmDevice : Tpm2Device
                 }
             }
         }
+
         Close();
     }
 
@@ -298,6 +311,7 @@ public sealed class LinuxTpmDevice : Tpm2Device
                 _tpmIO.Dispose();
                 _tpmIO = null;
             }
+
             if (TrmDevice != null)
             {
                 TrmDevice.Dispose();

@@ -5,11 +5,13 @@
 // TPM Commands.  All commands acknowledge processing by returning a UINT32 == 0.
 // RemoteHandshake also returns information about the target TPM, and SendCommand
 // returns the TPM response BYTE array.
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+
 #if !TSS_NO_TCP
 public enum TcpTpmCommands
 {
@@ -28,6 +30,7 @@ public enum TcpTpmCommands
     SignalKeyCacheOn = 13,
     SignalKeyCacheOff = 14,
     RemoteHandshake = 15,
+
     //SetAlternativeResult = 16,    // Not used since 1.38h
     SessionEnd = 20,
     Stop = 21,
@@ -111,6 +114,7 @@ public sealed class TpmPassThroughDevice : Tpm2Device
                 inBuf = tempInBuf;
             }
         }
+
         Device.DispatchCommand(active, inBuf, out outBuf);
         if (CommandCallbacks != null)
         {
@@ -174,14 +178,8 @@ public sealed class TpmPassThroughDevice : Tpm2Device
 
     public new bool NeedsHMAC
     {
-        get
-        {
-            return Device.NeedsHMAC;
-        }
-        set
-        {
-            Device.NeedsHMAC = value;
-        }
+        get { return Device.NeedsHMAC; }
+        set { Device.NeedsHMAC = value; }
     }
 
     public override bool ImplementsPhysicalPresence()
@@ -305,13 +303,17 @@ public sealed class TcpTpmDevice : Tpm2Device
     private const int ClientVersion = 1;
 
     private NetworkStream CommandStream = null,
-                            PlatformStream = null;
+                          PlatformStream = null;
+
     private TcpClient CommandClient = null,
-                            PlatformClient = null;
+                      PlatformClient = null;
+
     private readonly string ServerName;
     private readonly int CommandServerPort;
     private readonly int PlatformServerPort;
+
     private int SocketTimeout = -1;
+
     // Combination of TpmEndPointInfo flags
     private int TpmEndPtInfo;
     private readonly bool StopTpm;
@@ -327,15 +329,18 @@ public sealed class TcpTpmDevice : Tpm2Device
     /// <param name="serverName"></param>
     /// <param name="serverPort"></param>
     /// <param name="stopTpm"></param>
-    public TcpTpmDevice(string serverName, int serverPort,
-        bool stopTpm = false, bool linuxTrm = false)
+    public TcpTpmDevice(
+        string serverName,
+        int serverPort,
+        bool stopTpm = false,
+        bool linuxTrm = false)
     {
         ServerName = serverName;
         CommandServerPort = serverPort;
         PlatformServerPort = serverPort + 1;
         StopTpm = stopTpm;
         LinuxTrm = linuxTrm;
-        OldTrm = true;  // Start checking with the old version (if necessary at all)
+        OldTrm = true; // Start checking with the old version (if necessary at all)
     }
 
     /// <summary>
@@ -343,15 +348,19 @@ public sealed class TcpTpmDevice : Tpm2Device
     /// Use this when the command and platform ports are mapped independently (e.g.
     /// when using Testcontainers where each port gets a distinct random host port).
     /// </summary>
-    public TcpTpmDevice(string serverName, int commandPort, int platformPort,
-        bool stopTpm = false, bool linuxTrm = false)
+    public TcpTpmDevice(
+        string serverName,
+        int commandPort,
+        int platformPort,
+        bool stopTpm = false,
+        bool linuxTrm = false)
     {
         ServerName = serverName;
         CommandServerPort = commandPort;
         PlatformServerPort = platformPort;
         StopTpm = stopTpm;
         LinuxTrm = linuxTrm;
-        OldTrm = true;  // Start checking with the old version (if necessary at all)
+        OldTrm = true; // Start checking with the old version (if necessary at all)
     }
 
     public override void Connect()
@@ -369,11 +378,12 @@ public sealed class TcpTpmDevice : Tpm2Device
 
         if (LinuxTrm)
         {
-            var cmdGetRandom = new byte[]{
-                0x80, 0x01,             // TPM_ST_NO_SESSIONS
-                0, 0, 0, 0x0C,          // length
-                0, 0, 0x01, 0x7B,       // TPM_CC_GetRandom
-                0, 0x08                 // Command parameter - num random bytes to generate
+            var cmdGetRandom = new byte[]
+            {
+                0x80, 0x01, // TPM_ST_NO_SESSIONS
+                0, 0, 0, 0x0C, // length
+                0, 0, 0x01, 0x7B, // TPM_CC_GetRandom
+                0, 0x08 // Command parameter - num random bytes to generate
             };
 
             byte[] resp = null;
@@ -384,6 +394,7 @@ public sealed class TcpTpmDevice : Tpm2Device
             catch (Exception)
             {
             }
+
             if (resp == null || resp.Length != 20)
             {
                 Close();
@@ -413,6 +424,7 @@ public sealed class TcpTpmDevice : Tpm2Device
             {
                 throw new Exception("Incompatible TPM/proxy (version 0, expected 1 or higher)");
             }
+
             TpmEndPtInfo = ReadInt(CommandStream);
             GetAck(CommandStream, "Connect");
         }
@@ -427,18 +439,25 @@ public sealed class TcpTpmDevice : Tpm2Device
             {
                 WriteInt(CommandStream, cmd);
             }
-            catch (Exception) { }
+            catch (Exception)
+            {
+            }
+
             CommandStream.Flush();
             CommandStream.Dispose();
             CommandStream = null;
         }
+
         if (PlatformStream != null)
         {
             try
             {
                 WriteInt(PlatformStream, cmd);
             }
-            catch (Exception) { }
+            catch (Exception)
+            {
+            }
+
             PlatformStream.Flush();
             PlatformStream.Dispose();
             PlatformStream = null;
@@ -494,11 +513,13 @@ public sealed class TcpTpmDevice : Tpm2Device
             CommandClient.ReceiveTimeout = t;
             CommandClient.SendTimeout = t;
         }
+
         if (PlatformClient != null)
         {
             PlatformClient.SendTimeout = t;
             PlatformClient.ReceiveTimeout = t;
         }
+
         SocketTimeout = seconds;
     }
 
@@ -555,7 +576,8 @@ public sealed class TcpTpmDevice : Tpm2Device
 
     public override void AssertPhysicalPresence(bool assertPhysicalPresence)
     {
-        SendCmdAndGetAck(PlatformStream, assertPhysicalPresence ? TcpTpmCommands.SignalPPOn
+        SendCmdAndGetAck(PlatformStream, assertPhysicalPresence
+            ? TcpTpmCommands.SignalPPOn
             : TcpTpmCommands.SignalPPOff);
     }
 
@@ -621,9 +643,9 @@ public sealed class TcpTpmDevice : Tpm2Device
     {
         outBuf =
         [
-            0x80, 0x01,             // TPM_ST_NO_SESSIONS
-            0, 0, 0, 0x0A,          // length
-            0x40, 0x28, 0x00, 0x10  // TSS_DISPATCH_FAILED
+            0x80, 0x01, // TPM_ST_NO_SESSIONS
+            0, 0, 0, 0x0A, // length
+            0x40, 0x28, 0x00, 0x10 // TSS_DISPATCH_FAILED
         ];
         if (CommandStream == null)
         {
@@ -634,10 +656,13 @@ public sealed class TcpTpmDevice : Tpm2Device
         {
             if (Globs.NetToHost4U(Globs.CopyData(inBuf, 6, 4)) == (uint)TpmCc.Startup)
             {
-                outBuf[6] = outBuf[7] = 0; outBuf[8] = 0x01; outBuf[9] = 0; // TPM_RC_INITIALIZE
+                outBuf[6] = outBuf[7] = 0;
+                outBuf[8] = 0x01;
+                outBuf[9] = 0; // TPM_RC_INITIALIZE
                 return;
             }
         }
+
         UndoCancelContext();
         var b = new ByteBuf();
         b.Append(Globs.HostToNet((int)TcpTpmCommands.SendCommand));
@@ -646,6 +671,7 @@ public sealed class TcpTpmDevice : Tpm2Device
         {
             b.Append([0, 1]);
         }
+
         b.Append(Globs.HostToNet(inBuf.Length));
         b.Append(inBuf);
         Write(CommandStream, b.GetBuffer());
@@ -759,6 +785,7 @@ public sealed class TcpTpmDevice : Tpm2Device
         {
             numRead += stream.Read(res, numRead, numBytes - numRead);
         }
+
         NotifyWorker(CommsSort.ByteReceived, stream, res);
         return res;
     }

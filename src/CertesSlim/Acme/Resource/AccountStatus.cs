@@ -10,18 +10,15 @@ public enum AccountStatus
     /// <summary>
     /// The valid status.
     /// </summary>
-    [EnumMember(Value = "valid")]
-    Valid,
+    [EnumMember(Value = "valid")] Valid,
 
     /// <summary>
     /// The deactivated status, initiated by client.
     /// </summary>
-    [EnumMember(Value = "deactivated")]
-    Deactivated,
+    [EnumMember(Value = "deactivated")] Deactivated,
 
     /// <summary>
     /// The revoked status, initiated by server.
     /// </summary>
-    [EnumMember(Value = "revoked")]
-    Revoked
+    [EnumMember(Value = "revoked")] Revoked
 }

@@ -83,7 +83,8 @@ public class AcmeContext : IAcmeContext
             return _accountContext;
         }
 
-        var resp = await AccountContext.NewAccount(this, new Account.Payload { OnlyReturnExisting = true }).ConfigureAwait(false);
+        var resp = await AccountContext.NewAccount(this, new Account.Payload { OnlyReturnExisting = true })
+            .ConfigureAwait(false);
         return _accountContext = new AccountContext(this, resp.Location);
     }
 

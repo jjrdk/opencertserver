@@ -64,9 +64,6 @@ public class AcmeRequestException : AcmeException
     /// </summary>
     public override string Message
     {
-        get
-        {
-            return Error != null ? $"{base.Message}\n{Error.Type}: {Error.Detail}" : base.Message;
-        }
+        get { return Error != null ? $"{base.Message}\n{Error.Type}: {Error.Detail}" : base.Message; }
     }
 }

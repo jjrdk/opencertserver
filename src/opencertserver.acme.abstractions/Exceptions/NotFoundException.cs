@@ -10,5 +10,6 @@ public sealed class NotFoundException : MalformedRequestException
     /// </summary>
     public NotFoundException()
         : base("The requested resource could not be found.")
-    { }
+    {
+    }
 }

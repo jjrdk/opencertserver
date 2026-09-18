@@ -141,5 +141,4 @@ public class CertificateExtension : IAsnValue
             writer.WriteOctetString(octet);
         }
     }
-
 }

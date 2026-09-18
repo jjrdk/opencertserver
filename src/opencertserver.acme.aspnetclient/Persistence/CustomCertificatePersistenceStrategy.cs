@@ -30,12 +30,12 @@ public sealed class CustomCertificatePersistenceStrategy : ICertificatePersisten
     /// <see cref="PersistRouteKey"/> so a route's private key survives across renewals.
     /// </summary>
     public CustomCertificatePersistenceStrategy(
-       Func<CertificateType, byte[], Task> persist,
-       Func<CertificateType, Task<byte[]?>> retrieve,
-       Func<string, CertificateType, byte[], Task> persistWithRoute,
-       Func<string, CertificateType, Task<byte[]?>> retrieveWithRoute,
-       Func<string, CancellationToken, Task<string?>>? getRouteKey = null,
-       Func<string, string, CancellationToken, Task>? persistRouteKey = null)
+        Func<CertificateType, byte[], Task> persist,
+        Func<CertificateType, Task<byte[]?>> retrieve,
+        Func<string, CertificateType, byte[], Task> persistWithRoute,
+        Func<string, CertificateType, Task<byte[]?>> retrieveWithRoute,
+        Func<string, CancellationToken, Task<string?>>? getRouteKey = null,
+        Func<string, string, CancellationToken, Task>? persistRouteKey = null)
     {
         _persist = persist;
         _retrieve = retrieve;
@@ -83,8 +83,8 @@ public sealed class CustomCertificatePersistenceStrategy : ICertificatePersisten
     {
         var key = NormalizeRouteId(routeId);
         var bytes = _retrieveWithRoute != null
-             ? await _retrieveWithRoute(key, CertificateType.Site).ConfigureAwait(false)
-             : await _retrieve(CertificateType.Site).ConfigureAwait(false);
+            ? await _retrieveWithRoute(key, CertificateType.Site).ConfigureAwait(false)
+            : await _retrieve(CertificateType.Site).ConfigureAwait(false);
         return bytes == null ? null : X509CertificateLoader.LoadCertificate(bytes);
     }
 
@@ -92,23 +92,23 @@ public sealed class CustomCertificatePersistenceStrategy : ICertificatePersisten
     {
         var key = NormalizeRouteId(routeId);
         return _getRouteKey != null
-             ? _getRouteKey(key, cancellationToken)
-             : Task.FromResult<string?>(null);
+            ? _getRouteKey(key, cancellationToken)
+            : Task.FromResult<string?>(null);
     }
 
     public Task PersistRouteKey(string routeId, string keyPem, CancellationToken cancellationToken = default)
     {
         var key = NormalizeRouteId(routeId);
         return _persistRouteKey != null
-             ? _persistRouteKey(key, keyPem, cancellationToken)
-             : Task.CompletedTask;
+            ? _persistRouteKey(key, keyPem, cancellationToken)
+            : Task.CompletedTask;
     }
 
     private static string NormalizeRouteId(string? routeId)
     {
         var id = routeId ?? AcmeRouteConstants.DefaultRouteId;
         return string.Equals(id, AcmeRouteConstants.DefaultRouteId, StringComparison.Ordinal)
-              ? AcmeRouteConstants.DefaultRouteId
-           : id;
+            ? AcmeRouteConstants.DefaultRouteId
+            : id;
     }
 }

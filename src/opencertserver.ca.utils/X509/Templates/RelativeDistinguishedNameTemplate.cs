@@ -33,6 +33,7 @@ public class RelativeDistinguishedNameTemplate : IAsnValue
             var template = new SingleAttributeTemplate(setReader);
             attributes.Add(template);
         }
+
         Attributes = attributes.AsReadOnly();
     }
 

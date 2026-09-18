@@ -17,6 +17,7 @@
  * replace with the specific Branch-ID pseudo-ACE
  *
  * */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Runtime.Serialization;
@@ -60,10 +61,12 @@ public abstract class PolicyAce
             throw new ArgumentException("AddNextAce: Do not call AddNextAce for " +
                 "an OR node. Use AddPolicyBranch instead.");
         }
+
         if (NextAce != null)
         {
             throw new ArgumentException("AddNextAce: Policy ACE already has a child");
         }
+
         if (!string.IsNullOrEmpty(BranchID))
         {
             if (string.IsNullOrEmpty(nextAce.BranchID))
@@ -76,8 +79,10 @@ public abstract class PolicyAce
                     "AddNextAce: Policy ACE with non-empty BranchName " +
                     "can only have a child with the same or no branch name");
             }
+
             BranchID = "";
         }
+
         NextAce = nextAce;
         NextAce.PreviousAce = this;
         return nextAce;
@@ -97,6 +102,7 @@ public abstract class PolicyAce
                 throw new Exception("GetNextAcePolicyDigest: Policy tree leaf must have a " +
                     "BranchIdentifier set to allow the policy to be evaluated");
             }
+
             return TpmHash.ZeroHash(hashAlg);
         }
 
@@ -197,6 +203,7 @@ public abstract class PolicyAce
             arr[j].NextAce = arr[j + 1];
             arr[j + 1].PreviousAce = arr[j];
         }
+
         return arr[0];
     }
 
@@ -204,8 +211,7 @@ public abstract class PolicyAce
 
     internal abstract TpmRc Execute(Tpm2 tpm, AuthSession sess, PolicyTree policy);
 
-    [DataMember(EmitDefaultValue = false)]
-    public string NodeId = null;
+    [DataMember(EmitDefaultValue = false)] public string NodeId = null;
 } // abstract class PolicyAce
 
 /// <summary>
@@ -318,6 +324,7 @@ public class TpmPolicyOr : PolicyAce
             {
                 arr[j] = TpmPolicy.GetArrayRepresentation(PolicyBranches[j]);
             }
+
             return arr;
         }
         set
@@ -376,14 +383,8 @@ public class TpmPolicyPcr : PolicyAce
     [DataMember]
     public PcrValue[] PcrValues
     {
-        get
-        {
-            return Pcrs.Values;
-        }
-        set
-        {
-            Pcrs = new PcrValueCollection(value);
-        }
+        get { return Pcrs.Values; }
+        set { Pcrs = new PcrValueCollection(value); }
     }
 } // class TpmPolicyPcr
 
@@ -394,8 +395,12 @@ public class TpmPolicyPcr : PolicyAce
 [DataContract]
 public class TpmPolicyCounterTimer : PolicyAce
 {
-    public TpmPolicyCounterTimer(byte[] operandB, ushort offset, Eo operation,
-        string branchName = "", string nodeId = null)
+    public TpmPolicyCounterTimer(
+        byte[] operandB,
+        ushort offset,
+        Eo operation,
+        string branchName = "",
+        string nodeId = null)
         : base(branchName, nodeId)
     {
         OperandB = Globs.CopyData(operandB);
@@ -429,12 +434,9 @@ public class TpmPolicyCounterTimer : PolicyAce
         return tpm._GetLastResponseCode();
     }
 
-    [DataMember]
-    public byte[] OperandB;
-    [DataMember]
-    public ushort Offset;
-    [DataMember]
-    public Eo Operation;
+    [DataMember] public byte[] OperandB;
+    [DataMember] public ushort Offset;
+    [DataMember] public Eo Operation;
 } // class TpmPolicyCounterTimer
 
 /// <summary>
@@ -469,9 +471,7 @@ public class TpmPolicyCommand : PolicyAce
         return tpm._GetLastResponseCode();
     }
 
-    [MarshalAs(0)]
-    [DataMember]
-    public TpmCc AllowedCommand;
+    [MarshalAs(0)][DataMember] public TpmCc AllowedCommand;
 } // class TpmPolicyCommand
 
 /// <summary>
@@ -494,7 +494,6 @@ public class TpmPolicyCpHash : PolicyAce
 
     internal override TpmHash GetPolicyDigest(TpmAlgId hashAlg)
     {
-
         var m = new Marshaller();
         m.Put(TpmCc.PolicyCpHash, "commandCode");
         m.Put(CpHash.HashData, "hashData");
@@ -580,9 +579,7 @@ public class TpmPolicyLocality : PolicyAce
         return tpm._GetLastResponseCode();
     }
 
-    [MarshalAs(0)]
-    [DataMember]
-    public LocalityAttr AllowedLocality;
+    [MarshalAs(0)][DataMember] public LocalityAttr AllowedLocality;
 } // class TpmPolicyLocality
 
 /// <summary>
@@ -591,10 +588,16 @@ public class TpmPolicyLocality : PolicyAce
 /// </summary>
 public class TpmPolicyNV : PolicyAce
 {
-    public TpmPolicyNV(TpmHandle authorizationHandle, byte[] nvAccessAuth,
-        TpmHandle nvIndex, byte[] indexName,
-        byte[] operandB, ushort offset, Eo operation,
-        string branchName = "", string nodeId = null)
+    public TpmPolicyNV(
+        TpmHandle authorizationHandle,
+        byte[] nvAccessAuth,
+        TpmHandle nvIndex,
+        byte[] indexName,
+        byte[] operandB,
+        ushort offset,
+        Eo operation,
+        string branchName = "",
+        string nodeId = null)
         : base(branchName, nodeId)
     {
         AuthorizationHandle = authorizationHandle;
@@ -606,7 +609,9 @@ public class TpmPolicyNV : PolicyAce
         IndexName = Globs.CopyData(indexName);
     }
 
-    public TpmPolicyNV() : base("") { }
+    public TpmPolicyNV() : base("")
+    {
+    }
 
     public TpmPolicyNV(byte[] nvIndexName, byte[] operandB, ushort offset, Eo operation)
         : base("")
@@ -658,6 +663,7 @@ public class TpmPolicyNV : PolicyAce
                 OperandB, Offset, Operation);
             res = tpm._GetLastResponseCode();
         }
+
         return res;
     }
 
@@ -678,9 +684,12 @@ public class TpmPolicyAuthValue : PolicyAce
 {
     public TpmPolicyAuthValue(string branchName = "", string nodeId = null)
         : base(branchName, nodeId)
-    { }
+    {
+    }
 
-    public TpmPolicyAuthValue() : base("") { }
+    public TpmPolicyAuthValue() : base("")
+    {
+    }
 
     internal override TpmHash GetPolicyDigest(TpmAlgId hashAlg)
     {
@@ -704,7 +713,8 @@ public class TpmPolicyRestart : PolicyAce
 {
     public TpmPolicyRestart(string branchName = "", string nodeId = null)
         : base(branchName, nodeId)
-    { }
+    {
+    }
 
     internal override TpmHash GetPolicyDigest(TpmAlgId hashAlg)
     {
@@ -725,9 +735,12 @@ public class TpmPolicyPassword : PolicyAce
 {
     public TpmPolicyPassword(string branchName = "", string nodeId = null)
         : base(branchName, nodeId)
-    { }
+    {
+    }
 
-    public TpmPolicyPassword() : base("") { }
+    public TpmPolicyPassword() : base("")
+    {
+    }
 
     internal override TpmHash GetPolicyDigest(TpmAlgId hashAlg)
     {
@@ -752,9 +765,12 @@ public class TpmPolicyPhysicalPresence : PolicyAce
 {
     public TpmPolicyPhysicalPresence(string branchName = "", string nodeId = null)
         : base(branchName, nodeId)
-    { }
+    {
+    }
 
-    public TpmPolicyPhysicalPresence() : base("") { }
+    public TpmPolicyPhysicalPresence() : base("")
+    {
+    }
 
     internal override TpmHash GetPolicyDigest(TpmAlgId hashAlg)
     {
@@ -793,9 +809,13 @@ public abstract class TpmPolicyWithExpiration : PolicyAce
     {
     }
 
-    protected TpmPolicyWithExpiration(bool useNonceTpm, int expirationTime,
-        byte[] cpHash, byte[] policyRef,
-        string branchName, string nodeId = null)
+    protected TpmPolicyWithExpiration(
+        bool useNonceTpm,
+        int expirationTime,
+        byte[] cpHash,
+        byte[] policyRef,
+        string branchName,
+        string nodeId = null)
         : base(branchName, nodeId)
     {
         UseNonceTpm = useNonceTpm;
@@ -817,12 +837,18 @@ public class TpmPolicySigned : TpmPolicyWithExpiration
 
     public byte[] AuthObjectName;
 
-    public TpmPolicySigned() { }
+    public TpmPolicySigned()
+    {
+    }
 
-    public TpmPolicySigned(AsymCryptoSystem authorityKey,
-        bool useNonceTpm, int expirationTime,
-        byte[] cpHash, byte[] policyRef = null,
-        string branchName = "", string nodeId = null)
+    public TpmPolicySigned(
+        AsymCryptoSystem authorityKey,
+        bool useNonceTpm,
+        int expirationTime,
+        byte[] cpHash,
+        byte[] policyRef = null,
+        string branchName = "",
+        string nodeId = null)
         : base(useNonceTpm, expirationTime, cpHash, policyRef, branchName, nodeId)
     {
         SwSigningKey = authorityKey;
@@ -830,10 +856,14 @@ public class TpmPolicySigned : TpmPolicyWithExpiration
         AuthObjectName = authorityKey.GetPublicParms().GetName();
     }
 
-    public TpmPolicySigned(byte[] authorityKeyName,
-        bool useNonceTpm, int expirationTime,
-        byte[] cpHash, byte[] policyRef = null,
-        string branchName = "", string nodeId = null)
+    public TpmPolicySigned(
+        byte[] authorityKeyName,
+        bool useNonceTpm,
+        int expirationTime,
+        byte[] cpHash,
+        byte[] policyRef = null,
+        string branchName = "",
+        string nodeId = null)
         : base(useNonceTpm, expirationTime, cpHash, policyRef, branchName, nodeId)
     {
         AuthObjectName = Globs.CopyData(authorityKeyName);
@@ -881,6 +911,7 @@ public class TpmPolicySigned : TpmPolicyWithExpiration
         {
             sigKey = tpm.LoadExternal(null, SigningKeyPub, TpmRh.Owner);
         }
+
         Timeout = tpm.PolicySigned(sigKey, sess, nonceTpm,
             CpHash, PolicyRef, ExpirationTime,
             AuthSig, out Ticket);
@@ -906,18 +937,25 @@ public class TpmPolicySecret : TpmPolicyWithExpiration
     public TpmHandle AuthEntity;
     public SessionBase AuthSess;
 
-    public TpmPolicySecret() { }
+    public TpmPolicySecret()
+    {
+    }
 
-    public TpmPolicySecret(TpmHandle hAuth,
-        bool useNonceTpm, int expirationTime,
-        byte[] cpHash, byte[] policyRef,
-        string branchName = "", string nodeId = null)
+    public TpmPolicySecret(
+        TpmHandle hAuth,
+        bool useNonceTpm,
+        int expirationTime,
+        byte[] cpHash,
+        byte[] policyRef,
+        string branchName = "",
+        string nodeId = null)
         : base(useNonceTpm, expirationTime, cpHash, policyRef, branchName, nodeId)
     {
         if (hAuth.Name == null)
         {
             throw new ArgumentException("TpmPolicySecret() entity name is not set");
         }
+
         AuthEntity = hAuth;
     }
 
@@ -950,11 +988,14 @@ public class TpmPolicySecret : TpmPolicyWithExpiration
 /// </summary>
 public class TpmPolicyTicket : PolicyAce
 {
-    public TpmPolicyTicket(TkAuth ticket,
+    public TpmPolicyTicket(
+        TkAuth ticket,
         byte[] expirationTimeFromSignOperation,
-        byte[] cpHash, byte[] policyRef,
+        byte[] cpHash,
+        byte[] policyRef,
         byte[] objectName,
-        string branchName = "", string nodeId = null)
+        string branchName = "",
+        string nodeId = null)
         : base(branchName, nodeId)
     {
         Ticket = ticket;
@@ -965,7 +1006,9 @@ public class TpmPolicyTicket : PolicyAce
         TicketType = ticket.tag;
     }
 
-    public TpmPolicyTicket() : base("") { }
+    public TpmPolicyTicket() : base("")
+    {
+    }
 
     public TpmPolicyTicket(TpmPublic authorizingKey, byte[] policyRef, TpmSt ticketType)
         : base("")
@@ -995,6 +1038,7 @@ public class TpmPolicyTicket : PolicyAce
         {
             ObjectName = AuthorizingKey.GetName();
         }
+
         var m = new Marshaller();
         m.Put(commandCode, "ordinal");
         m.Put(ObjectName, "name");
@@ -1008,6 +1052,7 @@ public class TpmPolicyTicket : PolicyAce
         {
             ObjectName = AuthorizingKey.GetName();
         }
+
         tpm.PolicyTicket(sess, ExpirationTime, CpHash, PolicyRef,
             ObjectName, Ticket);
         return tpm._GetLastResponseCode();
@@ -1030,21 +1075,28 @@ public class TpmPolicyTicket : PolicyAce
 /// </summary>
 public class TpmPolicyAuthorize : PolicyAce
 {
-    public delegate void ParamsCallbackType(Tpm2 tpm, TpmHandle sess,
-        byte[] approvedPolicy, byte[] policyRef,
-        byte[] keySign, TkVerified checkTicket);
+    public delegate void ParamsCallbackType(
+        Tpm2 tpm,
+        TpmHandle sess,
+        byte[] approvedPolicy,
+        byte[] policyRef,
+        byte[] keySign,
+        TkVerified checkTicket);
 
-    [XmlIgnore]
-    public ParamsCallbackType? ParamsCallback = null;
+    [XmlIgnore] public ParamsCallbackType? ParamsCallback = null;
 
     public byte[] PolicyToReplace;
     public byte[] PolicyRef;
     public byte[] SigKeyName;
     public TkVerified Ticket;
 
-    public TpmPolicyAuthorize(byte[] policyToReplace, byte[] policyRef,
-        byte[] sigKeyName, TkVerified tkVerified,
-        string branchName = "", string nodeId = null)
+    public TpmPolicyAuthorize(
+        byte[] policyToReplace,
+        byte[] policyRef,
+        byte[] sigKeyName,
+        TkVerified tkVerified,
+        string branchName = "",
+        string nodeId = null)
         : base(branchName, nodeId)
     {
         PolicyToReplace = Globs.CopyData(policyToReplace);
@@ -1053,7 +1105,9 @@ public class TpmPolicyAuthorize : PolicyAce
         Ticket = tkVerified;
     }
 
-    public TpmPolicyAuthorize() : base("") { }
+    public TpmPolicyAuthorize() : base("")
+    {
+    }
 
     internal override TpmHash GetPolicyDigest(TpmAlgId hashAlg)
     {
@@ -1077,14 +1131,19 @@ public class TpmPolicyAuthorize : PolicyAce
         {
             ParamsCallback(tpm, sess, PolicyToReplace, PolicyRef, SigKeyName, Ticket);
         }
+
         tpm.PolicyAuthorize(sess, PolicyToReplace, PolicyRef, SigKeyName, Ticket);
 
         return tpm._GetLastResponseCode();
     }
 
     public static
-        TkVerified SignApproval(Tpm2 tpm, byte[] approvedPolicy, byte[] policyRef,
-        TpmHandle hSigKey, ISigSchemeUnion scheme = null)
+        TkVerified SignApproval(
+        Tpm2 tpm,
+        byte[] approvedPolicy,
+        byte[] policyRef,
+        TpmHandle hSigKey,
+        ISigSchemeUnion scheme = null)
     {
         byte[] name, qname;
         var pub = tpm.ReadPublic(hSigKey, out name, out qname);
@@ -1114,9 +1173,12 @@ public class TpmPolicyAuthorizeNV : PolicyAce
     public TpmHandle NvIndex;
     public byte[] NvIndexName;
 
-    public TpmPolicyAuthorizeNV(TpmHandle authHandle, TpmHandle nvIndex,
+    public TpmPolicyAuthorizeNV(
+        TpmHandle authHandle,
+        TpmHandle nvIndex,
         byte[] nvIndexName,
-        string branchName = "", string nodeId = null)
+        string branchName = "",
+        string nodeId = null)
         : base(branchName, nodeId)
     {
         AuthHandle = authHandle;
@@ -1147,10 +1209,12 @@ public class TpmPolicyAuthorizeNV : PolicyAce
 /// </summary>
 public class TpmPolicyDuplicationSelect : PolicyAce
 {
-    public TpmPolicyDuplicationSelect(byte[] nameOfObjectBeingDuplicated,
+    public TpmPolicyDuplicationSelect(
+        byte[] nameOfObjectBeingDuplicated,
         byte[] nameOfNewParent,
         bool includeObjectNameInPolicyHash,
-        string branchName = "", string nodeId = null)
+        string branchName = "",
+        string nodeId = null)
         : base(branchName, nodeId)
     {
         DupObjectName = Globs.CopyData(nameOfObjectBeingDuplicated);
@@ -1158,7 +1222,9 @@ public class TpmPolicyDuplicationSelect : PolicyAce
         IncludeObjectNameInPolicyHash = includeObjectNameInPolicyHash;
     }
 
-    public TpmPolicyDuplicationSelect() : base("") { }
+    public TpmPolicyDuplicationSelect() : base("")
+    {
+    }
 
     internal override TpmHash GetPolicyDigest(TpmAlgId hashAlg)
     {
@@ -1168,6 +1234,7 @@ public class TpmPolicyDuplicationSelect : PolicyAce
         {
             m.Put(DupObjectName, "objectName");
         }
+
         m.Put(NewParentName, "newParent");
         var includeName = IncludeObjectNameInPolicyHash ? (byte)1 : (byte)0;
         m.Put(includeName, "includeObject");
@@ -1193,7 +1260,9 @@ public class TpmPolicyDuplicationSelect : PolicyAce
 /// </summary>
 public class TpmPolicyChainId : PolicyAce
 {
-    public TpmPolicyChainId() : base("") { }
+    public TpmPolicyChainId() : base("")
+    {
+    }
 
     public TpmPolicyChainId(string branchName, string nodeId = null)
         : base(branchName, nodeId)
@@ -1206,6 +1275,7 @@ public class TpmPolicyChainId : PolicyAce
         {
             throw new Exception("PolicyChainId should be a leaf");
         }
+
         return GetNextAcePolicyDigest(hashAlg);
     }
 
@@ -1218,14 +1288,8 @@ public class TpmPolicyChainId : PolicyAce
     [DataMember]
     public string BranchId
     {
-        get
-        {
-            return BranchID;
-        }
-        set
-        {
-            BranchID = value;
-        }
+        get { return BranchID; }
+        set { BranchID = value; }
     }
 } // class TpmPolicyChainId
 
@@ -1239,17 +1303,24 @@ public class TpmPolicyAction : PolicyAce
 {
     public string Action = "";
 
-    public TpmPolicyAction() : base("") { }
+    public TpmPolicyAction() : base("")
+    {
+    }
 
-    public TpmPolicyAction(string action,
-        string branchName = "", string nodeId = null)
+    public TpmPolicyAction(
+        string action,
+        string branchName = "",
+        string nodeId = null)
         : base(branchName, nodeId)
     {
         Action = action;
     }
 
-    public TpmPolicyAction(string action, object context,
-        string branchName = "", string nodeId = null)
+    public TpmPolicyAction(
+        string action,
+        object context,
+        string branchName = "",
+        string nodeId = null)
         : base(branchName, nodeId)
     {
         Action = action;
@@ -1277,14 +1348,18 @@ public class TpmPolicyAction : PolicyAce
 /// </summary>
 public class TpmPolicyNvWritten : PolicyAce
 {
-    public TpmPolicyNvWritten(bool isNvIndexRequiredToHaveBeenWritten,
-        string branchName = "", string nodeId = null)
+    public TpmPolicyNvWritten(
+        bool isNvIndexRequiredToHaveBeenWritten,
+        string branchName = "",
+        string nodeId = null)
         : base(branchName, nodeId)
     {
         IsNvIndexRequiredToHaveBeenWritten = isNvIndexRequiredToHaveBeenWritten;
     }
 
-    public TpmPolicyNvWritten() : base("") { }
+    public TpmPolicyNvWritten() : base("")
+    {
+    }
 
     internal override TpmHash GetPolicyDigest(TpmAlgId hashAlg)
     {

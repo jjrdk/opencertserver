@@ -1,7 +1,8 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Diagnostics;
@@ -62,6 +63,7 @@ public class TpmHelpers
                 .ToArray();
             Debug.Assert(ImplementedCommands.Length != 0);
         }
+
         return ImplementedCommands.Contains(commandCode);
     }
 
@@ -83,6 +85,7 @@ public class TpmHelpers
                 .ToArray();
             Debug.Assert(ImplementedAlgs.Length != 0);
         }
+
         return ImplementedAlgs.Contains(algId);
     }
 
@@ -97,6 +100,7 @@ public class TpmHelpers
         {
             throw new Exception($"Invalid enumerator names {oldName}, {newName} for enum {typeof(E)}");
         }
+
         return val;
     }
 } // class TpmHelpers
@@ -123,9 +127,9 @@ public class TpmErrorHelpers
             return rawResponse;
         }
 
-        const uint Fmt1 = (uint)TpmRc.RcFmt1;   // Format 1 code (TPM 2 only)
-        const uint Ver1 = (uint)TpmRc.RcVer1;   // TPM 1 code (format 0 only)
-        const uint Warn = (uint)TpmRc.RcWarn;   // Code is a warning (format 0 only)
+        const uint Fmt1 = (uint)TpmRc.RcFmt1; // Format 1 code (TPM 2 only)
+        const uint Ver1 = (uint)TpmRc.RcVer1; // TPM 1 code (format 0 only)
+        const uint Warn = (uint)TpmRc.RcWarn; // Code is a warning (format 0 only)
         var mask = IsFmt1(rawResponse) ? Fmt1 | 0x3F : Warn | Ver1 | 0x7F;
         return (TpmRc)((uint)rawResponse & mask);
     }
@@ -138,7 +142,8 @@ public class TpmErrorHelpers
     /// <returns></returns>
     public static byte[] BuildErrorResponseBuffer(TpmRc errorCode)
     {
-        return Marshaller.GetTpmRepresentation(new object[] {
+        return Marshaller.GetTpmRepresentation(new object[]
+        {
             TpmSt.NoSessions,
             (uint)10,
             errorCode
@@ -195,12 +200,14 @@ public class PrimaryHelpers
             theUseAuth = useAuth;
             attr |= ObjectAttr.UserWithAuth;
         }
+
         var thePolicyAuth = new byte[0];
         if (policyAuth != null)
         {
             thePolicyAuth = policyAuth;
             attr |= ObjectAttr.AdminWithPolicy;
         }
+
         var theSelection = new PcrSelection[0];
         if (pcrSel != null)
         {

@@ -2,7 +2,6 @@
 
 using CertesSlim.Acme.Resource;
 using Microsoft.IdentityModel.Tokens;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,7 +18,11 @@ public sealed class Account : IVersioned
     /// <param name="contacts">The contact URIs for the account.</param>
     /// <param name="tosAccepted">The date/time the terms of service were accepted, or null if not accepted.</param>
     /// <param name="externalAccountId">The external account to bind to.</param>
-    public Account(JsonWebKey jwk, IEnumerable<string>? contacts, DateTimeOffset? tosAccepted, string? externalAccountId = null)
+    public Account(
+        JsonWebKey jwk,
+        IEnumerable<string>? contacts,
+        DateTimeOffset? tosAccepted,
+        string? externalAccountId = null)
     {
         AccountId = GuidString.NewValue();
 

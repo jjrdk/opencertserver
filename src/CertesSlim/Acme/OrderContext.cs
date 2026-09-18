@@ -42,7 +42,8 @@ internal class OrderContext : EntityContext<Order>, IOrderContext
     {
         var order = await Resource().ConfigureAwait(false);
         var payload = new Order.OrderPayload { Csr = csr.ToBase64String() };
-        var resp = await Context.HttpClient.Post<Order, Order.OrderPayload>(Context, order.Finalize!, payload).ConfigureAwait(false);
+        var resp = await Context.HttpClient.Post<Order, Order.OrderPayload>(Context, order.Finalize!, payload)
+            .ConfigureAwait(false);
         return resp.Resource;
     }
 
@@ -54,7 +55,8 @@ internal class OrderContext : EntityContext<Order>, IOrderContext
     public async Task<CertificateChain> Download(string? preferredChain = null)
     {
         var order = await Resource().ConfigureAwait(false);
-        var resp = await Context.HttpClient.Post<string, object>(Context, order.Certificate!, null, false).ConfigureAwait(false);
+        var resp = await Context.HttpClient.Post<string, object>(Context, order.Certificate!, null, false)
+            .ConfigureAwait(false);
 
         var defaultChain = new CertificateChain(resp.Resource);
         if (defaultChain.MatchesPreferredChain(preferredChain) || !resp.Links?.Contains("alternate") == true)

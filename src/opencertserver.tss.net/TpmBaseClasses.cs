@@ -1,7 +1,8 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Diagnostics;
@@ -61,6 +62,7 @@ public abstract partial class TpmStructureBase
         {
             return (object)rhs == null;
         }
+
         return lhs.Equals(rhs);
     }
 
@@ -70,6 +72,7 @@ public abstract partial class TpmStructureBase
         {
             return (object)rhs != null;
         }
+
         return !lhs.Equals(rhs);
     }
 
@@ -79,6 +82,7 @@ public abstract partial class TpmStructureBase
         {
             return false;
         }
+
         byte[] b0 = GetTpmRepresentation(),
                b1 = ((TpmStructureBase)obj).GetTpmRepresentation();
         return Globs.ArraysAreEqual(b0, b1);
@@ -87,7 +91,8 @@ public abstract partial class TpmStructureBase
     public override int GetHashCode()
     {
         var objectData = GetTpmRepresentation();
-        return BitConverter.ToInt32(objectData.Length <= sizeof(int) ? objectData : CryptoLib.HashData(TpmAlgId.Sha1, objectData), 0);
+        return BitConverter.ToInt32(
+            objectData.Length <= sizeof(int) ? objectData : CryptoLib.HashData(TpmAlgId.Sha1, objectData), 0);
     }
 
     public void Copy()
@@ -172,6 +177,7 @@ public abstract partial class TpmStructureBase
                 caption += $" as {b.Name}";
             }
         }
+
         dbg.Trace(caption);
         dbg.Indent();
         var members = new SortedDictionary<int, TpmStructMemberInfo>();
@@ -182,6 +188,7 @@ public abstract partial class TpmStructureBase
             tags = new Dictionary<string, TpmStructMemberInfo>();
             //untaggedFields = new Dictionary<string, TpmStructMemberInfo>();
         }
+
         foreach (var bf in new BindingFlags[] { BindingFlags.Public | BindingFlags.NonPublic })
         {
             var candidateMembers = t.GetMembers(BindingFlags.Instance | bf);
@@ -194,6 +201,7 @@ public abstract partial class TpmStructureBase
                     {
                         continue;
                     }
+
                     var idx = 0;
                     var arg0 = a.ConstructorArguments[0];
                     if (arg0.ArgumentType == typeof(int))
@@ -246,10 +254,12 @@ public abstract partial class TpmStructureBase
                                 }
                         }
                     }
+
                     break;
                 }
             }
         }
+
         dbg.Unindent();
         return members.Values.ToArray();
     }
@@ -288,18 +298,24 @@ public abstract partial class TpmStructureBase
             if (mem.SizeLength > 0)
             {
                 var arr = mem.WireType == MarshalType.VariableLengthArray;
-                var len = arr ? ((Array)memVal)?.Length ?? 0
+                var len = arr
+                    ? ((Array)memVal)?.Length ?? 0
                     : Marshaller.GetTpmRepresentation(memVal).Length;
                 dbg.Trace($"Sending {(arr ? "Array " : "Struct ")}{mem.Name} of size {len}");
                 m.PutSizeTag(len, mem.SizeLength, mem.SizeName);
             }
+
             m.Put(memVal, mem.Name);
         }
+
         dbg.Unindent();
     }
 
-    void UnmarshalArray(Marshaller m,
-        TpmStructMemberInfo memInfo, Type memType, int size)
+    void UnmarshalArray(
+        Marshaller m,
+        TpmStructMemberInfo memInfo,
+        Type memType,
+        int size)
     {
         memInfo.Value = m.GetArray(memType.GetElementType(), size, memInfo.Name);
         var unmSize = ((Array)memInfo.Value).Length;
@@ -394,6 +410,7 @@ public abstract partial class TpmStructureBase
                                 throw new TssException(msg);
                             }
                         }
+
                         m.SizedStructLen.RemoveAt(m.SizedStructLen.Count - 1);
                         break;
                     }
@@ -405,8 +422,10 @@ public abstract partial class TpmStructureBase
                     {
                         memInfo.Value = m.Get(memType, memInfo.Name);
                     }
+
                     break;
             }
+
             dbg.Trace($"{(i + 1)}: {wireType} {memInfo.Name}{(size != -1 ? $" of size {size}" : "")}");
             // Some property values are dynamically obtained from their linked fields.
             // Correspondingly, they do not have a setter, so we bypass them here.
@@ -416,13 +435,15 @@ public abstract partial class TpmStructureBase
                 Globs.SetMember(memInfo, this, memInfo.Value);
             }
         }
+
         dbg.Unindent();
     }
 
 #if false
         protected void InternalWriteXml(XmlWriter w)
         {
-            MemberInfo[] fields = GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic);
+            MemberInfo[] fields =
+ GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic);
 
             string thisObjectName = GetType().Name;
 
@@ -498,7 +519,8 @@ public abstract partial class TpmStructureBase
         protected void InternalReadXml(XmlReader r)
         {
             string containingElementType = "";
-            MemberInfo[] fields = GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic);
+            MemberInfo[] fields =
+ GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic);
 
             bool skipCloseElement = false;
             foreach (MemberInfo f in fields)
@@ -620,12 +642,15 @@ public abstract partial class TpmStructureBase
 [DataContract]
 public class EmptyResponse : TpmStructureBase
 {
-    public EmptyResponse() { }
+    public EmptyResponse()
+    {
+    }
 
     new public EmptyResponse Copy()
     {
         return new EmptyResponse();
     }
+
     public override TpmStructureBase Clone()
     {
         return new EmptyResponse();

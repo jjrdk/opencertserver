@@ -10,36 +10,30 @@ public enum AuthorizationStatus
     /// <summary>
     /// The pending status.
     /// </summary>
-    [EnumMember(Value = "pending")]
-    Pending,
+    [EnumMember(Value = "pending")] Pending,
 
     /// <summary>
     /// The valid status.
     /// </summary>
-    [EnumMember(Value = "valid")]
-    Valid,
+    [EnumMember(Value = "valid")] Valid,
 
     /// <summary>
     /// The invalid status.
     /// </summary>
-    [EnumMember(Value = "invalid")]
-    Invalid,
+    [EnumMember(Value = "invalid")] Invalid,
 
     /// <summary>
     /// The revoked status.
     /// </summary>
-    [EnumMember(Value = "revoked")]
-    Revoked,
+    [EnumMember(Value = "revoked")] Revoked,
 
     /// <summary>
     /// The deactivated status.
     /// </summary>
-    [EnumMember(Value = "deactivated")]
-    Deactivated,
+    [EnumMember(Value = "deactivated")] Deactivated,
 
     /// <summary>
     /// The expired status.
     /// </summary>
-    [EnumMember(Value = "expired")]
-    Expired
+    [EnumMember(Value = "expired")] Expired
 }

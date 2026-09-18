@@ -34,7 +34,8 @@ public class Signature : IAsnValue
         var sequenceReader = reader.ReadSequence(expectedTag);
         AlgorithmIdentifier = new AlgorithmIdentifier(sequenceReader);
         SignatureBytes = sequenceReader.ReadBitString(out _);
-        if (sequenceReader.HasData && sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
+        if (sequenceReader.HasData &&
+            sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
         {
             var certsReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
             var certs = new List<X509Certificate2>();

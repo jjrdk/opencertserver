@@ -15,7 +15,7 @@ public sealed class GlobalAttestationService
     private static readonly Dictionary<string, string> VendorToConfigSection = new(StringComparer.OrdinalIgnoreCase)
     {
         { "Intel", "Providers:IntelSgx" },
-        { "AMD",   "Providers:AmdSevSnp" },
+        { "AMD", "Providers:AmdSevSnp" },
         { "Apple", "Providers:AppleSE" }
     };
 
@@ -26,10 +26,10 @@ public sealed class GlobalAttestationService
     /// </summary>
     private static readonly Dictionary<string, string> DefaultVendorByCloud = new(StringComparer.OrdinalIgnoreCase)
     {
-        { "Azure",  "Intel" },
-        { "AWS",    "Intel" },
+        { "Azure", "Intel" },
+        { "AWS", "Intel" },
         { "Client", "Apple" },
-        { "Local",  "Intel" }
+        { "Local", "Intel" }
     };
 
     private readonly AttestationOptions _options;
@@ -50,8 +50,8 @@ public sealed class GlobalAttestationService
     {
         var vendor = ResolveVendor();
         return _serviceProvider.GetServices<IAttestationProvider>()
-            .FirstOrDefault(p => string.Equals(p.VendorName, vendor, StringComparison.OrdinalIgnoreCase))
-            ?? throw new NotSupportedException(
+                .FirstOrDefault(p => string.Equals(p.VendorName, vendor, StringComparison.OrdinalIgnoreCase))
+         ?? throw new NotSupportedException(
                 $"No '{vendor}' attestation provider is registered. Ensure the provider is added via AddAttestationServices().");
     }
 

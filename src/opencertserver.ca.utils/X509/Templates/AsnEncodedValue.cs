@@ -18,4 +18,3 @@ public sealed class AsnEncodedValue(byte[] encodedValue) : IAsnValue
         writer.WriteEncodedValue(EncodedValue);
     }
 }
-

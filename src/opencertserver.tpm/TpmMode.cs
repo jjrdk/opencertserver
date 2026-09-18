@@ -20,4 +20,3 @@ public enum TpmMode
     /// </summary>
     Simulator
 }
-

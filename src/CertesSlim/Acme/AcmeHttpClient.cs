@@ -1,7 +1,6 @@
 ﻿namespace CertesSlim.Acme;
 
 using Directory = CertesSlim.Acme.Resource.Directory;
-
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;

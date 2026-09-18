@@ -19,8 +19,8 @@ public static class YarpAcmeExtensions
     public static IReverseProxyBuilder AddAcmeProxy(this IServiceCollection services)
     {
         services.AddSingleton<AcmeRouteConfigurationRegistry>();
-        services.AddSingleton<IAcmeRouteConfigurationSource>(
-            sp => sp.GetRequiredService<AcmeRouteConfigurationRegistry>());
+        services.AddSingleton<IAcmeRouteConfigurationSource>(sp =>
+            sp.GetRequiredService<AcmeRouteConfigurationRegistry>());
 
         return services.AddReverseProxy();
     }
@@ -41,11 +41,11 @@ public static class YarpAcmeExtensions
     /// proxy and attaches the ACME config filter.
     /// </summary>
     public static IReverseProxyBuilder UseReverseProxyAcme(
-       this IReverseProxyBuilder builder,
-       IReadOnlyList<RouteConfig> routes)
+        this IReverseProxyBuilder builder,
+        IReadOnlyList<RouteConfig> routes)
     {
         return builder
-               .WithAcmeRouteFilter()
-               .LoadFromMemory(routes, []);
+            .WithAcmeRouteFilter()
+            .LoadFromMemory(routes, []);
     }
 }

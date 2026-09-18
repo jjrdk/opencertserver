@@ -32,14 +32,20 @@ public interface IPersistenceService
     /// route keeps its own leaf/chain/key. When <paramref name="routeId"/> is null the default
     /// route is used, preserving the legacy single-listener behaviour.
     /// </summary>
-    Task PersistSiteCertificate(X509Certificate2 certificate, string? routeId, CancellationToken cancellationToken = default);
+    Task PersistSiteCertificate(
+        X509Certificate2 certificate,
+        string? routeId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Persists the full certificate <paramref name="chain"/> (leaf followed by issuers) scoped to
     /// <paramref name="routeId"/> so the route's <c>chains/server.crt</c> holds the real issuer
     /// bundle rather than a copy of the leaf.
     /// </summary>
-    Task PersistSiteCertificateChain(X509Certificate2Collection chain, string? routeId, CancellationToken cancellationToken = default);
+    Task PersistSiteCertificateChain(
+        X509Certificate2Collection chain,
+        string? routeId,
+        CancellationToken cancellationToken = default);
 
     Task PersistAccountCertificate(IKey certificate);
 

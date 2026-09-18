@@ -66,7 +66,8 @@ internal static partial class Program
             byte[] csrBytes;
             try
             {
-                csrBytes = ReadPemOrDer(csrPath, "-----BEGIN CERTIFICATE REQUEST-----", "-----END CERTIFICATE REQUEST-----");
+                csrBytes = ReadPemOrDer(csrPath, "-----BEGIN CERTIFICATE REQUEST-----",
+                    "-----END CERTIFICATE REQUEST-----");
             }
             catch (Exception ex)
             {
@@ -105,6 +106,7 @@ internal static partial class Program
                 Console.WriteLine("CA private key must contain private key material.");
                 return Task.CompletedTask;
             }
+
             using var caCert = LoadCertificate(caCertPath);
             using var issuer = AttachPrivateKeyToCertificate(caCert, caKey);
 
@@ -141,7 +143,8 @@ internal static partial class Program
                 return Task.CompletedTask;
             }
 
-            Console.WriteLine($"Signing CSR: {csrPath} with CA key: {caKeyPath} and CA cert: {caCertPath}. Output: {outPath}");
+            Console.WriteLine(
+                $"Signing CSR: {csrPath} with CA key: {caKeyPath} and CA cert: {caCertPath}. Output: {outPath}");
             signedCert.Dispose();
             return Task.CompletedTask;
         }
@@ -170,7 +173,9 @@ internal static partial class Program
             return X509CertificateLoader.LoadCertificate(bytes);
         }
 
-        static X509Certificate2 AttachPrivateKeyToCertificate(X509Certificate2 certificate, AsymmetricAlgorithm privateKey)
+        static X509Certificate2 AttachPrivateKeyToCertificate(
+            X509Certificate2 certificate,
+            AsymmetricAlgorithm privateKey)
         {
             return privateKey switch
             {

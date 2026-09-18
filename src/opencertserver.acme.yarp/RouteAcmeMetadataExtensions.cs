@@ -27,8 +27,8 @@ public static class RouteAcmeMetadataExtensions
     /// is init-only, so the metadata must be supplied at construction time.
     /// </summary>
     public static RouteConfig WithAcmeRoute(
-       this RouteConfig route,
-       RouteAcmeOptions options)
+        this RouteConfig route,
+        RouteAcmeOptions options)
     {
         var metadata = route.Metadata is null
             ? new Dictionary<string, string>()
@@ -58,7 +58,8 @@ public static class RouteAcmeMetadataExtensions
             return null;
         }
 
-        return JsonSerializer.Deserialize<RouteAcmeOptions>(json, RouteAcmeOptionsSerializerContext.Default.RouteAcmeOptions);
+        return JsonSerializer.Deserialize<RouteAcmeOptions>(json,
+            RouteAcmeOptionsSerializerContext.Default.RouteAcmeOptions);
     }
 
     /// <summary>

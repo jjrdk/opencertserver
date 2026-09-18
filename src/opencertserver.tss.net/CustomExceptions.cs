@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Diagnostics;
@@ -48,5 +49,7 @@ public class TpmException : TssException
 
 public class TpmFailure : Exception
 {
-    public TpmFailure(string errMsg) : base(errMsg) { }
+    public TpmFailure(string errMsg) : base(errMsg)
+    {
+    }
 }

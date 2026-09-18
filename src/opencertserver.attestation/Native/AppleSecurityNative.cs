@@ -39,7 +39,10 @@ internal static partial class AppleCF
 
     [LibraryImport(CF)]
     private static partial IntPtr CFDictionaryCreateMutable(
-        IntPtr allocator, nint capacity, IntPtr keyCallBacks, IntPtr valueCallBacks);
+        IntPtr allocator,
+        nint capacity,
+        IntPtr keyCallBacks,
+        IntPtr valueCallBacks);
 
     [LibraryImport(CF)]
     private static partial void CFDictionarySetValue(IntPtr dict, IntPtr key, IntPtr value);
@@ -66,7 +69,10 @@ internal static partial class AppleCF
     [LibraryImport(CF)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool CFStringGetCString(
-        IntPtr theString, Span<byte> buffer, nint bufferSize, uint encoding);
+        IntPtr theString,
+        Span<byte> buffer,
+        nint bufferSize,
+        uint encoding);
 
     // ── Public helpers ────────────────────────────────────────────────────────
 
@@ -107,7 +113,10 @@ internal static partial class AppleCF
             CFStringGetCString(desc, buf, buf.Length, kCFStringEncodingUTF8);
             return System.Text.Encoding.UTF8.GetString(buf).TrimEnd('\0');
         }
-        finally { CFRelease(desc); }
+        finally
+        {
+            CFRelease(desc);
+        }
     }
 
     /// <summary>
@@ -125,20 +134,26 @@ internal static partial class AppleCF
         lease.Add(dict);
 
         // kSecAttrKeyType = "type" ; value = kSecAttrKeyTypeECSECPrimeRandom = "73"
-        var k1 = MakeCFString("type"); lease.Add(k1);
-        var v1 = MakeCFString("73"); lease.Add(v1);
+        var k1 = MakeCFString("type");
+        lease.Add(k1);
+        var v1 = MakeCFString("73");
+        lease.Add(v1);
         CFDictionarySetValue(dict, k1, v1);
 
         // kSecAttrKeySizeInBits = "bsiz" = 256
-        var k2 = MakeCFString("bsiz"); lease.Add(k2);
-        var v2 = MakeCFInt(256); lease.Add(v2);
+        var k2 = MakeCFString("bsiz");
+        lease.Add(k2);
+        var v2 = MakeCFInt(256);
+        lease.Add(v2);
         CFDictionarySetValue(dict, k2, v2);
 
         if (useSecureEnclave)
         {
             // kSecAttrTokenID = "tkid" = kSecAttrTokenIDSecureEnclave = "com.apple.setoken"
-            var k3 = MakeCFString("tkid"); lease.Add(k3);
-            var v3 = MakeCFString("com.apple.setoken"); lease.Add(v3);
+            var k3 = MakeCFString("tkid");
+            lease.Add(k3);
+            var v3 = MakeCFString("com.apple.setoken");
+            lease.Add(v3);
             CFDictionarySetValue(dict, k3, v3);
         }
 
@@ -164,5 +179,8 @@ internal static partial class AppleSecurity
 
     [LibraryImport(Sec)]
     internal static partial IntPtr SecKeyCreateSignature(
-        IntPtr key, IntPtr algorithm, IntPtr dataToSign, out IntPtr error);
+        IntPtr key,
+        IntPtr algorithm,
+        IntPtr dataToSign,
+        out IntPtr error);
 }

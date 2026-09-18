@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Diagnostics;
@@ -105,6 +106,7 @@ public sealed class AsymCryptoSystem : IDisposable
                         prime1 = RawRsa.ToBigEndian(rr.P, rsaParams.keyBits / 16);
                         prime2 = RawRsa.ToBigEndian(rr.Q, rsaParams.keyBits / 16);
                     }
+
                     var exponent = rsaParams.exponent != 0
                         ? Globs.HostToNet(rsaParams.exponent)
                         : RsaParms.DefaultExponent;
@@ -144,11 +146,13 @@ public sealed class AsymCryptoSystem : IDisposable
                     {
                         cs._ecDhProvider = ECDiffieHellman.Create(parms);
                     }
+
                     break;
                 }
             default:
                 throw new ArgumentException("Algorithm not supported");
         }
+
         return cs;
     }
 
@@ -161,7 +165,8 @@ public sealed class AsymCryptoSystem : IDisposable
         return _publicParms;
     }
 
-    public TpmPrivate GetPrivate(out TpmPublic tpmPub,
+    public TpmPrivate GetPrivate(
+        out TpmPublic tpmPub,
         TpmAlgId nameAlg = TpmAlgId.Sha1,
         ObjectAttr keyAttrs = ObjectAttr.Decrypt | ObjectAttr.UserWithAuth,
         IAsymSchemeUnion? scheme = null,
@@ -171,6 +176,7 @@ public sealed class AsymCryptoSystem : IDisposable
         {
             scheme = new NullAsymScheme();
         }
+
         if (symDef == null)
         {
             symDef = new SymDefObject();
@@ -212,6 +218,7 @@ public sealed class AsymCryptoSystem : IDisposable
         {
             throw new Exception("Invalid key blob");
         }
+
         return m.Get<Sensitive>();
     }
 
@@ -247,7 +254,9 @@ public sealed class AsymCryptoSystem : IDisposable
                         {
                             sigHash = (rsaParams.scheme as SigSchemeRsassa).hashAlg;
                         }
-                        var sig = _rsaProvider.SignData(data, CryptoLib.GetHashAlgorithmName(sigHash), RSASignaturePadding.Pkcs1);
+
+                        var sig = _rsaProvider.SignData(data, CryptoLib.GetHashAlgorithmName(sigHash),
+                            RSASignaturePadding.Pkcs1);
                         return new SignatureRsassa(sigHash, sig);
                     }
                 case TpmAlgId.Rsapss:
@@ -256,10 +265,13 @@ public sealed class AsymCryptoSystem : IDisposable
                         {
                             sigHash = (rsaParams.scheme as SigSchemeRsapss).hashAlg;
                         }
-                        var sig = _rsaProvider.SignData(data, CryptoLib.GetHashAlgorithmName(sigHash), RSASignaturePadding.Pss);
+
+                        var sig = _rsaProvider.SignData(data, CryptoLib.GetHashAlgorithmName(sigHash),
+                            RSASignaturePadding.Pss);
                         return new SignatureRsapss(sigHash, sig);
                     }
             }
+
             throw new ArgumentException("Unsupported signature scheme");
         }
 
@@ -270,10 +282,12 @@ public sealed class AsymCryptoSystem : IDisposable
             {
                 throw new ArgumentException("Unsupported ECC sig scheme");
             }
+
             if (sigHash == TpmAlgId.Null)
             {
                 sigHash = (eccParms.scheme as SigSchemeEcdsa).hashAlg;
             }
+
             var digest = CryptoLib.HashData(sigHash, data);
             Debug.Assert(_ecdsaProvider != null);
             var sig = _ecdsaProvider.SignData(data, CryptoLib.GetHashAlgorithmName(sigHash));
@@ -356,6 +370,7 @@ public sealed class AsymCryptoSystem : IDisposable
             {
                 return _rsaProvider.VerifyHash(data, sRsa.sig, CryptoLib.GetHashAlgorithmName(sigHash), paddingScheme);
             }
+
             return _rsaProvider.VerifyData(data, sRsa.sig, CryptoLib.GetHashAlgorithmName(sigHash), paddingScheme);
         }
 
@@ -366,6 +381,7 @@ public sealed class AsymCryptoSystem : IDisposable
             {
                 throw new ArgumentException("Unsupported ECC sig scheme");
             }
+
             var keyScheme = eccParams.scheme.GetUnionSelector();
 
             if (keyScheme != TpmAlgId.Null && keyScheme != sigScheme)
@@ -380,6 +396,7 @@ public sealed class AsymCryptoSystem : IDisposable
             {
                 return _ecdsaProvider.VerifyHash(data, sigBlob);
             }
+
             return _ecdsaProvider.VerifyData(data, sigBlob, CryptoLib.GetHashAlgorithmName(sigHash));
         }
 
@@ -407,7 +424,8 @@ public sealed class AsymCryptoSystem : IDisposable
             var hash = CryptoLib.GetHashAlgorithmName(decryptKeyNameAlg);
             var ephPub = eph.PublicKey.ExportParameters().Q;
             ephemPub = new EccPoint(ephPub.X, ephPub.Y);
-            var otherInfo = Globs.Concatenate([encodingParms, ephPub.X, _ecDhProvider.PublicKey.ExportParameters().Q.X
+            var otherInfo = Globs.Concatenate([
+                encodingParms, ephPub.X, _ecDhProvider.PublicKey.ExportParameters().Q.X
             ]);
 
             // The TPM uses the following number of bytes from the KDF
@@ -424,6 +442,7 @@ public sealed class AsymCryptoSystem : IDisposable
                 Array.Copy(fragment, 0, keyExchangeKey, pos, bytesToCopy);
             }
         }
+
         return keyExchangeKey;
     }
 
@@ -517,19 +536,28 @@ public class RawRsa
     internal BigInteger Dp;
     internal BigInteger Dq;
 
-    internal int KeySize { get { return (NumBits + 7) / 8; } }
+    internal int KeySize
+    {
+        get { return (NumBits + 7) / 8; }
+    }
 
     /// <summary>
     /// Returns the public key in TPM-format
     /// </summary>
     /// <returns></returns>
-    public byte[] Public { get { return ToBigEndian(N); } }
+    public byte[] Public
+    {
+        get { return ToBigEndian(N); }
+    }
 
     /// <summary>
     /// Returns the RSA private key in TPM format (the first prime number)
     /// </summary>
     /// <returns></returns>
-    public byte[] Private { get { return ToBigEndian(P); } }
+    public byte[] Private
+    {
+        get { return ToBigEndian(P); }
+    }
 
     /// <summary>
     ///  Generates new key pair using OS CSP
@@ -587,7 +615,8 @@ public class RawRsa
 
         NumBits = parms.keyBits;
 
-        E = new BigInteger(parms.exponent == 0 ? RsaParms.DefaultExponent
+        E = new BigInteger(parms.exponent == 0
+            ? RsaParms.DefaultExponent
             : BitConverter.GetBytes(parms.exponent));
         N = FromBigEndian((pub.unique as Tpm2bPublicKeyRsa).buffer);
         P = FromBigEndian(priv.buffer);
@@ -612,11 +641,13 @@ public class RawRsa
         {
             return data;
         }
+
         var labelSize = 0;
         while (labelSize < data.Length && data[labelSize++] != 0)
         {
             continue;
         }
+
         var label = new byte[labelSize + (data[labelSize - 1] != 0 ? 1 : 0)];
         Array.Copy(data, label, labelSize);
         return label;
@@ -696,6 +727,7 @@ public class RawRsa
         {
             b2[j] = b[len - 1 - j];
         }
+
         return b2;
     }
 
@@ -716,6 +748,7 @@ public class RawRsa
         {
             --len;
         }
+
         if (sizeWanted == -1)
         {
             sizeWanted = len;
@@ -733,6 +766,7 @@ public class RawRsa
         {
             b2[j + pad] = b[len - 1 - j];
         }
+
         return b2;
     }
 
@@ -829,6 +863,7 @@ public class RawRsa
         {
             throw new ArgumentException("PkcsVerify: Invalid signature");
         }
+
         var k = KeySize;
         var sig = FromBigEndian(s);
         var emx = BigInteger.ModPow(sig, E, N);
@@ -840,6 +875,7 @@ public class RawRsa
         {
             return false;
         }
+
         return true;
     }
 }
@@ -878,10 +914,11 @@ internal class RawEccKey
         return _eccCurves.ContainsKey(curve);
     }
 
-    static Dictionary<EccCurve, ECCurve> _eccCurves = new Dictionary<EccCurve, ECCurve>() {
-        {EccCurve.NistP256, ECCurve.CreateFromFriendlyName("nistP256")},
-        {EccCurve.NistP384, ECCurve.CreateFromFriendlyName("nistP384")},
-        {EccCurve.NistP521, ECCurve.CreateFromFriendlyName("nistP521")},
+    static Dictionary<EccCurve, ECCurve> _eccCurves = new Dictionary<EccCurve, ECCurve>()
+    {
+        { EccCurve.NistP256, ECCurve.CreateFromFriendlyName("nistP256") },
+        { EccCurve.NistP384, ECCurve.CreateFromFriendlyName("nistP384") },
+        { EccCurve.NistP521, ECCurve.CreateFromFriendlyName("nistP521") },
     };
 
     internal static ECCurve GetEccCurve(EccCurve curveId)
@@ -890,6 +927,7 @@ internal class RawEccKey
         {
             throw new ArgumentException("Unsupported ECC curve");
         }
+
         ECCurve curve;
         _eccCurves.TryGetValue(curveId, out curve);
         return curve;
@@ -910,6 +948,7 @@ internal class RawEccKey
         {
             throw new ArgumentException("ECC Key must either sign or decrypt");
         }
+
         var scheme = eccParms.scheme.GetUnionSelector();
         if (signing && scheme != TpmAlgId.Ecdsa && scheme != TpmAlgId.Null)
         {
