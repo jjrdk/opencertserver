@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="DnsClient" />
+        <PackageReference Include="DnsClientX" />
     </ItemGroup>
 
     <ItemGroup>

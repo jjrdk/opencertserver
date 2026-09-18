@@ -6,7 +6,7 @@ using Abstractions.Storage;
 using Abstractions.Workers;
 using BackgroundServices;
 using Configuration;
-using DnsClient;
+using DnsClientX;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RequestServices;
@@ -46,7 +46,8 @@ public static class ServiceCollectionExtensions
                 services.AddTransient<IValidateHttp01Challenges, ValidateHttp01Challenges>();
             }
 
-            services.AddScoped<ILookupClient, LookupClient>();
+            services.AddSingleton<ClientX>(_ => new ClientX(DnsEndpoint.System));
+            services.AddScoped<IDnsResolver, DnsClientXResolver>();
             services.AddScoped<ICaaValidator, CaaValidator>();
             services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();
             services.AddSingleton<IAttestationTrustProvider>(

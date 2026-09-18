@@ -8,7 +8,7 @@ This project provides the ACME server implementation for OpenCertServer, support
 - Integrates with CertesSlim and CA utilities
 
 ## Dependencies
-- DnsClient (DNS resolution for challenge validation)
+- DnsClientX (DNS resolution for challenge validation)
 - Microsoft.AspNetCore.App (framework reference)
 - CertesSlim, opencertserver.acme.abstractions, opencertserver.ca.utils (project references)
 

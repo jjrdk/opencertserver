@@ -9,8 +9,7 @@ using Abstractions.Services;
 using CertesSlim.Acme;
 using CertesSlim.Acme.Resource;
 using Configuration;
-using DnsClient;
-using DnsClient.Protocol;
+using DnsClientX;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -63,12 +62,12 @@ public sealed partial class CaaValidator : ICaaValidator
     };
 
     private readonly ILogger<CaaValidator> _logger;
-    private readonly ILookupClient _client;
+    private readonly IDnsResolver _client;
     private readonly IOptions<AcmeServerOptions> _options;
 
     public CaaValidator(
         ILogger<CaaValidator> logger,
-        ILookupClient client,
+        IDnsResolver client,
         IOptions<AcmeServerOptions> options)
     {
         _logger = logger;
@@ -98,7 +97,7 @@ public sealed partial class CaaValidator : ICaaValidator
         {
             relevantSet = await LoadRelevantRecordSetAsync(fqdn, cancellationToken).ConfigureAwait(false);
         }
-        catch (DnsResponseException ex)
+        catch (DnsClientException ex)
         {
             LogCaaLookupFailed(fqdn, ex.Message);
             return new AcmeError { Type = "caa", Detail = $"Could not read CAA records from DNS: {ex.Message}" };
@@ -148,11 +147,10 @@ public sealed partial class CaaValidator : ICaaValidator
         while (domain.Length > 0)
         {
             LogQueryingCaa(domain);
-            var response = await _client
-                .QueryAsync(domain, QueryType.CAA, cancellationToken: cancellationToken)
+            var records = await _client
+                .ResolveCaaRecordsAsync(domain, cancellationToken)
                 .ConfigureAwait(false);
 
-            var records = response.Answers.OfType<CaaRecord>().ToList();
             if (records.Count > 0)
             {
                 return records;
