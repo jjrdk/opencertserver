@@ -2,8 +2,7 @@ namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using CertesSlim.Acme;
 using CertesSlim.Acme.Resource;
-using DnsClient;
-using DnsClient.Protocol;
+using DnsClientX;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -87,14 +86,10 @@ public sealed class AcmeCaaSteps
     {
         var identifier = new Identifier { Type = IdentifierType.Dns, Value = domain };
         var options = Options.Create(new AcmeServerOptions { CAAIdentities = [CaaIdentity] });
-        var client = Substitute.For<ILookupClient>();
+        var client = Substitute.For<IDnsResolver>();
         client
-            .QueryAsync(
-                Arg.Any<string>(),
-                Arg.Any<QueryType>(),
-                Arg.Any<QueryClass>(),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IDnsQueryResponse>(new StubQueryResponse(BuildRecords(domain))));
+            .ResolveCaaRecordsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(BuildRecords(domain));
         var validator = new CaaValidator(NullLogger<CaaValidator>.Instance, client, options);
         State.Result = await validator
             .ValidateAsync(identifier, State.AccountUri, State.ValidationMethod, CancellationToken.None)
@@ -113,14 +108,13 @@ public sealed class AcmeCaaSteps
         Assert.NotNull(State.Result);
     }
 
-    private IReadOnlyList<DnsResourceRecord> BuildRecords(string domain)
+    private IReadOnlyList<CaaRecord> BuildRecords(string domain)
         => State.Records
             .Where(record => string.Equals(record.Domain, domain, StringComparison.OrdinalIgnoreCase))
-            .Select(record => (DnsResourceRecord)new CaaRecord(
-                new ResourceRecordInfo(domain, ResourceRecordType.CAA, QueryClass.IN, 300, 0),
-                0,
-                "issue",
-                record.Value))
+            .Select(record => new CaaRecord(
+                flags: 0,
+                tag: "issue",
+                value: record.Value))
             .ToList();
 
     private sealed class CaaState
@@ -132,39 +126,5 @@ public sealed class AcmeCaaSteps
         public string? ValidationMethod { get; set; }
 
         public AcmeError? Result { get; set; }
-    }
-
-    private sealed class StubQueryResponse : IDnsQueryResponse
-    {
-        private readonly IReadOnlyList<DnsResourceRecord> _answers;
-
-        public StubQueryResponse(IReadOnlyList<DnsResourceRecord> answers)
-        {
-            _answers = answers;
-        }
-
-        public IReadOnlyList<DnsQuestion> Questions { get; } = [];
-
-        public IReadOnlyList<DnsResourceRecord> Additionals { get; } = [];
-
-        public IEnumerable<DnsResourceRecord> AllRecords => _answers;
-
-        public IReadOnlyList<DnsResourceRecord> Answers => _answers;
-
-        public IReadOnlyList<DnsResourceRecord> Authorities { get; } = [];
-
-        public string AuditTrail { get; } = string.Empty;
-
-        public string? ErrorMessage { get; } = null;
-
-        public bool HasError { get; } = false;
-
-        public DnsResponseHeader? Header { get; } = null;
-
-        public int MessageSize { get; } = 0;
-
-        public NameServer? NameServer { get; } = null;
-
-        public DnsQuerySettings? Settings { get; } = null;
     }
 }

@@ -52,7 +52,7 @@
 ### Integration Points & Dependencies
 - **CertesSlim**: Used for ACME protocol operations
 - **CA Utilities**: Shared X.509/PKI helpers in `ca.utils`
-- **External:** DnsClient, Amazon.Lambda.AspNetCoreServer, Angular Material
+- **External:** DnsClientX, Amazon.Lambda.AspNetCoreServer, Angular Material
   - **EST client & CLI:** `opencertserver.cli` uses `src/opencertserver.est.client/EstClient` for EST enrollment and relies on `ca.utils` helpers for CSR formatting.
     - **EST re-enroll:** `est-reenroll` reuses an existing certificate/private key pair and calls `EstClient.ReEnroll`, so capture the file paths and matching keys when automating.
   - **Certificate formatting:** `src/opencertserver.ca.utils/CertificateExtensions` exposes `PrintCertificate()` which now returns formatted strings consumed by the CLI and referenced in the new CA tests.
