@@ -1,11 +1,12 @@
 <Solution>
-  <Folder Name="/servers/">
-    <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
-    <Project Path="src/opencertserver.mcp/opencertserver.mcp.csproj" />
-      <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
-    <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
-    <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
-  </Folder>
+    <Folder Name="/servers/">
+      <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
+      <Project Path="src/opencertserver.mcp/opencertserver.mcp.csproj" />
+        <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
+      <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
+      <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
+      <Project Path="src\opencertserver.yarp.server\opencertserver.yarp.server.csproj" />
+    </Folder>
   <Folder Name="/Solution Items/">
     <File Path="build.ps1" />
     <File Path="build.sh" />

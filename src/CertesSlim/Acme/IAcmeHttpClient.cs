@@ -40,6 +40,7 @@ public interface IAcmeHttpClient
 /// </summary>
 internal static class IAcmeHttpClientExtensions
 {
+    private const string Badnonce = "urn:ietf:params:acme:error:badNonce";
     /// <param name="client">The client.</param>
     extension(IAcmeHttpClient client)
     {
@@ -68,7 +69,7 @@ internal static class IAcmeHttpClientExtensions
             var response = await client.Post<T, JwsPayload>(location, payload).ConfigureAwait(false);
             var retryCount = context.BadNonceRetryCount;
             while (response.Error?.Status == System.Net.HttpStatusCode.BadRequest &&
-                response.Error.Type?.CompareTo("urn:ietf:params:acme:error:badNonce") == 0 &&
+                response.Error.Type?.CompareTo(Badnonce) == 0 &&
                 retryCount-- > 0)
             {
                 payload = await context.Sign(entity, location).ConfigureAwait(false);
@@ -110,7 +111,7 @@ internal static class IAcmeHttpClientExtensions
             var response = await client.Post<T, JwsPayload>(location, payload).ConfigureAwait(false);
 
             while (response.Error?.Status == System.Net.HttpStatusCode.BadRequest &&
-                response.Error.Type?.CompareTo("urn:ietf:params:acme:error:badNonce") == 0 &&
+                response.Error.Type?.CompareTo(Badnonce) == 0 &&
                 retryCount-- > 0)
             {
                 payload = jwsSigner.Sign(entity, url: location, nonce: await client.ConsumeNonce().ConfigureAwait(false));
