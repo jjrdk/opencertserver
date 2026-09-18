@@ -119,4 +119,3 @@ public sealed class TpmEcDsa : ECDsa
             _ => HashAlgorithmName.SHA256
         };
 }
-

@@ -50,4 +50,3 @@ public interface ITpmKeyProvider : IDisposable
     /// </summary>
     ECParameters ExportEcDsaPublicParameters(uint persistentHandle);
 }
-

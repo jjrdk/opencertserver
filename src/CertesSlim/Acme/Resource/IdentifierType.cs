@@ -14,8 +14,7 @@ public enum IdentifierType
     /// <summary>
     /// The DNS type.
     /// </summary>
-    [EnumMember(Value = "dns")]
-    Dns
+    [EnumMember(Value = "dns")] Dns
 }
 
 /// <summary>

@@ -29,7 +29,9 @@ public sealed class TpmCaProfileFactory : IDisposable
     /// <see cref="TssTpmKeyProvider"/> as the TPM communication backend.
     /// </summary>
     public TpmCaProfileFactory(TpmCaOptions options)
-        : this(options, new TssTpmKeyProvider(options), ownsKeyProvider: true) { }
+        : this(options, new TssTpmKeyProvider(options), ownsKeyProvider: true)
+    {
+    }
 
     /// <summary>
     /// Creates a factory with a custom <see cref="ITpmKeyProvider"/> (e.g. a simulator
@@ -43,8 +45,10 @@ public sealed class TpmCaProfileFactory : IDisposable
     /// between multiple factory instances (e.g. during key rollover) so that the first factory
     /// to be disposed does not invalidate the shared connection.
     /// </param>
-    public TpmCaProfileFactory(TpmCaOptions options, ITpmKeyProvider keyProvider,
-                                bool ownsKeyProvider = true)
+    public TpmCaProfileFactory(
+        TpmCaOptions options,
+        ITpmKeyProvider keyProvider,
+        bool ownsKeyProvider = true)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _keyProvider = keyProvider ?? throw new ArgumentNullException(nameof(keyProvider));
@@ -171,4 +175,3 @@ public sealed class TpmCaProfileFactory : IDisposable
     private static X509Certificate2Collection CreateInitialPublishedChain(X509Certificate2 cert)
         => [X509Certificate2.CreateFromPem(cert.ExportCertificatePem())];
 }
-

@@ -1,7 +1,6 @@
 ﻿namespace OpenCertServer.Ca.Utils;
 
 using System.Security.Cryptography;
-
 using System.Security.Cryptography.X509Certificates;
 
 /// <summary>

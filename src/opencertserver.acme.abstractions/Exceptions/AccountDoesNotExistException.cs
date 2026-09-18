@@ -19,4 +19,3 @@ public sealed class AccountDoesNotExistException : AcmeException
         get { return "accountDoesNotExist"; }
     }
 }
-

@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Text;
@@ -117,7 +118,8 @@ public partial class TpmPublic
     /// <param name="signature"></param>
     /// <param name="qualifiedNameOfSigner"></param>
     /// <returns></returns>
-    public bool VerifyQuote(TpmAlgId pcrDigestAlg,
+    public bool VerifyQuote(
+        TpmAlgId pcrDigestAlg,
         PcrSelection[] expectedSelectedPcr,
         Tpm2bDigest[] expectedPcrValues,
         byte[] nonce,
@@ -145,7 +147,8 @@ public partial class TpmPublic
     /// <param name="pointOfFailure"></param>
     /// <param name="qualifiedNameOfSigner"></param>
     /// <returns></returns>
-    public bool VerifyQuote(TpmAlgId pcrDigestAlg,
+    public bool VerifyQuote(
+        TpmAlgId pcrDigestAlg,
         PcrSelection[] expectedSelectedPcr,
         Tpm2bDigest[] expectedPcrValues,
         byte[] nonce,
@@ -215,6 +218,7 @@ public partial class TpmPublic
             pointOfFailure = QuoteElt.Signature;
             return false;
         }
+
         return true;
     }
 
@@ -230,8 +234,12 @@ public partial class TpmPublic
     /// <param name="expectedName"></param>
     /// <param name="signature"></param>
     /// <returns></returns>
-    public bool VerifyCertify(TpmHash name, byte[] nonce, Attest quotedInfo,
-        byte[] expectedName, ISignatureUnion signature)
+    public bool VerifyCertify(
+        TpmHash name,
+        byte[] nonce,
+        Attest quotedInfo,
+        byte[] expectedName,
+        ISignatureUnion signature)
     {
         // Check generic signature stuff
         if (quotedInfo.type != TpmSt.AttestCertify)
@@ -255,6 +263,7 @@ public partial class TpmPublic
         {
             return false;
         }
+
         // Check the actual signature
         var sigHash = TpmHash.FromData(TpmAlgId.Sha1, quotedInfo.GetTpmRepresentation());
         var certifyOk = VerifySignatureOverHash(sigHash, signature);
@@ -291,6 +300,7 @@ public partial class TpmPublic
                 ephemPubPt = null;
                 return null;
             }
+
             return encryptor.EcdhGetKeyExchangeKey(encodingParms, nameAlg, out ephemPubPt);
         }
     }
@@ -308,7 +318,8 @@ public partial class TpmPublic
     /// <param name="nameOfKeyToBeActivated"></param>
     /// <param name="encryptedSecret"></param>
     /// <returns>CredentialBlob (</returns>
-    public IdObject CreateActivationCredentials(byte[] secret,
+    public IdObject CreateActivationCredentials(
+        byte[] secret,
         byte[] nameOfKeyToBeActivated,
         out byte[] encryptedSecret)
     {
@@ -329,6 +340,7 @@ public partial class TpmPublic
                     encryptedSecret = null;
                     return null;
                 }
+
                 encSecret = Marshaller.GetTpmRepresentation(ephemPubPt);
                 break;
             default:
@@ -360,8 +372,10 @@ public partial class TpmPublic
                 encryptedSecret = null;
                 return null;
             }
+
             encIdentity = sym.Encrypt(cvTpm2B);
         }
+
         Transform(encIdentity);
 
         var hmacKeyBits = CryptoLib.DigestSize(nameAlg);
@@ -449,12 +463,15 @@ public partial class TssObject
 
             if (Globs.IsEmpty(ivIn))
             {
-                ivIn = (symDef.Mode == TpmAlgId.Ecb) ? []
+                ivIn = (symDef.Mode == TpmAlgId.Ecb)
+                    ? []
                     : Globs.GetRandomBytes(SymCipher.GetBlockSize(symDef));
             }
+
             ivOut = Globs.CopyData(ivIn);
 
-            return decrypt ? sym.Decrypt(data, ivOut)
+            return decrypt
+                ? sym.Decrypt(data, ivOut)
                 : sym.Encrypt(data, ivOut);
         }
     } // EncryptDecrypt
@@ -500,7 +517,8 @@ public partial class TssObject
     /// <param name="authVal"></param>
     /// <param name="keyData"></param>
     /// <returns></returns>
-    public static TssObject Create(TpmPublic pub,
+    public static TssObject Create(
+        TpmPublic pub,
         AuthValue authVal = null,
         byte[] keyData = null)
     {
@@ -535,6 +553,7 @@ public partial class TssObject
             {
                 unique = CryptoLib.HashData(pub.nameAlg, seed, keyData);
             }
+
             newKey.Public.unique = pub.type == TpmAlgId.Keyedhash
                 ? new Tpm2bDigestKeyedhash(unique) as IPublicIdUnion
                 : new Tpm2bDigestSymcipher(unique);
@@ -565,7 +584,8 @@ public partial class TssObject
         // Figure out how many bits we will need from the KDF
         var parentSymSeed = parent.Sensitive.seedValue;
         Transform(parentSymSeed);
-        var iv = (symDef.Mode == TpmAlgId.Ecb) ? []
+        var iv = (symDef.Mode == TpmAlgId.Ecb)
+            ? []
             : Globs.GetRandomBytes(SymCipher.GetBlockSize(symDef));
 
         // The encryption key is calculated with a KDF
@@ -661,6 +681,7 @@ public partial class TssObject
                         encSecret = null;
                         return null;
                     }
+
                     seed = swNewParent.EcdhGetKeyExchangeKey(DuplicateEncodingParms,
                         pubNewParent.nameAlg,
                         out pubEphem);
@@ -671,6 +692,7 @@ public partial class TssObject
                         "GetDuplicationBlob: Unsupported algorithm");
             }
         }
+
         Transform(seed);
         Transform(encSecret);
 
@@ -688,6 +710,7 @@ public partial class TssObject
 
             dupSensitive = enc2.Encrypt(encSensitive);
         }
+
         Transform(dupSensitive);
 
         var npNameNumBits = CryptoLib.DigestSize(pubNewParent.nameAlg) * 8;
@@ -722,7 +745,8 @@ public partial class TssObject
     /// <param name="publicParms"></param>
     /// <returns></returns>
     internal static ISensitiveCompositeUnion
-        CreateSensitiveComposite(TpmPublic pub,
+        CreateSensitiveComposite(
+        TpmPublic pub,
         ref byte[] keyData,
         out IPublicIdUnion publicId)
     {
@@ -766,6 +790,7 @@ public partial class TssObject
             {
                 throw new ArgumentException("Wrong symmetric key length");
             }
+
             newSens = new Tpm2bSymKey(keyData);
         }
         else if (pub.type == TpmAlgId.Keyedhash)
@@ -788,6 +813,7 @@ public partial class TssObject
             {
                 throw new ArgumentException("HMAC key is too big");
             }
+
             newSens = new Tpm2bSensitiveData(keyData);
         }
         else

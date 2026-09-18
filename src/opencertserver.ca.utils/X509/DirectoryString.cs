@@ -20,6 +20,7 @@ public class DirectoryString : IAsnValue
     /// Represents the _value.
     /// </summary>
     private readonly string _value;
+
     /// <summary>
     /// Represents the _type.
     /// </summary>

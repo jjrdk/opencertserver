@@ -9,6 +9,7 @@ public class BitFieldElementAttribute : Attribute
 {
     internal int StartBit;
     internal int EndBit;
+
     public BitFieldElementAttribute(int startBit, int endBit)
     {
         StartBit = startBit;
@@ -23,6 +24,7 @@ public class MarshalingAttribute : Attribute
 public class BitFieldAttribute : MarshalingAttribute
 {
     internal Type WireType;
+
     public BitFieldAttribute(Type wireType)
     {
         WireType = wireType;
@@ -68,6 +70,7 @@ public class MarshalAsAttribute : MarshalingAttribute
         {
             throw new Exception("Marshaling an array?");
         }
+
         MarshType = tp;
         ArrayLength = theArrayLength;
     }
@@ -82,11 +85,13 @@ public class MarshalAsAttribute : MarshalingAttribute
             AssociatedArrayName = associatedVariable;
             return;
         }
+
         if (tp == MarshalType.Union)
         {
             AssociatedUnionSelector = associatedVariable;
             return;
         }
+
         throw new Exception("Unknown MarshallType?");
     }
 }
@@ -106,6 +111,7 @@ public class RangeAttribute : MarshalingAttribute
 public class SpecTypeNameAttribute : Attribute
 {
     public string Name;
+
     public SpecTypeNameAttribute(string name)
     {
         Name = name;

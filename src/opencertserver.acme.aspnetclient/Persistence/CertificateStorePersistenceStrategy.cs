@@ -61,7 +61,8 @@ public sealed class CertificateStorePersistenceStrategy : ICertificatePersistenc
     {
         if (string.IsNullOrWhiteSpace(subjectName))
         {
-            throw new ArgumentException("A non-empty subject name is required to identify the certificate in the store.", nameof(subjectName));
+            throw new ArgumentException(
+                "A non-empty subject name is required to identify the certificate in the store.", nameof(subjectName));
         }
 
         _subjectName = subjectName;
@@ -103,7 +104,7 @@ public sealed class CertificateStorePersistenceStrategy : ICertificatePersistenc
 
     /// <inheritdoc />
     public Task<byte[]?> RetrieveAccountCertificate()
-          => Task.FromResult<byte[]?>(null);
+        => Task.FromResult<byte[]?>(null);
 
     /// <inheritdoc />
     public Task<X509Certificate2?> RetrieveSiteCertificate()
@@ -127,9 +128,9 @@ public sealed class CertificateStorePersistenceStrategy : ICertificatePersistenc
             store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
 
             var match = store.Certificates
-                  .Where(c => HasPrivateKey(c) && MatchesSubject(c, subject))
-                  .OrderByDescending(c => c.NotAfter)
-                  .FirstOrDefault();
+                .Where(c => HasPrivateKey(c) && MatchesSubject(c, subject))
+                .OrderByDescending(c => c.NotAfter)
+                .FirstOrDefault();
 
             return Task.FromResult(match);
         }
@@ -149,28 +150,30 @@ public sealed class CertificateStorePersistenceStrategy : ICertificatePersistenc
     private string RouteSubject(string routeId)
     {
         return string.Equals(routeId, AcmeRouteConstants.DefaultRouteId, StringComparison.Ordinal)
-              ? _subjectName
-              : $"{_subjectName}{RouteSeparator}{routeId}";
+            ? _subjectName
+            : $"{_subjectName}{RouteSeparator}{routeId}";
     }
 
     private bool MatchesSubject(X509Certificate2 certificate, string subject)
     {
         // On Windows the entry is tagged with a FriendlyName so it is matched exactly there.
         if (OperatingSystem.IsWindows()
-                 && !string.IsNullOrEmpty(certificate.FriendlyName))
+         && !string.IsNullOrEmpty(certificate.FriendlyName))
         {
-            return string.Equals(certificate.FriendlyName, FriendlyNameFor(subject), StringComparison.OrdinalIgnoreCase);
+            return string.Equals(certificate.FriendlyName, FriendlyNameFor(subject),
+                StringComparison.OrdinalIgnoreCase);
         }
 
         // On non-Windows the FriendlyName is not preserved by the store, so match by subject.
-        return string.Equals(certificate.GetNameInfo(X509NameType.SimpleName, false), subject, StringComparison.OrdinalIgnoreCase);
+        return string.Equals(certificate.GetNameInfo(X509NameType.SimpleName, false), subject,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private static string FriendlyNameFor(string subject)
     {
         return OperatingSystem.IsWindows()
-             ? $"{FriendlyNamePrefix}{subject}"
-             : subject;
+            ? $"{FriendlyNamePrefix}{subject}"
+            : subject;
     }
 
     private static bool HasPrivateKey(X509Certificate2 certificate)
@@ -193,7 +196,7 @@ public sealed class CertificateStorePersistenceStrategy : ICertificatePersistenc
         // Remove any previously stored certificates matching this route to avoid accumulation
         // of stale entries across renewal cycles.
         var existing = store.Certificates
-              .Where(c => MatchesSubject(c, subject));
+            .Where(c => MatchesSubject(c, subject));
 
         foreach (var old in existing)
         {

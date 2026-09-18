@@ -11,7 +11,9 @@ public static class ServiceCollectionExtensions
     /// Registers all attestation services. Call after <c>services.AddOptions()</c>.
     /// Options are bound from the "Global" and "Providers" configuration sections.
     /// </summary>
-    public static IServiceCollection AddAttestationServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddAttestationServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
         // Bind the top-level cloud context
         services.Configure<AttestationOptions>(configuration.GetSection("Global"));

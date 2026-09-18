@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Diagnostics;
@@ -21,17 +22,26 @@ public sealed class SymCipher : IDisposable
     // this class emulates them by using Alg in ECB mode.
     private readonly CipherMode _mode;
 
-    public byte[] KeyData { get { return _alg.Key; } }
+    public byte[] KeyData
+    {
+        get { return _alg.Key; }
+    }
 
     /// <summary>
     /// Block size in bytes.
     /// </summary>
-    public int BlockSize { get { return _alg.BlockSize / 8; } }
+    public int BlockSize
+    {
+        get { return _alg.BlockSize / 8; }
+    }
 
     /// <summary>
     /// Initialization vector size in bytes.
     /// </summary>
-    public int IvSize { get { return _alg.IV.Length; } }
+    public int IvSize
+    {
+        get { return _alg.IV.Length; }
+    }
 
     private SymCipher(SymmetricAlgorithm alg, CipherMode mode)
     {
@@ -53,10 +63,12 @@ public sealed class SymCipher : IDisposable
         {
             return 8;
         }
+
         if (symDef.Algorithm != TpmAlgId.Aes)
         {
             throw new ArgumentException($"Unsupported algorithm {symDef.Algorithm}");
         }
+
         return 16;
     }
 
@@ -67,8 +79,10 @@ public sealed class SymCipher : IDisposable
     /// <param name="keyData"></param>
     /// <param name="iv"></param>
     /// <returns></returns>
-    public static SymCipher Create(SymDefObject symDef = null,
-        byte[] keyData = null, byte[] iv = null)
+    public static SymCipher Create(
+        SymDefObject symDef = null,
+        byte[] keyData = null,
+        byte[] iv = null)
     {
         if (symDef == null)
         {
@@ -87,7 +101,7 @@ public sealed class SymCipher : IDisposable
         }
 
         SymmetricAlgorithm alg = null; // = new RijndaelManaged();
-                                       //        var limitedSupport = false;
+        //        var limitedSupport = false;
         var feedbackSize = 0;
 
         switch (symDef.Algorithm)
@@ -99,6 +113,7 @@ public sealed class SymCipher : IDisposable
                 {
                     feedbackSize = 8;
                 }
+
                 break;
             case TpmAlgId.Tdes:
                 // TripleDES is deprecated/weak; treat as unsupported.
@@ -140,6 +155,7 @@ public sealed class SymCipher : IDisposable
             {
                 Array.Resize(ref iv, blockSize);
             }
+
             alg.IV = iv;
         }
 
@@ -170,7 +186,10 @@ public sealed class SymCipher : IDisposable
         }
     }
 
-    public static byte[] Encrypt(SymDefObject symDef, byte[] key, byte[] iv,
+    public static byte[] Encrypt(
+        SymDefObject symDef,
+        byte[] key,
+        byte[] iv,
         byte[] dataToEncrypt)
     {
         using (var cipher = Create(symDef, key, iv))
@@ -179,7 +198,10 @@ public sealed class SymCipher : IDisposable
         }
     }
 
-    public static byte[] Decrypt(SymDefObject symDef, byte[] key, byte[] iv,
+    public static byte[] Decrypt(
+        SymDefObject symDef,
+        byte[] key,
+        byte[] iv,
         byte[] dataToDecrypt)
     {
         using (var cipher = Create(symDef, key, iv))
@@ -270,6 +292,7 @@ public sealed class SymCipher : IDisposable
                     throw new ArgumentException("Encrypt: Unsupported symmetric mode");
             }
         }
+
         return unpadded == 0 ? paddedData : Globs.CopyData(paddedData, 0, data.Length);
     }
 
@@ -357,9 +380,11 @@ public sealed class SymCipher : IDisposable
                     {
                         throw new ArgumentException("Decrypt: ECB mode is not supported for security reasons");
                     }
+
                     throw new ArgumentException("Decrypt: Unsupported symmetric mode");
             }
         }
+
         return tempOut;
     }
 

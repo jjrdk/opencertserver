@@ -237,6 +237,7 @@ public static class CertificateExtensions
                 slice[j].TryFormat(hexBuf, out _, "x2");
                 sb.Append(hexBuf);
             }
+
             sb.AppendLine();
         }
 

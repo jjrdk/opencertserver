@@ -119,6 +119,7 @@ public sealed class AmdSnpProvider : IAttestationProvider
         {
             new ReadOnlySpan<byte>((byte*)ptr.ToPointer(), length).CopyTo(buffer);
         }
+
         return Convert.ToHexString(buffer);
     }
 }

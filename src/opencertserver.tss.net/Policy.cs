@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Runtime.Serialization;
@@ -11,6 +12,7 @@ public enum PolicySerializationFormat
     Json,
     Xml
 }
+
 /// <summary>
 /// A PolicyTree contains machinery for creating, executing and
 /// persisting TPM policy expression.
@@ -116,12 +118,15 @@ public class PolicyTree
                     {
                         throw new ArgumentException($"CreateNormalizedPolicy: Repeated branch-identifier {branchId}");
                     }
+
                     branchIdDict.Add(branchId, "");
                 }
+
                 if (root == null)
                 {
                     root = ace;
                 }
+
                 leaf = ace;
             }
 
@@ -138,7 +143,6 @@ public class PolicyTree
         if (unnamedBranches && numBranches != 1)
         {
             throw new ArgumentException("Policy-chain leaf does not have a branch identifier");
-
         }
 
         // We now have a list of chains in chains.
@@ -176,6 +180,7 @@ public class PolicyTree
                 currentOrAce.AddPolicyBranch(chains[j]);
             }
         }
+
         // All input chains are connected up to one or more ORs at the root so we are done.
         PolicyRoot = theRoot;
     }
@@ -188,6 +193,7 @@ public class PolicyTree
         {
             return new TpmHash(PolicyHash.HashAlg);
         }
+
         // First, check that the tree is OK. An exception is thrown if checks fail.
         CheckPolicy("", ref dummyAce);
 
@@ -208,7 +214,9 @@ public class PolicyTree
         CheckBranchIDs(PolicyRoot, branchIdToFind, ref matchingAce);
     }
 
-    internal void CheckBranchIDs(PolicyAce ace, string branchIdToFind,
+    internal void CheckBranchIDs(
+        PolicyAce ace,
+        string branchIdToFind,
         ref PolicyAce matchingAce)
     {
         if (ace == null)
@@ -249,6 +257,7 @@ public class PolicyTree
                 {
                     ace.BranchID = "leaf";
                 }
+
                 return;
             }
 
@@ -284,7 +293,9 @@ public class PolicyTree
     // and this can be used to provide additional context (e.g. to distinguish
     // a request to use a corporate smartcard from a personal one).
     //
-    public delegate ISignatureUnion SignDelegate(PolicyTree policy, TpmPolicySigned ace,
+    public delegate ISignatureUnion SignDelegate(
+        PolicyTree policy,
+        TpmPolicySigned ace,
         byte[] nonceTpm,
         out TpmPublic sigVerifier);
 
@@ -299,7 +310,9 @@ public class PolicyTree
     /// This is called from TpmPolicySigned when an external caller must sign the session data.
     /// </summary>
     /// <returns></returns>
-    internal ISignatureUnion ExecuteSignerCallback(TpmPolicySigned ace, byte[] nonceTpm,
+    internal ISignatureUnion ExecuteSignerCallback(
+        TpmPolicySigned ace,
+        byte[] nonceTpm,
         out TpmPublic verificationKey)
     {
         if (SignerCallback == null)
@@ -314,8 +327,11 @@ public class PolicyTree
     /// This is a helper used by signature callbacks to properly marshal data to be
     /// hashed before signing.
     /// </summary>
-    public static byte[] PackDataToSign(int expirationTime, byte[] nonceTpm,
-        byte[] cpHash, byte[] policyRef)
+    public static byte[] PackDataToSign(
+        int expirationTime,
+        byte[] nonceTpm,
+        byte[] cpHash,
+        byte[] policyRef)
     {
         var dataToSign = new Marshaller();
         dataToSign.Put(nonceTpm, "");
@@ -325,7 +341,9 @@ public class PolicyTree
         return dataToSign.GetBytes();
     }
 
-    public delegate void PolicyNVDelegate(PolicyTree policy, TpmPolicyNV ace,
+    public delegate void PolicyNVDelegate(
+        PolicyTree policy,
+        TpmPolicyNV ace,
         out SessionBase authorizingSession,
         out TpmHandle authorizedEntityHandle,
         out TpmHandle nvHandle);
@@ -341,12 +359,17 @@ public class PolicyTree
     /// Called from TpmPolicyNV.
     /// </summary>
     /// <returns></returns>
-    internal void ExecutePolicyNvCallback(TpmPolicyNV ace, out TpmHandle authHandle, out TpmHandle nvHandle, out SessionBase authSession)
+    internal void ExecutePolicyNvCallback(
+        TpmPolicyNV ace,
+        out TpmHandle authHandle,
+        out TpmHandle nvHandle,
+        out SessionBase authSession)
     {
         if (PolicyNVCallback == null)
         {
             throw new Exception("No policyNV callback installed.");
         }
+
         PolicyNVCallback(this, ace, out authSession, out authHandle, out nvHandle);
     }
 
@@ -365,6 +388,7 @@ public class PolicyTree
         {
             throw new Exception("No policyAction callback installed.");
         }
+
         PolicyActionCallback(this, ace);
     }
 } // class PolicyTree
@@ -434,38 +458,28 @@ public class TpmPolicy
 
     internal PolicyTree AssociatedPolicy;
 
-    [MarshalAs(0)]
-    [DataMember]
-    public string PolicyName;
+    [MarshalAs(0)][DataMember] public string PolicyName;
 
     [MarshalAs(1)]
     [DataMember]
     public TpmAlgId HashAlgorithm
     {
-        get
-        {
-            return PolicyHash.HashAlg;
-        }
-        set
-        {
-            PolicyHash = new TpmHash(value);
-        }
+        get { return PolicyHash.HashAlg; }
+        set { PolicyHash = new TpmHash(value); }
     }
 
     [MarshalAs(2)]
     [DataMember]
     public byte[] PolicyDigest
     {
-        get
-        {
-            return PolicyHash.HashData;
-        }
+        get { return PolicyHash.HashData; }
         set
         {
             if (PolicyHash == null)
             {
                 throw new Exception("TpmPolicy.PolicyDigest: No hash algorithm");
             }
+
             PolicyHash.HashData = Globs.CopyData(value);
         }
     }
@@ -474,14 +488,8 @@ public class TpmPolicy
     [DataMember]
     public PolicyAce[] Policy
     {
-        get
-        {
-            return GetArrayRepresentation(PolicyRoot);
-        }
-        set
-        {
-            PolicyRoot = FromArrayRepresentation(value, AssociatedPolicy);
-        }
+        get { return GetArrayRepresentation(PolicyRoot); }
+        set { PolicyRoot = FromArrayRepresentation(value, AssociatedPolicy); }
     }
 
     // Returns the linked list as an array
@@ -495,6 +503,7 @@ public class TpmPolicy
             {
                 break;
             }
+
             next = next.NextAce;
             numElems++;
         } while (true);
@@ -508,6 +517,7 @@ public class TpmPolicy
             {
                 break;
             }
+
             arr[count] = next;
             next = next.NextAce;
             count++;
@@ -543,8 +553,10 @@ public class TpmPolicy
             {
                 root = current;
             }
+
             previous = a;
         }
+
         return root;
     }
 }

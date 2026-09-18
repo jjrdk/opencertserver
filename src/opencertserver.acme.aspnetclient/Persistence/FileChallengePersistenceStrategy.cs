@@ -1,7 +1,6 @@
 ﻿namespace OpenCertServer.Acme.AspNetClient.Persistence;
 
 using System.Text.Json;
-
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -30,7 +29,8 @@ public sealed class FileChallengePersistenceStrategy : IChallengePersistenceStra
 
     public Task Persist(IEnumerable<ChallengeDto> challenges)
     {
-        var json = JsonSerializer.Serialize(challenges.ToArray(), AcmeClientSerializerContext.Default.ChallengeDtoArray);
+        var json = JsonSerializer.Serialize(challenges.ToArray(),
+            AcmeClientSerializerContext.Default.ChallengeDtoArray);
 
         var bytes = Encoding.UTF8.GetBytes(json);
 
@@ -46,7 +46,8 @@ public sealed class FileChallengePersistenceStrategy : IChallengePersistenceStra
 
         var bytes = await File.ReadAllBytesAsync(GetChallengesStorePath()).ConfigureAwait(false);
         var json = Encoding.UTF8.GetString(bytes);
-        var challenges = JsonSerializer.Deserialize<ChallengeDto[]>(json, AcmeClientSerializerContext.Default.ChallengeDtoArray);
+        var challenges =
+            JsonSerializer.Deserialize<ChallengeDto[]>(json, AcmeClientSerializerContext.Default.ChallengeDtoArray);
 
         return challenges ?? [];
     }

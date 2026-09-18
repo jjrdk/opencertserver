@@ -10,5 +10,6 @@ public sealed class NotAuthorizedException : MalformedRequestException
     /// </summary>
     public NotAuthorizedException()
         : base("The request could not be authorized.")
-    { }
+    {
+    }
 }

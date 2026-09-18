@@ -50,10 +50,10 @@ public sealed partial class AddAcmeRoutesConfigFilter : IProxyConfigFilter
         }
 
         var descriptor = new RouteConfiguration(
-              route.RouteId,
-              options.Hosts.Count > 0 ? options.Hosts : hosts,
-              options.CommonName,
-              null);
+            route.RouteId,
+            options.Hosts.Count > 0 ? options.Hosts : hosts,
+            options.CommonName,
+            null);
 
         _registry.AddConfiguration(descriptor);
         LogRegisteredAcmeRouteRouteidForHostsHosts(descriptor.RouteId, string.Join(", ", descriptor.Hosts));

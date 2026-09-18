@@ -13,7 +13,8 @@ public class ExternalAccountBindingException : AcmeException
     /// <param name="message">A human-readable description of why the EAB validation failed.</param>
     public ExternalAccountBindingException(string message)
         : base(message)
-    { }
+    {
+    }
 
     /// <inheritdoc />
     public override string ErrorType
@@ -21,4 +22,3 @@ public class ExternalAccountBindingException : AcmeException
         get { return "externalAccountRequired"; }
     }
 }
-

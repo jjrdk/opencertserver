@@ -2,7 +2,6 @@
 
 using CertesSlim.Acme.Resource;
 using OpenCertServer.Acme.Abstractions.Exceptions;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +15,10 @@ public sealed class Authorization
     {
         {
             AuthorizationStatus.Pending,
-            [AuthorizationStatus.Invalid, AuthorizationStatus.Expired, AuthorizationStatus.Valid, AuthorizationStatus.Deactivated]
+            [
+                AuthorizationStatus.Invalid, AuthorizationStatus.Expired, AuthorizationStatus.Valid,
+                AuthorizationStatus.Deactivated
+            ]
         },
         {
             AuthorizationStatus.Valid,

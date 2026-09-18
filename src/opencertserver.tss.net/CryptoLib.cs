@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Diagnostics;
@@ -66,6 +67,7 @@ public static class CryptoLib
             case TpmAlgId.Cmac:
                 return true;
         }
+
         return false;
     }
 
@@ -86,6 +88,7 @@ public static class CryptoLib
             case TpmAlgId.Null:
                 return 0;
         }
+
         throw new ArgumentException("DigestSize(): Unsupported hash algorithm");
     }
 
@@ -108,6 +111,7 @@ public static class CryptoLib
             case TpmAlgId.Null:
                 return 0;
         }
+
         throw new ArgumentException("BlockSize{}: Unsupported hash or MAC  algorithm");
     }
 
@@ -149,6 +153,7 @@ public static class CryptoLib
             case TpmAlgId.Sha512:
                 return HashAlgorithmName.SHA512;
         }
+
         throw new ArgumentException("Unsupported hash algorithm");
     }
 
@@ -187,6 +192,7 @@ public static class CryptoLib
         {
             throw new ArgumentException($"CryptoLib.Mac(): Unsupported symmetric algorithm{symAlg}");
         }
+
         if (macScheme != TpmAlgId.Cmac)
         {
             throw new ArgumentException($"CryptoLib.Mac(): Unsupported MAC scheme {macScheme}");
@@ -233,11 +239,16 @@ public static class CryptoLib
                 }
             }
         }
+
         return T;
     }
 
-    public static byte[] KdfThenXor(TpmAlgId hashAlg, byte[] key,
-        byte[] contextU, byte[] contextV, byte[] data)
+    public static byte[] KdfThenXor(
+        TpmAlgId hashAlg,
+        byte[] key,
+        byte[] contextU,
+        byte[] contextV,
+        byte[] data)
     {
         var mask = KDF.KDFa(hashAlg, key, "XOR", contextU, contextV, data.Length * 8);
         return XorEngine.Xor(data, mask);
@@ -254,8 +265,11 @@ public class CryptoEncoders
     /// <param name="hashAlg"></param>
     /// <param name="modulusNumBytes"></param>
     /// <returns></returns>
-    public static byte[] OaepEncode(byte[] message, byte[] encodingParameters,
-        TpmAlgId hashAlg, int modulusNumBytes)
+    public static byte[] OaepEncode(
+        byte[] message,
+        byte[] encodingParameters,
+        TpmAlgId hashAlg,
+        int modulusNumBytes)
     {
         var encodedMessageLength = modulusNumBytes - 1;
         var messageLength = message.Length;
@@ -269,6 +283,7 @@ public class CryptoEncoders
         {
             throw new ArgumentException("OaepEncode: Input message too long");
         }
+
         var psLen = encodedMessageLength - messageLength - 2 * hashLength - 1;
         var ps = new byte[psLen];
 
@@ -313,8 +328,11 @@ public class CryptoEncoders
         return encodedMessage;
     }
 
-    public static bool OaepDecode(byte[] em, byte[] encodingParms,
-        TpmAlgId hashAlg, out byte[] decoded)
+    public static bool OaepDecode(
+        byte[] em,
+        byte[] encodingParms,
+        TpmAlgId hashAlg,
+        out byte[] decoded)
     {
         decoded = [];
 
@@ -416,7 +434,7 @@ public class CryptoEncoders
         // 8
         var db = Globs.Concatenate([
             ps,
-            new byte[] {0x01},
+            new byte[] { 0x01 },
             salt
         ]);
 
@@ -435,7 +453,7 @@ public class CryptoEncoders
         var em = Globs.Concatenate([
             maskedDb,
             h,
-            new byte[] {0xbc}
+            new byte[] { 0xbc }
         ]);
         // 13
         return em;
@@ -501,8 +519,8 @@ public class CryptoEncoders
             {
                 return false;
             }
-
         }
+
         if (db[emLen - hLen - sLen - 1 - 1] != 1)
         {
             return false;
@@ -523,6 +541,7 @@ public class CryptoEncoders
         {
             return false;
         }
+
         return true;
     }
 
@@ -539,6 +558,7 @@ public class CryptoEncoders
         {
             mask &= (byte)(0xff >> j);
         }
+
         return mask;
     }
 
@@ -578,6 +598,7 @@ public class CryptoEncoders
             default:
                 throw new ArgumentException("Pkcs15Encode: Unsupported hashAlg");
         }
+
         byte[] messageHash = TpmHash.FromData(hashAlg, m);
         var T = Globs.Concatenate(prefix, messageHash);
         var tLen = T.Length;
@@ -589,8 +610,8 @@ public class CryptoEncoders
 
         var ps = Globs.ByteArray(emLen - tLen - 3, 0xff);
         var em = Globs.Concatenate([
-            new byte[] {0x00, 0x01}, ps,
-            new byte[] {0x00}, T
+            new byte[] { 0x00, 0x01 }, ps,
+            new byte[] { 0x00 }, T
         ]);
         return em;
     }
@@ -604,11 +625,13 @@ public class XorEngine
         {
             throw new ArgumentException("XorEngine: Mismatched arguments length");
         }
+
         var res = new byte[p1.Length];
         for (var j = 0; j < p1.Length; j++)
         {
             res[j] = (byte)(p1[j] ^ p2[j]);
         }
+
         return res;
     }
 
@@ -626,11 +649,16 @@ public class XorEngine
         {
             res[j] = (byte)(p1[j] ^ p2[j]);
         }
+
         return res;
     }
 
-    public static byte[] Xor(byte[] data, TpmAlgId hashAlg, byte[] key,
-        byte[] contextU, byte[] contextV)
+    public static byte[] Xor(
+        byte[] data,
+        TpmAlgId hashAlg,
+        byte[] key,
+        byte[] contextU,
+        byte[] contextV)
     {
         var mask = KDF.KDFa(hashAlg, key, "XOR", contextU, contextV, data.Length * 8);
         var encData = Xor(mask, data);
@@ -641,8 +669,13 @@ public class XorEngine
 public class KDF
 {
     // ReSharper disable once InconsistentNaming
-    public static byte[] KDFa(TpmAlgId hmacHash, byte[] hmacKey, string label,
-        byte[] contextU, byte[] contextV, int numBitsRequired)
+    public static byte[] KDFa(
+        TpmAlgId hmacHash,
+        byte[] hmacKey,
+        string label,
+        byte[] contextU,
+        byte[] contextV,
+        int numBitsRequired)
     {
         var bitsPerLoop = CryptoLib.DigestSize(hmacHash) * 8;
         long numLoops = (numBitsRequired + bitsPerLoop - 1) / bitsPerLoop;
@@ -659,6 +692,7 @@ public class KDF
             var fragment = CryptoLib.Hmac(hmacHash, hmacKey, toHmac);
             Array.Copy(fragment, 0, kdfStream, j * bitsPerLoop / 8, fragment.Length);
         }
+
         return Globs.ShiftRight(kdfStream, (int)(bitsPerLoop * numLoops - numBitsRequired));
     }
 
@@ -676,6 +710,7 @@ public class KDF
         {
             throw new NotImplementedException("Split: Only byte-sized chunks are supported");
         }
+
         a1 = new byte[(numBits1 + 7) / 8];
         Array.Copy(inData, 0, a1, 0, (numBits1 + 7) / 8);
         a2 = new byte[(numBits2 + 7) / 8];

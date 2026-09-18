@@ -38,6 +38,7 @@ public static class OcspResponseStatusExtensions
         {
             throw new InvalidOperationException("Unsupported OCSP response type");
         }
+
         var reader = new AsnReader(response.Response, AsnEncodingRules.DER);
         return new OcspBasicResponse(reader);
     }

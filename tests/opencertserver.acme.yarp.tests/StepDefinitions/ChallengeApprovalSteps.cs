@@ -35,17 +35,17 @@ public partial class ChallengeApprovalSteps : IDisposable
                             .UseTestServer()
                             .ConfigureServices(services =>
                                {
-                             services.AddSingleton(persistence);
-                         })
+                                   services.AddSingleton(persistence);
+                               })
                             .Configure(app =>
                                {
-                             app.UseMiddleware<AcmeChallengeApprovalMiddleware>();
-                             app.Run(async context =>
-                                   {
-                                context.Response.StatusCode = 404;
-                                await context.Response.WriteAsync("Not found");
-                            });
-                         })
+                                   app.UseMiddleware<AcmeChallengeApprovalMiddleware>();
+                                   app.Run(async context =>
+                                         {
+                                             context.Response.StatusCode = 404;
+                                             await context.Response.WriteAsync("Not found");
+                                         });
+                               })
                             .ConfigureLogging(l => l.AddFilter((_, level) => false));
                });
 

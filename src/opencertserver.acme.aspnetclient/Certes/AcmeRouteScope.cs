@@ -31,9 +31,9 @@ public sealed class AcmeRouteScope
     {
         var key = routeId ?? AcmeRouteConstants.DefaultRouteId;
         return _certificates.TryGetValue(key, out var cert) && cert != null
-              ? cert
-              : throw new InvalidOperationException(
-                   $"No certificate is available for route '{key}'. Renewal may not have completed yet.");
+            ? cert
+            : throw new InvalidOperationException(
+                $"No certificate is available for route '{key}'. Renewal may not have completed yet.");
     }
 
     public void SetCertificate(string? routeId, X509Certificate2? certificate)

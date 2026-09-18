@@ -1,7 +1,6 @@
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using CertesSlim.Extensions;
-
 using System.Threading.Tasks;
 using CertesSlim;
 using global::CertesSlim.Acme;

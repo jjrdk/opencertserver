@@ -14,4 +14,3 @@ public interface IRevocationService
     /// </summary>
     Task RevokeCertificate(AcmeHeader header, RevokeCertificateRequest request, CancellationToken cancellationToken);
 }
-

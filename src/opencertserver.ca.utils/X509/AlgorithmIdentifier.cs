@@ -33,6 +33,7 @@ public class AlgorithmIdentifier : IAsnValue
         {
             sequenceReader = sequenceReader.ReadSequence();
         }
+
         AlgorithmOid = sequenceReader.ReadObjectIdentifier().InitializeOid();
         switch (AlgorithmOid.Value)
         {

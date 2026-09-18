@@ -1,7 +1,6 @@
 namespace OpenCertServer.Acme.Abstractions.RequestServices;
 
 using CertesSlim.Json;
-
 using System.Threading;
 using System.Threading.Tasks;
 using HttpModel.Requests;

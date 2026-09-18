@@ -15,8 +15,10 @@ namespace OpenCertServer.Tpm2Lib;
 public abstract class Tpm2Device : IDisposable
 {
     // Send TPM-command buffer to device
-    public virtual void DispatchCommand(CommandModifier mod,
-        byte[] cmdBuf, out byte[] respBuf)
+    public virtual void DispatchCommand(
+        CommandModifier mod,
+        byte[] cmdBuf,
+        out byte[] respBuf)
     {
         throw new Exception("Tpm2Device.DispatchCommand: Should never be here");
     }
@@ -107,14 +109,8 @@ public abstract class Tpm2Device : IDisposable
     // via an untrusted channel. Otherwise password session suffices. 
     public bool NeedsHMAC
     {
-        get
-        {
-            return _NeedsHMAC;
-        }
-        set
-        {
-            _NeedsHMAC = value;
-        }
+        get { return _NeedsHMAC; }
+        set { _NeedsHMAC = value; }
     }
 
     // attempt to cancel any outstanding command

@@ -55,8 +55,8 @@ public sealed class AcmeChallengeApprovalMiddleware : ILetsEncryptChallengeAppro
             // the rest of the pipeline.
             _logger.LogInformation(
                 "The given challenge did not match {ChallengePath} among {AllChallenges}",
-               safePathForLog,
-               allChallenges);
+                safePathForLog,
+                allChallenges);
             context.Response.StatusCode = 410;
             context.Response.ContentType = "application/octet-stream";
             return;

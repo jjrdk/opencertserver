@@ -1,7 +1,6 @@
 namespace OpenCertServer.Build;
 
 using Cake.Common.Tools.DotNet.Run;
-
 using System.IO;
 using Cake.Common.IO;
 using Cake.Common.Tools.DotNet;

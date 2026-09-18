@@ -26,6 +26,7 @@ public static class ChallengeTypes
     /// The device-attest-01 challenge.
     /// </summary>
     public const string DeviceAttest01 = "device-attest-01";
+
     /// <summary>
     /// Gets an immutable array of all supported challenge types.
     /// </summary>

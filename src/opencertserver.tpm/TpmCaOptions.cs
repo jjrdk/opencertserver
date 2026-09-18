@@ -79,4 +79,3 @@ public sealed class TpmCaOptions
     /// </summary>
     public StoreLocation CertStoreLocation { get; set; } = StoreLocation.CurrentUser;
 }
-

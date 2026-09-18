@@ -26,6 +26,7 @@ internal static partial class Program
             Console.WriteLine("No certificate specified.");
             return Task.CompletedTask;
         }
+
         try
         {
             if (string.IsNullOrWhiteSpace(certPath) || !File.Exists(certPath))

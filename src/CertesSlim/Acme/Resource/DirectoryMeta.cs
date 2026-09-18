@@ -43,6 +43,7 @@ public class DirectoryMeta
     /// </value>
     [JsonPropertyName("externalAccountRequired")]
     public bool? ExternalAccountRequired { get; }
+
     /// <summary>
     /// Gets or sets the list of challenge types that include additional content in their responses.
     /// Per RFC 8555 / ACME drafts, advertises which challenge types the server supports beyond standard.

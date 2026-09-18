@@ -78,4 +78,3 @@ public static class TpmCaExtensions
             => Task.FromResult(true);
     }
 }
-

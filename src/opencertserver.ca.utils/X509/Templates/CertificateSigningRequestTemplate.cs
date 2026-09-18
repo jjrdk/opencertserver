@@ -46,6 +46,7 @@ public class CertificateSigningRequestTemplate : IAsnValue
         {
             throw new InvalidOperationException("Unsupported CSR version");
         }
+
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(UniversalTagNumber.Sequence)))
         {

@@ -57,7 +57,7 @@ internal sealed class InMemoryCertificatePersistenceStrategy : ICertificatePersi
     public Task<X509Certificate2?> RetrieveSiteCertificate()
     {
         return Task.FromResult(_siteCertificate == null
-             ? null
+            ? null
             : X509CertificateLoader.LoadCertificate(_siteCertificate));
     }
 
@@ -65,13 +65,13 @@ internal sealed class InMemoryCertificatePersistenceStrategy : ICertificatePersi
     {
         var key = NormalizeRouteId(routeId);
         var bytes = _routeSiteCertificates.TryGetValue(key, out var stored)
-              ? stored
-             : key == AcmeRouteConstants.DefaultRouteId
-               ? _siteCertificate
-               : null;
+            ? stored
+            : key == AcmeRouteConstants.DefaultRouteId
+                ? _siteCertificate
+                : null;
 
         return Task.FromResult(bytes == null
-             ? null
+            ? null
             : X509CertificateLoader.LoadCertificate(bytes));
     }
 
@@ -79,7 +79,7 @@ internal sealed class InMemoryCertificatePersistenceStrategy : ICertificatePersi
     {
         var id = routeId ?? AcmeRouteConstants.DefaultRouteId;
         return string.Equals(id, AcmeRouteConstants.DefaultRouteId, StringComparison.Ordinal)
-              ? AcmeRouteConstants.DefaultRouteId
-           : id;
+            ? AcmeRouteConstants.DefaultRouteId
+            : id;
     }
 }

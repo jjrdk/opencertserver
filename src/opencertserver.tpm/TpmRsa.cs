@@ -107,4 +107,3 @@ public sealed class TpmRsa : RSA
         return softRsa.VerifyHash(hash, signature, hashAlgorithmName, padding);
     }
 }
-

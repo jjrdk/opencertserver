@@ -1,4 +1,4 @@
-﻿/* 
+﻿/*
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See the LICENSE file in the project root for full license information.
  */
@@ -6,11 +6,12 @@
  * This file and the associated SlotContext.cs contains three classes that together
  * perform TPM "handle management." TbsContext implements an Tpm2Device interface
  * to Tbs beneath. Typically the programmer will use this as the device underneath
- * a Tpm2. There is one of these per TPM client. Tbs does the actual handle management.  
- * 
+ * a Tpm2. There is one of these per TPM client. Tbs does the actual handle management.
+ *
  * ObjectContextManager encapsulates the state for TPM clients.
- * 
+ *
  */
+
 namespace OpenCertServer.Tpm2Lib;
 
 using System.Diagnostics;
@@ -53,7 +54,8 @@ public sealed class Tbs : IDisposable
         return Tpm;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability",
+        "CA2000:Dispose objects before losing scope")]
     public TbsContext CreateTbsContext()
     {
         lock (this)
@@ -70,9 +72,9 @@ public sealed class Tbs : IDisposable
                 {
                     newContext.Dispose();
                 }
+
                 return null;
             }
-
         }
     }
 
@@ -107,6 +109,7 @@ public sealed class Tbs : IDisposable
 
     // Debug support
     private int CommandNumber;
+
     // ReSharper disable once NotAccessedField.Local
     private int LastStateSaveCommandNumber;
 
@@ -166,10 +169,12 @@ public sealed class Tbs : IDisposable
             if (cc is TpmCc.ContextLoad or TpmCc.ContextSave)
             {
                 Debug.WriteLine("ContextLoad and ContextSave are not supported in this build");
-                outBuf = Marshaller.GetTpmRepresentation(new object[] {
+                outBuf = Marshaller.GetTpmRepresentation(new object[]
+                {
                     TpmSt.NoSessions,
                     (uint)10,
-                    TpmRc.NotUsed });
+                    TpmRc.NotUsed
+                });
             }
 
             // Look up referenced objects and sessions
@@ -248,7 +253,7 @@ public sealed class Tbs : IDisposable
                     var seqNum = ShortenSessionContextGap(firstCtxSeqNum);
                     if (seqNum == 0)
                     {
-                        break;  // Failed to handle CONTEXT_GAP error
+                        break; // Failed to handle CONTEXT_GAP error
                     }
 
                     if (firstCtxSeqNum == 0)
@@ -275,6 +280,7 @@ public sealed class Tbs : IDisposable
                     // Command failure not related to resources
                     break;
                 }
+
                 if (!MakeSpace(slotType, neededEntities))
                 {
                     // Failed to make an object slot in the TPM
@@ -330,7 +336,9 @@ public sealed class Tbs : IDisposable
     /// <param name="command"></param>
     /// <param name="responseHandles"></param>
     /// <param name="inputObjects"></param>
-    private void ProcessUpdatedTpmState(TbsContext caller, CommandInfo command,
+    private void ProcessUpdatedTpmState(
+        TbsContext caller,
+        CommandInfo command,
         TpmHandle[] responseHandles,
         ObjectContext[] inputObjects)
     {
@@ -488,6 +496,7 @@ public sealed class Tbs : IDisposable
         {
             match = false;
         }
+
         if (!match)
         {
             var message = $"Handle set did not survive {stateTransition}";
@@ -505,13 +514,14 @@ public sealed class Tbs : IDisposable
             {
                 continue;
             }
+
             c.Context = Tpm.ContextSave(c.TheTpmHandle);
             // Object slots are not auto-evicted on ContextSave
             if (SlotTypeFromHandle(c.Context.savedHandle) == SlotType.ObjectSlot)
             {
                 Tpm.FlushContext(c.TheTpmHandle);
-
             }
+
             c.TheTpmHandle = null;
             c.Loaded = false;
         }
@@ -534,6 +544,7 @@ public sealed class Tbs : IDisposable
                 return null;
             }
         }
+
         return contexts;
     }
 
@@ -581,9 +592,11 @@ public sealed class Tbs : IDisposable
                     {
                         Debug.WriteLine("TRM failed to flush a handle: {0:X8}", o.TheTpmHandle);
                     }
+
                     o.Loaded = false;
                 }
             }
+
             ContextManager.RemoveAll(c);
         }
     }
@@ -599,8 +612,10 @@ public sealed class Tbs : IDisposable
                     Tpm.FlushContext(o.TheTpmHandle);
                 }
             }
+
             ContextManager.RemoveAll();
         }
+
         Tpm.Dispose();
     }
 
@@ -636,6 +651,7 @@ public sealed class Tbs : IDisposable
                 return null;
             }
         }
+
         return neededContexts;
     }
 
@@ -673,6 +689,7 @@ public sealed class Tbs : IDisposable
                 return false;
             }
         } while (true);
+
         contextToLoad.Loaded = true;
         return true;
     }
@@ -689,6 +706,7 @@ public sealed class Tbs : IDisposable
             Debug.WriteLine("FAILED to FIND sess ctx to re-save: {0}", ctx);
             return 0;
         }
+
         ctx.TheTpmHandle = Tpm._AllowErrors()
             .ContextLoad(ctx.Context);
         if (!Tpm._LastCommandSucceeded())
@@ -705,6 +723,7 @@ public sealed class Tbs : IDisposable
             ctx.Loaded = true;
             return 0;
         }
+
         return ctx.Context.sequence;
     }
 
@@ -765,6 +784,7 @@ public sealed class Tbs : IDisposable
         {
             Tpm.FlushContext(entityToEvict.TheTpmHandle);
         }
+
         entityToEvict.TheTpmHandle = null;
         entityToEvict.Loaded = false;
         return true;
@@ -777,14 +797,18 @@ public sealed class Tbs : IDisposable
     /// <param name="sessions"></param>
     /// <param name="objCtx"></param>
     /// <param name="sessCtx"></param>
-    private void ReplaceHandlesIn(TpmHandle[] objects, SessionIn[] sessions,
-        ObjectContext[] objCtx, ObjectContext[] sessCtx)
+    private void ReplaceHandlesIn(
+        TpmHandle[] objects,
+        SessionIn[] sessions,
+        ObjectContext[] objCtx,
+        ObjectContext[] sessCtx)
     {
         if (objCtx != null)
         {
             for (var j = 0; j < objects.Length; j++)
                 objects[j] = objCtx[j].TheTpmHandle;
         }
+
         if (sessCtx != null)
         {
             for (var j = 0; j < sessions.Length; j++)
@@ -868,10 +892,12 @@ public sealed class Tbs : IDisposable
         {
             throw new NotImplementedException("Too much data returned");
         }
+
         if (h.GetType() != typeof(HandleArray))
         {
             throw new Exception("Incorrect type");
         }
+
         var handles = (HandleArray)h;
         return handles.handle;
     }
@@ -889,7 +915,8 @@ public sealed class Tbs : IDisposable
     {
         var loadedObjects = GetLoadedEntities(Tpm, Ht.Transient);
         var loadedSessions = GetLoadedEntities(Tpm, Ht.LoadedSession);
-        var contextSavedSessions = GetLoadedEntities(Tpm, TpmHelpers.GetEnumerator<Ht>("ActiveSession", "SavedSession"));
+        var contextSavedSessions =
+            GetLoadedEntities(Tpm, TpmHelpers.GetEnumerator<Ht>("ActiveSession", "SavedSession"));
 
         int numLoadedObject = 0, numLoadedSession = 0, numSavedSession = 0;
         foreach (var o in ContextManager.ObjectContexts)
@@ -900,6 +927,7 @@ public sealed class Tbs : IDisposable
                 {
                     continue;
                 }
+
                 Debug.Assert(loadedObjects.Contains(o.TheTpmHandle));
                 numLoadedObject++;
             }
@@ -1095,6 +1123,7 @@ public sealed class Tbs : IDisposable
             {
                 Tbs.DisposeContext(this);
             }
+
             base.Dispose(disposing);
         }
     } // sealed class TbsContext

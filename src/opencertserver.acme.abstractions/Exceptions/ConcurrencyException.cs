@@ -10,5 +10,6 @@ public sealed class ConcurrencyException : InvalidOperationException
     /// </summary>
     public ConcurrencyException()
         : base("Object has been changed since loading")
-    { }
+    {
+    }
 }

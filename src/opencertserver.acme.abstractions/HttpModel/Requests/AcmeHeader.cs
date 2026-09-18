@@ -1,7 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Abstractions.HttpModel.Requests;
 
 using Microsoft.IdentityModel.Tokens;
-
 using System;
 
 /// <summary>
@@ -13,18 +12,22 @@ public sealed class AcmeHeader
     /// Gets or sets the nonce value for the request.
     /// </summary>
     public string? Nonce { get; set; }
+
     /// <summary>
     /// Gets or sets the request URL.
     /// </summary>
     public string? Url { get; set; }
+
     /// <summary>
     /// Gets or sets the signature algorithm.
     /// </summary>
     public string? Alg { get; set; }
+
     /// <summary>
     /// Gets or sets the key identifier (KID).
     /// </summary>
     public string? Kid { get; set; }
+
     /// <summary>
     /// Gets or sets the JSON Web Key (JWK) for the request.
     /// </summary>

@@ -17,4 +17,3 @@ public sealed class RevokeCertificateRequest
     /// </summary>
     public RevocationReason? Reason { get; set; }
 }
-

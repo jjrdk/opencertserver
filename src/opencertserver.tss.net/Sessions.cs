@@ -116,6 +116,7 @@ public class SessionBase
             case Auth.Hmac: return Hmac;
             case Auth.Pw: return Pw;
         }
+
         return Default;
     }
 
@@ -147,6 +148,7 @@ public class AuthSession : SessionBase
     /// and NonceTpm will then be updated correspondingly before and after each
     /// command using the session.
     public TpmSe SessionType;
+
     public byte[]? Salt;
     public TpmHandle BindObject;
     public byte[]? NonceCaller;
@@ -189,6 +191,7 @@ public class AuthSession : SessionBase
         {
             throw new ArgumentException("AuthSession: Attempt to construct from non-session handle");
         }
+
         Handle = h;
     }
 
@@ -203,6 +206,7 @@ public class AuthSession : SessionBase
         {
             throw new ArgumentException("AuthSession: Attempt to construct from parametrized non-session handle");
         }
+
         Handle = ph.Handle;
         foreach (var param in ph.Params)
         {
@@ -231,8 +235,14 @@ public class AuthSession : SessionBase
     /// Constructs a temporary object to hold parameters of a session.
     /// Intended only for internal use by the Tpm2 class.
     /// </summary>
-    internal AuthSession(TpmSe sessionType, TpmHandle tpmKey, TpmHandle bindObject,
-        byte[] nonceCaller, byte[] nonceTpm, SymDef symmetric, TpmAlgId authHash)
+    internal AuthSession(
+        TpmSe sessionType,
+        TpmHandle tpmKey,
+        TpmHandle bindObject,
+        byte[] nonceCaller,
+        byte[] nonceTpm,
+        SymDef symmetric,
+        TpmAlgId authHash)
     {
         SessionType = sessionType;
         Salt = tpmKey == TpmRh.Null ? null : _saltNeeded;
@@ -296,6 +306,7 @@ public class AuthSession : SessionBase
         {
             throw new Exception("parameter encryption cipher not defined");
         }
+
         if (Symmetric.Algorithm == TpmAlgId.Null)
         {
             return parm;
@@ -394,6 +405,7 @@ public class AuthSession : SessionBase
             nonceNewer = NonceTpm;
             nonceOlder = NonceCaller;
         }
+
         var sessionAttrs = Marshaller.GetTpmRepresentation(Attrs);
 
         var auth = Handle.Auth;
@@ -403,6 +415,7 @@ public class AuthSession : SessionBase
         {
             auth = Globs.TrimTrailingZeros(AuthHandle.Auth);
         }
+
         var hmacKey = Globs.Concatenate(SessionKey, auth);
         var bufToHmac = Globs.Concatenate([
             parmHash, nonceNewer, nonceOlder,

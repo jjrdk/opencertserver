@@ -1,7 +1,6 @@
 namespace OpenCertServer.Tpm;
 
 using OpenCertServer.Tpm2Lib;
-
 using System;
 using System.Security.Cryptography;
 
@@ -33,11 +32,11 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
 
     private static readonly ObjectAttr SigningKeyAttributes =
         ObjectAttr.Sign
-        | ObjectAttr.FixedParent
-        | ObjectAttr.FixedTPM
-        | ObjectAttr.SensitiveDataOrigin
-        | ObjectAttr.UserWithAuth
-        | ObjectAttr.NoDA; // unrestricted — no ticket required to sign external digests
+      | ObjectAttr.FixedParent
+      | ObjectAttr.FixedTPM
+      | ObjectAttr.SensitiveDataOrigin
+      | ObjectAttr.UserWithAuth
+      | ObjectAttr.NoDA; // unrestricted — no ticket required to sign external digests
 
     private readonly Tpm2Device _device;
     private readonly Tpm2 _tpm;
@@ -181,7 +180,11 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
     // -----------------------------------------------------------------
 
     /// <inheritdoc />
-    public byte[] SignRsa(uint persistentHandle, byte[] hash, HashAlgorithmName hashAlgorithm, RSASignaturePadding padding)
+    public byte[] SignRsa(
+        uint persistentHandle,
+        byte[] hash,
+        HashAlgorithmName hashAlgorithm,
+        RSASignaturePadding padding)
     {
         lock (_lock)
         {
@@ -324,7 +327,8 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
             return TpmAlgId.Sha1;
         }
 
-        throw new NotSupportedException($"Hash algorithm '{hashAlgorithm.Name}' is not supported by this TPM provider.");
+        throw new NotSupportedException(
+            $"Hash algorithm '{hashAlgorithm.Name}' is not supported by this TPM provider.");
     }
 
     /// <summary>

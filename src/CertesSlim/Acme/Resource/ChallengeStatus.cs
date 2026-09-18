@@ -10,24 +10,20 @@ public enum ChallengeStatus
     /// <summary>
     /// The pending status.
     /// </summary>
-    [JsonPropertyName("pending")]
-    Pending,
+    [JsonPropertyName("pending")] Pending,
 
     /// <summary>
     /// The processing status.
     /// </summary>
-    [JsonPropertyName("processing")]
-    Processing,
+    [JsonPropertyName("processing")] Processing,
 
     /// <summary>
     /// The valid status.
     /// </summary>
-    [JsonPropertyName("valid")]
-    Valid,
+    [JsonPropertyName("valid")] Valid,
 
     /// <summary>
     /// The invalid status.
     /// </summary>
-    [JsonPropertyName("invalid")]
-    Invalid
+    [JsonPropertyName("invalid")] Invalid
 }

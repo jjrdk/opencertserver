@@ -28,6 +28,7 @@ each certificate stored in a route-scoped location.
 A web server that provisions two certificates (one per YARP route) on a single HTTPS listener:
 
 ```csharp
+using System;
 using System.Collections.Generic;
 using CertesSlim.Extensions;
 using Microsoft.AspNetCore.Builder;
@@ -163,9 +164,6 @@ each `RouteConfig` in code with `WithAcmeRoute`. A routing section that mirrors 
    }
 }
 ```
-
-See `sample/Program.cs` and `sample/appsettings.json` for a complete, illustrative program, and the
-root `README.md` "Using ACME with YARP" section.
 
 ## Backward compatibility
 

@@ -65,7 +65,11 @@ public static class IOrderContextExtensions
         /// <returns>
         /// The certificate generated.
         /// </returns>
-        public async Task<CertificateChain> Generate(CsrInfo csr, IKey key, string? preferredChain = null, int retryCount = 1)
+        public async Task<CertificateChain> Generate(
+            CsrInfo csr,
+            IKey key,
+            string? preferredChain = null,
+            int retryCount = 1)
         {
             var order = await context.Resource().ConfigureAwait(false);
             if (order.Status != OrderStatus.Ready && // draft-11

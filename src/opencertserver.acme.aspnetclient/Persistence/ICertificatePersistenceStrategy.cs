@@ -16,7 +16,7 @@ public interface ICertificatePersistenceStrategy
     /// Override this method in strategies that can store the private key (e.g. an OS certificate store).
     /// </summary>
     Task PersistSiteCertificate(X509Certificate2 certificate)
-           => Persist(CertificateType.Site, certificate.RawData);
+        => Persist(CertificateType.Site, certificate.RawData);
 
     /// <summary>
     /// Persists the leaf/chain/key for <paramref name="routeId"/> from a full certificate
@@ -25,7 +25,7 @@ public interface ICertificatePersistenceStrategy
     /// default delegates to the leaf-only <see cref="PersistSiteCertificate(X509Certificate2, string)"/>.
     /// </summary>
     Task PersistSiteCertificateChain(X509Certificate2Collection chain, string routeId)
-          => PersistSiteCertificate(chain[0], routeId);
+        => PersistSiteCertificate(chain[0], routeId);
 
     /// <summary>
     /// Persists the full site certificate scoped to <paramref name="routeId"/>. Implementors that
@@ -55,7 +55,7 @@ public interface ICertificatePersistenceStrategy
     /// implementation delegates to the non-scoped overload, preserving back-compat.
     /// </summary>
     Task<X509Certificate2?> RetrieveSiteCertificate(string routeId)
-         => RetrieveSiteCertificate();
+        => RetrieveSiteCertificate();
 
     /// <summary>
     /// Returns the PEM-encoded leaf private key previously persisted for <paramref name="routeId"/>,
@@ -64,12 +64,12 @@ public interface ICertificatePersistenceStrategy
     /// key across renewals.
     /// </summary>
     Task<string?> GetPersistedRouteKey(string routeId, System.Threading.CancellationToken cancellationToken = default)
-         => Task.FromResult<string?>(null);
+        => Task.FromResult<string?>(null);
 
     /// <summary>
     /// Persists the PEM-encoded leaf private key for <paramref name="routeId"/>. The default is a
     /// no-op for strategies that do not keep route-scoped keys.
     /// </summary>
     Task PersistRouteKey(string routeId, string keyPem, System.Threading.CancellationToken cancellationToken = default)
-         => Task.CompletedTask;
+        => Task.CompletedTask;
 }

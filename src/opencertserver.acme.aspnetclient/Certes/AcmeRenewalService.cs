@@ -60,7 +60,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         if (_options.TimeAfterIssueDateBeforeRenewal == null && _options.TimeUntilExpiryBeforeRenewal == null)
         {
             throw new InvalidOperationException(
-                 "Neither TimeAfterIssueDateBeforeRenewal nor TimeUntilExpiryBeforeRenewal have been set, which means that the LetsEncrypt certificate will never renew.");
+                "Neither TimeAfterIssueDateBeforeRenewal nor TimeUntilExpiryBeforeRenewal have been set, which means that the LetsEncrypt certificate will never renew.");
         }
 
         LogAcmerenewalserviceStartasync();
@@ -134,7 +134,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
                     var current = _routeScope.GetCertificate(route.RouteId);
                     IReadOnlyList<string> hosts = route.Hosts.Count > 0 ? route.Hosts : _options.Domains;
                     var outcome = await _certificateProvider.RenewCertificateIfNeeded(
-                          password, route.RouteId, hosts, current, cancellationToken).ConfigureAwait(false);
+                        password, route.RouteId, hosts, current, cancellationToken).ConfigureAwait(false);
                     ApplyOutcome(route.RouteId, outcome);
                     await WarmChain(outcome, cancellationToken).ConfigureAwait(false);
                     await FireRenewalSucceededHooks(outcome).ConfigureAwait(false);
@@ -169,8 +169,8 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         }
 
         throw new InvalidOperationException(
-             "No domains are configured. Either set AcmeOptions.Domains or register at least one "
-             + "ACME route with non-empty hosts via the YARP integration.");
+            "No domains are configured. Either set AcmeOptions.Domains or register at least one "
+          + "ACME route with non-empty hosts via the YARP integration.");
     }
 
     private void ApplyOutcome(string routeId, CertificateRenewalResult result)
