@@ -14,7 +14,7 @@ using global::Yarp.ReverseProxy.Configuration;
 /// YARP integration plan calls for: it runs at config-load time, before the ACME renewal service
 /// performs its first renewal tick.
 /// </summary>
-public sealed class AddAcmeRoutesConfigFilter : IProxyConfigFilter
+public sealed partial class AddAcmeRoutesConfigFilter : IProxyConfigFilter
 {
     private readonly AcmeRouteConfigurationRegistry _registry;
     private readonly ILogger _logger;
@@ -25,16 +25,16 @@ public sealed class AddAcmeRoutesConfigFilter : IProxyConfigFilter
         _logger = logger;
     }
 
-    public ValueTask<global::Yarp.ReverseProxy.Configuration.ClusterConfig> ConfigureClusterAsync(
-        global::Yarp.ReverseProxy.Configuration.ClusterConfig cluster,
+    public ValueTask<ClusterConfig> ConfigureClusterAsync(
+        ClusterConfig cluster,
         CancellationToken cancellation)
     {
         return ValueTask.FromResult(cluster);
     }
 
-    public ValueTask<global::Yarp.ReverseProxy.Configuration.RouteConfig> ConfigureRouteAsync(
-        global::Yarp.ReverseProxy.Configuration.RouteConfig route,
-        global::Yarp.ReverseProxy.Configuration.ClusterConfig? cluster,
+    public ValueTask<RouteConfig> ConfigureRouteAsync(
+        RouteConfig route,
+        ClusterConfig? cluster,
         CancellationToken cancellation)
     {
         var hosts = route.Match?.Hosts;
@@ -43,7 +43,7 @@ public sealed class AddAcmeRoutesConfigFilter : IProxyConfigFilter
             return ValueTask.FromResult(route);
         }
 
-        var options = RouteAcmeMetadataExtensions.TryReadOptions(route);
+        var options = route.TryReadOptions();
         if (options is null || !options.Enabled)
         {
             return ValueTask.FromResult(route);
@@ -56,9 +56,11 @@ public sealed class AddAcmeRoutesConfigFilter : IProxyConfigFilter
               null);
 
         _registry.AddConfiguration(descriptor);
-        _logger.LogInformation("Registered ACME route '{RouteId}' for hosts [{Hosts}]",
-             descriptor.RouteId, string.Join(", ", descriptor.Hosts));
+        LogRegisteredAcmeRouteRouteidForHostsHosts(descriptor.RouteId, string.Join(", ", descriptor.Hosts));
 
         return ValueTask.FromResult(route);
     }
+
+    [LoggerMessage(LogLevel.Information, "Registered ACME route '{RouteId}' for hosts [{Hosts}]")]
+    partial void LogRegisteredAcmeRouteRouteidForHostsHosts(string routeId, string hosts);
 }

@@ -48,7 +48,7 @@ public class PerRouteIssuanceSteps
 
         var service = new AcmeRenewalService(
             provider,
-            Array.Empty<ICertificateRenewalLifecycleHook>(),
+            [],
             new FakeHostApplicationLifetime(),
             NullLogger<AcmeRenewalService>.Instance,
             new TestAcmeOptions
@@ -92,7 +92,7 @@ public class PerRouteIssuanceSteps
         var selected = _setup!.SelectCertificateFor(host);
         var expected = _scope.GetCertificate(routeId);
         Assert.NotNull(expected);
-        Assert.Equal(expected!.Thumbprint, selected!.Thumbprint);
+        Assert.Equal(expected.Thumbprint, selected!.Thumbprint);
     }
 
     [Then(@"the two routes serve different certificates")]
@@ -102,7 +102,7 @@ public class PerRouteIssuanceSteps
         var beta = _setup.SelectCertificateFor("beta.example.com");
         Assert.NotNull(alpha);
         Assert.NotNull(beta);
-        Assert.NotEqual(alpha!.Thumbprint, beta!.Thumbprint);
+        Assert.NotEqual(alpha.Thumbprint, beta!.Thumbprint);
     }
 
     private KestrelOptionsSetup? _setup;

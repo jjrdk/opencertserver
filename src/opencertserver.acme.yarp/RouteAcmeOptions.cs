@@ -3,7 +3,7 @@ namespace OpenCertServer.Acme.Yarp;
 using System.Collections.Generic;
 
 /// <summary>
-/// Strongly-typed ACME options attached to a YARP route. This is the "metadata bag" that the
+/// Strongly typed ACME options attached to a YARP route. This is the "metadata bag" that the
 /// <see cref="AddAcmeRoutesConfigFilter"/> reads for each <c>RouteConfig</c>. It is kept a flat
 /// POCO (string/bool fields only) so that it can be serialized to the route metadata bag and is
 /// AOT/trimming-safe via <see cref="RouteAcmeOptionsSerializerContext"/>.
