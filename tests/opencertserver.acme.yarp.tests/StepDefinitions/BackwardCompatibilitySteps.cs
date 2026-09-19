@@ -30,7 +30,6 @@ public partial class BackwardCompatibilitySteps
         _service = new AcmeRenewalService(
             provider,
             Array.Empty<ICertificateRenewalLifecycleHook>(),
-            new FakeHostApplicationLifetime(),
             NullLogger<AcmeRenewalService>.Instance,
             new TestAcmeOptions
             {

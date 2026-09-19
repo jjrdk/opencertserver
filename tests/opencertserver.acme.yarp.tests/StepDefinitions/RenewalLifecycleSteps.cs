@@ -49,7 +49,6 @@ public partial class RenewalLifecycleSteps
         return new AcmeRenewalService(
              provider,
              [_hook],
-             new FakeHostApplicationLifetime(),
              NullLogger<AcmeRenewalService>.Instance,
              new TestAcmeOptions
              {
