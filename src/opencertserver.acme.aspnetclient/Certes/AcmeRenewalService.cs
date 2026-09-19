@@ -45,14 +45,9 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         get { return _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId); }
     }
 
-    public Uri LetsEncryptUri
-    {
-        get { return _options.AcmeServerUri; }
-    }
-
     public async Task StartedAsync(CancellationToken cancellationToken)
     {
-        await RunOnce(_options.AccountPassword).ConfigureAwait(false);
+        await RunAllRoutesOnce(_options.AccountPassword, cancellationToken).ConfigureAwait(false);
         _renewalLoop = RunRenewalLoopAsync(_tokenSource.Token);
     }
 
@@ -118,15 +113,6 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         {
             await lifecycleHook.OnStop().ConfigureAwait(false);
         }
-    }
-
-    ///<summary>
-    /// Back-compat single-route renewal for the default route. Delegates to the per-route
-    /// renewal pass.
-    /// </summary>
-    public Task RunOnce(string password)
-    {
-        return RunAllRoutesOnce(password);
     }
 
     public async Task RunAllRoutesOnce(string password, CancellationToken cancellationToken = default)
@@ -249,7 +235,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
     [LoggerMessage(LogLevel.Warning, "The LetsEncrypt middleware's background renewal thread is shutting down")]
     partial void LogTheLetsEncryptMiddlewareSBackgroundRenewalThreadIsShuttingDown();
 
-     [LoggerMessage(LogLevel.Trace, "AcmeRenewalService - timer callback starting")]
+    [LoggerMessage(LogLevel.Trace, "AcmeRenewalService - timer callback starting")]
     partial void LogAcmeRenewalServiceTimerCallbackStarting();
 
     [LoggerMessage(LogLevel.Warning, "Exception occurred renewing certificates: '{Message}'")]
