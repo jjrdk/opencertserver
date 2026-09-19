@@ -1,7 +1,6 @@
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
 using CertesSlim.Extensions;
-
 using System;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
@@ -34,7 +33,8 @@ public sealed partial class AcmeClient : IAcmeClient
         var allAuthorizations = await order.Authorizations().ConfigureAwait(false);
 
         var challengeContexts = (await Task.WhenAll(
-            allAuthorizations.Select(x => x.Http())).ConfigureAwait(false)).Where(x => x != null).Select(x => x!).ToArray();
+                allAuthorizations.Select(x => x.Http())).ConfigureAwait(false)).Where(x => x != null).Select(x => x!)
+            .ToArray();
 
         var dtos = challengeContexts.Select(x => new ChallengeDto(
                 x.Type == ChallengeTypes.Dns01 ? _acme.AccountKey.DnsTxt(x.Token) : x.Token,
@@ -47,7 +47,8 @@ public sealed partial class AcmeClient : IAcmeClient
         return new PlacedOrder(dtos, order, challengeContexts);
     }
 
-    public async Task<(X509Certificate2 Certificate, string KeyPem, X509Certificate2Collection Collection)> FinalizeOrder(
+    public async Task<(X509Certificate2 Certificate, string KeyPem, X509Certificate2Collection Collection)>
+        FinalizeOrder(
         PlacedOrder placedOrder,
         string password,
         string? existingKeyPem = null)
@@ -57,11 +58,12 @@ public sealed partial class AcmeClient : IAcmeClient
         LogAcquiringCertificateThroughSigningRequest();
 
         var keyPair = existingKeyPem != null
-             ? KeyFactory.FromPem(existingKeyPem)
-             : KeyFactory.NewKey(_options.KeyAlgorithm);
+            ? KeyFactory.FromPem(existingKeyPem)
+            : KeyFactory.NewKey(_options.KeyAlgorithm);
 
         var certificateChain =
-            await placedOrder.Order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10).ConfigureAwait(false);
+            await placedOrder.Order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10)
+                .ConfigureAwait(false);
 
         var pfxCollection = new X509Certificate2Collection { certificateChain.Certificate };
         foreach (var cert in certificateChain.Issuers)

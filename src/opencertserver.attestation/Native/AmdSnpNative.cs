@@ -14,5 +14,8 @@ public static partial class AmdSnpNative
     public static partial int snp_get_vcek_chipid(out IntPtr chipId, ref uint chipIdSize);
 
     [LibraryImport(LibraryName)]
-    public static partial int snp_generate_report(IntPtr p_report_buffer, ref uint report_size, ReadOnlySpan<byte> nonce);
+    public static partial int snp_generate_report(
+        IntPtr p_report_buffer,
+        ref uint report_size,
+        ReadOnlySpan<byte> nonce);
 }

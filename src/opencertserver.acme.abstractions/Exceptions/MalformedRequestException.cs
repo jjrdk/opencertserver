@@ -11,7 +11,8 @@ public class MalformedRequestException : AcmeException
     /// <param name="message">The message that describes the malformed request error.</param>
     public MalformedRequestException(string message)
         : base(message)
-    { }
+    {
+    }
 
     /// <summary>
     /// Gets the ACME error type string for a malformed request error.

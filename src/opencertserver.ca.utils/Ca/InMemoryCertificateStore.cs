@@ -59,7 +59,8 @@ public class InMemoryCertificateStore : IStoreCertificates
         var found = _certificates.TryGetValue(Convert.ToHexString(certId.SerialNumber), out var certificateItem);
         if (!found)
         {
-            return Task.FromResult<(CertId, CertificateStatus, RevokedInfo?)>((certId, CertificateStatus.Unknown, null));
+            return Task.FromResult<(CertId, CertificateStatus, RevokedInfo?)>((
+                certId, CertificateStatus.Unknown, null));
         }
 
         var result = certificateItem!.IsRevoked

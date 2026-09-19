@@ -57,6 +57,7 @@ public class Marshaller
         {
             m.Put(o, null);
         }
+
         return m.GetBytes();
     }
 
@@ -83,6 +84,7 @@ public class Marshaller
         {
             throw new ArgumentException("Tpm2BToBuffer: Ill formed TPM2B");
         }
+
         var ret = new byte[len];
         Array.Copy(x, 2, ret, 0, len);
         return ret;
@@ -94,6 +96,7 @@ public class Marshaller
         {
             throw new Exception("Unresolved PushSize()");
         }
+
         var numBytes = Buffer.GetSize();
         var temp = new byte[numBytes];
         Array.Copy(Buffer.GetBuffer(), temp, numBytes);
@@ -268,6 +271,7 @@ public class Marshaller
             ((TpmStructureBase)o).ToHost(this);
             return o;
         }
+
         if (typeof(Enum).GetTypeInfo().IsAssignableFrom(tp.GetTypeInfo()))
         {
             var underlyingType = Enum.GetUnderlyingType(tp);
@@ -280,6 +284,7 @@ public class Marshaller
             var o = FromNetValueType(tp);
             return o;
         }
+
         throw new NotImplementedException($"Get: Not supported type {tp}");
     }
 
@@ -296,6 +301,7 @@ public class Marshaller
         {
             Array.Resize(ref s, sizeLength);
         }
+
         PutInternal(Globs.ReverseByteOrder(s), name);
     }
 
@@ -306,6 +312,7 @@ public class Marshaller
         {
             counterData = Globs.ReverseByteOrder(counterData);
         }
+
         Array.Resize(ref counterData, sizeof(int));
         return BitConverter.ToInt32(counterData, 0);
     }
@@ -323,6 +330,7 @@ public class Marshaller
             var val = Get(elementType, name + j);
             a.SetValue(val, j);
         }
+
         return a;
     }
 
@@ -338,10 +346,12 @@ public class Marshaller
             Buffer.Append(Globs.HostToNet(o));
             return;
         }
+
         if (Repr == DataRepresentation.LittleEndian)
         {
             Buffer.Append(Globs.GetBytes(o));
         }
+
         throw new Exception($"ToNetValueType: Unsupported marshaling type {Repr}");
     }
 
@@ -389,6 +399,7 @@ public class Marshaller
                 throw new ArgumentException($"PopAndSetLengthImpl: Invalid length {sp.Length}");
         }
     }
+
     public void PopAndSetLength()
     {
         var sp = SizesToFillIn.Pop();
@@ -414,6 +425,7 @@ internal struct SizePlaceholder
         StartPos = startPos;
         Length = length;
     }
+
     internal int StartPos;
     internal int Length;
 }

@@ -3,7 +3,6 @@
 namespace OpenCertServer.Acme.Abstractions.Model;
 
 using CertesSlim.Acme.Resource;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -43,50 +42,62 @@ public sealed class Order : IVersioned
     /// Gets the unique order identifier.
     /// </summary>
     public string OrderId { get; }
+
     /// <summary>
     /// Gets the account ID associated with this order.
     /// </summary>
     public string AccountId { get; }
+
     /// <summary>
     /// Gets the current status of the order.
     /// </summary>
     public OrderStatus Status { get; private set; }
+
     /// <summary>
     /// Gets the list of identifiers for the order.
     /// </summary>
     public List<Identifier> Identifiers { get; private set; }
+
     /// <summary>
     /// Gets the list of authorizations associated with the order.
     /// </summary>
     public List<Authorization> Authorizations { get; private set; }
+
     /// <summary>
     /// Gets or sets the not-before date/time for the requested certificate, if any.
     /// </summary>
     public DateTimeOffset? NotBefore { get; set; }
+
     /// <summary>
     /// Gets or sets the not-after date/time for the requested certificate, if any.
     /// </summary>
     public DateTimeOffset? NotAfter { get; set; }
+
     /// <summary>
     /// Gets or sets the expiration date/time for the order, if any.
     /// </summary>
     public DateTimeOffset? Expires { get; set; }
+
     /// <summary>
     /// Gets or sets the error object associated with the order, if any.
     /// </summary>
     public AcmeError? Error { get; set; }
+
     /// <summary>
     /// Gets or sets the certificate signing request (CSR) for the order, if any.
     /// </summary>
     public string? CertificateSigningRequest { get; set; }
+
     /// <summary>
     /// Gets or sets the issued certificate as a byte array, if any.
     /// </summary>
     public byte[]? Certificate { get; set; }
+
     /// <summary>
     /// Gets or sets the certificate profile requested, if any.
     /// </summary>
     public string? Profile { get; set; }
+
     /// <summary>
     /// Gets or sets the concurrency version token for optimistic concurrency control.
     /// </summary>

@@ -8,7 +8,11 @@ public class AttestationException : Exception
     public int ErrorCode { get; }
     public string? VendorErrorName { get; }
 
-    public AttestationException(string message, int errorCode = -1, string? vendorErrorName = null, Exception? inner = null)
+    public AttestationException(
+        string message,
+        int errorCode = -1,
+        string? vendorErrorName = null,
+        Exception? inner = null)
         : base(message, inner)
     {
         ErrorCode = errorCode;
@@ -26,7 +30,9 @@ public sealed class NativeLibraryException : AttestationException
     public string LibraryName { get; }
 
     public NativeLibraryException(string libraryName, Exception? inner = null)
-        : base($"Native attestation library '{libraryName}' could not be loaded. Ensure the platform-specific package is deployed and this process is running on compatible hardware.", inner: inner)
+        : base(
+            $"Native attestation library '{libraryName}' could not be loaded. Ensure the platform-specific package is deployed and this process is running on compatible hardware.",
+            inner: inner)
     {
         LibraryName = libraryName;
     }

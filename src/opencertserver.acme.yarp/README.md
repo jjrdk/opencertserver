@@ -25,33 +25,145 @@ each certificate stored in a route-scoped location.
 
 ## Usage
 
-```csharp
-builder.Services.AddAcmeClient(options)
-   .AddAcmeFileCertificatePersistence("acme-certificates")
-   .AddAcmeFileChallengePersistence("acme-challenges");
+A web server that provisions two certificates (one per YARP route) on a single HTTPS listener:
 
+```csharp
+using System;
+using System.Collections.Generic;
+using CertesSlim.Extensions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using OpenCertServer.Acme.AspNetClient;
+using OpenCertServer.Acme.AspNetClient.Certes;
+using OpenCertServer.Acme.Yarp;
+using Yarp.ReverseProxy.Configuration;
+
+// 1. Point the ACME engine at the server you trust (Let's Encrypt or a Pebble test server) and
+//    configure the CSR metadata shared by every route. Each route's Match.Hosts become the SANs,
+//    so Domains can be empty for a YARP-only deployment.
+var options = new LetsEncryptOptions
+{
+   Email = "you@example.com",
+   UseStaging = false,                       // set true to hit the Let's Encrypt staging server
+   AccountPassword = "change-me",
+   TimeUntilExpiryBeforeRenewal = TimeSpan.FromDays(30),
+   CertificateSigningRequest = new CsrInfo
+     {
+       CountryName = "US",
+       Organization = "Example Corp",
+       State = "CA",
+       Locality = "San Francisco"
+     }
+};
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 2. The ACME client factory needs an HttpClient, so register one before the client wiring.
+builder.Services.AddHttpClient();
+
+// 3. Persist each route's leaf/chain/key under a route-scoped directory
+//    (e.g. acme-certificates/<routeId>), and challenges likewise.
+builder.Services.AddAcmeClient(options)
+     .AddAcmeFileCertificatePersistence("acme-certificates")
+     .AddAcmeFileChallengePersistence("acme-challenges");
+
+// 4. Declare the YARP routes. Each RouteConfig that carries an `acme` metadata bag (via
+//    WithAcmeRoute) becomes an independent ACME order; its Match.Hosts become the certificate
+//    SANs. The ACME options are attached to the RouteConfig in code with WithAcmeRoute — they are
+//    NOT read from an "AcmeProxy" section of appsettings.json.
 var routes = new List<RouteConfig>
 {
    RouteAcmeMetadataExtensions.WithAcmeRoute(
-      new RouteConfig { RouteId = "route.alpha", ClusterId = "cluster.alpha",
-         Match = new RouteMatch { Hosts = ["alpha.example.com"] } },
+      new RouteConfig
+        {
+          RouteId = "route.alpha",
+          ClusterId = "cluster.alpha",
+          Match = new RouteMatch { Hosts = ["alpha.example.com"] }
+        },
       new RouteAcmeOptions { CommonName = "alpha.example.com" }),
    RouteAcmeMetadataExtensions.WithAcmeRoute(
-      new RouteConfig { RouteId = "route.beta", ClusterId = "cluster.beta",
-         Match = new RouteMatch { Hosts = ["beta.example.com"] } },
+      new RouteConfig
+        {
+          RouteId = "route.beta",
+          ClusterId = "cluster.beta",
+          Match = new RouteMatch { Hosts = ["beta.example.com"] }
+        },
       new RouteAcmeOptions { CommonName = "beta.example.com" })
 };
 
-builder.Services.AddAcmeProxy().WithAcmeRouteFilter().LoadFromMemory(routes, clusters);
+// ClusterConfig.Destinations is an IReadOnlyDictionary, so assign an initialized
+// Dictionary, and DestinationConfig has a parameterless constructor.
+var clusters = new List<ClusterConfig>
+{
+   new()
+     {
+       ClusterId = "cluster.alpha",
+       Destinations = new Dictionary<string, DestinationConfig>
+         {
+           { "alpha", new DestinationConfig { Address = "http://localhost:5001" } }
+         }
+     },
+   new()
+     {
+       ClusterId = "cluster.beta",
+       Destinations = new Dictionary<string, DestinationConfig>
+         {
+           { "beta", new DestinationConfig { Address = "http://localhost:5002" } }
+         }
+     }
+};
+
+// 5. Register the route registry (exposed as IAcmeRouteConfigurationSource) and load the routes and
+//    clusters. WithAcmeRouteFilter attaches the config-filter that discovers the `acme` metadata
+//    bag on each route and registers a renewal descriptor; LoadFromMemory runs that filter. Call
+//    AddAcmeProxy after AddAcmeClient so the renewal engine is present.
+builder.Services.AddAcmeProxy()
+     .WithAcmeRouteFilter()
+     .LoadFromMemory(routes, clusters);
+
+// 6. Kestrel serves the per-route leaf by SNI; TLS 1.2/1.3 for the HTTPS listener.
+builder.WebHost.UseKestrel(kestrel =>
+{
+   kestrel.ConfigureHttpsDefaults(https =>
+   {
+     https.SslProtocols = System.Security.Authentication.SslProtocols.Tls12
+        | System.Security.Authentication.SslProtocols.Tls13;
+   });
+});
 
 var app = builder.Build();
-app.UseAcmeClient();       // HTTP-01 challenge middleware
-app.UseReverseProxy();
+
+// 7. The ACME challenge middleware serves HTTP-01 tokens for every route; YARP forwards the rest.
+//    In YARP 2.x the proxy is registered as an endpoint with MapReverseProxy, not UseReverseProxy.
+app.UseAcmeClient();
+app.MapReverseProxy();
 app.Run();
 ```
 
-See `sample/Program.cs` and `sample/appsettings.json` for a complete, illustrative program, and the
-root `README.md` "Using ACME with YARP" section.
+On start, `AcmeRenewalService.StartAsync` calls `RunAllRoutesOnce`, which requests a new
+certificate from Let's Encrypt for every registered route (one per `RouteConfig`); each route's
+leaf is then selected by SNI on the single HTTPS listener.
+
+### Configuration via `appsettings.json`
+
+The YARP routes/clusters can also be declared in `appsettings.json` instead of code. The ACME
+metadata is **not** read from `appsettings.json`; an `acme` metadata bag must still be attached to
+each `RouteConfig` in code with `WithAcmeRoute`. A routing section that mirrors the routes above:
+
+```json
+{
+   "ReverseProxy": {
+      "Routes": {
+         "route.alpha": { "ClusterId": "cluster.alpha", "Match": { "Hosts": [ "alpha.example.com" ] } },
+         "route.beta":  { "ClusterId": "cluster.beta",  "Match": { "Hosts": [ "beta.example.com" ] } }
+      },
+      "Clusters": {
+         "cluster.alpha": { "Destinations": { "alpha": { "Address": "http://localhost:5001" } } },
+         "cluster.beta":  { "Destinations": { "beta":  { "Address": "http://localhost:5002" } } }
+      }
+   }
+}
+```
 
 ## Backward compatibility
 

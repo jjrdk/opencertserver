@@ -65,6 +65,7 @@ public sealed class AppleAttestNativeInterop : IAppleAttestNativeInterop
                         errorCode: result,
                         vendorErrorName: "APPATTEST_KEY_GENERATION_ERROR");
                 }
+
                 return System.Text.Encoding.UTF8.GetString(keyIdBuffer, 0, keyIdLength);
             }
             catch (DllNotFoundException ex)
@@ -90,7 +91,8 @@ public sealed class AppleAttestNativeInterop : IAppleAttestNativeInterop
             int attestLength = attestBuffer.Length;
             try
             {
-                int result = AppleAttestShim.AttestKey(keyId, clientDataHash.Span, attestBuffer.AsSpan(), ref attestLength);
+                int result = AppleAttestShim.AttestKey(keyId, clientDataHash.Span, attestBuffer.AsSpan(),
+                    ref attestLength);
                 if (result != 0)
                 {
                     throw new AttestationException(
@@ -98,6 +100,7 @@ public sealed class AppleAttestNativeInterop : IAppleAttestNativeInterop
                         errorCode: result,
                         vendorErrorName: "APPATTEST_ATTEST_KEY_ERROR");
                 }
+
                 return attestBuffer[..attestLength];
             }
             catch (DllNotFoundException ex)

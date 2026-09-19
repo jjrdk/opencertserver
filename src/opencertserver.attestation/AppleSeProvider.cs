@@ -116,6 +116,7 @@ public sealed class AppleSeProvider : IAttestationProvider
             writer.WriteString("attestation", attestationBase64);
             writer.WriteEndObject();
         }
+
         using var content = new ByteArrayContent(ms.ToArray());
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
 

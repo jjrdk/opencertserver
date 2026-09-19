@@ -149,6 +149,7 @@ public sealed class CMac
             output[i] = (byte)((b << 1) | overflow);
             overflow = (byte)((b & 0x80) != 0 ? 1 : 0);
         }
+
         return output;
     }
 }

@@ -12,10 +12,12 @@ public class X509ExtensionTemplate : IAsnValue
     /// Gets the extension object identifier.
     /// </summary>
     public Oid Oid { get; }
+
     /// <summary>
     /// Gets the extension value payload.
     /// </summary>
     public IAsnValue? Value { get; }
+
     /// <summary>
     /// Gets a value indicating whether the extension is marked critical.
     /// </summary>

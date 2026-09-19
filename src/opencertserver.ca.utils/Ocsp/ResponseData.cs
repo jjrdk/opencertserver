@@ -65,7 +65,8 @@ public class ResponseData : IAsnValue
 
         Responses = responses.AsReadOnly();
 
-        if (sequenceReader.HasData && sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
+        if (sequenceReader.HasData &&
+            sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
         {
             var extReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true));
             ResponseExtensions = [];

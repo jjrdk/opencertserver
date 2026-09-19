@@ -24,7 +24,8 @@ public sealed class FileCertificatePersistenceStrategy : ICertificatePersistence
 
     public async Task PersistSiteCertificate(X509Certificate2 certificate)
     {
-        await File.WriteAllBytesAsync(GetCertificatePath(CertificateType.Site), certificate.RawData).ConfigureAwait(false);
+        await File.WriteAllBytesAsync(GetCertificatePath(CertificateType.Site), certificate.RawData)
+            .ConfigureAwait(false);
     }
 
     public async Task PersistSiteCertificate(X509Certificate2 certificate, string routeId)
@@ -45,12 +46,14 @@ public sealed class FileCertificatePersistenceStrategy : ICertificatePersistence
         // chains directory so the artifact path always exists. The real issuer chain is written
         // by <see cref="PersistSiteCertificateChain"/>.
         var chainPem = certificate.ExportCertificatePem();
-        await File.WriteAllBytesAsync(Path.Combine(chainDir, "server.crt"), Encoding.UTF8.GetBytes(chainPem)).ConfigureAwait(false);
+        await File.WriteAllBytesAsync(Path.Combine(chainDir, "server.crt"), Encoding.UTF8.GetBytes(chainPem))
+            .ConfigureAwait(false);
 
         var keyPem = ToPrivateKeyPem(certificate);
         if (keyPem != null)
         {
-            await File.WriteAllBytesAsync(Path.Combine(keyDir, "server.key"), Encoding.UTF8.GetBytes(keyPem)).ConfigureAwait(false);
+            await File.WriteAllBytesAsync(Path.Combine(keyDir, "server.key"), Encoding.UTF8.GetBytes(keyPem))
+                .ConfigureAwait(false);
         }
     }
 
@@ -64,9 +67,9 @@ public sealed class FileCertificatePersistenceStrategy : ICertificatePersistence
         var issuers = chain.Count > 1 ? chain.Cast<X509Certificate2>().Skip(1) : [];
 
         var tasks = new List<Task>
-                 {
-                  File.WriteAllBytesAsync(Path.Combine(leafDir, "server.crt"), leaf.RawData)
-                };
+        {
+            File.WriteAllBytesAsync(Path.Combine(leafDir, "server.crt"), leaf.RawData)
+        };
 
         if (leaf.HasPrivateKey)
         {
@@ -174,7 +177,7 @@ public sealed class FileCertificatePersistenceStrategy : ICertificatePersistence
     private async Task<byte[]?> ReadFile(CertificateType persistenceType)
     {
         return !File.Exists(GetCertificatePath(persistenceType))
-              ? null
-             : await File.ReadAllBytesAsync(GetCertificatePath(persistenceType)).ConfigureAwait(false);
+            ? null
+            : await File.ReadAllBytesAsync(GetCertificatePath(persistenceType)).ConfigureAwait(false);
     }
 }

@@ -2,7 +2,6 @@ namespace OpenCertServer.Acme.Abstractions.Exceptions;
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 /// <summary>
 /// Exception thrown when the server refuses to issue a certificate for one or more

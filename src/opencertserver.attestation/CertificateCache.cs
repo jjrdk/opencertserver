@@ -19,6 +19,7 @@ public interface ICertificateCache
 public sealed class InMemoryCertificateCache : ICertificateCache
 {
     private readonly record struct CacheEntry(X509Certificate2 Certificate, DateTime ExpiresAt);
+
     private readonly ConcurrentDictionary<string, CacheEntry> _store = new(StringComparer.OrdinalIgnoreCase);
 
     public X509Certificate2? Get(string deviceId)
@@ -30,6 +31,7 @@ public sealed class InMemoryCertificateCache : ICertificateCache
 
             _store.TryRemove(deviceId, out _);
         }
+
         return null;
     }
 

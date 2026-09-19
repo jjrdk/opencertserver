@@ -1,3 +1,5 @@
+using Yarp.ReverseProxy.Configuration;
+
 namespace OpenCertServer.Acme.Yarp;
 
 using System.Collections.Generic;
@@ -24,9 +26,9 @@ public static class RouteAcmeMetadataExtensions
     /// Builds a YARP <c>RouteConfig</c> with the ACME metadata bag attached. The route metadata
     /// is init-only, so the metadata must be supplied at construction time.
     /// </summary>
-    public static global::Yarp.ReverseProxy.Configuration.RouteConfig WithAcmeRoute(
-       global::Yarp.ReverseProxy.Configuration.RouteConfig route,
-       RouteAcmeOptions options)
+    public static RouteConfig WithAcmeRoute(
+        this RouteConfig route,
+        RouteAcmeOptions options)
     {
         var metadata = route.Metadata is null
             ? new Dictionary<string, string>()
@@ -44,7 +46,7 @@ public static class RouteAcmeMetadataExtensions
     /// when the route carries no <c>acme</c> metadata, so the config filter can skip routes
     /// that have not opted into ACME.
     /// </summary>
-    public static RouteAcmeOptions? TryReadOptions(global::Yarp.ReverseProxy.Configuration.RouteConfig route)
+    public static RouteAcmeOptions? TryReadOptions(this RouteConfig route)
     {
         if (route.Metadata is null)
         {
@@ -56,7 +58,8 @@ public static class RouteAcmeMetadataExtensions
             return null;
         }
 
-        return JsonSerializer.Deserialize<RouteAcmeOptions>(json, RouteAcmeOptionsSerializerContext.Default.RouteAcmeOptions);
+        return JsonSerializer.Deserialize<RouteAcmeOptions>(json,
+            RouteAcmeOptionsSerializerContext.Default.RouteAcmeOptions);
     }
 
     /// <summary>
@@ -66,14 +69,9 @@ public static class RouteAcmeMetadataExtensions
     /// Prefer <see cref="TryReadOptions"/> when <see langword="null"/> is the correct "no
     /// options" signal.
     /// </summary>
-    public static RouteAcmeOptions ReadOptionsOrDefault(global::Yarp.ReverseProxy.Configuration.RouteConfig route)
+    public static RouteAcmeOptions ReadOptionsOrDefault(this RouteConfig route)
     {
-        var options = TryReadOptions(route);
-        if (options != null)
-        {
-            return options;
-        }
-
-        return new RouteAcmeOptions { Enabled = false };
+        var options = route.TryReadOptions();
+        return options ?? new RouteAcmeOptions { Enabled = false };
     }
 }

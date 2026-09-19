@@ -33,12 +33,9 @@ internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptio
     public void Configure(KestrelServerOptions options)
     {
         options.ConfigureHttpsDefaults(o =>
-            {
-                o.ServerCertificateSelector = (_, hostName) =>
-                          {
-                              return SelectCertificateFor(hostName);
-                          };
-            });
+        {
+            o.ServerCertificateSelector = (_, hostName) => { return SelectCertificateFor(hostName); };
+        });
     }
 
     /// <summary>
@@ -53,8 +50,8 @@ internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptio
         var fallback = _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
 
         return SelectCertificate(hostName, hostToRouteId)
-             ?? _renewalService.Certificate
-             ?? fallback;
+         ?? _renewalService.Certificate
+         ?? fallback;
     }
 
     private IReadOnlyDictionary<string, string> GetHostIndex()
@@ -92,7 +89,8 @@ internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptio
                 return cert;
             }
 
-            _logger.LogWarning("No certificate is available yet for route {RouteId} matching SNI host {Host}", routeId, hostName);
+            _logger.LogWarning("No certificate is available yet for route {RouteId} matching SNI host {Host}", routeId,
+                hostName);
             return _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
         }
 

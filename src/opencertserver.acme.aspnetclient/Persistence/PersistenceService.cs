@@ -34,7 +34,7 @@ public sealed partial class PersistenceService : IPersistenceService
         await PersistCertificate(
             CertificateType.Account,
             Encoding.UTF8.GetBytes(certificate.ToPem()),
-             _certificatePersistenceStrategies).ConfigureAwait(false);
+            _certificatePersistenceStrategies).ConfigureAwait(false);
     }
 
     public Task PersistSiteCertificate(
@@ -45,9 +45,9 @@ public sealed partial class PersistenceService : IPersistenceService
     }
 
     public async Task PersistSiteCertificate(
-      X509Certificate2 certificate,
-      string? routeId,
-      CancellationToken cancellationToken = default)
+        X509Certificate2 certificate,
+        string? routeId,
+        CancellationToken cancellationToken = default)
     {
         var scope = NormalizeRouteId(routeId);
         LogPersistingTypeCertificateThroughStrategies(CertificateType.Site);
@@ -57,9 +57,9 @@ public sealed partial class PersistenceService : IPersistenceService
     }
 
     public async Task PersistSiteCertificateChain(
-      X509Certificate2Collection chain,
-      string? routeId,
-      CancellationToken cancellationToken = default)
+        X509Certificate2Collection chain,
+        string? routeId,
+        CancellationToken cancellationToken = default)
     {
         var scope = NormalizeRouteId(routeId);
         var tasks = _certificatePersistenceStrategies.Select(x => x.PersistSiteCertificateChain(chain, scope));
@@ -119,8 +119,8 @@ public sealed partial class PersistenceService : IPersistenceService
     }
 
     public async Task<X509Certificate2?> GetPersistedSiteCertificate(
-      string routeId,
-      CancellationToken cancellationToken = default)
+        string routeId,
+        CancellationToken cancellationToken = default)
     {
         foreach (var strategy in _certificatePersistenceStrategies)
         {

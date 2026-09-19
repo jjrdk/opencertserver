@@ -59,7 +59,10 @@ public class CertId : IAsnValue
     /// Creates a <see cref="CertId"/> using the correct issuer certificate to compute issuer name hash and
     /// issuer key hash per RFC 6960.
     /// </summary>
-    public static CertId Create(X509Certificate2 certificate, X509Certificate2 issuerCertificate, HashAlgorithmName hashAlgorithm)
+    public static CertId Create(
+        X509Certificate2 certificate,
+        X509Certificate2 issuerCertificate,
+        HashAlgorithmName hashAlgorithm)
     {
         var hasher = hashAlgorithm.CreateHashAlgorithm();
         return new CertId(

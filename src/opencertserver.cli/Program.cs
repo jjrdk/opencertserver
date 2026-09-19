@@ -1,14 +1,17 @@
 // Program.cs for opencertserver.cli
 // for ToPkcs10 extension
+
 using System.Runtime.CompilerServices;
+
 [assembly: InternalsVisibleTo("opencertserver.cli.tests")]
+
 namespace opencertserver.cli
 {
-
     using System;
     using System.CommandLine;
     using System.Net.Http;
     using System.Threading.Tasks;
+
     internal static partial class Program
     {
         public static async Task<int> Main(string[] args)

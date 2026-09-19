@@ -66,11 +66,11 @@ public sealed partial class CertificateProvider : IProvideCertificates
     }
 
     private async Task<CertificateRenewalResult> RenewForRoute(
-     string password,
-     string scope,
-     IReadOnlyList<string> hosts,
-     X509Certificate2? current,
-     CancellationToken cancellationToken)
+        string password,
+        string scope,
+        IReadOnlyList<string> hosts,
+        X509Certificate2? current,
+        CancellationToken cancellationToken)
     {
         LogCheckingToSeeIfInMemoryLetsencryptCertificateNeedsRenewal();
         if (_certificateValidator.IsCertificateValid(current))
@@ -84,17 +84,18 @@ public sealed partial class CertificateProvider : IProvideCertificates
         if (_certificateValidator.IsCertificateValid(persistedSiteCertificate))
         {
             LogAPersistedNonExpiredLetsEncryptCertificateWasFoundAndWillBeUsedThumbprint(persistedSiteCertificate
-                   ?.Thumbprint);
+                ?.Thumbprint);
             return new CertificateRenewalResult(persistedSiteCertificate, CertificateRenewalStatus.LoadedFromStore);
         }
 
         LogNoValidCertificateWasFoundRequestingNewCertificateFromLetsEncrypt();
-        var newCertificate = await RequestNewLetsEncryptCertificate(password, scope, hosts, cancellationToken).ConfigureAwait(false);
+        var newCertificate = await RequestNewLetsEncryptCertificate(password, scope, hosts, cancellationToken)
+            .ConfigureAwait(false);
         return new CertificateRenewalResult(newCertificate, CertificateRenewalStatus.Renewed);
     }
 
     private Task<X509Certificate2?> GetPersisted(string scope, CancellationToken cancellationToken)
-             => _persistenceService.GetPersistedSiteCertificate(scope, cancellationToken);
+        => _persistenceService.GetPersistedSiteCertificate(scope, cancellationToken);
 
     private async Task<X509Certificate2?> RequestNewLetsEncryptCertificate(
         string password,
@@ -109,13 +110,16 @@ public sealed partial class CertificateProvider : IProvideCertificates
 
         await _persistenceService.PersistChallenges(placedOrder.Challenges).ConfigureAwait(false);
 
-        var existingKeyPem = await _persistenceService.GetPersistedRouteKey(scope, cancellationToken).ConfigureAwait(false);
+        var existingKeyPem =
+            await _persistenceService.GetPersistedRouteKey(scope, cancellationToken).ConfigureAwait(false);
 
         try
         {
-            var (certificate, usedKeyPem, collection) = await client.FinalizeOrder(placedOrder, password, existingKeyPem).ConfigureAwait(false);
+            var (certificate, usedKeyPem, collection) =
+                await client.FinalizeOrder(placedOrder, password, existingKeyPem).ConfigureAwait(false);
 
-            await _persistenceService.PersistSiteCertificateChain(collection, scope, cancellationToken).ConfigureAwait(false);
+            await _persistenceService.PersistSiteCertificateChain(collection, scope, cancellationToken)
+                .ConfigureAwait(false);
             await _persistenceService.PersistRouteKey(scope, usedKeyPem, cancellationToken).ConfigureAwait(false);
 
             return certificate;
@@ -143,11 +147,11 @@ public sealed partial class CertificateProvider : IProvideCertificates
     partial void LogCurrentInMemoryLetsencryptCertificateIsValid();
 
     [LoggerMessage(LogLevel.Information,
-         "Checking to see if existing LetsEncrypt certificate has been persisted and is valid")]
+        "Checking to see if existing LetsEncrypt certificate has been persisted and is valid")]
     partial void LogCheckingToSeeIfExistingLetsencryptCertificateHasBeenPersistedAndIsValid();
 
     [LoggerMessage(LogLevel.Information,
-         "A persisted non-expired LetsEncrypt certificate was found and will be used: {Thumbprint}")]
+        "A persisted non-expired LetsEncrypt certificate was found and will be used: {Thumbprint}")]
     partial void LogAPersistedNonExpiredLetsEncryptCertificateWasFoundAndWillBeUsedThumbprint(string? thumbprint);
 
     [LoggerMessage(LogLevel.Information, "No valid certificate was found. Requesting new certificate from LetsEncrypt")]

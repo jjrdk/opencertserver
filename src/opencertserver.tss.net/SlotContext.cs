@@ -122,6 +122,7 @@ internal class ObjectContextManager
             var randomPos = (uint)Globs.GetRandomInt((int)TpmHandle.GetRangeLength(tpmHandle.GetType()));
             candidateHandle = ((uint)handleType << 24) + randomPos;
         }
+
         throw new Exception("Too many TBS contexts");
     }
 
@@ -141,7 +142,7 @@ internal class ObjectContextManager
 
         var x = ObjectContexts.Find(item => (item.Owner == caller)
          && item.OwnerHandle.handle == callerHandle.handle);
-        return x;   // x may be null
+        return x; // x may be null
     }
 
     /// <summary>
@@ -151,7 +152,8 @@ internal class ObjectContextManager
     /// <param name="type"></param>
     /// <param name="pinnedEntities"></param>
     /// <returns></returns>
-    internal ObjectContext GetEntityToEvict(Tbs.SlotType type,
+    internal ObjectContext GetEntityToEvict(
+        Tbs.SlotType type,
         ObjectContext[] pinnedEntities)
     {
         ObjectContext candidate = null;
@@ -170,6 +172,7 @@ internal class ObjectContextManager
                 candidate = c;
             }
         }
+
         return candidate;
     }
 
@@ -186,6 +189,7 @@ internal class ObjectContextManager
                 return c;
             }
         }
+
         return null;
     }
 } // class ObjectContextManager
@@ -225,17 +229,16 @@ internal class ObjectContext
             {
                 return false;
             }
+
             var tp = TheTpmHandle.GetType();
             if (!(tp is Ht.HmacSession or Ht.PolicySession or Ht.Transient))
             {
                 return true;
             }
+
             return _Loaded;
         }
-        set
-        {
-            _Loaded = value;
-        }
+        set { _Loaded = value; }
     }
 
     public override string ToString()

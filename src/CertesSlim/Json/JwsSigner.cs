@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using CertesSlim;
 using Microsoft.IdentityModel.Tokens;
 
 /// <summary>
@@ -40,7 +41,7 @@ internal class JwsSigner
             ? new ProtectedHeader
             {
                 Alg = ToJwsAlgorithm(_keyPair.Algorithm),
-                Jwk = _keyPair.JsonWebKey,
+                Jwk = JwkConverter.FromJsonWebKey(_keyPair.JsonWebKey),
                 Nonce = nonce,
                 Url = url
             }

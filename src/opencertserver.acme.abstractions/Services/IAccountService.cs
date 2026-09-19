@@ -2,7 +2,6 @@
 
 using Microsoft.IdentityModel.Tokens;
 using OpenCertServer.Acme.Abstractions.HttpModel.Requests;
-
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

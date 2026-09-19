@@ -23,7 +23,8 @@ public class OcspResponse : IAsnValue
         var writer = new AsnWriter(AsnEncodingRules.DER);
         response.Encode(writer);
         var responseBytes = writer.Encode();
-        ResponseBytes = new ResponseBytes(Oids.OcspBasicResponse.InitializeOid(Oids.OcspBasicResponseFriendlyName), responseBytes);
+        ResponseBytes = new ResponseBytes(Oids.OcspBasicResponse.InitializeOid(Oids.OcspBasicResponseFriendlyName),
+            responseBytes);
     }
 
     /// <summary>

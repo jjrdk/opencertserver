@@ -92,10 +92,12 @@ public partial class Tpm2
             {
                 fwV1 = p.value;
             }
+
             if (p.property == Pt.FirmwareVersion2)
             {
                 fwV2 = p.value;
             }
+
             if (p.property == Pt.Revision)
             {
                 revision = p.value;
@@ -113,8 +115,11 @@ public partial class Tpm2
     /// <param name="year"></param>
     /// <param name="dayOfYear"></param>
     /// <param name="tpm"></param>
-    public static void GetTpmInfo(Tpm2 tpm, out string manufacturer,
-        out uint year, out uint dayOfYear)
+    public static void GetTpmInfo(
+        Tpm2 tpm,
+        out string manufacturer,
+        out uint year,
+        out uint dayOfYear)
     {
         // ReSharper disable once RedundantAssignment
         manufacturer = "";
@@ -150,10 +155,12 @@ public partial class Tpm2
         {
             return [];
         }
+
         if (props.Length != 1)
         {
             throw new Exception("Unexpected return from GetCapability");
         }
+
         return props[0].pcrSelect;
     }
 

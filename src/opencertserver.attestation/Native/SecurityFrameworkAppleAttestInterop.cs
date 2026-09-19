@@ -56,10 +56,10 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
     {
         // Attempt Secure Enclave key first; fall back to software EC key.
         var key = TryCreateKey(useSecureEnclave: true)
-                  ?? TryCreateKey(useSecureEnclave: false)
-                  ?? throw new AttestationException(
-                         "SecKeyCreateRandomKey failed for both SE and software EC key. " +
-                         "Ensure macOS 10.12+ or iOS 10+ and that the process is not sandboxed.");
+         ?? TryCreateKey(useSecureEnclave: false)
+         ?? throw new AttestationException(
+                "SecKeyCreateRandomKey failed for both SE and software EC key. " +
+                "Ensure macOS 10.12+ or iOS 10+ and that the process is not sandboxed.");
 
         // Derive keyId from SHA-256 of the public key bytes.
         var keyId = DeriveKeyId(key);
@@ -118,9 +118,15 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
                 var bytes = AppleCF.CFDataToBytes(pubData);
                 return Convert.ToHexString(SHA256.HashData(bytes));
             }
-            finally { AppleCF.CFRelease(pubData); }
+            finally
+            {
+                AppleCF.CFRelease(pubData);
+            }
         }
-        finally { AppleCF.CFRelease(pubKey); }
+        finally
+        {
+            AppleCF.CFRelease(pubKey);
+        }
     }
 
     private static byte[] BuildAttestationObject(IntPtr privateKey, byte[] digest)
@@ -146,8 +152,14 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
                 "Verify the key supports ECDSA signing.");
 
         byte[] signature;
-        try { signature = AppleCF.CFDataToBytes(signatureCF); }
-        finally { AppleCF.CFRelease(signatureCF); }
+        try
+        {
+            signature = AppleCF.CFDataToBytes(signatureCF);
+        }
+        finally
+        {
+            AppleCF.CFRelease(signatureCF);
+        }
 
         // Extract public key (X9.63 uncompressed: 0x04 ‖ X ‖ Y, 65 bytes for P-256)
         var pubKey = AppleSecurity.SecKeyCopyPublicKey(privateKey);
@@ -161,10 +173,19 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
             if (pubErr != IntPtr.Zero) AppleCF.CFRelease(pubErr);
             if (pubData == IntPtr.Zero)
                 throw new AttestationException("SecKeyCopyExternalRepresentation returned null.");
-            try { pubKeyBytes = AppleCF.CFDataToBytes(pubData); }
-            finally { AppleCF.CFRelease(pubData); }
+            try
+            {
+                pubKeyBytes = AppleCF.CFDataToBytes(pubData);
+            }
+            finally
+            {
+                AppleCF.CFRelease(pubData);
+            }
         }
-        finally { AppleCF.CFRelease(pubKey); }
+        finally
+        {
+            AppleCF.CFRelease(pubKey);
+        }
 
         // Attestation object layout:
         //   [4 bytes LE: sig length][DER ECDSA signature][X9.63 EC public key]

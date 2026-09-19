@@ -47,4 +47,3 @@ public interface IExternalAccountBindingService
     /// <returns><c>true</c> when the key exists and has not yet been consumed; otherwise <c>false</c>.</returns>
     Task<bool> HasActiveKeyAsync(string keyId, CancellationToken cancellationToken);
 }
-

@@ -12,6 +12,7 @@ internal static partial class Program
     private const string DefaultEcdsaCurve = "nistP256";
 
     private sealed record GeneratedKeyPair(string Description, string PrivateKeyPem, string PublicKeyPem);
+
     private sealed record OutputPaths(string PrivateKeyPath, string PublicKeyPath);
 
     private static void CreateGenerateKeysCommand(RootCommand rootCommand)
@@ -185,12 +186,14 @@ internal static partial class Program
 
         if (string.IsNullOrWhiteSpace(privateKeyOut))
         {
-            throw new InvalidOperationException("Private key output path is required (--private-key-out path or --out path).");
+            throw new InvalidOperationException(
+                "Private key output path is required (--private-key-out path or --out path).");
         }
 
         if (string.IsNullOrWhiteSpace(publicKeyOut))
         {
-            throw new InvalidOperationException("Public key output path is required (--public-key-out path or --out path).");
+            throw new InvalidOperationException(
+                "Public key output path is required (--public-key-out path or --out path).");
         }
 
         if (string.Equals(Path.GetFullPath(privateKeyOut), Path.GetFullPath(publicKeyOut), StringComparison.Ordinal))

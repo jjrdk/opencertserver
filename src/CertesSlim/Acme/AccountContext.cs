@@ -68,7 +68,8 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
             account.TermsOfServiceAgreed = true;
         }
 
-        var response = await Context.HttpClient.Post<Account, Account>(Context, location, account).ConfigureAwait(false);
+        var response = await Context.HttpClient.Post<Account, Account>(Context, location, account)
+            .ConfigureAwait(false);
         return response.Resource;
     }
 
