@@ -151,7 +151,6 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
                     var outcome = await _certificateProvider.RenewCertificateIfNeeded(
                         password, route.RouteId, hosts, current, cancellationToken).ConfigureAwait(false);
                     ApplyOutcome(route.RouteId, outcome);
-                    WarmChain(outcome, cancellationToken);
                     await FireRenewalSucceededHooks(outcome).ConfigureAwait(false);
                     LogRenewedRoute(route.RouteId, outcome.Status);
                 }
@@ -184,34 +183,12 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         }
 
         throw new InvalidOperationException(
-            "No domains are configured. Either set AcmeOptions.Domains or register at least one "
-          + "ACME route with non-empty hosts via the YARP integration.");
+            "No domains are configured. Either set AcmeOptions.Domains or register at least one ACME route with non-empty hosts via the YARP integration.");
     }
 
     private void ApplyOutcome(string routeId, CertificateRenewalResult result)
     {
         _routeScope.SetCertificate(routeId, result.Certificate);
-    }
-
-    private void WarmChain(CertificateRenewalResult outcome, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (outcome.Status == Unchanged || outcome.Certificate == null)
-        {
-            return;
-        }
-
-        using var chain = new X509Chain();
-        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-
-        if (chain.Build(outcome.Certificate))
-        {
-            LogSuccessfullyBuiltCertificateChain();
-        }
-        else
-        {
-            LogWasNotAbleToBuildCertificateChainThisCanCauseAnOutageOfYourApp();
-        }
     }
 
     private async Task FireRenewalSucceededHooks(CertificateRenewalResult result)
@@ -272,13 +249,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
     [LoggerMessage(LogLevel.Warning, "The LetsEncrypt middleware's background renewal thread is shutting down")]
     partial void LogTheLetsEncryptMiddlewareSBackgroundRenewalThreadIsShuttingDown();
 
-    [LoggerMessage(LogLevel.Information, "Successfully built certificate chain")]
-    partial void LogSuccessfullyBuiltCertificateChain();
-
-    [LoggerMessage(LogLevel.Warning, "Was not able to build certificate chain. This can cause an outage of your app")]
-    partial void LogWasNotAbleToBuildCertificateChainThisCanCauseAnOutageOfYourApp();
-
-    [LoggerMessage(LogLevel.Trace, "AcmeRenewalService - timer callback starting")]
+     [LoggerMessage(LogLevel.Trace, "AcmeRenewalService - timer callback starting")]
     partial void LogAcmeRenewalServiceTimerCallbackStarting();
 
     [LoggerMessage(LogLevel.Warning, "Exception occurred renewing certificates: '{Message}'")]
