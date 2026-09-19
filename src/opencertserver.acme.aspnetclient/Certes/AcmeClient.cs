@@ -122,7 +122,7 @@ public sealed partial class AcmeClient : IAcmeClient
                 break;
             }
 
-            await Task.Delay(1000).ConfigureAwait(false);
+            //            await Task.Delay(1000).ConfigureAwait(false);
             challenges = await Task.WhenAll(challengeContexts.Select(x => x.Resource())).ConfigureAwait(false);
         }
 

@@ -8,28 +8,24 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Certificates;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using static Certificates.CertificateRenewalStatus;
 
 public sealed partial class AcmeRenewalService : IAcmeRenewalService
 {
+    private readonly CancellationTokenSource _tokenSource = new();
     private readonly IProvideCertificates _certificateProvider;
     private readonly IEnumerable<ICertificateRenewalLifecycleHook> _lifecycleHooks;
     private readonly ILogger<IAcmeRenewalService> _logger;
-    private readonly IHostApplicationLifetime _lifetime;
     private readonly SemaphoreSlim _semaphoreSlim;
     private readonly AcmeOptions _options;
     private readonly IAcmeRouteConfigurationSource _routeConfigurationSource;
     private readonly AcmeRouteScope _routeScope;
-
     private Task? _renewalLoop;
-    private CancellationTokenSource? _renewalCts;
 
     public AcmeRenewalService(
         IProvideCertificates certificateProvider,
         IEnumerable<ICertificateRenewalLifecycleHook> lifecycleHooks,
-        IHostApplicationLifetime lifetime,
         ILogger<AcmeRenewalService> logger,
         AcmeOptions options,
         IAcmeRouteConfigurationSource routeConfigurationSource,
@@ -37,7 +33,6 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
     {
         _certificateProvider = certificateProvider;
         _lifecycleHooks = lifecycleHooks;
-        _lifetime = lifetime;
         _logger = logger;
         _options = options;
         _routeScope = routeScope;
@@ -55,6 +50,37 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         get { return _options.AcmeServerUri; }
     }
 
+    public async Task StartedAsync(CancellationToken cancellationToken)
+    {
+        await RunOnce(_options.AccountPassword).ConfigureAwait(false);
+        _renewalLoop = RunRenewalLoopAsync(_tokenSource.Token);
+    }
+
+    public Task StartingAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task StoppedAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    public async Task StoppingAsync(CancellationToken cancellationToken)
+    {
+        await _tokenSource.CancelAsync();
+        if (_renewalLoop is not null)
+        {
+            try
+            {
+                await _renewalLoop.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+    }
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         if (_options.TimeAfterIssueDateBeforeRenewal == null && _options.TimeUntilExpiryBeforeRenewal == null)
@@ -63,31 +89,20 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
                 "Neither TimeAfterIssueDateBeforeRenewal nor TimeUntilExpiryBeforeRenewal have been set, which means that the LetsEncrypt certificate will never renew.");
         }
 
-        LogAcmerenewalserviceStartasync();
+        LogAcmeRenewalServiceStartAsync();
 
         foreach (var lifecycleHook in _lifecycleHooks)
         {
             await lifecycleHook.OnStart().ConfigureAwait(false);
         }
 
-        await ValidateDomainsConfiguredAsync().ConfigureAwait(false);
-
-        // Initial issuance for every registered route, isolated so one failure does not block the others.
-        await RunAllRoutesOnce(_options.AccountPassword, cancellationToken).ConfigureAwait(false);
-
-        _renewalCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _renewalLoop = RunRenewalLoopAsync(_renewalCts.Token);
-
-        _lifetime.ApplicationStopping.Register(OnApplicationStopping);
+        ValidateDomainsConfigured();
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        LogTheLetsencryptMiddlewareSBackgroundRenewalThreadIsShuttingDown();
+        LogTheLetsEncryptMiddlewareSBackgroundRenewalThreadIsShuttingDown();
 
-        // Halt any future ticks and drain the in-flight renewal pass so certificate files are not
-        // left partially written and in-flight ACME orders are not abandoned.
-        _renewalCts?.Cancel();
         if (_renewalLoop is not null)
         {
             try
@@ -132,11 +147,11 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
                 try
                 {
                     var current = _routeScope.GetCertificate(route.RouteId);
-                    IReadOnlyList<string> hosts = route.Hosts.Count > 0 ? route.Hosts : _options.Domains;
+                    var hosts = route.Hosts.Count > 0 ? route.Hosts : _options.Domains;
                     var outcome = await _certificateProvider.RenewCertificateIfNeeded(
                         password, route.RouteId, hosts, current, cancellationToken).ConfigureAwait(false);
                     ApplyOutcome(route.RouteId, outcome);
-                    await WarmChain(outcome, cancellationToken).ConfigureAwait(false);
+                    WarmChain(outcome, cancellationToken);
                     await FireRenewalSucceededHooks(outcome).ConfigureAwait(false);
                     LogRenewedRoute(route.RouteId, outcome.Status);
                 }
@@ -159,7 +174,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         }
     }
 
-    private async Task ValidateDomainsConfiguredAsync()
+    private void ValidateDomainsConfigured()
     {
         var routes = _routeScope.GetRoutes(_routeConfigurationSource);
         var hasRouteHosts = routes.Any(r => r.Hosts.Count > 0);
@@ -178,22 +193,24 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         _routeScope.SetCertificate(routeId, result.Certificate);
     }
 
-    private async Task WarmChain(CertificateRenewalResult outcome, CancellationToken cancellationToken)
+    private void WarmChain(CertificateRenewalResult outcome, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (outcome.Status != Unchanged && outcome.Certificate != null)
+        if (outcome.Status == Unchanged || outcome.Certificate == null)
         {
-            using var chain = new X509Chain();
-            chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+            return;
+        }
 
-            if (chain.Build(outcome.Certificate))
-            {
-                LogSuccessfullyBuiltCertificateChain();
-            }
-            else
-            {
-                LogWasNotAbleToBuildCertificateChainThisCanCauseAnOutageOfYourApp();
-            }
+        using var chain = new X509Chain();
+        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+
+        if (chain.Build(outcome.Certificate))
+        {
+            LogSuccessfullyBuiltCertificateChain();
+        }
+        else
+        {
+            LogWasNotAbleToBuildCertificateChainThisCanCauseAnOutageOfYourApp();
         }
     }
 
@@ -218,21 +235,12 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
 
     private async Task RunRenewalLoopAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            await Task.Delay(_options.RenewalServiceStartupDelay, cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-
         using var timer = new PeriodicTimer(TimeSpan.FromHours(1));
         while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
         {
             try
             {
-                LogAcmerenewalserviceTimerCallbackStarting();
+                LogAcmeRenewalServiceTimerCallbackStarting();
                 await RunAllRoutesOnce(_options.AccountPassword, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -248,13 +256,6 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         }
     }
 
-    private void OnApplicationStopping()
-    {
-        // Ensure the renewal loop is stopped when the host signals shutdown, so StopAsync (if it is not
-        // called directly) still drains the in-flight renewal.
-        _renewalCts?.Cancel();
-    }
-
     ~AcmeRenewalService()
     {
         Dispose();
@@ -262,24 +263,23 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
 
     public void Dispose()
     {
-        _renewalCts?.Dispose();
         GC.SuppressFinalize(this);
     }
 
     [LoggerMessage(LogLevel.Trace, "AcmeRenewalService StartAsync")]
-    partial void LogAcmerenewalserviceStartasync();
+    partial void LogAcmeRenewalServiceStartAsync();
 
     [LoggerMessage(LogLevel.Warning, "The LetsEncrypt middleware's background renewal thread is shutting down")]
-    partial void LogTheLetsencryptMiddlewareSBackgroundRenewalThreadIsShuttingDown();
+    partial void LogTheLetsEncryptMiddlewareSBackgroundRenewalThreadIsShuttingDown();
 
     [LoggerMessage(LogLevel.Information, "Successfully built certificate chain")]
     partial void LogSuccessfullyBuiltCertificateChain();
 
-    [LoggerMessage(LogLevel.Warning, "Was not able to build certificate chain. This can cause an outage of your app.")]
+    [LoggerMessage(LogLevel.Warning, "Was not able to build certificate chain. This can cause an outage of your app")]
     partial void LogWasNotAbleToBuildCertificateChainThisCanCauseAnOutageOfYourApp();
 
     [LoggerMessage(LogLevel.Trace, "AcmeRenewalService - timer callback starting")]
-    partial void LogAcmerenewalserviceTimerCallbackStarting();
+    partial void LogAcmeRenewalServiceTimerCallbackStarting();
 
     [LoggerMessage(LogLevel.Warning, "Exception occurred renewing certificates: '{Message}'")]
     partial void LogExceptionOccurredRenewingCertificatesMessage(Exception e, string message);

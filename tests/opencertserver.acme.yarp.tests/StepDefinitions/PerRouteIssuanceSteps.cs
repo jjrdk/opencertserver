@@ -49,7 +49,6 @@ public class PerRouteIssuanceSteps
         var service = new AcmeRenewalService(
             provider,
             [],
-            new FakeHostApplicationLifetime(),
             NullLogger<AcmeRenewalService>.Instance,
             new TestAcmeOptions
             {
