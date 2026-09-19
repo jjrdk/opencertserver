@@ -75,7 +75,7 @@ public sealed partial class AcmeClient : IAcmeClient
             pfxCollection.ExportPkcs12(Pkcs12ExportPbeParameters.Default, password);
         LogCertificateAcquired();
 
-        var certificate = X509CertificateLoader.LoadPkcs12(pfxBytes, null);
+        var certificate = X509CertificateLoader.LoadPkcs12(pfxBytes, password);
 
         // The collection handed to persistence: the leaf (with its private key, loaded back from
         // the PFX) first, followed by the public issuer certificates so chains/server.crt holds
@@ -122,7 +122,6 @@ public sealed partial class AcmeClient : IAcmeClient
                 break;
             }
 
-            //            await Task.Delay(1000).ConfigureAwait(false);
             challenges = await Task.WhenAll(challengeContexts.Select(x => x.Resource())).ConfigureAwait(false);
         }
 

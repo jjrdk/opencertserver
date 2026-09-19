@@ -69,10 +69,11 @@ public partial class RenewalLifecycleSteps
 
     [When(@"the renewal service runs its initial issuance")]
     public async Task WhenTheRenewalServiceRunsItsInitialIssuance()
-    {
+     {
         var service = BuildService();
         await service.StartAsync(CancellationToken.None);
-    }
+        await service.StartedAsync(CancellationToken.None);
+     }
 
     [When(@"the renewal service runs a single pass for all routes")]
     public async Task WhenTheRenewalServiceRunsASinglePassForAllRoutes()
