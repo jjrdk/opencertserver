@@ -126,7 +126,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var routes = _routeScope.GetRoutes(_routeConfigurationSource);
+            var routes = AcmeRouteScope.GetRoutes(_routeConfigurationSource);
 
             foreach (var route in routes)
             {
@@ -161,7 +161,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
 
     private void ValidateDomainsConfigured()
     {
-        var routes = _routeScope.GetRoutes(_routeConfigurationSource);
+        var routes = AcmeRouteScope.GetRoutes(_routeConfigurationSource);
         var hasRouteHosts = routes.Any(r => r.Hosts.Count > 0);
         if (hasRouteHosts || _options.Domains.Distinct().Any())
         {

@@ -8,15 +8,15 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptions>
+internal sealed partial class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptions>
 {
     private readonly IAcmeRenewalService _renewalService;
     private readonly AcmeRouteScope _routeScope;
     private readonly IAcmeRouteConfigurationSource _routeConfigurationSource;
     private readonly ILogger<KestrelOptionsSetup> _logger;
 
-    private IReadOnlyDictionary<string, string>? _cachedHostIndex;
-    private readonly object _indexLock = new();
+    private volatile IReadOnlyDictionary<string, string>? _cachedHostIndex;
+    private readonly Lock _indexLock = new();
 
     public KestrelOptionsSetup(
         IAcmeRenewalService renewalService,
@@ -34,7 +34,7 @@ internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptio
     {
         options.ConfigureHttpsDefaults(o =>
         {
-            o.ServerCertificateSelector = (_, hostName) => { return SelectCertificateFor(hostName); };
+            o.ServerCertificateSelector = (_, hostName) => SelectCertificateFor(hostName);
         });
     }
 
@@ -47,11 +47,10 @@ internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptio
     internal X509Certificate2? SelectCertificateFor(string? hostName)
     {
         var hostToRouteId = GetHostIndex();
-        var fallback = _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
 
         return SelectCertificate(hostName, hostToRouteId)
          ?? _renewalService.Certificate
-         ?? fallback;
+         ?? _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
     }
 
     private IReadOnlyDictionary<string, string> GetHostIndex()
@@ -89,13 +88,12 @@ internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptio
                 return cert;
             }
 
-            _logger.LogWarning("No certificate is available yet for route {RouteId} matching SNI host {Host}", routeId,
-                hostName);
+            LogNoCertificateIsAvailableYetForRouteRouteidMatchingSniHostHost(routeId, hostName);
             return _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
         }
 
         // SNI host not in any ACME route -> fall back to the default leaf and warn.
-        _logger.LogWarning("No ACME route matches SNI host {Host}; serving default certificate", hostName);
+        LogNoAcmeRouteMatchesSniHostHostServingDefaultCertificate(hostName);
         return _routeScope.GetCertificate(AcmeRouteConstants.DefaultRouteId);
     }
 
@@ -112,4 +110,10 @@ internal sealed class KestrelOptionsSetup : IConfigureOptions<KestrelServerOptio
 
         return index;
     }
+
+    [LoggerMessage(LogLevel.Warning, "No certificate is available yet for route {RouteId} matching SNI host {Host}")]
+    partial void LogNoCertificateIsAvailableYetForRouteRouteidMatchingSniHostHost(string routeId, string host);
+
+    [LoggerMessage(LogLevel.Warning, "No ACME route matches SNI host {Host}; serving default certificate")]
+    partial void LogNoAcmeRouteMatchesSniHostHostServingDefaultCertificate(string host);
 }
