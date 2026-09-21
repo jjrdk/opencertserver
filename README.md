@@ -1,27 +1,95 @@
-# Introduction
+# OpenCertServer
 
-## About
+OpenCertServer is a modular, ASP.NET Core **certificate authority** platform. It combines a full
+certificate authority (issue, enroll, revoke) with the HTTP-based enrollment protocols that let
+machines and applications obtain X.509 certificates without human intervention, plus the status and
+revocation infrastructure (OCSP/CRL) that makes those certificates trustworthy.
 
-OpenCertServer is a modular certificate authority platform supporting the following open standards:
+It talks in the open standards that already run the Web PKI:
 
-- **EST** – Enrollment over Secure Transport ([RFC 7030](https://www.rfc-editor.org/rfc/rfc7030)), with the EST clarifications ([RFC 8951](https://www.rfc-editor.org/rfc/rfc8951)) and the enhanced CSR attributes response ([RFC 9908](https://www.rfc-editor.org/rfc/rfc9908))
-- **ACME** – Automatic Certificate Management Environment ([RFC 8555](https://www.rfc-editor.org/rfc/rfc8555)), gated by CAA ([RFC 8659](https://www.rfc-editor.org/rfc/rfc8659)) and the CAA `accounturi` / `validationmethods` extensions ([RFC 8657](https://www.rfc-editor.org/rfc/rfc8657))
-- **OCSP** – Online Certificate Status Protocol ([RFC 6960](https://www.rfc-editor.org/rfc/rfc6960))
-- **CRL** – Certificate Revocation Lists ([RFC 5280](https://www.rfc-editor.org/rfc/rfc5280))
+| Protocol / standard | What it is for | Status |
+|---|---|---|
+| **EST** – Enrollment over Secure Transport ([RFC 7030](https://www.rfc-editor.org/rfc/rfc7030), [8951](https://www.rfc-editor.org/rfc/rfc8951), [9908](https://www.rfc-editor.org/rfc/rfc9908)) | Enroll and re-enroll certificates over TLS with a client certificate or JWT. | Implemented |
+| **ACME** – Automated Certificate Management Environment ([RFC 8555](https://www.rfc-editor.org/rfc/rfc8555), [8657](https://www.rfc-editor.org/rfc/rfc8657), [8659](https://www.rfc-editor.org/rfc/rfc8659)) | Issue certificates for domain names via `http-01` / `dns-01` challenges. | Implemented |
+| **Device attestation** – `device-attest-01` ACME challenge ([FIDO](https://fidoalliance.org/) style, TPM/Apple SE backed) | Issue certificates to hardware-backed devices instead of domains. | Implemented |
+| **OCSP** ([RFC 6960](https://www.rfc-editor.org/rfc/rfc6960)) | Online "is this certificate still valid?" status responses. | Implemented |
+| **CRL** ([RFC 5280](https://www.rfc-editor.org/rfc/rfc5280)) | Certificate Revocation Lists and authenticated revocation. | Implemented |
+| **MCP** – Model Context Protocol server | Expose CA operations as tools for AI agents (stdio). | Implemented |
 
-Supporting standards used throughout the implementation: JWS request serialization ([RFC 7515](https://www.rfc-editor.org/rfc/rfc7515)), PKCS#10 certificate requests ([RFC 4211](https://www.rfc-editor.org/rfc/rfc4211)), Base16/32/64 encodings ([RFC 4648](https://www.rfc-editor.org/rfc/rfc4648)), domain-based PKIX identity over TLS ([RFC 6125](https://www.rfc-editor.org/rfc/rfc6125)), and PROBLEM-DETAILS error bodies ([RFC 7807](https://www.rfc-editor.org/rfc/rfc7807)).
+The ACME implementation is derived from the
+[PKISharp ACME Server](https://github.com/PKISharp/ACME-Server) and
+[FluffySpoon EncryptWeMust](https://github.com/ffMathy/FluffySpoon.AspNet.EncryptWeMust) projects,
+both MIT licensed. See [Implemented standards](docs/standards.md) for a standard-by-standard
+walkthrough with the tests that prove each behaviour.
 
-The ACME implementation is derived from the [PKISharp ACME Server](https://github.com/PKISharp/ACME-Server) and [FluffySpoon EncryptWeMust](https://github.com/ffMathy/FluffySpoon.AspNet.EncryptWeMust) projects, both MIT licensed.
-
-## License
-
-The project is licensed under the [MIT license](LICENSE).
+> **New here?** Start with [Getting started](docs/getting-started.md) — a five-minute walk that runs
+> a self-signed CA and enrolls a certificate. Then browse the full
+> [Documentation index](docs/documentation.md).
 
 ---
 
-## Building the Project
+## What OpenCertServer does
 
-Run the appropriate build script from the repository root to compile and package all components:
+* **Acts as a CA.** Register one or more CA *profiles* (RSA and/or ECDSA) and issue, renew, and revoke
+  X.509 certificates. Profiles can be self-signed at startup or supplied as PEM files.
+* **Speaks three enrollment protocols.** EST for certificate/JWT-based enrollment, ACME for
+  domain-based issuance, and device attestation for hardware-backed identity.
+* **Answers revocation.** A built-in OCSP responder and CRL publication let relying parties check
+  status; revocation is authenticated so only the key holder (or the CA) can revoke.
+* **Sits in front of YARP.** `opencertserver.acme.yarp` auto-provisions one ACME certificate per
+  YARP route on a single HTTPS listener, selected by SNI.
+* **Is scriptable and automatable.** A cross-platform `opencert` CLI and an
+  [MCP server](docs/getting-started.md#8-mcp-server-expose-the-ca-to-an-ai-agent) put every CA operation on the command line or behind
+  a tool interface for AI agents.
+
+## Solution layout
+
+| Project | Responsibility |
+|---|---|
+| `opencertserver.certserver` | The runnable web app. Wires CA + EST + ACME + authentication together and listens on HTTPS. |
+| `opencertserver.ca` | Core CA logic: issue, validate, revoke; certificate chain and CRL building. |
+| `opencertserver.ca.server` | CA HTTP endpoints (`/ca/*`): CSR, inventory, revoke, CRL, OCSP, certificate retrieval. |
+| `opencertserver.est.server` | EST server endpoints and the CSR-template (`/csrattrs`, RFC 9908) machinery. |
+| `opencertserver.est.client` | EST client for enrolling/re-enrolling certificates from your own code. |
+| `opencertserver.acme.server` | ACME server: directory, accounts, orders, challenges, revocation (RFC 8555). |
+| `CertesSlim` | Lightweight ACME client protocol library (JWS, directory, order lifecycle). |
+| `opencertserver.acme.aspNetClient` | ASP.NET Core ACME client, challenge middleware, and a renewal service. |
+| `opencertserver.acme.yarp` | Per-route ACME provisioning for a YARP reverse proxy. |
+| `opencertserver.mcp` | Model Context Protocol server exposing CA tools over stdio. |
+| `opencertserver.attestation` | Hardware attestation layer (AMD SEV-SNP, Intel SGX, Apple Secure Element) for device-attest. |
+| `opencertserver.tpm` / `opencertserver.tss.net` | TPM key provisioning so CA private keys can stay inside a TPM. |
+| `opencertserver.cli` | The `opencert` command-line tool (keys, CSRs, EST enroll/reenroll). |
+| `web` | Angular UI for certificate management. |
+
+Components are also published as NuGet packages, so you can embed the EST, ACME, or CA server in your
+own ASP.NET Core host. See [Getting started → Embedding the server](docs/getting-started.md#6-embedding-the-server-in-your-own-app).
+
+---
+
+## Documentation
+
+Pick the page that matches what you want to do:
+
+| I want to… | Start here |
+|---|---|
+| Run a CA in five minutes and enroll a certificate | [Getting started](docs/getting-started.md) |
+| See every standard OpenCertServer implements, with its tests | [Implemented standards](docs/standards.md) |
+| Use the `opencert` CLI (generate keys, CSRs, EST enroll) | [Getting started → CLI](docs/getting-started.md#4-use-the-opencert-cli) |
+| Use the EST / ACME client libraries from code | [Getting started → Client libraries](docs/getting-started.md#5-use-the-client-libraries-from-code) |
+| Embed the EST/ACME/CA server in my own app | [Getting started → Embedding](docs/getting-started.md#6-embedding-the-server-in-your-own-app) |
+| Auto-issue certificates for a YARP reverse proxy | [opencertserver.acme.yarp](src/opencertserver.acme.yarp/README.md) |
+| Expose the CA to an AI agent over MCP | [opencertserver.mcp](src/opencertserver.mcp/README.md) |
+| Read the endpoint reference (CA / EST / ACME / OCSP / CRL) | [Documentation index](docs/documentation.md) |
+| Read the trust model / operational policy | [Certificate Policy](docs/opencertserver_cp.md) · [Certification Practice Statement](docs/opencertserver_cps.md) |
+| Run in Docker / Kubernetes | [Docker](Docker.md) |
+| See the telemetry (metrics/traces) exposed | [OpenTelemetry metrics & traces](OpenTelemetryMetricsTraces.md) |
+| Report a vulnerability | [Security policy](SECURITY.md) |
+
+---
+
+## Building the project
+
+Run the build script from the repository root to compile and package every component:
 
 ```sh
 # macOS / Linux
@@ -32,390 +100,21 @@ Run the appropriate build script from the repository root to compile and package
 ```
 
 This produces NuGet packages and a self-contained server publish under `artifacts/`.
+The `certserver` application takes all of its configuration from command-line arguments (with
+environment variables and `appsettings.json` as fall-through) — there are no required environment
+variables. The two startup modes (self-signed CA vs. existing PEM CA) are covered in
+[Getting started → Running the server](docs/getting-started.md#2-run-the-certserver).
 
 ---
 
-## Running the Certificate Server
+## License
 
-The `certserver` application is configured entirely through **command-line arguments**, with optional fall-through to environment variables and `appsettings.json`. There are no required environment variables – all runtime configuration is passed directly on the command line.
-
-### Mode 1 – Self-signed CA (quickstart)
-
-Pass a Distinguished Name and let the server generate its own RSA and ECDSA root CA certificates at startup:
-
-```sh
-dotnet opencertserver.certserver.dll \
-  --dn "CN=My Internal CA" \
-  --port 5001 \
-  --ocsp http://localhost:5001/ca/ocsp \
-  --ca-issuer http://localhost:5001/ca/certificate
-```
-
-| Argument | Description |
-|---|---|
-| `--dn <name>` | Distinguished Name for the self-signed CA root. A `CN=` prefix is added automatically if omitted. |
-| `--port <n>` | HTTPS port to listen on (default: `5001`). |
-| `--ocsp <url>` | Repeatable. OCSP responder URL embedded in issued certificates. |
-| `--ca-issuer <url>` | Repeatable. CA Issuers URL embedded in issued certificates' AIA extension. |
-| `--authority <url>` | JWT token authority for bearer-token authentication (default: `https://identity.reimers.dk`). |
-
-### Mode 2 – Existing CA certificates
-
-Supply PEM-encoded certificate and private key files when you already have a root CA:
-
-```sh
-dotnet opencertserver.certserver.dll \
-  --rsa   /path/to/rsa-ca.pem \
-  --rsa-key /path/to/rsa-ca-key.pem \
-  --ec    /path/to/ec-ca.pem \
-  --ec-key  /path/to/ec-ca-key.pem \
-  --port 5001 \
-  --ocsp http://pki.example.com/ocsp \
-  --ca-issuer http://pki.example.com/ca/certificate
-```
-
-| Argument | Description |
-|---|---|
-| `--rsa <path>` | Path to the RSA CA certificate PEM file. |
-| `--rsa-key <path>` | Path to the RSA CA private key PEM file (optional if key is embedded in the cert file). |
-| `--ec <path>` | Path to the ECDSA CA certificate PEM file. |
-| `--ec-key <path>` | Path to the ECDSA CA private key PEM file (optional if key is embedded in the cert file). |
-
-At least one of `--dn` or `--rsa`/`--ec` must be supplied; the server will throw on startup otherwise.
-
-### ACME configuration (`appsettings.json`)
-
-ACME server behaviour is driven by the `AcmeServer` section in `appsettings.json`:
-
-```json
-{
-  "AcmeServer": {
-    "WebsiteUrl": "https://pki.example.com",
-    "TOS": {
-      "RequireAgreement": false,
-      "Url": "https://pki.example.com/tos",
-      "LastUpdate": "2024-01-01T00:00:00Z"
-    },
-    "HostedWorkers": {
-      "EnableValidationService": true,
-      "EnableIssuanceService": false,
-      "ValidationCheckInterval": 1,
-      "IssuanceCheckInterval": 1
-    }
-  },
-  "Cors": {
-    "TrustedOrigins": [
-      "https://app.example.com"
-    ]
-  }
-}
-```
-
----
-
-## Integrating into a Custom ASP.NET Core Application
-
-The server components are available as NuGet packages and can be embedded in any ASP.NET Core host.
-
-### Service registration
-
-```csharp
-// 1. Certificate store (in-memory; swap for a persistent implementation in production)
-services.AddInMemoryCertificateStore();
-
-// 2a. Self-signed CA (generates RSA + ECDSA roots at startup)
-services.AddSelfSignedCertificateAuthority(
-    new X500DistinguishedName("CN=My Internal CA"),
-    ocspUrls:      ["https://pki.example.com/ca/ocsp"],
-    crlUrls:       [],
-    caIssuersUrls: ["https://pki.example.com/ca/certificate"],
-    certificateValidity: TimeSpan.FromDays(90));
-
-// 2b. — OR — bring your own CA certificates
-services.AddCertificateAuthority(
-    new CaConfiguration(
-        new CaProfileSet("default", rsaProfile, ecdsaProfile),
-        ocspUrls:      ["https://pki.example.com/ca/ocsp"],
-        crlUrls:       [],
-        caIssuersUrls: ["https://pki.example.com/ca/certificate"]));
-
-// 3. EST server (supply a CSR template loader implementation)
-services.AddEstServer<MyCsrTemplateLoader>();
-
-// 4. ACME server
-services.AddAcmeServer(configuration)
-        .AddAcmeInMemoryStore();   // or .AddAcmeFileStore(configuration)
-
-// 5. Authentication – both certificate and JWT bearer are supported
-services.AddAuthentication()
-        .AddJwtBearer()
-        .AddCertificate()
-        .AddCertificateCache(options =>
-        {
-            options.CacheSize = 1024;
-            options.CacheEntryExpiration = TimeSpan.FromMinutes(5);
-        });
-```
-
-### Application pipeline
-
-```csharp
-app.UseHttpsRedirection()
-   .UseForwardedHeaders()
-   .UseAcmeServer()    // maps ACME endpoints
-   .UseEstServer()     // maps EST endpoints + authentication/authorization middleware
-   .UseCertificateAuthorityServer(); // maps /ca/* endpoints (CSR, OCSP, CRL, revocation)
-```
-
-### Endpoint summary
-
-| Protocol | Path | Method | Auth required |
-|---|---|---|---|
-| EST | `/.well-known/est/cacerts` | GET | No |
-| EST | `/.well-known/est/csrattrs` | GET | Yes |
-| EST | `/.well-known/est/simpleenroll` | POST | Yes |
-| EST | `/.well-known/est/simplereenroll` | POST | Yes |
-| EST | `/.well-known/est/serverkeygen` | POST | Yes |
-| EST | `/.well-known/est/{profile}/*` | — | As above (per-profile) |
-| ACME | `/directory` | GET | No |
-| ACME | `/new-nonce` | HEAD/GET | No |
-| ACME | `/new-account` | POST | JWS |
-| ACME | `/new-order` | POST | JWS |
-| ACME | `/order/{id}/finalize` | POST | JWS |
-| ACME | `/order/{id}/certificate` | POST | JWS |
-| CA | `/ca/csr` | POST | Yes |
-| CA | `/ca/inventory` | GET | No |
-| CA | `/ca/revoke` | DELETE | Yes |
-| CA | `/ca/crl` | GET | No |
-| CA | `/ca/{profile}/crl` | GET | No |
-| CA | `/ca/ocsp` | POST | No |
-| CA | `/ca/certificate` | GET | No |
-
----
-
-## RFC Compliance
-
-### EST – RFC 7030
-
-The EST implementation conforms to [RFC 7030](https://datatracker.ietf.org/doc/html/rfc7030):
-
-- **`/cacerts` (Section 4.1):** Returns the current CA certificate chain in PKCS#7 `application/pkcs-mime` format. Responses are cached for 30 days.
-- **`/simpleenroll` (Section 4.2):** Accepts a PKCS#10 CSR (PEM or DER) in the request body and returns the signed certificate. Both `application/pkix-cert` (DER/PKCS#7) and `application/pem-certificate-chain` responses are supported; the client selects via the `Accept` header.
-- **`/simplereenroll` (Section 4.2.3):** Re-enrolls an existing certificate. The client authenticates using its current certificate (mTLS) or a JWT bearer token, and the server issues a new certificate preserving the original subject.
-- **`/csrattrs` (Section 4.5):** Returns server-recommended CSR attributes as a DER-encoded `CsrAttrs` structure so clients can build conformant signing requests.
-- **`/serverkeygen` (Section 4.4):** The server generates a new ECDSA key pair on behalf of the client, signs the corresponding certificate, and returns both the private key (PKCS#8) and the certificate as a `multipart/mixed` response.
-- **Per-profile paths (Section 3.2.2):** All operations are available with an optional `/{profile}/` path segment, allowing a single server to act as multiple logical CAs.
-- **Authentication:** Both TLS client certificate authentication and JWT bearer tokens are accepted, matching the dual-scheme requirement of the RFC.
-- **`Content-Transfer-Encoding` & whitespace (RFC 8951, §3.2/§3.3):** EST endpoint responses ignore the `Content-Transfer-Encoding` header and tolerate stray whitespace in base64 payloads, per the EST clarifications in [RFC 8951](https://www.rfc-editor.org/rfc/rfc8951).
-- **CSR attributes templates (RFC 9908, §3.2):** The `/csrattrs` response can return `CsrAttrs` templates (`CsrAttributesResponse`) that constrain the extension requirements of the client's unstructured CSR, per [RFC 9908](https://www.rfc-editor.org/rfc/rfc9908).
-
-### ACME – RFC 8555
-
-The ACME implementation conforms to [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555):
-
-- **Directory (`/directory`):** Advertises `newNonce`, `newAccount`, `newOrder`, `keyChange`, and optional `meta` (Terms of Service, website URL). All URLs are generated as absolute HTTPS URIs via ASP.NET Core `LinkGenerator`.
-- **Replay-nonce protection:** Every mutating request must carry a fresh nonce obtained from `/new-nonce`; nonces are validated and discarded after use.
-- **Account management (`/new-account`, key rollover):** Accounts are created and retrieved by public key. Key rollover is supported via the `key-change` endpoint.
-- **Terms of service changes (§7.3.3):** When `TOS.LastUpdate` is configured and an account's recorded agreement pre-dates that timestamp, the server rejects `newOrder` requests with a `userActionRequired` problem document (HTTP 403) and includes a `Link: <tos-url>; rel="terms-of-service"` header. Clients can re-agree by sending an account update with `termsOfServiceAgreed: true`, which refreshes the stored agreement timestamp.
-- **Order lifecycle:** Clients create orders (`/new-order`), fulfil authorizations (http-01 and dns-01 challenges), finalize orders (`/order/{id}/finalize`), and download the issued certificate chain (`/order/{id}/certificate`).
-- **Challenge validation:** http-01 challenges are validated over HTTP; dns-01 challenges are resolved via `DnsClientX`. A background `HostedValidationService` processes pending validations asynchronously.
-- **JWS request format:** All client requests use the compact JWS serialization with `alg`, `nonce`, `url`, and either `jwk` (new accounts) or `kid` (existing accounts) header parameters.
-- **Certificate issuance:** After a successful finalize, the server issues a certificate chain signed by the configured CA. The certificate is returned as `application/pem-certificate-chain`.
-- **Profile support:** Orders can carry an optional `profile` field that maps to a named CA profile, enabling multiple certificate types from a single ACME server.
-- **Storage:** The server ships with an in-memory store (default) and a file-backed store (`AddAcmeFileStore`). Custom persistence can be provided by implementing `IStoreAccounts`, `IStoreOrders`, and `INonceStore`.
-- **CAA (RFC 8659, §2):** Before issuing a certificate, the issuer validates the domain's Certification Authority Authorization records in DNS so that only listed authorities (the `issue` / `issuewild` records) may issue for it.
-- **CAA `accounturi` / `validationmethods` (RFC 8657, §3.1/§3.2):** The CAA `accounturi` and `validationmethods` parameters restrict which ACME account (and which challenge types) are permitted to obtain a certificate for the domain.
-- **Problem details (RFC 7807):** Errors are returned as `problem+json` (PROBLEM-DETAILS) documents with `type`, `detail`, and `status` members, consistent with [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807).
-
-### OCSP – RFC 6960
-
-The OCSP responder at `/ca/ocsp` conforms to [RFC 6960](https://datatracker.ietf.org/doc/html/rfc6960):
-
-- **Request parsing:** Incoming POST requests contain a DER-encoded `OCSPRequest`. The request is decoded with `AsnReader` against the RFC 6960 ASN.1 schema.
-- **Response signing:** Responses are DER-encoded `OCSPResponse` structures. The `BasicOCSPResponse` includes `ResponseData` with a `producedAt` timestamp, the responder ID, and one `SingleResponse` per certificate in the request.
-- **Certificate status:** Each `SingleResponse` reports the certificate's current status (`good`, `revoked`, or `unknown`) by querying the certificate store.
-- **Pluggable validation:** Zero or more `IValidateOcspRequest` services are resolved from DI and run before status lookup; a malformed request returns `OCSPResponseStatus.MalformedRequest`.
-- **Content type:** Responses are returned with `Content-Type: application/ocsp-response`.
-- **URL embedding:** OCSP responder URLs are embedded in the Authority Information Access (AIA) extension of every issued certificate when `--ocsp` arguments are supplied at startup.
-
-### CRL – RFC 5280
-
-- Certificate Revocation Lists are available at `/ca/crl` and `/ca/{profile}/crl`, returned with `Content-Type: application/pkix-crl`.
-- CRL responses are cached for 12 hours.
-- Revocation is performed via the authenticated `DELETE /ca/revoke` endpoint. The caller must present a valid client certificate and sign the serial number and reason code with the corresponding private key to prove possession.
-- CRL Distribution Point URLs are embedded in issued certificates when `--crl` arguments are supplied.
-
----
-
-## CLI Client
-
-The `opencert` tool provides a command-line interface for key generation, CSR management, and EST enrollment. All commands follow the `opencert <command> [options]` pattern.
-
-### `generate-keys` – Generate a key pair
-
-```sh
-opencert generate-keys \
-  --algorithm rsa \          # rsa (default) or ecdsa
-  --rsa-key-size 3072 \      # RSA key size in bits (minimum 2048, default 3072)
-  --out keys/my-key          # writes my-key-private.pem and my-key-public.pem
-```
-
-Alternatively, specify paths explicitly:
-
-```sh
-opencert generate-keys \
-  --algorithm ecdsa \
-  --ecdsa-curve nistP256 \   # nistP256 (default), nistP384, or nistP521
-  --private-key-out private.pem \
-  --public-key-out public.pem
-```
-
-### `print-cert` – Inspect a certificate
-
-```sh
-opencert print-cert --cert path/to/cert.pem
-```
-
-Accepts PEM or DER-encoded X.509 certificates and prints the subject, issuer, validity dates, serial number, key usage, and extensions in a human-readable format.
-
-### `create-csr` – Create a CSR from an existing private key
-
-```sh
-opencert create-csr \
-  --private-key private.pem \
-  --common-name "server.example.com" \
-  --organization "Example Corp" \
-  --country "US" \
-  --san "server.example.com,alt.example.com" \
-  --out server.csr.pem
-```
-
-| Option | Description |
-|---|---|
-| `--private-key` | PEM private key to sign the CSR (RSA or ECDSA) |
-| `--common-name` | Subject common name |
-| `--organization` | Subject organization |
-| `--country` | Two-letter country code |
-| `--state` | State or province |
-| `--locality` | Locality/city |
-| `--organizational-unit` | Organizational unit |
-| `--email` | Email address |
-| `--san` | Comma-separated Subject Alternative Names (DNS names) |
-| `--key-usage` | Key usage flags |
-| `--enhanced-key-usage` | Enhanced key usage OIDs |
-| `--subject` | Full subject DN string (overrides individual fields) |
-| `--out` | Output path (default: `csr.pem`) |
-
-### `create-csr-from-keys` – Create a CSR from a separate key pair
-
-```sh
-opencert create-csr-from-keys \
-  --private-key private.pem \
-  --public-key public.pem \
-  --common-name "device.example.com" \
-  --out device.csr.pem
-```
-
-The private and public keys are validated to be a matching pair before the CSR is created.
-
-### `sign-csr` – Sign a CSR with a local CA certificate
-
-```sh
-opencert sign-csr \
-  --csr   request.csr.pem \
-  --ca-cert ca.crt \
-  --ca-key  ca.key \
-  --out   issued.pem
-```
-
-Issues a certificate valid for one year, signed directly by the supplied CA key/certificate pair. Useful for offline signing workflows and testing.
-
-### `est-enroll` – Enroll a new certificate via EST
-
-```sh
-opencert est-enroll \
-  --url https://pki.example.com \
-  --private-key private.pem \
-  --common-name "client.example.com" \
-  --san "client.example.com" \
-  --auth "Bearer <token>" \
-  --out  enrolled.pem
-```
-
-The command generates a CSR from the supplied private key and CSR fields, then submits it to the EST `/simpleenroll` endpoint. On success the issued certificate is written to `--out`.
-
-For mTLS authentication, supply a PKCS#12 file that includes the private key:
-
-```sh
-opencert est-enroll \
-  --url https://pki.example.com \
-  --private-key private.pem \
-  --client-cert client-auth.pfx \
-  --common-name "client.example.com" \
-  --out enrolled.pem
-```
-
-| Option | Description |
-|---|---|
-| `--url` | HTTPS base URL of the EST server (required) |
-| `--private-key` | PEM private key used to sign the CSR |
-| `--profile` | Optional EST profile name |
-| `--client-cert` | PEM or PKCS#12 client certificate for mTLS authentication |
-| `--auth` | `Authorization` header value, e.g. `Bearer <token>` |
-| `--out` | Output path for the enrolled certificate (default: `est-cert.pem`) |
-
-### `est-reenroll` – Re-enroll an existing certificate via EST
-
-```sh
-opencert est-reenroll \
-  --url         https://pki.example.com \
-  --private-key private.pem \
-  --cert        current-cert.pem \
-  --out         renewed.pem
-```
-
-The private key is validated against the current certificate's public key before the request is submitted. The server authenticates the client using the existing certificate (mTLS).
-
-| Option | Description |
-|---|---|
-| `--url` | HTTPS base URL of the EST server (required) |
-| `--private-key` | PEM private key matching the current certificate |
-| `--cert` | Current certificate to re-enroll (PEM or DER) |
-| `--profile` | Optional EST profile name |
-| `--out` | Output path for the renewed certificate (default: `reenrolled.pem`) |
-
-### `est-server-certificates` – Fetch the EST CA trust anchors
-
-```sh
-opencert est-server-certificates \
-  --url https://pki.example.com
-```
-
-Retrieves the CA certificates from the EST `/cacerts` endpoint and prints them in PEM format. Useful for bootstrapping trust in a new environment.
-
----
-
-## Using ACME with YARP
-
-`opencertserver.acme.yarp` adds **per-route ACME certification** for a
-[YARP](https://github.com/microsoft/reverse-proxy) reverse proxy. A single HTTPS listener can serve
-a distinct X.509 certificate for each YARP route, selected by SNI, with each certificate stored in a
-route-scoped location and renewed independently. Each route's `Match.Hosts` become the certificate's
-subject alternative names (SANs).
-
-See [`src/opencertserver.acme.yarp/README.md`](src/opencertserver.acme.yarp/README.md) and the
-illustrative [`sample/Program.cs`](src/opencertserver.acme.yarp/sample/Program.cs).
-
----
-
-## Reporting Issues and Bugs
-
-When reporting issues and bugs, please provide a clear set of steps to reproduce the issue. The best way is to provide a failing test case as a pull request.
-
-If that is not possible, please provide a set of steps which allow the bug to be reliably reproduced. These steps must also reproduce the issue on a computer that is not your own.
+The project is licensed under the [MIT license](LICENSE).
 
 ## Contributions
 
 All contributions are appreciated. Please provide them as an issue with an accompanying pull request.
-
-This is an open source project. Please respect the license terms and the fact that issues and contributions may not be handled as fast as you may wish. The best way to get your contribution adopted is to make it easy to pull into the code base.
+The best way to get a contribution adopted is to make it easy to pull into the code base — a failing
+test in the relevant feature project is the ideal reproduction. Open source projects are only as good
+as their tests, so please respect the [BDD/Reqnroll](https://reqnroll.net/) style used throughout
+`tests/` and add scenarios that lock in the behaviour you change.
