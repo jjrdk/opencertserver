@@ -150,44 +150,44 @@ every error response is `application/problem+json` ([RFC 7807](https://www.rfc-e
 - Description: Fetch a fresh nonce. Every mutating request consumes a nonce and a used nonce is never
    reused.
 
-### POST /acme/new-account
+### POST /new-account
 
 - Description: Create (or fetch) an ACME account. Supports external account binding (EAB, §6.7).
 - Response: the account object with a `Location` (its `kid`).
 
-### POST /acme/new-order
+### POST /new-order
 
 - Description: Create an order for a set of identifiers (domains/SANs).
-- Query parameter: `profile` (optional) selects a named CA profile.
+- Request body: a JWS payload containing `identifiers` and an optional `profile` field selecting a named CA profile.
 
-### GET /acme/order/{orderId}
+### POST /order/{orderId}
 
-- Description: Retrieve an order's current status and its authorizations.
+- Description: Retrieve an order's current status and its authorizations (POST-as-GET).
 
-### POST /acme/order/{orderId}/authorize
+### POST /order/{orderId}/auth/{authId}
 
-- Description: Authorize an order's identifiers, returning the pending challenges
-   (`http-01`, `dns-01`, `device-attest-01`).
+- Description: Retrieve an authorization and its challenges (POST-as-GET).
 
-### POST /acme/challenges/{challengeId}
+### POST /order/{orderId}/auth/{authId}/chall/{challengeId}
 
 - Description: Trigger (and re-trigger) a challenge validation. `http-01` is approved by the
-   challenge middleware answering the domain's `/.well-known/acme-challenge/{token}`; `dns-01` is
-   approved by the hosted validation service; `device-attest-01` by the device attestation
-   validator.
+  challenge middleware answering the domain's `/.well-known/acme-challenge/{token}`; `dns-01` is
+  approved by the hosted validation service; `device-attest-01` by the device attestation
+  validator.
 
-### POST /acme/order/{orderId}/finalize
+
+### POST /order/{orderId}/finalize
 
 - Description: Submit a CSR to finalize the order once all authorizations are `valid`.
 - Request body: a base64url-encoded PKCS#10 CSR.
 - Response: the order with a `certificate` URL.
 
-### GET /acme/certificate/{orderId}
+### POST /order/{orderId}/certificate
 
-- Description: Retrieve the issued certificate for a completed order.
+- Description: Retrieve the issued certificate for a completed order (POST-as-GET).
 - Response: `application/pem-certificate-chain` (or `application/pkix-cert`).
 
-### POST /acme/revoke-cert
+### POST /revoke-cert
 
 - Description: Revoke a certificate, authenticated by the holder's key.
 - Request body: `{ certificate, reason? }`.

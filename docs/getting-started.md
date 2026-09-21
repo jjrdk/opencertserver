@@ -186,8 +186,8 @@ tuple.
 
 ```csharp
 using OpenCertServer.Est.Client;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-
 var estHost = new Uri("https://pki.example.com");
 
 // Trust anchors for the EST CA. Implicit trust uses the OS store; explicit trust pins specific roots
