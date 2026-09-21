@@ -53,7 +53,7 @@ walkthrough with the tests that prove each behaviour.
 | `opencertserver.est.client` | EST client for enrolling/re-enrolling certificates from your own code. |
 | `opencertserver.acme.server` | ACME server: directory, accounts, orders, challenges, revocation (RFC 8555). |
 | `CertesSlim` | Lightweight ACME client protocol library (JWS, directory, order lifecycle). |
-| `opencertserver.acme.aspNetClient` | ASP.NET Core ACME client, challenge middleware, and a renewal service. |
+| `opencertserver.acme.aspnetclient` | ASP.NET Core ACME client, challenge middleware, and a renewal service. |
 | `opencertserver.acme.yarp` | Per-route ACME provisioning for a YARP reverse proxy. |
 | `opencertserver.mcp` | Model Context Protocol server exposing CA tools over stdio. |
 | `opencertserver.attestation` | Hardware attestation layer (AMD SEV-SNP, Intel SGX, Apple Secure Element) for device-attest. |
