@@ -21,7 +21,7 @@ feature, so you can verify it rather than take it on trust.
 | [RFC 7030](https://www.rfc-editor.org/rfc/rfc7030) | **EST** (Enrollment over Secure Transport) | `opencertserver.est.server`, `opencertserver.est.client` | Enroll/renew/peek certificates over TLS with mTLS or a JWT |
 | [RFC 8951](https://www.rfc-editor.org/rfc/rfc8951) | EST clarifications | `opencertserver.est.server` | Whitespace + `Content-Transfer-Encoding` tolerance |
 | [RFC 9908](https://www.rfc-editor.org/rfc/rfc9908) | `CsrAttributes` response | `opencertserver.est.server` | Server hands back a CSR template the client must fill in |
-| [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555) | **ACME** (Automated Certificate Management Environment) | `opencertserver.acme.server`, `CertesSlim`, `opencertserver.acme.aspNetClient` | Domain-validated issuance via `http-01` / `dns-01` |
+| [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555) | **ACME** (Automated Certificate Management Environment) | `opencertserver.acme.server`, `CertesSlim`, `opencertserver.acme.aspnetclient` | Domain-validated issuance via `http-01` / `dns-01` |
 | [RFC 8659](https://www.rfc-editor.org/rfc/rfc8659) | CAA | `opencertserver.acme.server` | Domain owner's DNS "which CAs may issue for me?" list |
 | [RFC 8657](https://www.rfc-editor.org/rfc/rfc8657) | CAA `accounturi` / `validationmethods` | `opencertserver.acme.server` | Which ACME account / challenge types may bind a domain |
 | `device-attest-01` | Hardware device challenge | `opencertserver.acme.server`, `opencertserver.attestation` | TPM/Apple-SE-backed identity instead of a domain |
@@ -67,7 +67,7 @@ client-side enrollment against a live EST server (drives `EstClient.Enroll`).
 * [EstServer.feature](../tests/opencertserver.est.server.tests/Features/EstServer.feature) —
 endpoint-level server tests.
 
-### RST 8951 — EST clarifications
+### RFC 8951 — EST clarifications
 
 **What it is.** A clarification RFC for EST that pins down whitespace and `Content-Transfer-Encoding`
 behaviour and the profile path scheme (§3.1). OpenCertServer's EST endpoints ignore the
@@ -111,10 +111,9 @@ in the loop. It's the protocol that backs Let's Encrypt. OpenCertServer is a ful
 * **Order lifecycle** — `/new-order`, `/order/{orderId}`, `/order/{orderId}/finalize`,
    `/order/{orderId}/certificate`, and the nested challenge authorization endpoints
    `/order/{id}/auth/{authId}` and `/order/{id}/auth/{authId}/chall/{challengeId}`.
-* **Challenge validation** — `http-01` over HTTP (`/ .well-known/acme-challenge/*.well-known/*`),
+* **Challenge validation** — `http-01` over HTTP (`/.well-known/acme-challenge/{token}`),
    `dns-01` via `DnsClientX`, and `device-attest-01` (see below). A hosted
-   `HostedValidationService` runs valid-
-   ations asynchronously; `HostedIssuanceService` is opt-in.
+   `HostedValidationService` runs validations asynchronously; `HostedIssuanceService` is opt-in.
 * **JWS protection** — compact JWS with `alg`, `nonce`, `url`, and either `jwk` (first request) or
    `kid` (subsequent requests).
 * **Revocation** (`POST /revoke-cert`) — revoke via ACME or via the authenticated CA endpoint
@@ -196,8 +195,7 @@ and Apple Secure Element so the ACME server can talk to any of them behind `IAtt
    3. **Anti-replay** — a consumed nonce is rejected on second use with error type `replay_nonce`.
 * **Factory routing.** `IChallengeValidatorFactory.GetValidator("device-attest-01")` returns the
    device validator; unknown types throw `InvalidOperationException("Unknown Challenge Type")`.
-* **Model.** `DeviceAttestChallengeAnswer` (Non-
-   ce, Proof, AikCertificate, DeviceId) is the JSON contract the client submits inside a
+* **Model.** `DeviceAttestChallengeAnswer` (Nonce, Proof, AikCertificate, DeviceId) is the JSON contract the client submits inside a
    `challenge.extraData` field.
 
 **Where it lives.**
