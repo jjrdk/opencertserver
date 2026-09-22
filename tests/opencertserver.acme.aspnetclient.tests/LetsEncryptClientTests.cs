@@ -187,9 +187,10 @@ public sealed class LetsEncryptClientTests
             options,
             NullLogger.Instance);
 
-        // act
+         // act
 
-        var (result, _, _) = await client.FinalizeOrder(placedOrder, "");
+         var keyPem = ValidCert.GetECDsaPrivateKey()!.ExportECPrivateKeyPem();
+         var (result, _, _) = await client.FinalizeOrder(placedOrder, "", keyPem);
 
         // assert
         var cert = X509CertificateLoader.LoadCertificate(result.RawData.AsSpan());
