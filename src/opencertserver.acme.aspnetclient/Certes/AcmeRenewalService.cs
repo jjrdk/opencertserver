@@ -198,7 +198,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
 
     private async Task RunRenewalLoopAsync(CancellationToken cancellationToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromHours(1));
+        using var timer = new PeriodicTimer(_options.RenewalFrequency);
         while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
         {
             try

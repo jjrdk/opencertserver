@@ -42,9 +42,18 @@ internal class OrderContext : EntityContext<Order>, IOrderContext
     {
         var order = await Resource().ConfigureAwait(false);
         var payload = new Order.OrderPayload { Csr = csr.ToBase64String() };
-        var resp = await Context.HttpClient.Post<Order, Order.OrderPayload>(Context, order.Finalize!, payload)
-            .ConfigureAwait(false);
-        return resp.Resource;
+        while (true)
+        {
+            var resp = await Context.HttpClient.Post<Order, Order.OrderPayload>(Context, order.Finalize!, payload, false)
+                .ConfigureAwait(false);
+            if (resp.Resource.Status == OrderStatus.Processing)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(Math.Max(2, resp.RetryAfter))).ConfigureAwait(false);
+                continue;
+            }
+
+            return resp.Resource;
+        }
     }
 
     /// <summary>
