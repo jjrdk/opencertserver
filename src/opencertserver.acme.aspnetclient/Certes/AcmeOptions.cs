@@ -70,9 +70,26 @@ public abstract class AcmeOptions
     public string KeyAlgorithm { get; init; } = SecurityAlgorithms.EcdsaSha256;
 
     /// <summary>
-    /// Get or set a delay before the initial run of the renewal service (subsequent runs will be at 1hr intervals)
+    /// Get or set a delay before the initial run of the renewal service (subsequent runs will be determined by <see cref="RenewalFrequency"/>). Defaults to zero (no delay).
     /// On some platform/deployment systems (e.g Azure Slot Swap) we do not want the renewal service to start immediately, because we may not
     /// yet have incoming requests (e.g. for challenges) directed to us.
     /// </summary>
     public TimeSpan RenewalServiceStartupDelay { get; set; } = TimeSpan.Zero;
+
+    /// <summary>
+    /// Gets or sets the frequency at which the renewal service runs. Defaults to 1 hour.
+    /// </summary>
+    public TimeSpan RenewalFrequency
+    {
+        get;
+        set
+        {
+            if (value <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), "RenewalFrequency must be greater than zero.");
+            }
+
+            field = value;
+        }
+    } = TimeSpan.FromHours(1);
 }

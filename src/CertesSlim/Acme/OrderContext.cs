@@ -43,7 +43,7 @@ internal class OrderContext : EntityContext<Order>, IOrderContext
         var order = await Resource().ConfigureAwait(false);
         var payload = new Order.OrderPayload { Csr = csr.ToBase64String() };
         var resp = await Context.HttpClient.Post<Order, Order.OrderPayload>(Context, order.Finalize!, payload)
-            .ConfigureAwait(false);
+             .ConfigureAwait(false);
         return resp.Resource;
     }
 
