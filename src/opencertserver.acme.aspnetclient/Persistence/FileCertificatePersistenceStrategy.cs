@@ -1,4 +1,4 @@
-﻿namespace OpenCertServer.Acme.AspNetClient.Persistence;
+namespace OpenCertServer.Acme.AspNetClient.Persistence;
 
 using System.IO;
 using System.Linq;
@@ -117,6 +117,18 @@ public sealed class FileCertificatePersistenceStrategy : ICertificatePersistence
         if (!File.Exists(leafPath))
         {
             return null;
+        }
+
+        // Defensive: if a private key was persisted separately (e.g. from a previous run where
+        // the PKCS12 was never written because HasPrivateKey was false), reconstruct the full
+        // certificate by combining the PEM cert with the PEM key so Kestrel receives a certificate
+        // that carries its private key.
+        var keyPath = Path.Combine(_root, routeId, "keys", "server.key");
+        if (File.Exists(keyPath))
+        {
+            var certPem = await File.ReadAllTextAsync(leafPath).ConfigureAwait(false);
+            var keyPem = await File.ReadAllTextAsync(keyPath).ConfigureAwait(false);
+            return X509Certificate2.CreateFromPem(certPem, keyPem);
         }
 
         var bytes = await File.ReadAllBytesAsync(leafPath).ConfigureAwait(false);
