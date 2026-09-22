@@ -65,7 +65,17 @@ public sealed partial class AcmeClient : IAcmeClient
             await placedOrder.Order.Generate(_options.CertificateSigningRequest, keyPair, retryCount: 10)
                 .ConfigureAwait(false);
 
-        var pfxCollection = new X509Certificate2Collection { certificateChain.Certificate };
+        // CertificateChain.Certificate is created from the PEM downloaded from the ACME server
+        // and therefore has NO private key associated. We must combine it with the key pair used
+        // to sign the CSR so that the resulting X509Certificate2 (and the PKCS12 we export)
+        // actually carries the private key. Without this, HasPrivateKey is false, no PFX is
+        // written by FileCertificatePersistenceStrategy, and Kestrel throws:
+        //   "The server mode SSL must use a certificate with the associated private key."
+        var leafWithKey = X509Certificate2.CreateFromPem(
+            certificateChain.Certificate.ExportCertificatePem(),
+            keyPair.ToPem());
+
+        var pfxCollection = new X509Certificate2Collection { leafWithKey };
         foreach (var cert in certificateChain.Issuers)
         {
             pfxCollection.Add(cert);
