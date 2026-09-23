@@ -1,15 +1,16 @@
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
-using CertesSlim.Extensions;
 using System;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using CertesSlim;
+using CertesSlim.Extensions;
 using Exceptions;
 using global::CertesSlim.Acme;
 using global::CertesSlim.Acme.Resource;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using Persistence;
 
 public sealed partial class AcmeClient : IAcmeClient
@@ -67,36 +68,36 @@ public sealed partial class AcmeClient : IAcmeClient
 
         // CertificateChain.Certificate is created from the PEM downloaded from the ACME server
         // and therefore has NO private key associated. We must combine it with the key pair used
-        // to sign the CSR so that the resulting X509Certificate2 (and the PKCS12 we export)
-        // actually carries the private key. Without this, HasPrivateKey is false, no PFX is
-        // written by FileCertificatePersistenceStrategy, and Kestrel throws:
-        //   "The server mode SSL must use a certificate with the associated private key."
-        var leafWithKey = X509Certificate2.CreateFromPem(
-            certificateChain.Certificate.ExportCertificatePem(),
-            keyPair.ToPem());
+        // to sign the CSR so that the resulting X509Certificate2 actually carries the private key,
+        // otherwise HasPrivateKey is false and Kestrel throws:
+        //    "The server mode SSL must use a certificate with the associated private key."
+        //
+        // Do NOT round-trip this leaf through a password-protected PKCS12 and load it back: on
+        // Apple (macOS) the key is then pinned in the keychain and can no longer be exported, so
+        // the persistence layer's leaf.Export(Pkcs12, string.Empty) and the key-PEM export throw
+        // AppleCommonCryptoCryptographicException "The contents of this item cannot be
+        // retrieved." The CreateFromPem object is already a self-contained, exportable cert+key.
 
-        var pfxCollection = new X509Certificate2Collection { leafWithKey };
-        foreach (var cert in certificateChain.Issuers)
+        var leafWithKey = keyPair.SecurityKey switch
         {
-            pfxCollection.Add(cert);
-        }
+            RsaSecurityKey rsaKey => certificateChain.Certificate.CopyWithPrivateKey(rsaKey.Rsa),
+            ECDsaSecurityKey ecdsaKey => certificateChain.Certificate.CopyWithPrivateKey(ecdsaKey.ECDsa),
+            _ => throw new NotSupportedException(
+                $"Unsupported key type {keyPair.SecurityKey.GetType().FullName}")
+        };
 
-        var pfxBytes =
-            pfxCollection.ExportPkcs12(Pkcs12ExportPbeParameters.Default, password);
         LogCertificateAcquired();
 
-        var certificate = X509CertificateLoader.LoadPkcs12(pfxBytes, password);
-
-        // The collection handed to persistence: the leaf (with its private key, loaded back from
-        // the PFX) first, followed by the public issuer certificates so chains/server.crt holds
-        // the real chain rather than a duplicate of the leaf.
-        var chain = new X509Certificate2Collection { certificate };
+        // The collection handed to persistence: the leaf (with its private key) first, followed by
+        // the public issuer certificates so chains/server.crt holds the real chain rather than a
+        // duplicate of the leaf.
+        var chain = new X509Certificate2Collection { leafWithKey };
         foreach (var issuer in certificateChain.Issuers)
         {
             chain.Add(issuer);
         }
 
-        return (certificate, keyPair.ToPem(), chain);
+        return (leafWithKey, keyPair.ToPem(), chain);
     }
 
     private async Task ValidateChallenges(IChallengeContext[] challengeContexts)
