@@ -61,8 +61,7 @@ public partial class CertificateServerFeatures
         var ocspResponse = await GetOcspResponse(ocspRequest).ConfigureAwait(false);
         Assert.Equal(OcspResponseStatus.Successful, ocspResponse.ResponseStatus);
         var basicResponse = ocspResponse.ResponseBytes!.GetBasicResponse();
-        Assert.Single(basicResponse.TbsResponseData.Responses);
-        var singleResponse = basicResponse.TbsResponseData.Responses.First();
+        var singleResponse = Assert.Single(basicResponse.TbsResponseData.Responses);
         Assert.Equal(CertificateStatus.Revoked, singleResponse.CertStatus);
     }
 
@@ -84,7 +83,7 @@ public partial class CertificateServerFeatures
         };
         var response = await client.SendAsync(request).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        var ocspResponseBytes = response.Content.ReadAsByteArrayAsync().Result;
+        var ocspResponseBytes = await response.Content.ReadAsByteArrayAsync();
         var ocspResponse = new OcspResponse(new AsnReader(ocspResponseBytes, AsnEncodingRules.DER));
         return ocspResponse;
     }
@@ -95,8 +94,7 @@ public partial class CertificateServerFeatures
         var ocspResponse = (OcspResponse)_scenarioContext["ocspResponse"]!;
         Assert.Equal(OcspResponseStatus.Successful, ocspResponse.ResponseStatus);
         var basicResponse = ocspResponse.ResponseBytes!.GetBasicResponse();
-        Assert.Single(basicResponse.TbsResponseData.Responses);
-        var singleResponse = basicResponse.TbsResponseData.Responses.First();
+        var singleResponse = Assert.Single(basicResponse.TbsResponseData.Responses);
         Assert.Equal(CertificateStatus.Unknown, singleResponse.CertStatus);
     }
 }
