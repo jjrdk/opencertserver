@@ -13,6 +13,12 @@ using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Persistence;
 
+public enum ChallengeType
+{
+    Http01,
+    Dns01
+}
+
 public sealed partial class AcmeClient : IAcmeClient
 {
     private readonly ILogger _logger;
@@ -26,7 +32,7 @@ public sealed partial class AcmeClient : IAcmeClient
         _options = options;
     }
 
-    public async Task<PlacedOrder> PlaceOrder(string[] domains)
+    public async Task<PlacedOrder> PlaceOrder(ChallengeType challengeType, string[] domains)
     {
         LogOrderingLetsEncryptCertificateForDomainsDomains(string.Join(", ", domains));
         var order = await _acme.NewOrder(_options.Profile, domains).ConfigureAwait(false);
@@ -34,7 +40,9 @@ public sealed partial class AcmeClient : IAcmeClient
         var allAuthorizations = await order.Authorizations().ConfigureAwait(false);
 
         var challengeContexts = (await Task.WhenAll(
-                allAuthorizations.Select(x => x.Http())).ConfigureAwait(false)).Where(x => x != null).Select(x => x!)
+                allAuthorizations.Select(x => challengeType == ChallengeType.Dns01 ? x.Dns() : x.Http())).ConfigureAwait(false))
+            .Where(x => x != null)
+            .Cast<IChallengeContext>()
             .ToArray();
 
         var dtos = challengeContexts.Select(x => new ChallengeDto(

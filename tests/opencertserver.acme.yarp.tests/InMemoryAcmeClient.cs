@@ -37,7 +37,7 @@ public sealed class InMemoryAcmeClient : IAcmeClient
     /// </summary>
     public IReadOnlyList<string[]> Orders { get; private set; } = [];
 
-    public Task<PlacedOrder> PlaceOrder(string[] domains)
+    public Task<PlacedOrder> PlaceOrder(ChallengeType challengeType, string[] domains)
     {
         if (ThrownDuringPlaceOrder != null)
         {
