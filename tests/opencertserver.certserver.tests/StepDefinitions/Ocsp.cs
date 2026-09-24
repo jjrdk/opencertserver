@@ -25,7 +25,7 @@ public partial class CertificateServerFeatures
                 "123"u8.ToArray()))
         ]);
         var ocspRequest = new OcspRequest(tbsRequest);
-        var ocspResponse = await GetOcspResponse(ocspRequest);
+        var ocspResponse = await GetOcspResponse(ocspRequest).ConfigureAwait(false);
 
         Assert.NotNull(ocspResponse);
 
@@ -35,13 +35,13 @@ public partial class CertificateServerFeatures
     [Then("the certificate should be valid in OCSP")]
     public async Task ThenTheCertificateShouldBeValidInOcsp()
     {
-        var issuerCert = await GetIssuerCertAsync();
+        var issuerCert = await GetIssuerCertAsync().ConfigureAwait(false);
         var tbsRequest = new TbsRequest(requestList:
         [
             new Request(CertId.Create(_certCollection[0], issuerCert, HashAlgorithmName.SHA256))
         ]);
         var ocspRequest = new OcspRequest(tbsRequest);
-        var ocspResponse = await GetOcspResponse(ocspRequest);
+        var ocspResponse = await GetOcspResponse(ocspRequest).ConfigureAwait(false);
         Assert.Equal(OcspResponseStatus.Successful, ocspResponse.ResponseStatus);
         var basicResponse = ocspResponse.ResponseBytes!.GetBasicResponse();
         Assert.Single(basicResponse.TbsResponseData.Responses);
@@ -52,24 +52,23 @@ public partial class CertificateServerFeatures
     [Then("the certificate should be revoked in OCSP")]
     public async Task ThenTheCertificateShouldBeRevokedInOcsp()
     {
-        var issuerCert = await GetIssuerCertAsync();
+        var issuerCert = await GetIssuerCertAsync().ConfigureAwait(false);
         var tbsRequest = new TbsRequest(requestList:
         [
             new Request(CertId.Create(_certCollection[0], issuerCert, HashAlgorithmName.SHA256))
         ]);
         var ocspRequest = new OcspRequest(tbsRequest);
-        var ocspResponse = await GetOcspResponse(ocspRequest);
+        var ocspResponse = await GetOcspResponse(ocspRequest).ConfigureAwait(false);
         Assert.Equal(OcspResponseStatus.Successful, ocspResponse.ResponseStatus);
         var basicResponse = ocspResponse.ResponseBytes!.GetBasicResponse();
-        Assert.Single(basicResponse.TbsResponseData.Responses);
-        var singleResponse = basicResponse.TbsResponseData.Responses.First();
+        var singleResponse = Assert.Single(basicResponse.TbsResponseData.Responses);
         Assert.Equal(CertificateStatus.Revoked, singleResponse.CertStatus);
     }
 
     private async Task<X509Certificate2> GetIssuerCertAsync()
     {
         var caProfiles = _server.Services.GetRequiredService<IStoreCaProfiles>();
-        var profile = await caProfiles.GetProfile(null);
+        var profile = await caProfiles.GetProfile(null).ConfigureAwait(false);
         return profile.CertificateChain[0];
     }
 
@@ -82,9 +81,9 @@ public partial class CertificateServerFeatures
         {
             Content = new ByteArrayContent(ocspRequest.GetBytes())
         };
-        var response = await client.SendAsync(request);
+        var response = await client.SendAsync(request).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        var ocspResponseBytes = response.Content.ReadAsByteArrayAsync().Result;
+        var ocspResponseBytes = await response.Content.ReadAsByteArrayAsync();
         var ocspResponse = new OcspResponse(new AsnReader(ocspResponseBytes, AsnEncodingRules.DER));
         return ocspResponse;
     }
@@ -95,8 +94,7 @@ public partial class CertificateServerFeatures
         var ocspResponse = (OcspResponse)_scenarioContext["ocspResponse"]!;
         Assert.Equal(OcspResponseStatus.Successful, ocspResponse.ResponseStatus);
         var basicResponse = ocspResponse.ResponseBytes!.GetBasicResponse();
-        Assert.Single(basicResponse.TbsResponseData.Responses);
-        var singleResponse = basicResponse.TbsResponseData.Responses.First();
+        var singleResponse = Assert.Single(basicResponse.TbsResponseData.Responses);
         Assert.Equal(CertificateStatus.Unknown, singleResponse.CertStatus);
     }
 }

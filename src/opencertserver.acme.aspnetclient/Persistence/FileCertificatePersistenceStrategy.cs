@@ -95,7 +95,7 @@ public sealed class FileCertificatePersistenceStrategy : ICertificatePersistence
             tasks.Add(File.WriteAllBytesAsync(Path.Combine(chainDir, ServerCrt), Encoding.UTF8.GetBytes(chainPem)));
         }
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     public async Task<byte[]?> RetrieveAccountCertificate()

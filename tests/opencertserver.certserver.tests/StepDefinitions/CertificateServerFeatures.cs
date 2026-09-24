@@ -155,13 +155,13 @@ public partial class CertificateServerFeatures
             _server.CreateClient(),
             NullLoggerFactory.Instance);
 
-        _acmeClient = await factory.GetClient();
+        _acmeClient = await factory.GetClient().ConfigureAwait(false);
     }
 
     [When(@"the client requests a certificate")]
     public async Task WhenTheClientRequestsACertificate()
     {
-        var placedOrder = await _acmeClient.PlaceOrder(ChallengeType.Http01, ["localhost"]);
+        var placedOrder = await _acmeClient.PlaceOrder(ChallengeType.Http01, ["localhost"]).ConfigureAwait(false);
 
         Assert.NotNull(placedOrder);
 
@@ -172,10 +172,10 @@ public partial class CertificateServerFeatures
     public async Task WhenIQueryTheCertificateInventory()
     {
         var client = _server.CreateClient();
-        var response = await client.GetAsync("/ca/inventory");
+        var response = await client.GetAsync("/ca/inventory").ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         var inventory = await JsonSerializer.DeserializeAsync<CertificateItemInfo[]>(
-            await response.Content.ReadAsStreamAsync(), CaServerSerializerContext.Default.CertificateItemInfoArray);
+            await response.Content.ReadAsStreamAsync().ConfigureAwait(false), CaServerSerializerContext.Default.CertificateItemInfoArray).ConfigureAwait(false);
 
         Assert.NotNull(inventory);
 
@@ -186,7 +186,7 @@ public partial class CertificateServerFeatures
     public async Task ThenTheClientReceivesACertificate()
     {
         var (cert, _, _) = await _acmeClient.FinalizeOrder(_scenarioContext["placedOrder"]! as PlacedOrder
-           ?? throw new InvalidOperationException());
+         ?? throw new InvalidOperationException()).ConfigureAwait(false);
 
         Assert.NotNull(cert);
     }

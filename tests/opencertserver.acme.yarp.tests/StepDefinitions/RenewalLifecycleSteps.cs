@@ -71,23 +71,23 @@ public partial class RenewalLifecycleSteps
     public async Task WhenTheRenewalServiceRunsItsInitialIssuance()
     {
         var service = BuildService();
-        await service.StartAsync(CancellationToken.None);
-        await service.StartedAsync(CancellationToken.None);
+        await service.StartAsync(CancellationToken.None).ConfigureAwait(false);
+        await service.StartedAsync(CancellationToken.None).ConfigureAwait(false);
     }
 
     [When(@"the renewal service runs a single pass for all routes")]
     public async Task WhenTheRenewalServiceRunsASinglePassForAllRoutes()
     {
         var service = BuildService();
-        await service.RunAllRoutesOnce("test", CancellationToken.None);
+        await service.RunAllRoutesOnce("test", CancellationToken.None).ConfigureAwait(false);
     }
 
     [When(@"the renewal service is stopped")]
     public async Task WhenTheRenewalServiceIsStopped()
     {
         var service = BuildService();
-        await service.StartAsync(CancellationToken.None);
-        await service.StopAsync(CancellationToken.None);
+        await service.StartAsync(CancellationToken.None).ConfigureAwait(false);
+        await service.StopAsync(CancellationToken.None).ConfigureAwait(false);
     }
 
     [Then(@"the certificate for ""(.+)"" is for host ""(.+)""")]

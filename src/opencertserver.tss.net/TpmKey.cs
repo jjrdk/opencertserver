@@ -88,10 +88,8 @@ public partial class TpmPublic
     /// <returns></returns>
     public bool VerifySignatureOverData(byte[] data, ISignatureUnion sig)
     {
-        using (var verifier = AsymCryptoSystem.CreateFrom(this))
-        {
-            return verifier?.VerifySignatureOverData(data, sig) ?? false;
-        }
+        using var verifier = AsymCryptoSystem.CreateFrom(this);
+        return verifier?.VerifySignatureOverData(data, sig) ?? false;
     }
 
     /// <summary>
@@ -100,10 +98,8 @@ public partial class TpmPublic
     /// </summary>
     public bool VerifySignatureOverHash(byte[] digest, ISignatureUnion sig)
     {
-        using (var verifier = AsymCryptoSystem.CreateFrom(this))
-        {
-            return verifier?.VerifySignatureOverHash(digest, sig) ?? false;
-        }
+        using var verifier = AsymCryptoSystem.CreateFrom(this);
+        return verifier?.VerifySignatureOverHash(digest, sig) ?? false;
     }
 
     /// <summary>
@@ -278,10 +274,8 @@ public partial class TpmPublic
     /// <returns></returns>
     public byte[] EncryptOaep(byte[] dataToEncrypt, byte[] encodingParms)
     {
-        using (var encryptor = AsymCryptoSystem.CreateFrom(this))
-        {
-            return encryptor.EncryptOaep(dataToEncrypt, encodingParms);
-        }
+        using var encryptor = AsymCryptoSystem.CreateFrom(this);
+        return encryptor.EncryptOaep(dataToEncrypt, encodingParms);
     }
 
     /// <summary>
@@ -293,16 +287,14 @@ public partial class TpmPublic
     /// <returns></returns>
     public byte[] EcdhGetKeyExchangeKey(byte[] encodingParms, out EccPoint ephemPubPt)
     {
-        using (var encryptor = AsymCryptoSystem.CreateFrom(this))
+        using var encryptor = AsymCryptoSystem.CreateFrom(this);
+        if (encryptor == null)
         {
-            if (encryptor == null)
-            {
-                ephemPubPt = null;
-                return null;
-            }
-
-            return encryptor.EcdhGetKeyExchangeKey(encodingParms, nameAlg, out ephemPubPt);
+            ephemPubPt = null;
+            return null;
         }
+
+        return encryptor.EcdhGetKeyExchangeKey(encodingParms, nameAlg, out ephemPubPt);
     }
 
     /// <summary>
@@ -404,7 +396,7 @@ public partial class TpmPublic
 /// </summary>
 public partial class TssObject
 {
-    public AuthValue UseAuth = new AuthValue();
+    public AuthValue UseAuth = new();
 
     public TssObject(TpmPublic thePublicPart, TpmPrivate thePrivatePart)
     {
@@ -453,27 +445,25 @@ public partial class TssObject
         }
 
         var symDef = GetSymDef();
-        using (var sym = SymCipher.Create(symDef,
-            (Sensitive.sensitive as Tpm2bSymKey).buffer))
+        using var sym = SymCipher.Create(symDef,
+            (Sensitive.sensitive as Tpm2bSymKey).buffer);
+        if (sym == null)
         {
-            if (sym == null)
-            {
-                throw new ArgumentException("Unsupported symmetric key configuration");
-            }
-
-            if (Globs.IsEmpty(ivIn))
-            {
-                ivIn = (symDef.Mode == TpmAlgId.Ecb)
-                    ? []
-                    : Globs.GetRandomBytes(SymCipher.GetBlockSize(symDef));
-            }
-
-            ivOut = Globs.CopyData(ivIn);
-
-            return decrypt
-                ? sym.Decrypt(data, ivOut)
-                : sym.Encrypt(data, ivOut);
+            throw new ArgumentException("Unsupported symmetric key configuration");
         }
+
+        if (Globs.IsEmpty(ivIn))
+        {
+            ivIn = (symDef.Mode == TpmAlgId.Ecb)
+                ? []
+                : Globs.GetRandomBytes(SymCipher.GetBlockSize(symDef));
+        }
+
+        ivOut = Globs.CopyData(ivIn);
+
+        return decrypt
+            ? sym.Decrypt(data, ivOut)
+            : sym.Encrypt(data, ivOut);
     } // EncryptDecrypt
 
     public byte[] Encrypt(byte[] message, ref byte[] ivIn, out byte[] ivOut)

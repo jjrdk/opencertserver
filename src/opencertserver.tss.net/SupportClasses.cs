@@ -159,7 +159,7 @@ public class Prng
     /// A buffer of random data that is emptied on calls to GetRandom() and filled
     /// when the buffer is empty through FillRandBuf().
     /// </summary>
-    private ByteBuf _buf = new ByteBuf();
+    private ByteBuf _buf = new();
 
     /// <summary>
     /// Counter for each round of buffer filling.
@@ -169,7 +169,7 @@ public class Prng
     /// <summary>
     /// Default RNG used by the library
     /// </summary>
-    private static readonly RNGCryptoServiceProvider CryptoRand = new RNGCryptoServiceProvider();
+    private static readonly RNGCryptoServiceProvider CryptoRand = new();
 
     /// <summary>
     /// Set the tester PRNG seed to random value from the system RNG

@@ -30,7 +30,7 @@ public sealed class TpmContainerHooks
     [BeforeFeature(Order = 0)]
     public static async Task StartTpmSimulatorForFeatureAsync(FeatureContext featureContext)
     {
-        var container = await TpmSimulatorContainer.CreateAsync();
+        var container = await TpmSimulatorContainer.CreateAsync().ConfigureAwait(false);
         featureContext.Set(container);
     }
 
@@ -51,7 +51,7 @@ public sealed class TpmContainerHooks
     {
         if (featureContext.TryGetValue<TpmSimulatorContainer>(out var container))
         {
-            await container.DisposeAsync();
+            await container.DisposeAsync().ConfigureAwait(false);
         }
     }
 }

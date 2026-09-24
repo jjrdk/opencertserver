@@ -25,7 +25,7 @@ namespace opencertserver.cli.tests.StepDefinitions
         [When("I run the CLI with \"(.*)\"")]
         public async Task WhenIRunTheCliWith(string arguments)
         {
-            await CliExecutionLock.WaitAsync();
+            await CliExecutionLock.WaitAsync().ConfigureAwait(false);
 
             // support placeholders
             try
@@ -38,7 +38,7 @@ namespace opencertserver.cli.tests.StepDefinitions
                         var pkcs8 = rsa.ExportPkcs8PrivateKey();
                         var pem = PemEncoding.WriteString("PRIVATE KEY", pkcs8);
                         _tempKeyPath = Path.Combine(Path.GetTempPath(), $"opencert_key_{Guid.NewGuid():N}.pem");
-                        await File.WriteAllTextAsync(_tempKeyPath, pem);
+                        await File.WriteAllTextAsync(_tempKeyPath, pem).ConfigureAwait(false);
                     }
 
                     arguments = arguments.Replace("<GENERATE_KEY>", _tempKeyPath);
@@ -93,7 +93,7 @@ namespace opencertserver.cli.tests.StepDefinitions
                 {
                     Console.SetOut(swOut);
                     Console.SetError(swErr);
-                    await Program.Main(args);
+                    await Program.Main(args).ConfigureAwait(false);
                 }
                 finally
                 {

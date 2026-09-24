@@ -35,7 +35,7 @@ public partial class CertificateServerFeatures
         _key = RSA.Create();
         var (_, collection) = await estClient.Enroll(new X500DistinguishedName("cn=test, ou=test"), _key,
             X509KeyUsageFlags.DigitalSignature,
-            new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
         _certCollection = collection!;
     }
 
@@ -54,7 +54,7 @@ public partial class CertificateServerFeatures
     [When("I use the certificate to re-enroll without a valid JWT")]
     public async Task WhenIUseTheCertificateToReEnrollWithoutAValidJwt()
     {
-        var (_, renewed) = await _estClient.ReEnroll(_key, _certCollection[0]);
+        var (_, renewed) = await _estClient.ReEnroll(_key, _certCollection[0]).ConfigureAwait(false);
         Assert.NotNull(renewed);
         Assert.NotEmpty(renewed);
         _certCollection = renewed;

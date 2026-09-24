@@ -32,7 +32,7 @@ public partial class OpenCertServerCliStepDefinitions
                 .ConfigureServices(ConfigureEstServices)
                 .Configure(ConfigureEstApp);
         }).Build();
-        await host.StartAsync();
+        await host.StartAsync().ConfigureAwait(false);
         _server = host.GetTestServer();
     }
 

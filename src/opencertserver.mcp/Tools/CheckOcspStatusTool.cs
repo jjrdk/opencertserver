@@ -65,7 +65,7 @@ public class CheckOcspStatusTool
             serialBytes
         );
 
-        var (_, status, revokedInfo) = await store.GetCertificateStatus(certId, cancellationToken);
+        var (_, status, revokedInfo) = await store.GetCertificateStatus(certId, cancellationToken).ConfigureAwait(false);
 
         return new McpOcspCheckResult
         {

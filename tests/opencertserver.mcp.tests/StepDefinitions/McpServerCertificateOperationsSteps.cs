@@ -32,7 +32,7 @@ public sealed class McpServerCertificateOperationsSteps
     public async Task GivenACertificateIsIssued()
     {
         var csr = McpServerFixture.CreateBase64DerCsr();
-        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr });
+        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate failed: {result.ErrorMessage}");
         TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
     }
@@ -41,7 +41,7 @@ public sealed class McpServerCertificateOperationsSteps
     public async Task WhenSignCertificate()
     {
         var csr = McpServerFixture.CreateBase64DerCsr();
-        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr });
+        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate failed: {result.ErrorMessage}");
         TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
     }
@@ -50,7 +50,7 @@ public sealed class McpServerCertificateOperationsSteps
     public async Task WhenSignCertificateWithPem()
     {
         var csr = McpServerFixture.CreateBase64DerCsr();
-        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr, includePem = true });
+        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr, includePem = true }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate with PEM failed: {result.ErrorMessage}");
         TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
     }
@@ -62,7 +62,7 @@ public sealed class McpServerCertificateOperationsSteps
         var csr = McpServerFixture.CreateBase64DerCsr();
         var nb = DateTimeOffset.Parse(notBeforeStr);
         var na = DateTimeOffset.Parse(notAfterStr);
-        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr, notBefore = nb, notAfter = na });
+        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr, notBefore = nb, notAfter = na }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate with dates failed: {result.ErrorMessage}");
         TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
     }
@@ -70,7 +70,7 @@ public sealed class McpServerCertificateOperationsSteps
     [When("the MCP server invokes \"sign_certificate\" with an invalid CSR body")]
     public async Task WhenSignCertificateInvalid()
     {
-        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr = "not-a-valid-csr" });
+        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr = "not-a-valid-csr" }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
         TestSharedState.SignedCert = result.IsSuccess
             ? (McpCertificateItem)result.Content!
@@ -80,7 +80,7 @@ public sealed class McpServerCertificateOperationsSteps
     [When("the MCP server invokes \"sign_certificate\" without providing a CSR string")]
     public async Task WhenSignCertificateNoCsr()
     {
-        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { });
+        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
         TestSharedState.SignedCert = result.IsSuccess
             ? (McpCertificateItem)result.Content!
@@ -97,7 +97,7 @@ public sealed class McpServerCertificateOperationsSteps
         }
 
         var serial = TestSharedState.SignedCert.SerialNumber;
-        var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { serialNumber = serial, reason });
+        var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { serialNumber = serial, reason }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
     }
 
@@ -111,21 +111,21 @@ public sealed class McpServerCertificateOperationsSteps
         }
 
         var serial = TestSharedState.SignedCert.SerialNumber;
-        var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { serialNumber = serial, reason });
+        var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { serialNumber = serial, reason }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
     }
 
     [When("the MCP server invokes \"revoke_certificate\" with serial number \"(.+)\"")]
     public async Task WhenRevokeWithSerial(string serialNumber)
     {
-        var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { serialNumber });
+        var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { serialNumber }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
     }
 
     [When("the MCP server invokes \"revoke_certificate\" without a serial number")]
     public async Task WhenRevokeWithoutSerial()
     {
-        var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { reason = "KeyCompromise" });
+        var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { reason = "KeyCompromise" }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
     }
 
@@ -229,7 +229,7 @@ public sealed class McpServerCertificateOperationsSteps
     public async Task ThenCertMustBeInInventory()
     {
         var items = new List<CertificateItemInfo>();
-        await foreach (var item in _fixture.Store.GetInventory(0, 500, CancellationToken.None))
+        await foreach (var item in _fixture.Store.GetInventory(0, 500, CancellationToken.None).ConfigureAwait(false))
             items.Add(item);
         Assert.True(items.Count > 0, "Inventory is empty");
     }
@@ -238,7 +238,7 @@ public sealed class McpServerCertificateOperationsSteps
     public async Task ThenTotalCountAtLeast1()
     {
         var items = new List<CertificateItemInfo>();
-        await foreach (var item in _fixture.Store.GetInventory(0, 500, CancellationToken.None))
+        await foreach (var item in _fixture.Store.GetInventory(0, 500, CancellationToken.None).ConfigureAwait(false))
             items.Add(item);
         Assert.True(items.Count >= 1);
     }
@@ -247,7 +247,7 @@ public sealed class McpServerCertificateOperationsSteps
     public async Task ThenCertMustBeRevoked()
     {
         var items = new List<CertificateItemInfo>();
-        await foreach (var item in _fixture.Store.GetInventory(0, 500, CancellationToken.None))
+        await foreach (var item in _fixture.Store.GetInventory(0, 500, CancellationToken.None).ConfigureAwait(false))
             items.Add(item);
         var revoked = items.FirstOrDefault(i => i.RevocationReason != null);
         Assert.NotNull(revoked);
@@ -257,7 +257,7 @@ public sealed class McpServerCertificateOperationsSteps
     public async Task ThenAtLeastOneRevoked()
     {
         var items = new List<CertificateItemInfo>();
-        await foreach (var item in _fixture.Store.GetInventory(0, 500, CancellationToken.None))
+        await foreach (var item in _fixture.Store.GetInventory(0, 500, CancellationToken.None).ConfigureAwait(false))
             items.Add(item);
         Assert.True(items.Any(i => i.IsRevoked), "No certificate is marked as revoked");
     }

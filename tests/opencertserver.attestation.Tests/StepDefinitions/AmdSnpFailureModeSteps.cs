@@ -64,7 +64,7 @@ public class AmdSnpFailureModeSteps
     [When(@"the provider attempts to retrieve the VCEK ChipID")]
     public async Task WhenRetrieveVcekChipId()
     {
-        try { await _provider!.GetDeviceIdAsync(); }
+        try { await _provider!.GetDeviceIdAsync().ConfigureAwait(false); }
         catch (Exception ex) { _thrownException = ex; }
     }
 
@@ -75,7 +75,7 @@ public class AmdSnpFailureModeSteps
         var client = new HttpClient(new MockHttpHandler(response));
         _httpFactory.CreateClient(nameof(AmdSnpProvider)).Returns(client);
         _provider = BuildProvider(_native);
-        try { await _provider.RetrieveDeviceCertificateAsync("DEADBEEF"); }
+        try { await _provider.RetrieveDeviceCertificateAsync("DEADBEEF").ConfigureAwait(false); }
         catch (Exception ex) { _thrownException = ex; }
     }
 
@@ -86,7 +86,7 @@ public class AmdSnpFailureModeSteps
             throw new HttpRequestException("Connection refused")));
         _httpFactory.CreateClient(nameof(AmdSnpProvider)).Returns(client);
         _provider = BuildProvider(_native);
-        try { await _provider.RetrieveDeviceCertificateAsync("DEADBEEF"); }
+        try { await _provider.RetrieveDeviceCertificateAsync("DEADBEEF").ConfigureAwait(false); }
         catch (Exception ex) { _thrownException = ex; }
     }
 
@@ -97,7 +97,7 @@ public class AmdSnpFailureModeSteps
         var req = new CertificateRequest("CN=Test", rsa, System.Security.Cryptography.HashAlgorithmName.SHA256,
             System.Security.Cryptography.RSASignaturePadding.Pkcs1);
         var cert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
-        try { await _provider!.GenerateAndSignQuoteAsync(cert, new byte[32]); }
+        try { await _provider!.GenerateAndSignQuoteAsync(cert, new byte[32]).ConfigureAwait(false); }
         catch (Exception ex) { _thrownException = ex; }
     }
 

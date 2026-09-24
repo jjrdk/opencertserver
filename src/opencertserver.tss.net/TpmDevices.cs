@@ -874,7 +874,7 @@ public sealed class TcpTpmDevice : Tpm2Device
     public delegate void NotifyData(CommsSort sort, Channel channel, byte[] inOrOutData);
 
     private NotifyData Notifier;
-    private readonly object CallbackLock = new object();
+    private readonly object CallbackLock = new();
 
     /// <summary>
     /// Set a communications notification callback, or null to remove the callback.

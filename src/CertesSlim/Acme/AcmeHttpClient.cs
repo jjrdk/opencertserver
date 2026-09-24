@@ -25,11 +25,11 @@ public class AcmeHttpClient : IAcmeHttpClient
     /// </remarks>
     private static readonly IList<ProductInfoHeaderValue> UserAgentHeaders =
     [
-        new ProductInfoHeaderValue("CertesSlim", Assembly.GetExecutingAssembly().GetName().Version!.ToString()),
-        new ProductInfoHeaderValue(".NET", Environment.Version.ToString())
+        new("CertesSlim", Assembly.GetExecutingAssembly().GetName().Version!.ToString()),
+        new(".NET", Environment.Version.ToString())
     ];
 
-    private readonly static Lazy<HttpClient> SharedHttp = new Lazy<HttpClient>(CreateHttpClient);
+    private readonly static Lazy<HttpClient> SharedHttp = new(CreateHttpClient);
     private readonly Lazy<HttpClient> _http;
 
     private Uri? _newNonceUri;

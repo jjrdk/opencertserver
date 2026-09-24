@@ -71,7 +71,7 @@ public class SignCertificateTool
             reenrollingFrom: null,
             notBefore,
             notAfter,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         if (result is SignCertificateResponse.Success success)
         {

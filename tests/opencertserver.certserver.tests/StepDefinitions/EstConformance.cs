@@ -123,7 +123,7 @@ public partial class CertificateServerFeatures
     {
         ConformanceState.Operation = operation;
         var path = BuildOperationPath(operation, ConformanceState.ProfileName);
-        await SendRequestAsync(HttpMethod.Get, path, accept: "*/*");
+        await SendRequestAsync(HttpMethod.Get, path, accept: "*/*").ConfigureAwait(false);
     }
 
     [When("an EST client connects to the EST server")]
@@ -142,7 +142,7 @@ public partial class CertificateServerFeatures
     {
         var csr = CreatePemCsr();
         await SendRequestAsync(HttpMethod.Post, BuildOperationPath("/simpleenroll"),
-            new StringContent(csr, Encoding.UTF8, "application/pkcs10"));
+            new StringContent(csr, Encoding.UTF8, "application/pkcs10")).ConfigureAwait(false);
     }
 
     [When("the EST server accepts certificate-less TLS mutual authentication for enrollment")]
@@ -219,7 +219,7 @@ public partial class CertificateServerFeatures
             TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
                 Task.FromResult(CsrAttributesResponse.FromTemplate(CreateDefaultCsrTemplate())));
             await SendRequestAsync(HttpMethod.Get, BuildOperationPath(operation),
-                authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+                authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
             return;
         }
 
@@ -228,7 +228,7 @@ public partial class CertificateServerFeatures
             operation == "/fullcmc" ? "application/pkcs7-mime" : "application/pkcs10");
         content.Headers.Add("Content-Transfer-Encoding", "quoted-printable");
         await SendRequestAsync(HttpMethod.Post, BuildOperationPath(operation), content,
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
     }
 
     [When("the EST endpoint \"(.+)\" receives a base64 body containing spaces tabs carriage returns or line feeds")]
@@ -247,18 +247,18 @@ public partial class CertificateServerFeatures
     {
         if (path.EndsWith("/csrattrs", StringComparison.Ordinal))
         {
-            await SendRequestAsync(HttpMethod.Get, path);
+            await SendRequestAsync(HttpMethod.Get, path).ConfigureAwait(false);
             return;
         }
 
-        await SendRequestAsync(HttpMethod.Get, path, accept: "application/pkcs7-mime");
+        await SendRequestAsync(HttpMethod.Get, path, accept: "application/pkcs7-mime").ConfigureAwait(false);
         ParseSignedDataIfPossible();
     }
 
     [When("the EST server returns CA certificates")]
     public async Task WhenTheEstServerReturnsCaCertificates()
     {
-        await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/cacerts"), accept: "application/pkcs7-mime");
+        await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/cacerts"), accept: "application/pkcs7-mime").ConfigureAwait(false);
         ParseSignedDataIfPossible();
     }
 
@@ -266,11 +266,11 @@ public partial class CertificateServerFeatures
     public async Task WhenTheEstServerSupportsRootCaKeyRollover()
     {
         var response = await _server.Services.GetRequiredService<ICertificateAuthority>()
-            .GetPublishedCertificates(null, CancellationToken.None);
+            .GetPublishedCertificates(null, CancellationToken.None).ConfigureAwait(false);
         Assert.True(response.Count >= 4,
             "The EST server did not publish a rollover bundle containing the current root and rollover certificates.");
 
-        await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/cacerts"), accept: "application/pkcs7-mime");
+        await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/cacerts"), accept: "application/pkcs7-mime").ConfigureAwait(false);
         ParseSignedDataIfPossible();
     }
 
@@ -304,7 +304,7 @@ public partial class CertificateServerFeatures
     {
         var csr = CreatePemCsr();
         var content = new StringContent(csr, Encoding.UTF8, "application/pkcs10");
-        await SendRequestAsync(HttpMethod.Post, path, content);
+        await SendRequestAsync(HttpMethod.Post, path, content).ConfigureAwait(false);
     }
 
     [When("the client POSTs to \"(.+)\"")]
@@ -312,11 +312,11 @@ public partial class CertificateServerFeatures
     {
         if (path.EndsWith("/simplereenroll", StringComparison.Ordinal))
         {
-            await CaptureReEnrollRequestAsync(includeDifferentKey: false);
+            await CaptureReEnrollRequestAsync(includeDifferentKey: false).ConfigureAwait(false);
             return;
         }
 
-        await CaptureEnrollRequestAsync();
+        await CaptureEnrollRequestAsync().ConfigureAwait(false);
     }
 
     [When("the CSR KeyUsage extension allows digital signatures")]
@@ -347,7 +347,7 @@ public partial class CertificateServerFeatures
         var csr = CreatePemCsr();
         var content = new StringContent(csr, Encoding.UTF8, "application/pkcs10");
         await SendRequestAsync(HttpMethod.Post, BuildOperationPath("/simpleenroll"), content,
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
         ParseSignedDataIfPossible();
     }
 
@@ -356,33 +356,33 @@ public partial class CertificateServerFeatures
     {
         var content = new StringContent("not-a-csr", Encoding.UTF8, "application/pkcs10");
         await SendRequestAsync(HttpMethod.Post, BuildOperationPath("/simpleenroll"), content,
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
     }
 
     [When("the EST server accepts a simple enrollment request for manual authorization")]
     public async Task WhenTheEstServerAcceptsASimpleEnrollmentRequestForManualAuthorization()
     {
         _server.Services.GetRequiredService<TestManualAuthorizationStrategy>().RequireManualAuthorization = true;
-        await WhenTheEstServerSuccessfullyProcessesASimpleEnrollmentRequest();
+        await WhenTheEstServerSuccessfullyProcessesASimpleEnrollmentRequest().ConfigureAwait(false);
     }
 
     [When("the client POSTs a certification request to \"(.+)\"")]
     public async Task WhenTheClientPostsACertificationRequestTo(string path)
     {
-        await CaptureReEnrollRequestAsync(includeDifferentKey: false);
+        await CaptureReEnrollRequestAsync(includeDifferentKey: false).ConfigureAwait(false);
 
-        var cert = await EnsureIssuedCertificateAsync();
+        var cert = await EnsureIssuedCertificateAsync().ConfigureAwait(false);
         var content = new StringContent(CreatePemCsr(subject: cert.Subject), Encoding.UTF8, "application/pkcs10-mime");
-        await SendRequestAsync(HttpMethod.Post, path, content, clientCertificate: cert);
+        await SendRequestAsync(HttpMethod.Post, path, content, clientCertificate: cert).ConfigureAwait(false);
     }
 
     [When("the client submits the same SubjectPublicKeyInfo as the current certificate")]
     public async Task WhenTheClientSubmitsTheSameSubjectPublicKeyInfoAsTheCurrentCertificate()
     {
-        var cert = await EnsureIssuedCertificateAsync();
+        var cert = await EnsureIssuedCertificateAsync().ConfigureAwait(false);
         var currentKey = _key;
         Assert.NotNull(currentKey);
-        var (_, renewed) = await _estClient.ReEnroll(currentKey, cert);
+        var (_, renewed) = await _estClient.ReEnroll(currentKey, cert).ConfigureAwait(false);
         ConformanceState.CurrentCertificate = cert;
         ConformanceState.ReenrolledCertificates = renewed;
     }
@@ -390,9 +390,9 @@ public partial class CertificateServerFeatures
     [When("the client submits a different SubjectPublicKeyInfo than the current certificate")]
     public async Task WhenTheClientSubmitsADifferentSubjectPublicKeyInfoThanTheCurrentCertificate()
     {
-        var cert = await EnsureIssuedCertificateAsync();
+        var cert = await EnsureIssuedCertificateAsync().ConfigureAwait(false);
         using var replacement = RSA.Create();
-        var (_, renewed) = await _estClient.ReEnroll(replacement, cert);
+        var (_, renewed) = await _estClient.ReEnroll(replacement, cert).ConfigureAwait(false);
         ConformanceState.CurrentCertificate = cert;
         ConformanceState.ReenrolledCertificates = renewed;
         ConformanceState.GeneratedPublicKey = replacement.ExportSubjectPublicKeyInfo();
@@ -401,10 +401,10 @@ public partial class CertificateServerFeatures
     [When("the EST server rejects a simple re-enrollment request")]
     public async Task WhenTheEstServerRejectsASimpleReEnrollmentRequest()
     {
-        var cert = await EnsureIssuedCertificateAsync();
+        var cert = await EnsureIssuedCertificateAsync().ConfigureAwait(false);
         var content = new StringContent("not-a-csr", Encoding.UTF8, "application/pkcs10-mime");
         await SendRequestAsync(HttpMethod.Post, BuildOperationPath("/simplereenroll"), content,
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"), clientCertificate: cert);
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"), clientCertificate: cert).ConfigureAwait(false);
     }
 
     [When("the client POSTs an invalid Full PKI Request to \"(.+)\"")]
@@ -412,25 +412,25 @@ public partial class CertificateServerFeatures
     {
         var content = new StringContent("invalid-full-cmc", Encoding.ASCII, "application/pkcs7-mime");
         await SendRequestAsync(HttpMethod.Post, path, content,
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
     }
 
     [When("the EST server successfully processes a Full CMC request")]
     public async Task WhenTheEstServerSuccessfullyProcessesAFullCmcRequest()
     {
-        await WhenTheClientPostsAnInvalidFullPkiRequestTo(BuildOperationPath("/fullcmc"));
+        await WhenTheClientPostsAnInvalidFullPkiRequestTo(BuildOperationPath("/fullcmc")).ConfigureAwait(false);
     }
 
     [When("the EST server rejects a Full CMC request")]
     public async Task WhenTheEstServerRejectsAFullCmcRequest()
     {
-        await WhenTheClientPostsAnInvalidFullPkiRequestTo(BuildOperationPath("/fullcmc"));
+        await WhenTheClientPostsAnInvalidFullPkiRequestTo(BuildOperationPath("/fullcmc")).ConfigureAwait(false);
     }
 
     [When("the client POSTs a server-side key generation request")]
     public async Task WhenTheClientPostsAServerSideKeyGenerationRequest()
     {
-        await SendServerKeyGenerationRequestAsync();
+        await SendServerKeyGenerationRequestAsync().ConfigureAwait(false);
     }
 
     [When("the client requests private key encryption beyond the TLS transport")]
@@ -438,7 +438,7 @@ public partial class CertificateServerFeatures
     {
         await SendServerKeyGenerationRequestAsync(
             requestEncryptedKeyDelivery: true,
-            includeProtectionMetadata: false);
+            includeProtectionMetadata: false).ConfigureAwait(false);
     }
 
     [When(
@@ -451,19 +451,19 @@ public partial class CertificateServerFeatures
             requestEncryptedKeyDelivery: true,
             includeProtectionMetadata: true,
             protection: protection,
-            protectionMaterialStatus: "unavailable");
+            protectionMaterialStatus: "unavailable").ConfigureAwait(false);
     }
 
     [When("the EST server successfully processes a server-side key generation request")]
     public async Task WhenTheEstServerSuccessfullyProcessesAServerSideKeyGenerationRequest()
     {
-        await WhenTheClientPostsAServerSideKeyGenerationRequest();
+        await WhenTheClientPostsAServerSideKeyGenerationRequest().ConfigureAwait(false);
     }
 
     [When("the EST server returns a server-generated private key without additional application-layer encryption")]
     public async Task WhenTheEstServerReturnsAServerGeneratedPrivateKeyWithoutAdditionalApplicationLayerEncryption()
     {
-        await WhenTheClientPostsAServerSideKeyGenerationRequest();
+        await WhenTheClientPostsAServerSideKeyGenerationRequest().ConfigureAwait(false);
     }
 
     [When("the EST server returns a server-generated private key with additional application-layer encryption")]
@@ -473,13 +473,13 @@ public partial class CertificateServerFeatures
             requestEncryptedKeyDelivery: true,
             includeProtectionMetadata: true,
             protection: "symmetric",
-            protectionMaterialStatus: "available");
+            protectionMaterialStatus: "available").ConfigureAwait(false);
     }
 
     [When("the EST server returns the certificate part of a server-side key generation response")]
     public async Task WhenTheEstServerReturnsTheCertificatePartOfAServerSideKeyGenerationResponse()
     {
-        await WhenTheClientPostsAServerSideKeyGenerationRequest();
+        await WhenTheClientPostsAServerSideKeyGenerationRequest().ConfigureAwait(false);
     }
 
     [When("the EST server rejects a server-side key generation request")]
@@ -487,7 +487,7 @@ public partial class CertificateServerFeatures
     {
         var content = new StringContent("not-a-csr", Encoding.UTF8, "application/pkcs10");
         await SendRequestAsync(HttpMethod.Post, BuildOperationPath("/serverkeygen"), content,
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
     }
 
     [When("locally configured policy provides CSR attributes for the authenticated EST client")]
@@ -495,7 +495,7 @@ public partial class CertificateServerFeatures
     {
         TestCsrAttributesLoaderConfiguration.Reset();
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
     }
 
     [When("CSR attributes are unavailable")]
@@ -504,7 +504,7 @@ public partial class CertificateServerFeatures
         TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
             Task.FromResult(CsrAttributesResponse.Unavailable()));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
     }
 
     [When("the EST server returns CSR attributes")]
@@ -512,7 +512,7 @@ public partial class CertificateServerFeatures
     {
         TestCsrAttributesLoaderConfiguration.Reset();
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
         ParseCsrAttributesIfPossible();
         TryParseTemplate();
     }
@@ -528,7 +528,7 @@ public partial class CertificateServerFeatures
             }
         }));
         using var client = new EstClient(new Uri("https://localhost"), options: null, messageHandler: handler);
-        ConformanceState.CsrAttributesException = await Record.ExceptionAsync(() => client.GetCsrAttributes(null));
+        ConformanceState.CsrAttributesException = await Record.ExceptionAsync(() => client.GetCsrAttributes(null)).ConfigureAwait(false);
     }
 
     [When("the EST server has no specific additional CSR information to request")]
@@ -537,7 +537,7 @@ public partial class CertificateServerFeatures
         TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
             Task.FromResult(CsrAttributesResponse.Unavailable()));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
     }
 
     [When("the CA requires a particular cryptographic algorithm or signature scheme")]
@@ -546,7 +546,7 @@ public partial class CertificateServerFeatures
         TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
             Task.FromResult(CsrAttributesResponse.FromTemplate(CreateKeyConstrainedTemplate())));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
         ParseCsrAttributesIfPossible();
         TryParseTemplate();
     }
@@ -559,14 +559,14 @@ public partial class CertificateServerFeatures
                 objectIdentifiers: [Oids.ChallengePassword.InitializeOid(Oids.ChallengePasswordFriendlyName)],
                 templates: [CreateKeyConstrainedTemplate()]))));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
         ParseCsrAttributesIfPossible();
     }
 
     [When("the EST server encodes CSR attributes")]
     public async Task WhenTheEstServerEncodesCsrAttributes()
     {
-        await WhenTheEstServerReturnsCsrAttributes();
+        await WhenTheEstServerReturnsCsrAttributes().ConfigureAwait(false);
     }
 
     [When("the EST server encodes extension requirements using the original RFC 7030 CSR attributes format")]
@@ -576,14 +576,14 @@ public partial class CertificateServerFeatures
             Task.FromResult(CsrAttributesResponse.Available(new CsrAttributes(
                 attributes: [CreateLegacyExtensionRequestAttribute()]))));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
         ParseCsrAttributesIfPossible();
     }
 
     [When("the EST server requires a public key of a specific type using the original RFC 7030 CSR attributes format")]
     public async Task WhenTheEstServerRequiresAPublicKeyOfASpecificTypeUsingTheOriginalRfc7030CsrAttributesFormat()
     {
-        await WhenTheCaRequiresAParticularCryptographicAlgorithmOrSignatureScheme();
+        await WhenTheCaRequiresAParticularCryptographicAlgorithmOrSignatureScheme().ConfigureAwait(false);
     }
 
     [When("the EST server needs to interoperate with legacy and updated clients")]
@@ -595,7 +595,7 @@ public partial class CertificateServerFeatures
                 attributes: [CreateLegacyExtensionRequestAttribute()],
                 templates: [CreateSubjectAndKeyTemplate()]))));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
         ParseCsrAttributesIfPossible();
         TryParseTemplate();
     }
@@ -616,7 +616,7 @@ public partial class CertificateServerFeatures
         TestCsrAttributesLoaderConfiguration.SetFactory((_, _, _) =>
             Task.FromResult(CsrAttributesResponse.FromTemplate(CreateSubjectAndKeyTemplateWithAttributes())));
         await SendRequestAsync(HttpMethod.Get, BuildOperationPath("/csrattrs"),
-            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
         ParseCsrAttributesIfPossible();
         TryParseTemplate();
     }
@@ -646,8 +646,8 @@ public partial class CertificateServerFeatures
     [Then("the EST server MUST provide service both with and without the additional CA label")]
     public async Task ThenTheEstServerMustProvideServiceBothWithAndWithoutTheAdditionalCaLabel()
     {
-        var noLabel = await GetStatusCodeAsync(BuildOperationPath("/cacerts"));
-        var withLabel = await GetStatusCodeAsync(BuildOperationPath("/cacerts", ConformanceState.ProfileName));
+        var noLabel = await GetStatusCodeAsync(BuildOperationPath("/cacerts")).ConfigureAwait(false);
+        var withLabel = await GetStatusCodeAsync(BuildOperationPath("/cacerts", ConformanceState.ProfileName)).ConfigureAwait(false);
         Assert.True(noLabel != HttpStatusCode.NotFound && withLabel != HttpStatusCode.NotFound,
             $"Expected CA certificate service with and without the CA label, but got '{(int)noLabel}' and '{(int)withLabel}'.");
     }
@@ -958,7 +958,7 @@ public partial class CertificateServerFeatures
     public async Task ThenTheCurrentRootCaCertificateMustBeIncludedInTheResponse()
     {
         var activeChain = await _server.Services.GetRequiredService<ICertificateAuthority>()
-            .GetRootCertificates(null, CancellationToken.None);
+            .GetRootCertificates(null, CancellationToken.None).ConfigureAwait(false);
         var publishedCertificates = GetPublishedResponseCertificates();
         Assert.Contains(activeChain[0], publishedCertificates, X509Certificate2Comparer.Instance);
     }
@@ -979,7 +979,7 @@ public partial class CertificateServerFeatures
     public async Task ThenEveryAdditionalCertificateNeededToBuildAChainMustBeIncludedInTheResponse()
     {
         var activeChain = await _server.Services.GetRequiredService<ICertificateAuthority>()
-            .GetRootCertificates(null, CancellationToken.None);
+            .GetRootCertificates(null, CancellationToken.None).ConfigureAwait(false);
         var publishedCertificates = GetPublishedResponseCertificates();
         foreach (var certificate in activeChain)
         {
@@ -990,21 +990,21 @@ public partial class CertificateServerFeatures
     [Then(@"the \/cacerts response SHOULD include the OldWithOld certificate")]
     public async Task ThenTheCaCertsResponseShouldIncludeTheOldWithOldCertificate()
     {
-        var (oldWithOld, _, _) = await GetRolloverCertificates();
+        var (oldWithOld, _, _) = await GetRolloverCertificates().ConfigureAwait(false);
         Assert.NotNull(oldWithOld);
     }
 
     [Then(@"the \/cacerts response SHOULD include the OldWithNew certificate")]
     public async Task ThenTheCaCertsResponseShouldIncludeTheOldWithNewCertificate()
     {
-        var (_, oldWithNew, _) = await GetRolloverCertificates();
+        var (_, oldWithNew, _) = await GetRolloverCertificates().ConfigureAwait(false);
         Assert.NotNull(oldWithNew);
     }
 
     [Then(@"the \/cacerts response SHOULD include the NewWithOld certificate")]
     public async Task ThenTheCaCertsResponseShouldIncludeTheNewWithOldCertificate()
     {
-        var (_, _, newWithOld) = await GetRolloverCertificates();
+        var (_, _, newWithOld) = await GetRolloverCertificates().ConfigureAwait(false);
         Assert.NotNull(newWithOld);
     }
 
@@ -1034,7 +1034,7 @@ public partial class CertificateServerFeatures
     [Then("the request body MUST be a Simple PKI Request containing a PKCS #10 certification request")]
     public async Task ThenTheRequestBodyMustBeASimplePkiRequestContainingAPkcs10CertificationRequest()
     {
-        var body = await ConformanceState.CapturedRequest!.Content!.ReadAsStringAsync();
+        var body = await ConformanceState.CapturedRequest!.Content!.ReadAsStringAsync().ConfigureAwait(false);
         var csr = CertificateRequest.LoadSigningRequest(
             Convert.FromBase64String(body), HashAlgorithmName.SHA256, CertificateRequestLoadOptions.Default,
             RSASignaturePadding.Pss);
@@ -1142,8 +1142,8 @@ public partial class CertificateServerFeatures
     [Then("the certification request Subject field MUST be identical to the current certificate Subject field")]
     public async Task ThenTheCertificationRequestSubjectFieldMustBeIdenticalToTheCurrentCertificateSubjectField()
     {
-        var cert = await EnsureIssuedCertificateAsync();
-        var body = await ConformanceState.CapturedRequest!.Content!.ReadAsStringAsync();
+        var cert = await EnsureIssuedCertificateAsync().ConfigureAwait(false);
+        var body = await ConformanceState.CapturedRequest!.Content!.ReadAsStringAsync().ConfigureAwait(false);
         var csr = CertificateRequest.LoadSigningRequestPem(body, HashAlgorithmName.SHA256,
             CertificateRequestLoadOptions.SkipSignatureValidation, RSASignaturePadding.Pss);
         Assert.Equal(cert.SubjectName.Name, csr.SubjectName.Name);
@@ -1154,8 +1154,8 @@ public partial class CertificateServerFeatures
     public async Task
         ThenTheCertificationRequestSubjectAltNameExtensionMustBeIdenticalToTheCurrentCertificateSubjectAltNameExtension()
     {
-        var cert = await EnsureIssuedCertificateAsync();
-        var body = await ConformanceState.CapturedRequest!.Content!.ReadAsStringAsync();
+        var cert = await EnsureIssuedCertificateAsync().ConfigureAwait(false);
+        var body = await ConformanceState.CapturedRequest!.Content!.ReadAsStringAsync().ConfigureAwait(false);
         var csr = CertificateRequest.LoadSigningRequestPem(body, HashAlgorithmName.SHA256,
             CertificateRequestLoadOptions.SkipSignatureValidation, RSASignaturePadding.Pss);
         var currentSan = cert.Extensions.FirstOrDefault(x => x.Oid?.Value == "2.5.29.17")?.RawData;
@@ -1284,7 +1284,7 @@ public partial class CertificateServerFeatures
     [Then("the response MUST contain one private key part and one certificate part")]
     public async Task ThenTheResponseMustContainOnePrivateKeyPartAndOneCertificatePart()
     {
-        var payload = await GetMultipartContent().Select(s => s.ContentType!).ToArrayAsync();
+        var payload = await GetMultipartContent().Select(s => s.ContentType!).ToArrayAsync().ConfigureAwait(false);
         Assert.Equal(2, payload.Length);
         Assert.Equal(1, payload.Count(contentType =>
             string.Equals(contentType, "application/pkcs8", StringComparison.OrdinalIgnoreCase)));
@@ -1617,9 +1617,9 @@ public partial class CertificateServerFeatures
 
         configureMessage?.Invoke(message);
 
-        var response = await client.SendAsync(message);
+        var response = await client.SendAsync(message).ConfigureAwait(false);
         ConformanceState.Response = response;
-        ConformanceState.ResponseBytes = await response.Content.ReadAsByteArrayAsync();
+        ConformanceState.ResponseBytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
     }
 
     private Task SendServerKeyGenerationRequestAsync(
@@ -1675,13 +1675,13 @@ public partial class CertificateServerFeatures
         using var client = new EstClient(new Uri("https://localhost"), options: null, messageHandler: handler);
         using var rsa = RSA.Create();
         await client.Enroll(new X500DistinguishedName("CN=test"), rsa, X509KeyUsageFlags.DigitalSignature,
-            new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
         ConformanceState.CapturedRequest = handler.LastRequest;
     }
 
     private async Task CaptureReEnrollRequestAsync(bool includeDifferentKey)
     {
-        var cert = await EnsureIssuedCertificateAsync();
+        var cert = await EnsureIssuedCertificateAsync().ConfigureAwait(false);
         var handler = new CapturingHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest)
         {
             Content = new StringContent("capture", Encoding.UTF8, "text/plain")
@@ -1693,11 +1693,11 @@ public partial class CertificateServerFeatures
         if (includeDifferentKey)
         {
             using var replacement = RSA.Create();
-            await client.ReEnroll(replacement, cert);
+            await client.ReEnroll(replacement, cert).ConfigureAwait(false);
         }
         else
         {
-            await client.ReEnroll(_key, cert);
+            await client.ReEnroll(_key, cert).ConfigureAwait(false);
         }
 
         ConformanceState.CapturedRequest = handler.LastRequest;
@@ -1710,7 +1710,7 @@ public partial class CertificateServerFeatures
             return _certCollection[0];
         }
 
-        await WhenIEnrollWithAValidJwt();
+        await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
         return _certCollection[0];
     }
 
@@ -2047,7 +2047,7 @@ public partial class CertificateServerFeatures
         var reader = new MultipartReader(
             boundary
                 ?.Value?.Trim('"') ?? string.Empty, responseStream);
-        while (await reader.ReadNextSectionAsync() is { } section)
+        while (await reader.ReadNextSectionAsync().ConfigureAwait(false) is { } section)
         {
             yield return section;
         }
@@ -2089,7 +2089,7 @@ public partial class CertificateServerFeatures
     private async Task<HttpStatusCode> GetStatusCodeAsync(string path)
     {
         using var client = _server.CreateClient();
-        return (await client.GetAsync(path)).StatusCode;
+        return (await client.GetAsync(path).ConfigureAwait(false)).StatusCode;
     }
 
     private static string ReadHandlerSourceForOperation(string operation)
@@ -2209,8 +2209,8 @@ public partial class CertificateServerFeatures
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            LastRequest = await CloneAsync(request, cancellationToken);
-            return await _responseFactory(request);
+            LastRequest = await CloneAsync(request, cancellationToken).ConfigureAwait(false);
+            return await _responseFactory(request).ConfigureAwait(false);
         }
 
         private static async Task<HttpRequestMessage> CloneAsync(
@@ -2225,7 +2225,7 @@ public partial class CertificateServerFeatures
 
             if (request.Content != null)
             {
-                var bytes = await request.Content.ReadAsByteArrayAsync(cancellationToken);
+                var bytes = await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
                 var content = new ByteArrayContent(bytes);
                 foreach (var header in request.Content.Headers)
                 {

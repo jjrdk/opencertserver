@@ -30,7 +30,7 @@ public class RevokeCertificateTool
                 $"Invalid revocation reason: {reason}. Valid values: Unspecified, KeyCompromise, CACompromise, AffiliationChanged, Superseded, CessationOfOperation, CertificateHold, RemoveFromCRL, PrivilegeWithdrawn, AACompromise");
         }
 
-        var result = await ca.RevokeCertificate(serialNumber, revocationReason, cancellationToken);
+        var result = await ca.RevokeCertificate(serialNumber, revocationReason, cancellationToken).ConfigureAwait(false);
 
         if (result)
         {

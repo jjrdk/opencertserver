@@ -46,7 +46,7 @@ public sealed class X509CertificateTests : IDisposable
             {
                 CertificateExtensions = { new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false) }
             },
-            cancellationToken: CancellationToken.None) as SignCertificateResponse.Success;
+            cancellationToken: TestContext.Current.CancellationToken) as SignCertificateResponse.Success;
         using var ms = new MemoryStream();
         var key = cert!.Certificate.GetRSAPublicKey()!;
 
@@ -68,8 +68,9 @@ public sealed class X509CertificateTests : IDisposable
                     new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false)
                 }
             },
-            cancellationToken: CancellationToken.None) as SignCertificateResponse.Success;
-        await using var ms = new MemoryStream();
+            cancellationToken: TestContext.Current.CancellationToken) as SignCertificateResponse.Success;
+        var ms = new MemoryStream();
+        await using var ms1 = ms.ConfigureAwait(false);
         await cert!.Certificate.WritePfx(ms, TestContext.Current.CancellationToken);
 
         var newCert = X509CertificateLoader.LoadPkcs12(ms.ToArray(), null);
@@ -93,9 +94,10 @@ public sealed class X509CertificateTests : IDisposable
                     new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false), builder.Build(true)
                 }
             },
-            cancellationToken: CancellationToken.None) as SignCertificateResponse.Success;
+            cancellationToken: TestContext.Current.CancellationToken) as SignCertificateResponse.Success;
 
-        await using var ms = new MemoryStream();
+        var ms = new MemoryStream();
+        await using var ms1 = ms.ConfigureAwait(false);
         var san = cert!.Certificate.Extensions
             .FirstOrDefault(e => e.Oid!.Value == "2.5.29.17");
 

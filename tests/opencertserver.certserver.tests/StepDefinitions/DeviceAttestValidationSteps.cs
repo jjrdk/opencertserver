@@ -304,7 +304,7 @@ public sealed class DeviceAttestValidationSteps : IDisposable
         Assert.NotNull(_challenge);
         var validator = GetOrCreateValidator(trustedCa: null);
         (_resultIsValid, _resultError) = await validator.ValidateChallenge(
-            _challenge, _account ?? CreateTestAccount(), CancellationToken.None);
+            _challenge, _account ?? CreateTestAccount(), CancellationToken.None).ConfigureAwait(false);
     }
 
     [When(@"the server validates the challenge with a trusted CA injected")]
@@ -313,7 +313,7 @@ public sealed class DeviceAttestValidationSteps : IDisposable
         Assert.NotNull(_challenge);
         var validator = GetOrCreateValidator(trustedCa: _testCa);
         (_resultIsValid, _resultError) = await validator.ValidateChallenge(
-            _challenge, _account ?? CreateTestAccount(), CancellationToken.None);
+            _challenge, _account ?? CreateTestAccount(), CancellationToken.None).ConfigureAwait(false);
     }
 
     [When(@"the server validates the same challenge again with a trusted CA injected")]
@@ -323,7 +323,7 @@ public sealed class DeviceAttestValidationSteps : IDisposable
         // Reuse the same validator instance (anti-replay state is held per validator).
         var validator = GetOrCreateValidator(trustedCa: _testCa);
         (_secondResultIsValid, _secondResultError) = await validator.ValidateChallenge(
-            _challenge, _account ?? CreateTestAccount(), CancellationToken.None);
+            _challenge, _account ?? CreateTestAccount(), CancellationToken.None).ConfigureAwait(false);
     }
 
     // ─── Then steps ───────────────────────────────────────────────────────────

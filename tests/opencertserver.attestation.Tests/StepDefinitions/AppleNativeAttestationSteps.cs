@@ -59,7 +59,7 @@ public sealed class AppleNativeAttestationSteps : IDisposable
     public async Task WhenGenerateHardwareBackedKey()
     {
         if (!_platformAvailable) return;
-        _keyId = await _interop!.GenerateKeyAsync();
+        _keyId = await _interop!.GenerateKeyAsync().ConfigureAwait(false);
     }
 
     [When(@"the key is attested with a SHA-256 hash of a server challenge")]
@@ -71,7 +71,7 @@ public sealed class AppleNativeAttestationSteps : IDisposable
         // Use a deterministic challenge so we can verify the signature in the Then step
         var challenge = Encoding.UTF8.GetBytes("apple-native-attestation-challenge");
         _challengeHash1 = SHA256.HashData(challenge);
-        _attestationObject1 = await _interop!.AttestKeyAsync(_keyId, _challengeHash1);
+        _attestationObject1 = await _interop!.AttestKeyAsync(_keyId, _challengeHash1).ConfigureAwait(false);
     }
 
     [When(@"the key is attested with challenge ""(.*)""")]
@@ -84,12 +84,12 @@ public sealed class AppleNativeAttestationSteps : IDisposable
         if (_attestationObject1 is null)
         {
             _challengeHash1 = hash;
-            _attestationObject1 = await _interop!.AttestKeyAsync(_keyId, hash);
+            _attestationObject1 = await _interop!.AttestKeyAsync(_keyId, hash).ConfigureAwait(false);
         }
         else
         {
             _challengeHash2 = hash;
-            _attestationObject2 = await _interop!.AttestKeyAsync(_keyId, hash);
+            _attestationObject2 = await _interop!.AttestKeyAsync(_keyId, hash).ConfigureAwait(false);
         }
     }
 
@@ -99,7 +99,7 @@ public sealed class AppleNativeAttestationSteps : IDisposable
         using var interop = new SecurityFrameworkAppleAttestInterop();
         try
         {
-            await interop.GenerateKeyAsync();
+            await interop.GenerateKeyAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

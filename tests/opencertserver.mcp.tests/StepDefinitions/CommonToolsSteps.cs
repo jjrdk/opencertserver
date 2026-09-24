@@ -23,7 +23,7 @@ public sealed class CommonToolsSteps : IDisposable
     [When("the MCP server attempts to invoke a non-existent tool")]
     public async Task InvokeNonExistentTool()
     {
-        var result = await _fixture.InvokeMcpToolAsync("nonexistent_tool_xyz", new { });
+        var result = await _fixture.InvokeMcpToolAsync("nonexistent_tool_xyz", new { }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
     }
 
@@ -38,7 +38,7 @@ public sealed class CommonToolsSteps : IDisposable
 
         // Strip surrounding quotes that Scenario Outline substitution may add
         toolName = toolName.Trim('"').Trim('\'');
-        var result = await _fixture.InvokeMcpToolAsync(toolName, new { });
+        var result = await _fixture.InvokeMcpToolAsync(toolName, new { }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
     }
 
@@ -95,7 +95,7 @@ public sealed class CommonToolsSteps : IDisposable
         var msg = r.ErrorMessage ?? "";
         // Support "or" alternatives and leading articles ("that", "a", "an", "the")
         var parts = keyword.Trim('"', '\'')
-            .Split(new[] { " or " }, StringSplitOptions.RemoveEmptyEntries);
+            .Split([" or "], StringSplitOptions.RemoveEmptyEntries);
         bool pass = parts.Any(part =>
         {
             var clean = part.Trim().Trim('"', '\'');
@@ -146,7 +146,7 @@ public sealed class CommonToolsSteps : IDisposable
         }
 
         var items = new List<CertificateItemInfo>();
-        await foreach (var item in store.GetInventory(0, 500, CancellationToken.None))
+        await foreach (var item in store.GetInventory(0, 500, CancellationToken.None).ConfigureAwait(false))
             items.Add(item);
         var revoked = items.FirstOrDefault(i => i.RevocationReason != null &&
             i.RevocationReason.ToString()!.Equals(expectedReason, StringComparison.OrdinalIgnoreCase));

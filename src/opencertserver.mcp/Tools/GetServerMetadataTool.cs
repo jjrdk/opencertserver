@@ -20,7 +20,7 @@ public class GetServerMetadataTool
         var profileList = new List<CaProfileInfo>();
         var caProfiles = await profiles
             .GetProfiles(cancellationToken)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
 
         foreach (var profile in caProfiles)
         {

@@ -50,7 +50,7 @@ public sealed class AppleAttestationValidationSteps : IDisposable
     public async Task WhenGenerateHardwareBackedKey()
     {
         if (!_platformAvailable) return;
-        _keyId = await _interop!.GenerateKeyAsync();
+        _keyId = await _interop!.GenerateKeyAsync().ConfigureAwait(false);
     }
 
     [When(@"the key is attested with a known challenge hash")]
@@ -62,7 +62,7 @@ public sealed class AppleAttestationValidationSteps : IDisposable
         // Deterministic challenge so we can re-verify in Then steps
         var challenge = Encoding.UTF8.GetBytes("apple-attest-validation-challenge");
         _challengeHash = SHA256.HashData(challenge);
-        _attestationObject = await _interop!.AttestKeyAsync(_keyId, _challengeHash);
+        _attestationObject = await _interop!.AttestKeyAsync(_keyId, _challengeHash).ConfigureAwait(false);
     }
 
     [When(@"the key is attested with two different challenge hashes")]
@@ -73,11 +73,11 @@ public sealed class AppleAttestationValidationSteps : IDisposable
 
         var challenge1 = Encoding.UTF8.GetBytes("challenge-one");
         _challengeHash = SHA256.HashData(challenge1);
-        _attestationObject = await _interop!.AttestKeyAsync(_keyId, _challengeHash);
+        _attestationObject = await _interop!.AttestKeyAsync(_keyId, _challengeHash).ConfigureAwait(false);
 
         var challenge2 = Encoding.UTF8.GetBytes("challenge-two");
         _wrongChallengeHash = SHA256.HashData(challenge2);
-        _attestationObjectForChallenge2 = await _interop!.AttestKeyAsync(_keyId, _wrongChallengeHash);
+        _attestationObjectForChallenge2 = await _interop!.AttestKeyAsync(_keyId, _wrongChallengeHash).ConfigureAwait(false);
     }
 
     // ── Then ──────────────────────────────────────────────────────────────────

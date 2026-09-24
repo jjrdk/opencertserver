@@ -57,6 +57,6 @@ public static class Program
             .WithTools<CheckOcspStatusTool>()
             .WithTools<GetCrlTool>();
 
-        await builder.Build().RunAsync();
+        await builder.Build().RunAsync().ConfigureAwait(false);
     }
 }
