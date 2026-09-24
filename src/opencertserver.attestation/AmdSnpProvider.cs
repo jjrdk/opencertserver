@@ -65,7 +65,7 @@ public sealed class AmdSnpProvider : IAttestationProvider
         HttpResponseMessage response;
         try
         {
-            response = await _httpClient.GetAsync(endpoint);
+            response = await _httpClient.GetAsync(endpoint).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -79,7 +79,7 @@ public sealed class AmdSnpProvider : IAttestationProvider
                 $"VPS returned HTTP {(int)response.StatusCode} for device {deviceId}");
         }
 
-        var certBytes = await response.Content.ReadAsByteArrayAsync();
+        var certBytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
         var cert = X509CertificateLoader.LoadCertificate(certBytes);
         _cache.Set(deviceId, cert, _options.CertificateCacheTtl);
         return cert;

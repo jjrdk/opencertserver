@@ -75,7 +75,7 @@ public class AppleSeAttestationSteps : IDisposable
 
         var challenge = new byte[32];
         Random.Shared.NextBytes(challenge);
-        _result = await _provider.GenerateAndSignQuoteAsync(null!, challenge);
+        _result = await _provider.GenerateAndSignQuoteAsync(null!, challenge).ConfigureAwait(false);
     }
 
     [Then(@"the server should successfully verify the object using https:\/\/appattest\.apple\.com and confirm device genuineness")]

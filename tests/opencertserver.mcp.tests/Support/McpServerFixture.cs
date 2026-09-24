@@ -81,7 +81,7 @@ public class McpServerFixture : IDisposable
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pss);
         var pemCsr = request.ToPkcs10Base64();
-        var result = await CertificateAuthority.SignCertificateRequestPem(pemCsr, "rsa");
+        var result = await CertificateAuthority.SignCertificateRequestPem(pemCsr, "rsa").ConfigureAwait(false);
         X509Certificate2 cert;
         if (result is SignCertificateResponse.Success success)
         {
@@ -101,7 +101,7 @@ public class McpServerFixture : IDisposable
 
     public async Task<X509Certificate2> CreateAndIssueCertificateAsync(string cn)
     {
-        return (await CreateAndSignCertificate(cn)).cert;
+        return (await CreateAndSignCertificate(cn).ConfigureAwait(false)).cert;
     }
 
     public static string CreateBase64DerCsr()
@@ -129,12 +129,12 @@ public class McpServerFixture : IDisposable
                     services.GetRequiredService<CaConfiguration>(),
                     services.GetRequiredService<IStoreCaProfiles>(),
                     services.GetRequiredService<IOptions<OpenCertServer.Mcp.McpServerOptions>>(),
-                    cancellationToken),
+                    cancellationToken).ConfigureAwait(false),
                 "list_certificates" => await ListCertificatesTool.ListCertificatesAsync(
                     services.GetRequiredService<IStoreCertificates>(),
                     GetInt32(dict, "page", 0),
                     GetInt32(dict, "pageSize", 100),
-                    cancellationToken),
+                    cancellationToken).ConfigureAwait(false),
                 "search_certificates" => await SearchCertificatesTool.SearchCertificates(
                     services.GetRequiredService<IStoreCertificates>(),
                     GetString(dict, "subjectCN"),
@@ -150,17 +150,17 @@ public class McpServerFixture : IDisposable
                     GetStringArray(dict, "keyAlgorithms"),
                     GetInt32(dict, "page", 0),
                     GetInt32(dict, "pageSize", 100),
-                    cancellationToken),
+                    cancellationToken).ConfigureAwait(false),
                 "get_certificate" => await GetCertificateTool.GetCertificate(
                     services.GetRequiredService<IStoreCertificates>(),
                     GetString(dict, "serialNumber") ?? string.Empty,
                     GetBoolean(dict, "includePem", false),
-                    cancellationToken),
+                    cancellationToken).ConfigureAwait(false),
                 "get_ca_certificates" => await GetCaCertificatesTool.GetCaCertificates(
                     services.GetRequiredService<ICertificateAuthority>(),
                     GetString(dict, "profileName"),
                     GetBoolean(dict, "includeFullChain", false),
-                    cancellationToken),
+                    cancellationToken).ConfigureAwait(false),
                 "sign_certificate" => await SignCertificateTool.SignCertificate(
                     services.GetRequiredService<ICertificateAuthority>(),
                     GetString(dict, "csr") ?? string.Empty,
@@ -168,28 +168,28 @@ public class McpServerFixture : IDisposable
                     GetDateTimeOffset(dict, "notBefore"),
                     GetDateTimeOffset(dict, "notAfter"),
                     GetBoolean(dict, "includePem", false),
-                    cancellationToken),
+                    cancellationToken).ConfigureAwait(false),
                 "revoke_certificate" => await RevokeCertificateTool.RevokeCertificate(
                     services.GetRequiredService<ICertificateAuthority>(),
                     GetString(dict, "serialNumber") ?? string.Empty,
                     GetString(dict, "reason") ?? "Unspecified",
-                    cancellationToken),
+                    cancellationToken).ConfigureAwait(false),
                 "get_revocation_status" => await GetRevocationStatusTool.GetRevocationStatus(
                     services.GetRequiredService<IStoreCertificates>(),
                     GetStringArray(dict, "serialNumbers") ?? Array.Empty<string>(),
                     GetString(dict, "profileName"),
-                    cancellationToken),
+                    cancellationToken).ConfigureAwait(false),
                 "check_ocsp_status" => await CheckOcspStatusTool.CheckOcspStatus(
                     services.GetRequiredService<IStoreCertificates>(),
                     GetString(dict, "serialNumber") ?? string.Empty,
                     GetString(dict, "issuerNameHash") ?? string.Empty,
                     GetString(dict, "issuerKeyHash") ?? string.Empty,
-                    cancellationToken),
+                    cancellationToken).ConfigureAwait(false),
                 "get_crl" => await GetCrlTool.GetCrl(
                     services.GetRequiredService<ICertificateAuthority>(),
                     GetString(dict, "profileName"),
                     GetBoolean(dict, "includePem", false),
-                    cancellationToken),
+                    cancellationToken).ConfigureAwait(false),
                 _ => throw new UnknownToolException(toolName)
             };
 

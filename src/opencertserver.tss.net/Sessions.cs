@@ -48,7 +48,7 @@ public class SessionBase
     /// use any authorization for the corresponding handle. Normally this indicator
     /// is useful for debugging purposes only.
     /// </summary>
-    internal static SessionBase None = new SessionBase();
+    internal static SessionBase None = new();
 
     /// <summary>
     /// Session type indicator corresponding to the Auth.Hmac authorization type.
@@ -57,7 +57,7 @@ public class SessionBase
     /// authorization session by the library when command buffer is generated.
     /// Consider using Auth.Default instead.
     /// </summary>
-    internal static SessionBase Hmac = new SessionBase();
+    internal static SessionBase Hmac = new();
 
     /// <summary>
     /// Session type indicator corresponding to the Auth.Hmac authorization type.
@@ -66,7 +66,7 @@ public class SessionBase
     /// authorization session by the library when command buffer is generated.
     /// Consider using Auth.Default instead.
     /// </summary>
-    internal static SessionBase Pw = new SessionBase();
+    internal static SessionBase Pw = new();
 
     /// <summary>
     /// Session type indicator corresponding to the Auth.Hmac authorization type.
@@ -325,7 +325,7 @@ public class AuthSession : SessionBase
         }
 
         var encKey = (AuthHandle != null && AuthHandle.Auth != null)
-            ? SessionKey.Concat(Globs.TrimTrailingZeros(AuthHandle.Auth)).ToArray()
+            ? [.. SessionKey, .. Globs.TrimTrailingZeros(AuthHandle.Auth)]
             : SessionKey;
 
         if (Symmetric.Algorithm == TpmAlgId.Xor)
@@ -346,10 +346,8 @@ public class AuthSession : SessionBase
         Array.Copy(keyInfo, keySize, iv, 0, blockSize);
 
         // Make a new SymCipher from the key and IV and do the encryption.
-        using (var s = SymCipher.Create(Symmetric, key, iv))
-        {
-            return inOrOut == Direction.Command ? s.Encrypt(parm) : s.Decrypt(parm);
-        }
+        using var s = SymCipher.Create(Symmetric, key, iv);
+        return inOrOut == Direction.Command ? s.Encrypt(parm) : s.Decrypt(parm);
     }
 
     /// <summary>

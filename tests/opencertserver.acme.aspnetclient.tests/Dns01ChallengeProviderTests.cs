@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using OpenCertServer.Acme.AspNetClient.Certificates;
 using Certes;
-using CertesSlim;
 using CertesSlim.Acme;
 using CertesSlim.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -75,7 +74,7 @@ public sealed class Dns01ChallengeProviderTests
         validator.IsCertificateValid(Arg.Any<X509Certificate2?>()).Returns(false);
 
         ChallengeDto[] challengeDtos = [
-            new ChallengeDto("base64-digest-value", "tok-base64", ["example.com"])
+            new("base64-digest-value", "tok-base64", ["example.com"])
          ];
         var placedOrder = new PlacedOrder(challengeDtos, Substitute.For<IOrderContext>(), []);
 
@@ -94,10 +93,10 @@ public sealed class Dns01ChallengeProviderTests
              NullLogger<CertificateProvider>.Instance);
 
         var result = await provider.RenewCertificateIfNeeded(
-              "pw",
-             null,
-             new[] { "example.com" },
-             cancellationToken: TestContext.Current.CancellationToken);
+            "pw",
+            null,
+            ["example.com"],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(CertificateRenewalStatus.Renewed, result.Status);
 
@@ -121,7 +120,7 @@ public sealed class Dns01ChallengeProviderTests
         validator.IsCertificateValid(Arg.Any<X509Certificate2?>()).Returns(false);
 
         ChallengeDto[] challengeDtos = [
-            new ChallengeDto("token", "token-keyauthz", ["example.com"])
+            new("token", "token-keyauthz", ["example.com"])
           ];
         var placedOrder = new PlacedOrder(challengeDtos, Substitute.For<IOrderContext>(), []);
 
@@ -140,10 +139,10 @@ public sealed class Dns01ChallengeProviderTests
              NullLogger<CertificateProvider>.Instance);
 
         var result = await provider.RenewCertificateIfNeeded(
-              "pw",
-             null,
-             new[] { "example.com" },
-             cancellationToken: TestContext.Current.CancellationToken);
+            "pw",
+            null,
+            ["example.com"],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(CertificateRenewalStatus.Renewed, result.Status);
         Assert.Empty(dns.Placed);
@@ -160,7 +159,7 @@ public sealed class Dns01ChallengeProviderTests
         validator.IsCertificateValid(Arg.Any<X509Certificate2?>()).Returns(false);
 
         ChallengeDto[] challengeDtos = [
-            new ChallengeDto("wildcard-digest", "tok-wildcard", ["*.example.com"])
+            new("wildcard-digest", "tok-wildcard", ["*.example.com"])
            ];
         var placedOrder = new PlacedOrder(challengeDtos, Substitute.For<IOrderContext>(), []);
 
@@ -179,10 +178,10 @@ public sealed class Dns01ChallengeProviderTests
              NullLogger<CertificateProvider>.Instance);
 
         await provider.RenewCertificateIfNeeded(
-                "pw",
-              null,
-              new[] { "*.example.com" },
-              cancellationToken: TestContext.Current.CancellationToken);
+            "pw",
+            null,
+            ["*.example.com"],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Single(dns.Placed);
         Assert.Equal("_acme-challenge.example.com", dns.Placed[0].Name);
@@ -197,7 +196,7 @@ public sealed class Dns01ChallengeProviderTests
         validator.IsCertificateValid(Arg.Any<X509Certificate2?>()).Returns(false);
 
         ChallengeDto[] challengeDtos = [
-            new ChallengeDto("digest", "tok", ["example.com"])
+            new("digest", "tok", ["example.com"])
             ];
         var placedOrder = new PlacedOrder(challengeDtos, Substitute.For<IOrderContext>(), []);
 
@@ -216,11 +215,11 @@ public sealed class Dns01ChallengeProviderTests
              NullLogger<CertificateProvider>.Instance);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-               () => provider.RenewCertificateIfNeeded(
-                       "pw",
-                      null,
-                      new[] { "example.com" },
-                      cancellationToken: TestContext.Current.CancellationToken));
+            () => provider.RenewCertificateIfNeeded(
+                "pw",
+                null,
+                ["example.com"],
+                cancellationToken: TestContext.Current.CancellationToken));
 
         await persistence.Received(1).DeleteChallenges(challengeDtos);
     }
@@ -230,15 +229,14 @@ public sealed class Dns01ChallengeProviderTests
         var client = Substitute.For<IAcmeClient>();
         client.PlaceOrder(expectedType, Arg.Any<string[]>())
                   .Returns(Task.FromResult(placedOrder));
-        var collection = new X509Certificate2Collection();
-        collection.Add(_validCert);
+        var collection = new X509Certificate2Collection { _validCert };
         client.FinalizeOrder(placedOrder, Arg.Any<string>(), Arg.Any<string?>())
                   .Returns(Task.FromResult((_validCert, string.Empty, collection)));
         return client;
     }
 
-    private static AcmeOptions Dns01Options()
-            => new TestOptions
+    private static TestOptions Dns01Options()
+            => new()
             {
                 AccountPassword = "pw",
                 Email = "test@example.com",
@@ -246,8 +244,8 @@ public sealed class Dns01ChallengeProviderTests
                 ChallengeType = ChallengeType.Dns01
             };
 
-    private static AcmeOptions Http01Options()
-             => new TestOptions
+    private static TestOptions Http01Options()
+             => new()
              {
                  AccountPassword = "pw",
                  Email = "test@example.com",

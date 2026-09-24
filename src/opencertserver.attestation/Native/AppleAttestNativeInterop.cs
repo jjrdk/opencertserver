@@ -72,7 +72,7 @@ public sealed class AppleAttestNativeInterop : IAppleAttestNativeInterop
             {
                 throw new NativeLibraryException(ShimLibrary, ex);
             }
-        });
+        }).ConfigureAwait(false);
     }
 
     public async Task<byte[]> AttestKeyAsync(string keyId, ReadOnlyMemory<byte> clientDataHash)
@@ -107,7 +107,7 @@ public sealed class AppleAttestNativeInterop : IAppleAttestNativeInterop
             {
                 throw new NativeLibraryException(ShimLibrary, ex);
             }
-        });
+        }).ConfigureAwait(false);
     }
 
     private static void GuardPlatform()

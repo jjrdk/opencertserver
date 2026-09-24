@@ -231,13 +231,13 @@ public class IOrderContextExtensionsTests
 
         httpClientMock.Post<Order, object>(finalizeLoc, Arg.Any<object>())
             .Returns(new AcmeHttpResponse<Order>(accountLoc, new Order
-            {
-                Identifiers =
+                {
+                    Identifiers =
                     [
                         new Identifier { Value = "www.certes.com", Type = IdentifierType.Dns }
                     ],
-                Status = OrderStatus.Valid
-            },
+                    Status = OrderStatus.Valid
+                },
                 null,
                 null));
 
@@ -354,13 +354,13 @@ public class IOrderContextExtensionsTests
         orderCtxMock.Download().Returns(new CertificateChain(pem));
         orderCtxMock.Resource()
             .Returns(new Order
-            {
-                Identifiers =
+                {
+                    Identifiers =
                     [
                         new Identifier { Value = "www.certes.com", Type = IdentifierType.Dns }
                     ],
-                Status = OrderStatus.Ready
-            },
+                    Status = OrderStatus.Ready
+                },
                 new Order
                 {
                     Identifiers =

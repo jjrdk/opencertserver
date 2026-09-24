@@ -63,7 +63,7 @@ public class ParameterHandlingSteps
             parameters[key] = value;
         }
 
-        var result = await _fixture.InvokeMcpToolAsync(toolName, parameters);
+        var result = await _fixture.InvokeMcpToolAsync(toolName, parameters).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
     }
 
@@ -95,7 +95,7 @@ public class ParameterHandlingSteps
             ["csr"] = pemCsr
         };
 
-        var result = await _fixture.InvokeMcpToolAsync(toolName, parameters);
+        var result = await _fixture.InvokeMcpToolAsync(toolName, parameters).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
         if (result.IsSuccess && result.Content is McpCertificateItem cert)
         {
@@ -128,7 +128,7 @@ public class ParameterHandlingSteps
             ["notAfter"] = notAfter
         };
 
-        var result = await _fixture.InvokeMcpToolAsync(toolName, parameters);
+        var result = await _fixture.InvokeMcpToolAsync(toolName, parameters).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
         if (result.IsSuccess && result.Content is McpCertificateItem cert)
         {
@@ -153,7 +153,7 @@ public class ParameterHandlingSteps
             reenrollingFrom: null,
             notBefore: null,
             notAfter: null,
-            CancellationToken.None);
+            CancellationToken.None).ConfigureAwait(false);
 
         if (result is SignCertificateResponse.Success success)
         {

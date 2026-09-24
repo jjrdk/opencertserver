@@ -53,14 +53,14 @@ public sealed class McpServerRevocationSteps
     {
         // This issues a cert that goes into TestSharedState; also stash in _issuedCerts for OCSP
         var csr = McpServerFixture.CreateBase64DerCsr();
-        var mcpResult = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr });
+        var mcpResult = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         if (mcpResult.IsSuccess)
         {
             TestSharedState.SignedCert = (McpCertificateItem)mcpResult.Content!;
         }
 
         // Also need an actual X509Certificate2 in _issuedCerts for hash computation
-        var cert = await _fixture.CreateAndIssueCertificateAsync("test-rev-check-1");
+        var cert = await _fixture.CreateAndIssueCertificateAsync("test-rev-check-1").ConfigureAwait(false);
         _issuedCerts.Add(cert);
     }
 
@@ -68,12 +68,12 @@ public sealed class McpServerRevocationSteps
     public async Task GivenAnotherCertificateIssuedAndRevoked()
     {
         // Issue second cert
-        var cert = await _fixture.CreateAndIssueCertificateAsync("test-rev-check-2");
+        var cert = await _fixture.CreateAndIssueCertificateAsync("test-rev-check-2").ConfigureAwait(false);
         _issuedCerts.Add(cert);
 
         // Also add to shared state so common assertions work
         var csr = McpServerFixture.CreateBase64DerCsr();
-        var mcpResult = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr });
+        var mcpResult = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         if (mcpResult.IsSuccess)
         {
             TestSharedState.SignedCert = (McpCertificateItem)mcpResult.Content!;
@@ -84,13 +84,13 @@ public sealed class McpServerRevocationSteps
         {
             serialNumber = cert.GetSerialNumberString(),
             reason = "KeyCompromise"
-        });
+        }).ConfigureAwait(false);
     }
 
     [When("the MCP server invokes \"get_crl\" with default parameters")]
     public async Task WhenGetCrlDefault()
     {
-        var result = await _fixture.InvokeMcpToolAsync("get_crl", new { });
+        var result = await _fixture.InvokeMcpToolAsync("get_crl", new { }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"get_crl failed: {result.ErrorMessage}");
         TestSharedState.ToolResult = result;
         TestSharedState.CrlResult = (McpCrlResult)result.Content!;
@@ -99,7 +99,7 @@ public sealed class McpServerRevocationSteps
     [When("the MCP server invokes \"get_crl\" with profileName \"(.+)\"")]
     public async Task WhenGetCrlWithProfile(string profileName)
     {
-        var result = await _fixture.InvokeMcpToolAsync("get_crl", new { profileName });
+        var result = await _fixture.InvokeMcpToolAsync("get_crl", new { profileName }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"get_crl with profile failed: {result.ErrorMessage}");
         TestSharedState.ToolResult = result;
         TestSharedState.CrlResult = (McpCrlResult)result.Content!;
@@ -108,7 +108,7 @@ public sealed class McpServerRevocationSteps
     [When("the MCP server invokes \"get_crl\" with includePem true")]
     public async Task WhenGetCrlWithPem()
     {
-        var result = await _fixture.InvokeMcpToolAsync("get_crl", new { includePem = true });
+        var result = await _fixture.InvokeMcpToolAsync("get_crl", new { includePem = true }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"get_crl with PEM failed: {result.ErrorMessage}");
         TestSharedState.ToolResult = result;
         TestSharedState.CrlResult = (McpCrlResult)result.Content!;
@@ -118,13 +118,13 @@ public sealed class McpServerRevocationSteps
             "the MCP server invokes \"check_ocsp_status\" with the certificate's serial number, issuer name hash, and issuer key hash")]
     public async Task WhenCheckOcspWithGoodCert()
     {
-        var (serial, nameHash, keyHash) = await GetCertInfoAsync();
+        var (serial, nameHash, keyHash) = await GetCertInfoAsync().ConfigureAwait(false);
         var result = await _fixture.InvokeMcpToolAsync("check_ocsp_status", new
         {
             serialNumber = serial,
             issuerNameHash = nameHash,
             issuerKeyHash = keyHash
-        });
+        }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"check_ocsp_status failed: {result.ErrorMessage}");
         TestSharedState.OcspResult = (McpOcspCheckResult)result.Content!;
         TestSharedState.ToolResult = result;
@@ -139,7 +139,7 @@ public sealed class McpServerRevocationSteps
             serialNumber = serial,
             issuerNameHash = nameHash,
             issuerKeyHash = keyHash
-        });
+        }).ConfigureAwait(false);
         TestSharedState.OcspResult = result.IsSuccess
                 ? (McpOcspCheckResult)result.Content!
                 : null;
@@ -149,7 +149,7 @@ public sealed class McpServerRevocationSteps
     [When("the MCP server invokes \"check_ocsp_status\" with serial number \"(.+)\" but no issuer hashes")]
     public async Task WhenCheckOcspWithoutHashes(string serial)
     {
-        var result = await _fixture.InvokeMcpToolAsync("check_ocsp_status", new { serialNumber = serial });
+        var result = await _fixture.InvokeMcpToolAsync("check_ocsp_status", new { serialNumber = serial }).ConfigureAwait(false);
         TestSharedState.OcspResult = result.IsSuccess
                 ? (McpOcspCheckResult)result.Content!
                 : null;
@@ -160,12 +160,12 @@ public sealed class McpServerRevocationSteps
             "the MCP server invokes \"get_revocation_status\" with an array containing the certificate's serial number")]
     public async Task WhenGetRevStatusWithGoodCert()
     {
-        var (serial, _, _) = await GetCertInfoAsync();
+        var (serial, _, _) = await GetCertInfoAsync().ConfigureAwait(false);
         TestSharedState.RequestedSerialNumber = serial;
         var result = await _fixture.InvokeMcpToolAsync("get_revocation_status", new
         {
             serialNumbers = new[] { serial }
-        });
+        }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"get_revocation_status failed: {result.ErrorMessage}");
         TestSharedState.RevocationStatusResult = (McpRevocationStatusResult)result.Content!;
         TestSharedState.ToolResult = result;
@@ -178,7 +178,7 @@ public sealed class McpServerRevocationSteps
         var result = await _fixture.InvokeMcpToolAsync("get_revocation_status", new
         {
             serialNumbers = new[] { serial }
-        });
+        }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"get_revocation_status failed: {result.ErrorMessage}");
         TestSharedState.RevocationStatusResult = (McpRevocationStatusResult)result.Content!;
         TestSharedState.ToolResult = result;
@@ -190,7 +190,7 @@ public sealed class McpServerRevocationSteps
         var result = await _fixture.InvokeMcpToolAsync("get_revocation_status", new
         {
             serialNumbers = Array.Empty<string>()
-        });
+        }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
     }
 
@@ -201,7 +201,7 @@ public sealed class McpServerRevocationSteps
         var result = await _fixture.InvokeMcpToolAsync("get_revocation_status", new
         {
             serialNumbers = serials
-        });
+        }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"get_revocation_status failed: {result.ErrorMessage}");
         TestSharedState.RevocationStatusResult = (McpRevocationStatusResult)result.Content!;
         TestSharedState.ToolResult = result;
@@ -215,7 +215,7 @@ public sealed class McpServerRevocationSteps
         {
             serialNumbers = serials,
             profileName = profileName
-        });
+        }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"get_revocation_status with profile failed: {result.ErrorMessage}");
         TestSharedState.RevocationStatusResult = (McpRevocationStatusResult)result.Content!;
         TestSharedState.ToolResult = result;

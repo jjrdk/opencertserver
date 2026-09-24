@@ -303,7 +303,7 @@ public sealed class TssTpmKeyProvider : ITpmKeyProvider
     /// caller already supplies the fully-qualified persistent handle value.  Using
     /// <c>new TpmHandle(rawValue)</c> avoids the issue by setting the handle directly.
     /// </summary>
-    private static TpmHandle PersistentHandle(uint rawHandleValue) => new TpmHandle(rawHandleValue);
+    private static TpmHandle PersistentHandle(uint rawHandleValue) => new(rawHandleValue);
 
     private static TpmAlgId ToTpmAlgId(HashAlgorithmName hashAlgorithm)
     {
