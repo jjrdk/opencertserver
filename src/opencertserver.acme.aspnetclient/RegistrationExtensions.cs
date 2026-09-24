@@ -39,7 +39,7 @@ public static class RegistrationExtensions
 
         public IServiceCollection AddAcmeRenewalLifecycleHook<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
-            TCertificateRenewalLifecycleHook>()
+        TCertificateRenewalLifecycleHook>()
             where TCertificateRenewalLifecycleHook : class, ICertificateRenewalLifecycleHook
         {
             return services.AddAcmePersistenceService()
@@ -170,7 +170,7 @@ public static class RegistrationExtensions
         public IServiceCollection AddAcmeClient<
                 TOptions,
                 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
-                TDnsChallengeProvider>(
+        TDnsChallengeProvider>(
             TOptions options)
             where TOptions : AcmeOptions
             where TDnsChallengeProvider : class, IDnsChallengeProvider
