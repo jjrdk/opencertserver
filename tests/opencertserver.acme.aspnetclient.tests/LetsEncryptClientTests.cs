@@ -109,7 +109,7 @@ public sealed class LetsEncryptClientTests
         var dtos = new[] { new ChallengeDto("ping", "pong", ["test.com"]) };
         var placedOrder = new PlacedOrder(dtos, Substitute.For<IOrderContext>(), []);
 
-        _letsEncryptClient.PlaceOrder([]).Returns(Task.FromResult(placedOrder));
+        _letsEncryptClient.PlaceOrder(ChallengeType.Http01, []).Returns(Task.FromResult(placedOrder));
         _persistenceService.PersistChallenges(dtos).Returns(Task.CompletedTask);
         _persistenceService.DeleteChallenges(dtos).Returns(Task.CompletedTask);
 
@@ -141,7 +141,7 @@ public sealed class LetsEncryptClientTests
         _certificateValidator.Received(1).IsCertificateValid(null);
         await _persistenceService.Received(1).GetPersistedSiteCertificate(Arg.Any<string>(), TestContext.Current.CancellationToken);
         _certificateValidator.Received(1).IsCertificateValid(InvalidCert);
-        await _letsEncryptClient.Received(1).PlaceOrder([]);
+        await _letsEncryptClient.Received(1).PlaceOrder(ChallengeType.Http01, []);
         await _persistenceService.Received(1).PersistChallenges(dtos);
         await _persistenceService.Received(1).DeleteChallenges(dtos);
         await _persistenceService.Received(1).PersistChallenges(dtos);
@@ -187,10 +187,10 @@ public sealed class LetsEncryptClientTests
             options,
             NullLogger.Instance);
 
-         // act
+        // act
 
-         var keyPem = ValidCert.GetECDsaPrivateKey()!.ExportECPrivateKeyPem();
-         var (result, _, _) = await client.FinalizeOrder(placedOrder, "", keyPem);
+        var keyPem = ValidCert.GetECDsaPrivateKey()!.ExportECPrivateKeyPem();
+        var (result, _, _) = await client.FinalizeOrder(placedOrder, "", keyPem);
 
         // assert
         var cert = X509CertificateLoader.LoadCertificate(result.RawData.AsSpan());

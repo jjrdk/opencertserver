@@ -175,16 +175,46 @@ public static class RegistrationExtensions
             // deferred to AcmeRenewalService.StartAsync, where the route source can be inspected, so a
             // YARP-only deployment is not forced to provide redundant per-route domains.
             return services.AddTransient<IConfigureOptions<KestrelServerOptions>, KestrelOptionsSetup>()
-                .AddAcmePersistenceService()
-                .AddAcmeRouteConfigurationSource()
-                .AddSingleton(options)
-                .AddSingleton<AcmeOptions>(sp => sp.GetRequiredService<TOptions>())
-                .AddSingleton<IValidateCertificates, CertificateValidator>()
-                .AddSingleton<IProvideCertificates, CertificateProvider>()
-                .AddSingleton<AcmeRouteScope>()
-                .AddTransient<IHostedService>(sp => sp.GetRequiredService<IAcmeRenewalService>())
-                .AddSingleton<IAcmeRenewalService, AcmeRenewalService>()
-                .AddSingleton<IAcmeClientFactory, AcmeClientFactory>();
+                    .AddAcmePersistenceService()
+                    .AddAcmeRouteConfigurationSource()
+                    .AddAcmeDnsChallenge()
+                    .AddSingleton(options)
+                    .AddSingleton<AcmeOptions>(sp => sp.GetRequiredService<TOptions>())
+                    .AddSingleton<IValidateCertificates, CertificateValidator>()
+                    .AddSingleton<IProvideCertificates, CertificateProvider>()
+                    .AddSingleton<AcmeRouteScope>()
+                    .AddTransient<IHostedService>(sp => sp.GetRequiredService<IAcmeRenewalService>())
+                    .AddSingleton<IAcmeRenewalService, AcmeRenewalService>()
+                    .AddSingleton<IAcmeClientFactory, AcmeClientFactory>();
+        }
+
+        /// <summary>
+        /// Ensures an <see cref="IDnsChallengeProvider"/> is registered. When none is supplied the
+        /// no-op <see cref="NullDnsChallengeProvider"/> is used, which leaves the http-01 path
+        /// unaffected and makes DNS-01 a no-op until a real provider is supplied.
+        /// </summary>
+        public IServiceCollection AddAcmeDnsChallenge()
+        {
+            return services.Any(x => x.ServiceType == typeof(IDnsChallengeProvider))
+                   ? services
+                  : services.AddSingleton<NullDnsChallengeProvider>()
+                       .AddSingleton(sp => (IDnsChallengeProvider)sp.GetRequiredService<NullDnsChallengeProvider>());
+        }
+
+        /// <summary>
+        /// Registers the <see cref="IDnsChallengeProvider"/> used to publish and remove the
+        /// <c>_acme-challenge</c> TXT records a DNS-01 order requires. The provider writes the record
+        /// before validation and deletes it afterwards; call this to enable DNS-01.
+        /// </summary>
+        public IServiceCollection AddAcmeDnsChallenge(IDnsChallengeProvider dnsChallengeProvider)
+        {
+            return services.AddSingleton(dnsChallengeProvider);
+        }
+
+        public IServiceCollection AddAcmeDnsChallenge(
+            Func<IServiceProvider, IDnsChallengeProvider> dnsChallengeProviderFactory)
+        {
+            return services.AddSingleton(dnsChallengeProviderFactory);
         }
     }
 

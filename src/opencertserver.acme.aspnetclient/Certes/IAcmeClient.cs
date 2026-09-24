@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 public interface IAcmeClient
 {
-    Task<PlacedOrder> PlaceOrder(string[] domains);
+    Task<PlacedOrder> PlaceOrder(ChallengeType challengeType, string[] domains);
 
     /// <summary>
     /// Finalizes an order and returns the issued leaf certificate, the PEM-encoded leaf private key

@@ -161,7 +161,7 @@ public partial class CertificateServerFeatures
     [When(@"the client requests a certificate")]
     public async Task WhenTheClientRequestsACertificate()
     {
-        var placedOrder = await _acmeClient.PlaceOrder(["localhost"]);
+        var placedOrder = await _acmeClient.PlaceOrder(ChallengeType.Http01, ["localhost"]);
 
         Assert.NotNull(placedOrder);
 

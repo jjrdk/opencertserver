@@ -30,13 +30,12 @@ internal class AuthorizationContext : EntityContext<Authorization>, IAuthorizati
     {
         var authz = await Resource().ConfigureAwait(false);
         return authz
-                .Challenges?
-                .Select(c => new ChallengeContext(Context, c.Url!, c.Type!, c.Token!)) ??
-            Enumerable.Empty<IChallengeContext>();
+            .Challenges
+            .Select(c => new ChallengeContext(Context, c.Url!, c.Type!, c.Token!));
     }
 
     /// <summary>
-    /// Deactivates this authzorization.
+    /// Deactivates this authorization.
     /// </summary>
     /// <returns>
     /// The authorization deactivated.
