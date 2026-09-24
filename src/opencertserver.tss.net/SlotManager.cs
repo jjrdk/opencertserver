@@ -183,7 +183,7 @@ public sealed class Tbs : IDisposable
             var neededEntities =
                 neededObjects != null
                     ? neededSessions != null
-                        ? neededObjects.Concat(neededSessions).ToArray()
+                        ? [.. neededObjects, .. neededSessions]
                         : neededObjects
                     : neededSessions;
 #if false
@@ -908,7 +908,7 @@ public sealed class Tbs : IDisposable
         handles.AddRange(GetLoadedEntities(tpm, Ht.Transient));
         handles.AddRange(GetLoadedEntities(tpm, Ht.LoadedSession));
         handles.AddRange(GetLoadedEntities(tpm, TpmHelpers.GetEnumerator<Ht>("ActiveSession", "SavedSession")));
-        return handles.ToArray();
+        return [.. handles];
     }
 
     private void CheckConsistency(string message = "")

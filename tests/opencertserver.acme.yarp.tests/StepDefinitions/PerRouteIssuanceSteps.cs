@@ -59,7 +59,7 @@ public class PerRouteIssuanceSteps
             source,
              _scope);
 
-        await service.RunAllRoutesOnce("test", CancellationToken.None);
+        await service.RunAllRoutesOnce("test", CancellationToken.None).ConfigureAwait(false);
 
         var setup = new KestrelOptionsSetup(
             new TestRenewalService(),

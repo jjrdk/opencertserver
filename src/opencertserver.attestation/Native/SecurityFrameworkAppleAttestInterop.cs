@@ -32,7 +32,7 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
     public async Task<string> GenerateKeyAsync()
     {
         GuardPlatform();
-        return await Task.Run(GenerateKeySync);
+        return await Task.Run(GenerateKeySync).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -47,7 +47,7 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
             throw new InvalidOperationException(
                 $"Key '{keyId}' not found. Call GenerateKeyAsync() first.");
 
-        return await Task.Run(() => BuildAttestationObject(privateKey, clientDataHash.ToArray()));
+        return await Task.Run(() => BuildAttestationObject(privateKey, clientDataHash.ToArray())).ConfigureAwait(false);
     }
 
     // ── Core logic ────────────────────────────────────────────────────────────

@@ -53,9 +53,9 @@ public sealed class DeviceAttestServerSteps : IDisposable
     public async Task WhenIGetTheDirectoryEndpoint()
     {
         Assert.NotNull(_server);
-        var response = await _server.CreateClient().GetAsync(new Uri("https://localhost/directory"));
+        var response = await _server.CreateClient().GetAsync(new Uri("https://localhost/directory")).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         _directoryJson = JsonSerializer.Deserialize<JsonObject>(json)
          ?? throw new InvalidOperationException("Directory response was not a JSON object");
     }
@@ -127,7 +127,7 @@ public sealed class DeviceAttestServerSteps : IDisposable
         using var scope = _server.Services.CreateScope();
         var validator = scope.ServiceProvider.GetRequiredService<IValidateDeviceAttestChallenges>();
         (_challengeIsValid, _challengeError) = await validator.ValidateChallenge(
-            _challenge, _account, CancellationToken.None);
+            _challenge, _account, CancellationToken.None).ConfigureAwait(false);
     }
 
     [Then(@"the challenge is marked as valid")]

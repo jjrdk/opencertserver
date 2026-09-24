@@ -75,7 +75,7 @@ public class AmdSnpAttestationSteps
         string deviceId;
         try
         {
-            deviceId = await _provider!.GetDeviceIdAsync();
+            deviceId = await _provider!.GetDeviceIdAsync().ConfigureAwait(false);
         }
         catch (NativeLibraryException)
         {
@@ -90,14 +90,14 @@ public class AmdSnpAttestationSteps
 
         Assert.NotEmpty(deviceId);
 
-        var cert = await _provider!.RetrieveDeviceCertificateAsync(deviceId);
+        var cert = await _provider!.RetrieveDeviceCertificateAsync(deviceId).ConfigureAwait(false);
         Assert.NotNull(cert);
 
         var nonce = new byte[32];
         Random.Shared.NextBytes(nonce);
         try
         {
-            var report = await _provider!.GenerateAndSignQuoteAsync(cert, nonce);
+            var report = await _provider!.GenerateAndSignQuoteAsync(cert, nonce).ConfigureAwait(false);
             Assert.NotEmpty(report);
         }
         catch (NativeLibraryException) { }

@@ -36,7 +36,7 @@ internal sealed class DefaultIssuer : IIssueCertificates
                     new System.Security.Claims.Claim(i.Type.ToString().ToLowerInvariant(), i.Value)), "acme"),
             notBefore: notBefore,
             notAfter: notAfter,
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         return cert switch
         {
             SignCertificateResponse.Success success => (

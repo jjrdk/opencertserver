@@ -419,28 +419,26 @@ public sealed class AsymCryptoSystem : IDisposable
         var eccParms = (EccParms)_publicParms.parameters;
 
         // Make a new ephemeral key
-        using (var eph = ECDiffieHellman.Create(RawEccKey.GetEccCurve(eccParms.curveID)))
+        using var eph = ECDiffieHellman.Create(RawEccKey.GetEccCurve(eccParms.curveID));
+        var hash = CryptoLib.GetHashAlgorithmName(decryptKeyNameAlg);
+        var ephPub = eph.PublicKey.ExportParameters().Q;
+        ephemPub = new EccPoint(ephPub.X, ephPub.Y);
+        var otherInfo = Globs.Concatenate([
+            encodingParms, ephPub.X, _ecDhProvider.PublicKey.ExportParameters().Q.X
+        ]);
+
+        // The TPM uses the following number of bytes from the KDF
+        var bytesNeeded = CryptoLib.DigestSize(decryptKeyNameAlg);
+        keyExchangeKey = new byte[bytesNeeded];
+
+        for (int pos = 0, count = 1, bytesToCopy = 0;
+            pos < bytesNeeded;
+            ++count, pos += bytesToCopy)
         {
-            var hash = CryptoLib.GetHashAlgorithmName(decryptKeyNameAlg);
-            var ephPub = eph.PublicKey.ExportParameters().Q;
-            ephemPub = new EccPoint(ephPub.X, ephPub.Y);
-            var otherInfo = Globs.Concatenate([
-                encodingParms, ephPub.X, _ecDhProvider.PublicKey.ExportParameters().Q.X
-            ]);
-
-            // The TPM uses the following number of bytes from the KDF
-            var bytesNeeded = CryptoLib.DigestSize(decryptKeyNameAlg);
-            keyExchangeKey = new byte[bytesNeeded];
-
-            for (int pos = 0, count = 1, bytesToCopy = 0;
-                pos < bytesNeeded;
-                ++count, pos += bytesToCopy)
-            {
-                var secretPrepend = Marshaller.GetTpmRepresentation((uint)count);
-                var fragment = eph.DeriveKeyFromHash(_ecDhProvider.PublicKey, hash, secretPrepend, otherInfo);
-                bytesToCopy = Math.Min(bytesNeeded - pos, fragment.Length);
-                Array.Copy(fragment, 0, keyExchangeKey, pos, bytesToCopy);
-            }
+            var secretPrepend = Marshaller.GetTpmRepresentation((uint)count);
+            var fragment = eph.DeriveKeyFromHash(_ecDhProvider.PublicKey, hash, secretPrepend, otherInfo);
+            bytesToCopy = Math.Min(bytesNeeded - pos, fragment.Length);
+            Array.Copy(fragment, 0, keyExchangeKey, pos, bytesToCopy);
         }
 
         return keyExchangeKey;
@@ -566,10 +564,8 @@ public class RawRsa
     /// <param name="publicExponent"></param>
     public RawRsa(int numBits, int publicExponent = 65537)
     {
-        using (var prov = RSA.Create(numBits))
-        {
-            Init(prov.ExportParameters(true), numBits);
-        }
+        using var prov = RSA.Create(numBits);
+        Init(prov.ExportParameters(true), numBits);
     }
 
     /// <summary>
@@ -914,7 +910,7 @@ internal class RawEccKey
         return _eccCurves.ContainsKey(curve);
     }
 
-    static Dictionary<EccCurve, ECCurve> _eccCurves = new Dictionary<EccCurve, ECCurve>()
+    static Dictionary<EccCurve, ECCurve> _eccCurves = new()
     {
         { EccCurve.NistP256, ECCurve.CreateFromFriendlyName("nistP256") },
         { EccCurve.NistP384, ECCurve.CreateFromFriendlyName("nistP384") },

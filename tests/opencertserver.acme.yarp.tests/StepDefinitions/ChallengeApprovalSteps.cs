@@ -24,10 +24,9 @@ public partial class ChallengeApprovalSteps : IDisposable
     public void GivenAMiddlewareThatServesTheKnownTokenWithResponse(string token, string response)
     {
         var persistence = Substitute.For<IPersistenceService>();
-        persistence.GetPersistedChallenges().Returns(new[]
-               {
-               new ChallengeDto(token, response, new[] { "alpha.example.com", "beta.example.com" })
-                });
+        persistence.GetPersistedChallenges().Returns([
+            new ChallengeDto(token, response, ["alpha.example.com", "beta.example.com"])
+        ]);
 
         var host = new HostBuilder().ConfigureWebHost(webBuilder =>
                {
@@ -43,7 +42,7 @@ public partial class ChallengeApprovalSteps : IDisposable
                                    app.Run(async context =>
                                          {
                                              context.Response.StatusCode = 404;
-                                             await context.Response.WriteAsync("Not found");
+                                             await context.Response.WriteAsync("Not found").ConfigureAwait(false);
                                          });
                                })
                             .ConfigureLogging(l => l.AddFilter((_, level) => false));
@@ -58,10 +57,10 @@ public partial class ChallengeApprovalSteps : IDisposable
     public async Task WhenIRequestTheAcmeChallengePathForToken(string token)
     {
         var client = _server!.CreateClient();
-        var response = await client.GetAsync($"/.well-known/acme-challenge/{token}");
+        var response = await client.GetAsync($"/.well-known/acme-challenge/{token}").ConfigureAwait(false);
 
         _responseCode = (int)response.StatusCode;
-        _responseBody = await response.Content.ReadAsStringAsync();
+        _responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
     }
 
     [Then(@"the approval response status code should be (\d+)")]

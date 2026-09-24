@@ -76,11 +76,9 @@ public class AcmeHttpClientTests
             SendNonce = false
         };
 
-        using (var http = new HttpClient(httpHandler))
-        {
-            var client = new AcmeHttpClient(dirUri, http);
-            await Assert.ThrowsAsync<AcmeException>(() => client.ConsumeNonce());
-        }
+        using var http = new HttpClient(httpHandler);
+        var client = new AcmeHttpClient(dirUri, http);
+        await Assert.ThrowsAsync<AcmeException>(client.ConsumeNonce);
     }
 
     [Fact]

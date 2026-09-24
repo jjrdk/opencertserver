@@ -73,7 +73,7 @@ public sealed class CertificateAuthorityTests : IDisposable
         var cert =
             await _authority.SignCertificateRequestPem(
                 PemEncoding.WriteString("CERTIFICATE REQUEST", bytes),
-                cancellationToken: CancellationToken.None) as SignCertificateResponse.Success;
+                cancellationToken: TestContext.Current.CancellationToken) as SignCertificateResponse.Success;
 
         Assert.Equal(GetParts(req.SubjectName), GetParts(cert!.Certificate.SubjectName));
         return;
@@ -92,7 +92,7 @@ public sealed class CertificateAuthorityTests : IDisposable
         var req = CreateCertificateRequest(rsa);
         var b64 = req.ToPkcs10Pem();
         var cert =
-            await _authority.SignCertificateRequestPem(b64, cancellationToken: CancellationToken.None) as
+            await _authority.SignCertificateRequestPem(b64, cancellationToken: TestContext.Current.CancellationToken) as
                 SignCertificateResponse.Success;
 
         Assert.Equal(
@@ -113,7 +113,7 @@ public sealed class CertificateAuthorityTests : IDisposable
         var response =
             await _authority.SignCertificateRequestPem(
                 req.ToPkcs10Pem(),
-                cancellationToken: CancellationToken.None) as SignCertificateResponse.Success;
+                cancellationToken: TestContext.Current.CancellationToken) as SignCertificateResponse.Success;
 
         var issued = response!.Certificate;
         var issuer = response.Issuers[0];
@@ -136,7 +136,7 @@ public sealed class CertificateAuthorityTests : IDisposable
         var response =
             await _authority.SignCertificateRequestPem(
                 req.ToPkcs10Pem(),
-                cancellationToken: CancellationToken.None) as SignCertificateResponse.Success;
+                cancellationToken: TestContext.Current.CancellationToken) as SignCertificateResponse.Success;
 
         using var chain = new X509Chain();
         chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;

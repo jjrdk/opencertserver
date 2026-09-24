@@ -174,7 +174,7 @@ public partial class Tpm2
     {
         var inS = new Tpm2CreatePrimaryRequest(primaryHandle, inSensitive, inPublic, outsideInfo, creationPCR);
         var resp = new Tpm2CreatePrimaryResponse();
-        await Task.Run(() => DispatchMethod(TpmCc.CreatePrimary, inS, resp, 1, 1));
+        await Task.Run(() => DispatchMethod(TpmCc.CreatePrimary, inS, resp, 1, 1)).ConfigureAwait(false);
         return resp;
     }
 
@@ -195,7 +195,7 @@ public partial class Tpm2
     {
         var inS = new Tpm2SignRequest(keyHandle, digest, inScheme, validation);
         var resp = new Tpm2SignResponse();
-        await Task.Run(() => DispatchMethod(TpmCc.Sign, inS, resp, 1, 0));
+        await Task.Run(() => DispatchMethod(TpmCc.Sign, inS, resp, 1, 0)).ConfigureAwait(false);
         return resp.signature;
     }
 
@@ -222,7 +222,7 @@ public partial class Tpm2
     {
         var inS = new Tpm2CreateRequest(parentHandle, inSensitive, inPublic, outsideInfo, creationPCR);
         var resp = new Tpm2CreateResponse();
-        await Task.Run(() => DispatchMethod(TpmCc.Create, inS, resp, 1, 0));
+        await Task.Run(() => DispatchMethod(TpmCc.Create, inS, resp, 1, 0)).ConfigureAwait(false);
         return resp;
     }
 }

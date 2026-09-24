@@ -51,8 +51,8 @@ public partial class CertificateServerFeatures
             message.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         }
 
-        var httpResponse = await client.SendAsync(message);
-        var bytes = await httpResponse.Content.ReadAsByteArrayAsync();
+        var httpResponse = await client.SendAsync(message).ConfigureAwait(false);
+        var bytes = await httpResponse.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
         OcspResponse? ocspResponse = null;
         if (bytes.Length > 0)
         {
@@ -74,13 +74,13 @@ public partial class CertificateServerFeatures
     {
         var writer = new AsnWriter(AsnEncodingRules.DER);
         request.Encode(writer);
-        return await SendRawOcspPostAsync(writer.Encode());
+        return await SendRawOcspPostAsync(writer.Encode()).ConfigureAwait(false);
     }
 
     private async Task<OcspRequest> BuildValidOcspRequestAsync(X509Certificate2? leafCert = null)
     {
-        var issuerCert = await GetIssuerCertAsync();
-        var certToQuery = leafCert ?? await GetOrEnrollLeafCertAsync();
+        var issuerCert = await GetIssuerCertAsync().ConfigureAwait(false);
+        var certToQuery = leafCert ?? await GetOrEnrollLeafCertAsync().ConfigureAwait(false);
         var certId = CertId.Create(certToQuery, issuerCert, HashAlgorithmName.SHA256);
         return new OcspRequest(new TbsRequest(requestList: [new Request(certId)]));
     }
@@ -93,7 +93,7 @@ public partial class CertificateServerFeatures
         }
 
         GivenAnEstClient();
-        await WhenIEnrollWithAValidJwt();
+        await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
         return _certCollection[0];
     }
 
@@ -102,8 +102,8 @@ public partial class CertificateServerFeatures
     [When("an OCSP client submits a DER-encoded OCSP request with HTTP POST")]
     public async Task WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost()
     {
-        var req = await BuildValidOcspRequestAsync();
-        var (resp, http) = await SendOcspRequestAsync(req);
+        var req = await BuildValidOcspRequestAsync().ConfigureAwait(false);
+        var (resp, http) = await SendOcspRequestAsync(req).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -111,7 +111,7 @@ public partial class CertificateServerFeatures
     [When("an OCSP client submits a malformed OCSP request")]
     public async Task WhenAnOcspClientSubmitsAMalformedOcspRequest()
     {
-        var (resp, http) = await SendRawOcspPostAsync([0xFF, 0xFE, 0xFD]);
+        var (resp, http) = await SendRawOcspPostAsync([0xFF, 0xFE, 0xFD]).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -144,17 +144,17 @@ public partial class CertificateServerFeatures
     [When("an OCSP client sends an OCSP request using HTTP GET with the request encoded into the request URI")]
     public async Task WhenAnOcspClientSendsAnOcspRequestUsingHttpGetWithTheRequestEncodedIntoTheRequestUri()
     {
-        var req = await BuildValidOcspRequestAsync();
+        var req = await BuildValidOcspRequestAsync().ConfigureAwait(false);
         var writer = new AsnWriter(AsnEncodingRules.DER);
         req.Encode(writer);
         var encoded = Convert.ToBase64String(writer.Encode())
             .Replace('+', '-').Replace('/', '_').TrimEnd('=');
         using var client = _server.CreateClient();
-        var httpResponse = await client.GetAsync($"ca/ocsp/{encoded}");
+        var httpResponse = await client.GetAsync($"ca/ocsp/{encoded}").ConfigureAwait(false);
         OcspState.LastHttpResponse = httpResponse;
         if (httpResponse.IsSuccessStatusCode)
         {
-            var bytes = await httpResponse.Content.ReadAsByteArrayAsync();
+            var bytes = await httpResponse.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
             OcspState.LastResponse = new OcspResponse(new AsnReader(bytes, AsnEncodingRules.DER));
         }
         else
@@ -166,8 +166,8 @@ public partial class CertificateServerFeatures
     [When("an OCSP client submits an OCSP request containing certificate status requests")]
     public async Task WhenAnOcspClientSubmitsAnOcspRequestContainingCertificateStatusRequests()
     {
-        var req = await BuildValidOcspRequestAsync();
-        var (resp, http) = await SendOcspRequestAsync(req);
+        var req = await BuildValidOcspRequestAsync().ConfigureAwait(false);
+        var (resp, http) = await SendOcspRequestAsync(req).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -175,11 +175,11 @@ public partial class CertificateServerFeatures
     [When("an OCSP client requests the status of a certificate by CertID")]
     public async Task WhenAnOcspClientRequestsTheStatusOfACertificateByCertId()
     {
-        var leafCert = await GetOrEnrollLeafCertAsync();
-        var issuerCert = await GetIssuerCertAsync();
+        var leafCert = await GetOrEnrollLeafCertAsync().ConfigureAwait(false);
+        var issuerCert = await GetIssuerCertAsync().ConfigureAwait(false);
         OcspState.RequestedCertId = CertId.Create(leafCert, issuerCert, HashAlgorithmName.SHA256);
         var req = new OcspRequest(new TbsRequest(requestList: [new Request(OcspState.RequestedCertId)]));
-        var (resp, http) = await SendOcspRequestAsync(req);
+        var (resp, http) = await SendOcspRequestAsync(req).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -187,16 +187,16 @@ public partial class CertificateServerFeatures
     [When("an OCSP client submits a successful OCSP request for multiple certificates")]
     public async Task WhenAnOcspClientSubmitsASuccessfulOcspRequestForMultipleCertificates()
     {
-        await WhenIEnrollWithAValidJwt();
+        await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
         var leafCert1 = _certCollection[0];
-        await WhenIEnrollWithAValidJwt();
+        await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
         var leafCert2 = _certCollection[0];
-        var issuerCert = await GetIssuerCertAsync();
+        var issuerCert = await GetIssuerCertAsync().ConfigureAwait(false);
         var certId1 = CertId.Create(leafCert1, issuerCert, HashAlgorithmName.SHA256);
         var certId2 = CertId.Create(leafCert2, issuerCert, HashAlgorithmName.SHA256);
         var req = new OcspRequest(new TbsRequest(requestList:
             [new Request(certId1), new Request(certId2)]));
-        var (resp, http) = await SendOcspRequestAsync(req);
+        var (resp, http) = await SendOcspRequestAsync(req).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
         OcspState.RequestCount = 2;
@@ -205,15 +205,15 @@ public partial class CertificateServerFeatures
     [When("an OCSP client includes requestExtensions in the TBSRequest")]
     public async Task WhenAnOcspClientIncludesRequestExtensionsInTheTbsRequest()
     {
-        var issuerCert = await GetIssuerCertAsync();
-        var leafCert = await GetOrEnrollLeafCertAsync();
+        var issuerCert = await GetIssuerCertAsync().ConfigureAwait(false);
+        var leafCert = await GetOrEnrollLeafCertAsync().ConfigureAwait(false);
         var certId = CertId.Create(leafCert, issuerCert, HashAlgorithmName.SHA256);
         var nonce = RandomNumberGenerator.GetBytes(16);
         var nonceExt = new X509Extension(Oids.OcspNonce, nonce, false);
         var extensions = new X509ExtensionCollection { nonceExt };
         var tbsRequest = new TbsRequest(requestList: [new Request(certId)], requestExtensions: extensions);
         var req = new OcspRequest(tbsRequest);
-        var (resp, http) = await SendOcspRequestAsync(req);
+        var (resp, http) = await SendOcspRequestAsync(req).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
         OcspState.RequestNonce = nonce;
@@ -223,15 +223,15 @@ public partial class CertificateServerFeatures
     public async Task WhenAnOcspClientIncludesSingleRequestExtensionsOnAnIndividualCertificateRequest()
     {
         // singleRequestExtensions are per-request; we submit a request with a non-critical extension.
-        var issuerCert = await GetIssuerCertAsync();
-        var leafCert = await GetOrEnrollLeafCertAsync();
+        var issuerCert = await GetIssuerCertAsync().ConfigureAwait(false);
+        var leafCert = await GetOrEnrollLeafCertAsync().ConfigureAwait(false);
         var certId = CertId.Create(leafCert, issuerCert, HashAlgorithmName.SHA256);
         var nonCriticalExt = new X509Extension(Oids.OcspNonce, RandomNumberGenerator.GetBytes(8), false);
         var singleExts = new X509ExtensionCollection { nonCriticalExt };
         var req = new Request(certId, singleExts);
         var tbsRequest = new TbsRequest(requestList: [req]);
         var ocspRequest = new OcspRequest(tbsRequest);
-        var (resp, http) = await SendOcspRequestAsync(ocspRequest);
+        var (resp, http) = await SendOcspRequestAsync(ocspRequest).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -239,13 +239,13 @@ public partial class CertificateServerFeatures
     [When("an OCSP client submits a signed OCSP request")]
     public async Task WhenAnOcspClientSubmitsASignedOcspRequest()
     {
-        var issuerCert = await GetIssuerCertAsync();
-        var leafCert = await GetOrEnrollLeafCertAsync();
+        var issuerCert = await GetIssuerCertAsync().ConfigureAwait(false);
+        var leafCert = await GetOrEnrollLeafCertAsync().ConfigureAwait(false);
         var certId = CertId.Create(leafCert, issuerCert, HashAlgorithmName.SHA256);
         var tbsRequest = new TbsRequest(requestList: [new Request(certId)]);
         var signature = tbsRequest.Sign(_key);
         var ocspRequest = new OcspRequest(tbsRequest, signature);
-        var (resp, http) = await SendOcspRequestAsync(ocspRequest);
+        var (resp, http) = await SendOcspRequestAsync(ocspRequest).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -265,15 +265,15 @@ public partial class CertificateServerFeatures
     [When("a signed OCSP request is not authorized by responder policy")]
     public async Task WhenASignedOcspRequestIsNotAuthorizedByResponderPolicy()
     {
-        var issuerCert = await GetIssuerCertAsync();
-        var leafCert = await GetOrEnrollLeafCertAsync();
+        var issuerCert = await GetIssuerCertAsync().ConfigureAwait(false);
+        var leafCert = await GetOrEnrollLeafCertAsync().ConfigureAwait(false);
         var certId = CertId.Create(leafCert, issuerCert, HashAlgorithmName.SHA256);
         var tbsRequest = new TbsRequest(requestList: [new Request(certId)]);
         var signature = tbsRequest.Sign(_key);
         // Tamper with the signature to make it invalid
         signature = new Signature(signature.AlgorithmIdentifier, [.. signature.SignatureBytes.Reverse()], signature.Certs);
         var ocspRequest = new OcspRequest(tbsRequest, signature);
-        var (resp, http) = await SendOcspRequestAsync(ocspRequest);
+        var (resp, http) = await SendOcspRequestAsync(ocspRequest).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -281,26 +281,26 @@ public partial class CertificateServerFeatures
     [When("the OCSP responder successfully answers a certificate status request")]
     public async Task WhenTheOcspResponderSuccessfullyAnswersACertificateStatusRequest()
     {
-        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost();
+        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost().ConfigureAwait(false);
     }
 
     [When("the OCSP responder returns a successful basic OCSP response")]
     public async Task WhenTheOcspResponderReturnsASuccessfulBasicOcspResponse()
     {
-        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost();
+        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost().ConfigureAwait(false);
     }
 
     [When("the OCSP client needs certificates to verify the OCSP responder signature")]
     public async Task WhenTheOcspClientNeedsCertificatesToVerifyTheOcspResponderSignature()
     {
-        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost();
+        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost().ConfigureAwait(false);
     }
 
     [When("the requested certificate is known and not revoked")]
     public async Task WhenTheRequestedCertificateIsKnownAndNotRevoked()
     {
-        var req = await BuildValidOcspRequestAsync();
-        var (resp, http) = await SendOcspRequestAsync(req);
+        var req = await BuildValidOcspRequestAsync().ConfigureAwait(false);
+        var (resp, http) = await SendOcspRequestAsync(req).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -308,12 +308,12 @@ public partial class CertificateServerFeatures
     [When("the requested certificate has been revoked")]
     public async Task WhenTheRequestedCertificateHasBeenRevoked()
     {
-        await WhenIEnrollWithAValidJwt();
+        await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
         var leafCert = _certCollection[0];
-        await WhenIRevokeTheCertificate();
+        await WhenIRevokeTheCertificate().ConfigureAwait(false);
 
-        var req = await BuildValidOcspRequestAsync(leafCert);
-        var (resp, http) = await SendOcspRequestAsync(req);
+        var req = await BuildValidOcspRequestAsync(leafCert).ConfigureAwait(false);
+        var (resp, http) = await SendOcspRequestAsync(req).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -326,7 +326,7 @@ public partial class CertificateServerFeatures
             new AlgorithmIdentifier(HashAlgorithmName.SHA256.GetHashAlgorithmOid()),
             new byte[32], new byte[32], [0xDE, 0xAD, 0xBE, 0xEF]);
         var req = new OcspRequest(new TbsRequest(requestList: [new Request(unknownCertId)]));
-        var (resp, http) = await SendOcspRequestAsync(req);
+        var (resp, http) = await SendOcspRequestAsync(req).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -336,31 +336,31 @@ public partial class CertificateServerFeatures
     {
         // The server returns unknown for non-issued certs (RFC 6960 default).
         // This scenario verifies the extended revoked model is not erroneously applied.
-        await WhenTheResponderCannotDetermineTheStatusOfTheRequestedCertificate();
+        await WhenTheResponderCannotDetermineTheStatusOfTheRequestedCertificate().ConfigureAwait(false);
     }
 
     [When("the OCSP responder returns a successful basic response")]
     public async Task WhenTheOcspResponderReturnsASuccessfulBasicResponse()
     {
-        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost();
+        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost().ConfigureAwait(false);
     }
 
     [When("the OCSP responder returns a SingleResponse")]
     public async Task WhenTheOcspResponderReturnsASingleResponse()
     {
-        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost();
+        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost().ConfigureAwait(false);
     }
 
     [When("the OCSP responder provides a next update time for a certificate status")]
     public async Task WhenTheOcspResponderProvidesANextUpdateTimeForACertificateStatus()
     {
-        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost();
+        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost().ConfigureAwait(false);
     }
 
     [When("the OCSP responder returns certificate status information")]
     public async Task WhenTheOcspResponderReturnsCertificateStatusInformation()
     {
-        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost();
+        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost().ConfigureAwait(false);
     }
 
     [When("a delegated OCSP responder certificate signs the response")]
@@ -368,39 +368,39 @@ public partial class CertificateServerFeatures
     {
         // The test server uses the CA certificate directly as responder (not a delegate).
         // This scenario models delegated responder requirements; run a successful OCSP exchange.
-        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost();
+        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost().ConfigureAwait(false);
     }
 
     [When("the OCSP responder includes certificates in the response")]
     public async Task WhenTheOcspResponderIncludesCertificatesInTheResponse()
     {
-        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost();
+        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost().ConfigureAwait(false);
     }
 
     [When("an OCSP client includes an OCSP nonce extension in the request")]
     public async Task WhenAnOcspClientIncludesAnOcspNonceExtensionInTheRequest()
     {
-        await WhenAnOcspClientIncludesRequestExtensionsInTheTbsRequest();
+        await WhenAnOcspClientIncludesRequestExtensionsInTheTbsRequest().ConfigureAwait(false);
     }
 
     [When("the OCSP responder provides status for certificates beyond the responder's normal retention window")]
     public async Task WhenTheOcspResponderProvidesStatusForCertificatesBeyondTheRespondersNormalRetentionWindow()
     {
-        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost();
+        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost().ConfigureAwait(false);
     }
 
     [When("an OCSP request includes the serviceLocator extension")]
     public async Task WhenAnOcspRequestIncludesTheServiceLocatorExtension()
     {
         // Build a request with an unknown non-critical extension to verify the server handles it.
-        var issuerCert = await GetIssuerCertAsync();
-        var leafCert = await GetOrEnrollLeafCertAsync();
+        var issuerCert = await GetIssuerCertAsync().ConfigureAwait(false);
+        var leafCert = await GetOrEnrollLeafCertAsync().ConfigureAwait(false);
         var certId = CertId.Create(leafCert, issuerCert, HashAlgorithmName.SHA256);
         var serviceLocatorOid = "1.3.6.1.5.5.7.48.1.7";
         var ext = new X509Extension(serviceLocatorOid, [0x05, 0x00], false);
         var extensions = new X509ExtensionCollection { ext };
         var tbsRequest = new TbsRequest(requestList: [new Request(certId)], requestExtensions: extensions);
-        var (resp, http) = await SendOcspRequestAsync(new OcspRequest(tbsRequest));
+        var (resp, http) = await SendOcspRequestAsync(new OcspRequest(tbsRequest)).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -408,14 +408,14 @@ public partial class CertificateServerFeatures
     [When("an OCSP request includes the preferred signature algorithms extension")]
     public async Task WhenAnOcspRequestIncludesThePreferredSignatureAlgorithmsExtension()
     {
-        var issuerCert = await GetIssuerCertAsync();
-        var leafCert = await GetOrEnrollLeafCertAsync();
+        var issuerCert = await GetIssuerCertAsync().ConfigureAwait(false);
+        var leafCert = await GetOrEnrollLeafCertAsync().ConfigureAwait(false);
         var certId = CertId.Create(leafCert, issuerCert, HashAlgorithmName.SHA256);
         var prefSigAlgOid = "1.3.6.1.5.5.7.48.1.8";
         var ext = new X509Extension(prefSigAlgOid, [0x05, 0x00], false);
         var extensions = new X509ExtensionCollection { ext };
         var tbsRequest = new TbsRequest(requestList: [new Request(certId)], requestExtensions: extensions);
-        var (resp, http) = await SendOcspRequestAsync(new OcspRequest(tbsRequest));
+        var (resp, http) = await SendOcspRequestAsync(new OcspRequest(tbsRequest)).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -423,24 +423,24 @@ public partial class CertificateServerFeatures
     [When("an OCSP request contains certificates in different states")]
     public async Task WhenAnOcspRequestContainsCertificatesInDifferentStates()
     {
-        await WhenIEnrollWithAValidJwt();
+        await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
         var goodCert = _certCollection[0];
         // Keep key1 for cert1 to ensure we can identify it later
         OcspState.GoodCert = goodCert;
 
-        await WhenIEnrollWithAValidJwt();
+        await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
         var revokedCert = _certCollection[0];
         OcspState.RevokedCert = revokedCert;
 
         // _certCollection[0] and _key are now cert2/key2 - revoke it
-        await WhenIRevokeTheCertificate();
+        await WhenIRevokeTheCertificate().ConfigureAwait(false);
 
-        var issuerCert = await GetIssuerCertAsync();
+        var issuerCert = await GetIssuerCertAsync().ConfigureAwait(false);
         var certId1 = CertId.Create(goodCert, issuerCert, HashAlgorithmName.SHA256);
         var certId2 = CertId.Create(revokedCert, issuerCert, HashAlgorithmName.SHA256);
         var req = new OcspRequest(new TbsRequest(requestList:
             [new Request(certId1), new Request(certId2)]));
-        var (resp, http) = await SendOcspRequestAsync(req);
+        var (resp, http) = await SendOcspRequestAsync(req).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -448,14 +448,14 @@ public partial class CertificateServerFeatures
     [When("the OCSP responder returns a successful response")]
     public async Task WhenTheOcspResponderReturnsASuccessfulResponse()
     {
-        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost();
+        await WhenAnOcspClientSubmitsADerEncodedOcspRequestWithHttpPost().ConfigureAwait(false);
     }
 
     [When("responder policy refuses to answer a status request")]
     public async Task WhenResponderPolicyRefusesToAnswerAStatusRequest()
     {
         // Model the unauthorized response (same as the signed-request unauthorized case).
-        await WhenASignedOcspRequestIsNotAuthorizedByResponderPolicy();
+        await WhenASignedOcspRequestIsNotAuthorizedByResponderPolicy().ConfigureAwait(false);
     }
 
     // ── Then steps ────────────────────────────────────────────────────────────
@@ -801,7 +801,7 @@ public partial class CertificateServerFeatures
         Assert.NotEmpty(basicResponse.Signature);
         // Verify the signature using the CA certificate
         var caProfiles = _server.Services.GetRequiredService<IStoreCaProfiles>();
-        var profile = await caProfiles.GetProfile(null);
+        var profile = await caProfiles.GetProfile(null).ConfigureAwait(false);
         var caCert = profile.CertificateChain[0];
         // Verify that the responder key hash matches the CA cert
         using var sha1 = SHA1.Create();
@@ -840,7 +840,7 @@ public partial class CertificateServerFeatures
         var basicResponse = OcspState.LastResponse!.ResponseBytes!.GetBasicResponse();
         Assert.NotNull(basicResponse.Certs);
         var caProfiles = _server.Services.GetRequiredService<IStoreCaProfiles>();
-        var profile = await caProfiles.GetProfile(null);
+        var profile = await caProfiles.GetProfile(null).ConfigureAwait(false);
         var caCert = profile.CertificateChain[0];
         // When using the CA cert directly, Issuer == Subject (self-signed)
         Assert.Equal(caCert.Issuer, caCert.Subject);
@@ -853,7 +853,7 @@ public partial class CertificateServerFeatures
         // This step verifies that when certs are included they are the expected responder certs.
         var basicResponse = OcspState.LastResponse!.ResponseBytes!.GetBasicResponse();
         var caProfiles = _server.Services.GetRequiredService<IStoreCaProfiles>();
-        var profile = await caProfiles.GetProfile(null);
+        var profile = await caProfiles.GetProfile(null).ConfigureAwait(false);
         var caCert = profile.CertificateChain[0];
         Assert.NotNull(basicResponse.Certs);
         Assert.Contains(basicResponse.Certs!, c => c.Thumbprint == caCert.Thumbprint);
@@ -940,10 +940,10 @@ public partial class CertificateServerFeatures
     [When("strict OCSP HTTP binding is enabled and an OCSP client submits a POST request with incorrect content-type")]
     public async Task WhenStrictOcspHttpBindingIsEnabledAndAnOcspClientSubmitsAPostRequestWithIncorrectContentType()
     {
-        var req = await BuildValidOcspRequestAsync();
+        var req = await BuildValidOcspRequestAsync().ConfigureAwait(false);
         var writer = new AsnWriter(AsnEncodingRules.DER);
         req.Encode(writer);
-        var (resp, http) = await SendRawOcspPostAsync(writer.Encode(), "application/octet-stream");
+        var (resp, http) = await SendRawOcspPostAsync(writer.Encode(), "application/octet-stream").ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }
@@ -957,8 +957,8 @@ public partial class CertificateServerFeatures
     [When("the OCSP responder uses a custom freshness window of 2 hours")]
     public async Task WhenTheOcspResponderUsesACustomFreshnessWindowOf2Hours()
     {
-        var req = await BuildValidOcspRequestAsync();
-        var (resp, http) = await SendOcspRequestAsync(req);
+        var req = await BuildValidOcspRequestAsync().ConfigureAwait(false);
+        var (resp, http) = await SendOcspRequestAsync(req).ConfigureAwait(false);
         OcspState.LastResponse = resp;
         OcspState.LastHttpResponse = http;
     }

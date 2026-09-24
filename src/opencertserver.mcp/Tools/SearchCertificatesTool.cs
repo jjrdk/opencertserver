@@ -43,7 +43,7 @@ public class SearchCertificatesTool
         // Fetch the full inventory (client-side filtering)
         var allItems = await store
             .GetInventory(0, int.MaxValue, cancellationToken)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
 
         // Apply filters client-side
         IEnumerable<CertificateItemInfo> filtered = allItems;

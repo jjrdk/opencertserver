@@ -192,10 +192,8 @@ public sealed class SymCipher : IDisposable
         byte[] iv,
         byte[] dataToEncrypt)
     {
-        using (var cipher = Create(symDef, key, iv))
-        {
-            return cipher.Encrypt(dataToEncrypt);
-        }
+        using var cipher = Create(symDef, key, iv);
+        return cipher.Encrypt(dataToEncrypt);
     }
 
     public static byte[] Decrypt(
@@ -204,25 +202,21 @@ public sealed class SymCipher : IDisposable
         byte[] iv,
         byte[] dataToDecrypt)
     {
-        using (var cipher = Create(symDef, key, iv))
-        {
-            return cipher.Decrypt(dataToDecrypt);
-        }
+        using var cipher = Create(symDef, key, iv);
+        return cipher.Decrypt(dataToDecrypt);
     }
 
     private static void EncryptCfb(byte[] paddedData, byte[] iv, ICryptoTransform enc)
     {
         for (var i = 0; i < paddedData.Length; i += iv.Length)
         {
-            using (var outStream = new MemoryStream())
-            using (var s = new CryptoStream(outStream, enc, CryptoStreamMode.Write))
-            {
-                s.Write(iv, 0, iv.Length);
-                s.FlushFinalBlock();
-                outStream.ToArray().CopyTo(iv, 0);
-                for (var j = 0; j < iv.Length; ++j)
-                    paddedData[i + j] = iv[j] ^= paddedData[i + j];
-            }
+            using var outStream = new MemoryStream();
+            using var s = new CryptoStream(outStream, enc, CryptoStreamMode.Write);
+            s.Write(iv, 0, iv.Length);
+            s.FlushFinalBlock();
+            outStream.ToArray().CopyTo(iv, 0);
+            for (var j = 0; j < iv.Length; ++j)
+                paddedData[i + j] = iv[j] ^= paddedData[i + j];
         }
     }
 
@@ -260,13 +254,11 @@ public sealed class SymCipher : IDisposable
         }
         else
         {
-            using (var outStream = new MemoryStream())
-            {
-                var s = new CryptoStream(outStream, enc, CryptoStreamMode.Write);
-                s.Write(paddedData, 0, paddedData.Length);
-                s.FlushFinalBlock();
-                paddedData = outStream.ToArray();
-            }
+            using var outStream = new MemoryStream();
+            var s = new CryptoStream(outStream, enc, CryptoStreamMode.Write);
+            s.Write(paddedData, 0, paddedData.Length);
+            s.FlushFinalBlock();
+            paddedData = outStream.ToArray();
         }
 
         if (externalIv)
@@ -301,17 +293,15 @@ public sealed class SymCipher : IDisposable
         var tempOut = new byte[iv.Length];
         for (var i = 0; i < paddedData.Length; i += iv.Length)
         {
-            using (var outStream = new MemoryStream())
-            using (var s = new CryptoStream(outStream, enc, CryptoStreamMode.Write))
+            using var outStream = new MemoryStream();
+            using var s = new CryptoStream(outStream, enc, CryptoStreamMode.Write);
+            s.Write(iv, 0, iv.Length);
+            s.FlushFinalBlock();
+            outStream.ToArray().CopyTo(tempOut, 0);
+            for (var j = 0; j < iv.Length; ++j)
             {
-                s.Write(iv, 0, iv.Length);
-                s.FlushFinalBlock();
-                outStream.ToArray().CopyTo(tempOut, 0);
-                for (var j = 0; j < iv.Length; ++j)
-                {
-                    iv[j] = paddedData[i + j];
-                    paddedData[i + j] = (byte)((tempOut[j] ^ iv[j]) & 0x000000FF);
-                }
+                iv[j] = paddedData[i + j];
+                paddedData[i + j] = (byte)((tempOut[j] ^ iv[j]) & 0x000000FF);
             }
         }
     }
@@ -346,12 +336,10 @@ public sealed class SymCipher : IDisposable
         {
             var dec = _alg.CreateDecryptor();
             tempOut = new byte[data.Length];
-            using (var outStream = new MemoryStream(paddedData))
-            {
-                var s = new CryptoStream(outStream, dec, CryptoStreamMode.Read);
-                var numPlaintextBytes = s.Read(tempOut, 0, data.Length);
-                Debug.Assert(numPlaintextBytes == data.Length);
-            }
+            using var outStream = new MemoryStream(paddedData);
+            var s = new CryptoStream(outStream, dec, CryptoStreamMode.Read);
+            var numPlaintextBytes = s.Read(tempOut, 0, data.Length);
+            Debug.Assert(numPlaintextBytes == data.Length);
         }
 
         if (externalIv)

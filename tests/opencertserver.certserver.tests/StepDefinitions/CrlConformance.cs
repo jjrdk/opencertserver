@@ -49,9 +49,9 @@ public partial class CertificateServerFeatures
     private async Task<byte[]> FetchCrlBytesAsync(string path = "ca/crl")
     {
         using var client = _server.CreateClient();
-        var resp = await client.GetAsync(path);
+        var resp = await client.GetAsync(path).ConfigureAwait(false);
         resp.EnsureSuccessStatusCode();
-        return await resp.Content.ReadAsByteArrayAsync();
+        return await resp.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
     }
 
     private static (AsnReader tbsCertList, AsnReader signatureAlgorithm, byte[] signature)
@@ -77,14 +77,14 @@ public partial class CertificateServerFeatures
     private async Task<X509Certificate2> GetCaIssuerCertAsync()
     {
         var profiles = _server.Services.GetRequiredService<IStoreCaProfiles>();
-        var profile = await profiles.GetProfile(null);
+        var profile = await profiles.GetProfile(null).ConfigureAwait(false);
         return profile.CertificateChain[0];
     }
 
     private async Task<X509Certificate2> GetCaProfileCertAsync(string profileName)
     {
         var profiles = _server.Services.GetRequiredService<IStoreCaProfiles>();
-        var profile = await profiles.GetProfile(profileName);
+        var profile = await profiles.GetProfile(profileName).ConfigureAwait(false);
         return profile.CertificateChain[0];
     }
 
@@ -96,7 +96,7 @@ public partial class CertificateServerFeatures
     [When("a CRL contains one or more CRL extensions")]
     public async Task WhenTheCaGeneratesACrl()
     {
-        var bytes = await FetchCrlBytesAsync();
+        var bytes = await FetchCrlBytesAsync().ConfigureAwait(false);
         CrlState.LastCrlBytes = bytes;
     }
 
@@ -104,18 +104,18 @@ public partial class CertificateServerFeatures
     public async Task WhenTheCaGeneratesACrlForARevokedCertificate()
     {
         // enroll a certificate and then revoke it
-        await WhenIEnrollWithAValidJwt();
+        await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
         CrlState.IssuedCert = _certCollection[0];
-        await WhenIRevokeTheCertificate();
-        var bytes = await FetchCrlBytesAsync();
+        await WhenIRevokeTheCertificate().ConfigureAwait(false);
+        var bytes = await FetchCrlBytesAsync().ConfigureAwait(false);
         CrlState.LastCrlBytes = bytes;
     }
 
     [When("the CA generates two successive CRLs for the same issuer")]
     public async Task WhenTheCaGeneratesTwoSuccessiveCrls()
     {
-        CrlState.FirstCrlBytes = await FetchCrlBytesAsync();
-        CrlState.SecondCrlBytes = await FetchCrlBytesAsync();
+        CrlState.FirstCrlBytes = await FetchCrlBytesAsync().ConfigureAwait(false);
+        CrlState.SecondCrlBytes = await FetchCrlBytesAsync().ConfigureAwait(false);
     }
 
     [When("the CA generates a CRL containing no CRL extensions")]
@@ -187,7 +187,7 @@ public partial class CertificateServerFeatures
     {
         // The self-signed test CA does not have an issuerAltName extension, so this
         // is a no-op; the CRL MAY omit the issuerAltName in this case.
-        var bytes = await FetchCrlBytesAsync();
+        var bytes = await FetchCrlBytesAsync().ConfigureAwait(false);
         CrlState.LastCrlBytes = bytes;
     }
 
@@ -388,7 +388,7 @@ public partial class CertificateServerFeatures
     [When("the CA encodes a distribution point URI in a certificate")]
     public async Task WhenTheCaIsConfiguredWithCrlDistributionPointUris()
     {
-        await WhenIEnrollWithAValidJwt();
+        await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
         CrlState.IssuedCert = _certCollection[0];
     }
 
@@ -397,7 +397,7 @@ public partial class CertificateServerFeatures
     {
         // The CA does not set a reasons field — all reasons are implicitly covered.
         // We fetch an issued cert and verify no reasons field is present.
-        await WhenIEnrollWithAValidJwt();
+        await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
         CrlState.IssuedCert = _certCollection[0];
     }
 
@@ -421,11 +421,11 @@ public partial class CertificateServerFeatures
     public async Task WhenAnHttpGetRequestIsMadeToTheCrlEndpoint()
     {
         using var client = _server.CreateClient();
-        var response = await client.GetAsync("ca/crl");
+        var response = await client.GetAsync("ca/crl").ConfigureAwait(false);
         CrlState.LastHttpResponse = response;
         if (response.IsSuccessStatusCode)
         {
-            CrlState.LastCrlBytes = await response.Content.ReadAsByteArrayAsync();
+            CrlState.LastCrlBytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
         }
     }
 
@@ -433,11 +433,11 @@ public partial class CertificateServerFeatures
     public async Task WhenAnHttpGetRequestIsMadeToTheCrlEndpointForANamedProfile()
     {
         using var client = _server.CreateClient();
-        var response = await client.GetAsync("ca/rsa/crl");
+        var response = await client.GetAsync("ca/rsa/crl").ConfigureAwait(false);
         CrlState.LastHttpResponse = response;
         if (response.IsSuccessStatusCode)
         {
-            CrlState.LastCrlBytes = await response.Content.ReadAsByteArrayAsync();
+            CrlState.LastCrlBytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
             CrlState.NamedProfileForCrl = "rsa";
         }
     }
@@ -545,14 +545,14 @@ public partial class CertificateServerFeatures
     [Then("the CRL signatureValue MUST be a valid cryptographic signature over the DER encoding of the TBSCertList")]
     public async Task ThenTheCrlSignatureValueMustBeValid()
     {
-        var issuerCert = await GetCaIssuerCertAsync();
+        var issuerCert = await GetCaIssuerCertAsync().ConfigureAwait(false);
         Assert.True(CertificateRevocationList.VerifyCrlSignature(CrlState.LastCrlBytes!, issuerCert.GetRSAPublicKey()!));
     }
 
     [Then("the signature MUST be verifiable using the public key in the CA certificate identified by the issuer field")]
     public async Task ThenSignatureMustBeVerifiableWithCaPublicKey()
     {
-        var issuerCert = await GetCaIssuerCertAsync();
+        var issuerCert = await GetCaIssuerCertAsync().ConfigureAwait(false);
         using var rsa = issuerCert.GetRSAPublicKey();
         Assert.NotNull(rsa);
         var tbsDer = ExtractTbsCertListDer(CrlState.LastCrlBytes!);
@@ -640,7 +640,7 @@ public partial class CertificateServerFeatures
     [Then("the issuer distinguished name MUST match the subject name of the signing CA certificate")]
     public async Task ThenIssuerMustMatchCaSubjectName()
     {
-        var issuerCert = await GetCaIssuerCertAsync();
+        var issuerCert = await GetCaIssuerCertAsync().ConfigureAwait(false);
         var crl = CertificateRevocationList.Load(CrlState.LastCrlBytes!);
         Assert.Equal(
             issuerCert.SubjectName.Name,
@@ -944,7 +944,7 @@ public partial class CertificateServerFeatures
     [Then("the authorityKeyIdentifier keyIdentifier value MUST match the subjectKeyIdentifier of the signing CA certificate")]
     public async Task ThenAkiMustMatchCaSkiAsync()
     {
-        var issuerCert = await GetCaIssuerCertAsync();
+        var issuerCert = await GetCaIssuerCertAsync().ConfigureAwait(false);
         var ski = issuerCert.Extensions.OfType<X509SubjectKeyIdentifierExtension>().FirstOrDefault();
         Assert.NotNull(ski);
         var crl = CertificateRevocationList.Load(CrlState.LastCrlBytes!);
@@ -1426,7 +1426,7 @@ public partial class CertificateServerFeatures
     public async Task ThenCrlMustBeSignedByNamedProfileCert()
     {
         var profileName = CrlState.NamedProfileForCrl ?? "rsa";
-        var profileCert = await GetCaProfileCertAsync(profileName);
+        var profileCert = await GetCaProfileCertAsync(profileName).ConfigureAwait(false);
         using var rsa = profileCert.GetRSAPublicKey();
         if (rsa != null)
         {
@@ -1441,7 +1441,7 @@ public partial class CertificateServerFeatures
     [Then("the returned CRL MUST be signed by the default CA certificate")]
     public async Task ThenCrlMustBeSignedByDefaultCaCert()
     {
-        var issuerCert = await GetCaIssuerCertAsync();
+        var issuerCert = await GetCaIssuerCertAsync().ConfigureAwait(false);
         using var rsa = issuerCert.GetRSAPublicKey();
         if (rsa != null)
         {

@@ -44,8 +44,8 @@ public partial class BackwardCompatibilitySteps
     [When(@"I start the single-route renewal service")]
     public async Task WhenIStartTheSingleRouteRenewalService()
     {
-        await _service!.StartAsync(CancellationToken.None);
-        await _service.StartedAsync(CancellationToken.None);
+        await _service!.StartAsync(CancellationToken.None).ConfigureAwait(false);
+        await _service.StartedAsync(CancellationToken.None).ConfigureAwait(false);
     }
 
     [Then(@"a certificate is loaded for the default route")]

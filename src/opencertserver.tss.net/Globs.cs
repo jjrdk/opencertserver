@@ -334,7 +334,7 @@ public class Globs
     /// <summary>
     /// Default RNG used by the library (for nonces, and if a random auth-value is required, etc.)
     /// </summary>
-    public static Prng Rng = new Prng();
+    public static Prng Rng = new();
 
     public static byte[] GetRandomBytes(int numBytes)
     {

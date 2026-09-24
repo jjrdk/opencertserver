@@ -21,7 +21,7 @@ public class GetCrlTool
         [Description("Include raw DER CRL as base64 in response")] bool includePem = false,
         CancellationToken cancellationToken = default)
     {
-        var crlBytes = await ca.GetRevocationList(profileName, cancellationToken);
+        var crlBytes = await ca.GetRevocationList(profileName, cancellationToken).ConfigureAwait(false);
 
         var parsed = ParseCrl(crlBytes);
 

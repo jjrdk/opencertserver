@@ -22,8 +22,8 @@ public class GetCaCertificatesTool
         CancellationToken cancellationToken = default)
     {
         var certs = includeFullChain
-            ? await ca.GetPublishedCertificates(profileName, cancellationToken)
-            : await ca.GetRootCertificates(profileName, cancellationToken);
+            ? await ca.GetPublishedCertificates(profileName, cancellationToken).ConfigureAwait(false)
+            : await ca.GetRootCertificates(profileName, cancellationToken).ConfigureAwait(false);
 
         var result = new List<McpCertificateItem>();
 

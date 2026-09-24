@@ -41,7 +41,7 @@ internal sealed class TpmSimulatorContainer : IAsyncDisposable
             .Build();
 
         // Build only if the image doesn't exist yet; subsequent calls are instant.
-        await image.CreateAsync(ct);
+        await image.CreateAsync(ct).ConfigureAwait(false);
 
         var container = new ContainerBuilder(image)
             .WithPortBinding(TpmCommandPort, true)
@@ -51,7 +51,7 @@ internal sealed class TpmSimulatorContainer : IAsyncDisposable
                     .UntilInternalTcpPortIsAvailable(TpmCommandPort))
             .Build();
 
-        await container.StartAsync(ct);
+        await container.StartAsync(ct).ConfigureAwait(false);
         return new TpmSimulatorContainer(container);
     }
 
@@ -84,6 +84,6 @@ internal sealed class TpmSimulatorContainer : IAsyncDisposable
             IssuedCertificateValidity = TimeSpan.FromHours(1),
         };
 
-    public async ValueTask DisposeAsync() => await _container.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _container.DisposeAsync().ConfigureAwait(false);
 }
 

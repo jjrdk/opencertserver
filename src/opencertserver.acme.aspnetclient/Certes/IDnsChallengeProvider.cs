@@ -1,6 +1,5 @@
 namespace OpenCertServer.Acme.AspNetClient.Certes;
 
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 

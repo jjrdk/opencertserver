@@ -23,7 +23,7 @@ public class ListCertificatesTool
         }
 
         var inv = store.GetInventory(page, pageSize, cancellationToken);
-        var items = await inv.ToListAsync(cancellationToken);
+        var items = await inv.ToListAsync(cancellationToken).ConfigureAwait(false);
 
         // Estimate total count: if we got fewer items than pageSize, this is the last page.
         // For an accurate total, a dedicated COUNT query would be needed from a persistent store.

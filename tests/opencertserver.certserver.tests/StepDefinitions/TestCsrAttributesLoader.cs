@@ -52,6 +52,6 @@ internal class TestCsrAttributesLoader : ICsrTemplateLoader
         ClaimsPrincipal? user,
         CancellationToken cancellationToken)
     {
-        return await TestCsrAttributesLoaderConfiguration.GetTemplate(profileName, user, cancellationToken);
+        return await TestCsrAttributesLoaderConfiguration.GetTemplate(profileName, user, cancellationToken).ConfigureAwait(false);
     }
 }

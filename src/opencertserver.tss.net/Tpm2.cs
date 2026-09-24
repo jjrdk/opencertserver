@@ -124,22 +124,22 @@ public sealed partial class Tpm2 : IDisposable
     /// <summary>
     /// Auth value associated with the storage hierarchy (TpmRh.Owner).
     /// </summary>
-    public AuthValue OwnerAuth = new AuthValue();
+    public AuthValue OwnerAuth = new();
 
     /// <summary>
     /// Auth value associated with the endorsement hierarchy (TpmRh.Endorsement).
     /// </summary>
-    public AuthValue EndorsementAuth = new AuthValue();
+    public AuthValue EndorsementAuth = new();
 
     /// <summary>
     /// Auth value associated with the platform hierarchy (TpmRh.Platform).
     /// </summary>
-    public AuthValue PlatformAuth = new AuthValue();
+    public AuthValue PlatformAuth = new();
 
     /// <summary>
     /// Auth value associated with the dictionary attack lockout reset (TpmRh.Lockout).
     /// </summary>
-    public AuthValue LockoutAuth = new AuthValue();
+    public AuthValue LockoutAuth = new();
 
     /// <summary>
     /// Returns auth value associated with the given permanent handle.
@@ -173,13 +173,13 @@ public sealed partial class Tpm2 : IDisposable
     /// values changed/set by a command to the corresponding wrapper classes managed
     /// by TSS.Net.
     /// </summary>
-    private readonly Dictionary<TpmHash, AuthValue> AuthValues = new Dictionary<TpmHash, AuthValue>();
+    private readonly Dictionary<TpmHash, AuthValue> AuthValues = new();
 
     /// <summary>
     /// A dictionary internally used to pass parameters of newly created auth sessions
     /// to the corresponding wrapper classes managed by TSS.Net.
     /// </summary>
-    private Dictionary<TpmHandle, AuthSession> SessionParams = new Dictionary<TpmHandle, AuthSession>();
+    private Dictionary<TpmHandle, AuthSession> SessionParams = new();
 
     /// <summary>
     /// An internal array of handles of PCRs that have an auth value assigned.
@@ -251,7 +251,7 @@ public sealed partial class Tpm2 : IDisposable
     /// </summary>
     private TpmRc LastError = TpmRc.Success;
 
-    private readonly CommandModifier ActiveModifiers = new CommandModifier();
+    private readonly CommandModifier ActiveModifiers = new();
 
     /// <summary>
     /// Instructs Tpm2 to calculate the CpHash of the next command rather than
@@ -843,7 +843,7 @@ public sealed partial class Tpm2 : IDisposable
 
 #if !WINDOWS_UWP
     // ReSharper disable once UnusedMember.Local
-    private ReentrancyGuardContext MyGuard = new ReentrancyGuardContext();
+    private ReentrancyGuardContext MyGuard = new();
 #endif
 
     //static bool initialized = false;

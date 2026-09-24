@@ -105,7 +105,7 @@ public abstract partial class TpmStructureBase
         throw new Exception("TpmStructureBase.Clone(): Should not be here");
     }
 
-    static Dbg dbg = new Dbg(false);
+    static Dbg dbg = new(false);
 
     /// <summary>
     /// Reflection and additional information associated with a TPM structure member.
