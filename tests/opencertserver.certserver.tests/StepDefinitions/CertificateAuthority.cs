@@ -20,9 +20,9 @@ public partial class CertificateServerFeatures
     public async Task WhenICheckTheInitialCrl()
     {
         using var client = _server.CreateClient();
-        var response = await client.GetAsync("ca/crl");
+        var response = await client.GetAsync("ca/crl").ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        var crl = await response.Content.ReadAsByteArrayAsync();
+        var crl = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
         _scenarioContext["crl"] = crl;
     }
 
@@ -55,7 +55,7 @@ public partial class CertificateServerFeatures
             $"ca/revoke?sn={serialNumberString}&reason={compromise}&signature={Convert.ToBase64String(signature)}");
         request.Headers.Add("X-Client-Cert", Convert.ToBase64String(_certCollection[0].Export(X509ContentType.Cert)));
         request.Headers.Add("Authorization", "Bearer valid-jwt");
-        var response = await client.SendAsync(request);
+        var response = await client.SendAsync(request).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
     }
 
@@ -63,9 +63,9 @@ public partial class CertificateServerFeatures
     public async Task ThenTheCertificateShouldBeInTheCrl()
     {
         using var client = _server.CreateClient();
-        var response = await client.GetAsync("ca/crl");
+        var response = await client.GetAsync("ca/crl").ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        var crl = await response.Content.ReadAsByteArrayAsync();
+        var crl = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
         var builder = CertificateRevocationListBuilder.Load(crl, out _);
         Assert.True(builder.RemoveEntry(Convert.FromHexString(_certCollection[0].GetSerialNumberString())));
     }

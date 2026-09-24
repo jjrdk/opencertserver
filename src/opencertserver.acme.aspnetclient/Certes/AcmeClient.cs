@@ -13,12 +13,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Persistence;
 
-public enum ChallengeType
-{
-    Http01,
-    Dns01
-}
-
 public sealed partial class AcmeClient : IAcmeClient
 {
     private readonly ILogger _logger;

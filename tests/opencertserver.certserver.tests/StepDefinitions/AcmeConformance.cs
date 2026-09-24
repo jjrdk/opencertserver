@@ -99,13 +99,13 @@ public partial class CertificateServerFeatures
     [When("the client requests a new nonce with HEAD")]
     public async Task WhenTheClientRequestsANewNonceWithHead()
     {
-        await SendAcmeRequestAsync(HttpMethod.Head, "/new-nonce");
+        await SendAcmeRequestAsync(HttpMethod.Head, "/new-nonce").ConfigureAwait(false);
     }
 
     [When("the client requests a new nonce with GET")]
     public async Task WhenTheClientRequestsANewNonceWithGet()
     {
-        await SendAcmeRequestAsync(HttpMethod.Get, "/new-nonce");
+        await SendAcmeRequestAsync(HttpMethod.Get, "/new-nonce").ConfigureAwait(false);
     }
 
     [When("the client sends a POST request to an ACME resource")]
@@ -131,7 +131,7 @@ public partial class CertificateServerFeatures
     [When("the client successfully POSTs to an ACME resource")]
     public async Task WhenTheClientSuccessfullyPostsToAnAcmeResource()
     {
-        await SendSuccessfulNewAccountRequestAsync();
+        await SendSuccessfulNewAccountRequestAsync().ConfigureAwait(false);
     }
 
     [When("the client POSTs an ACME request with the wrong content type")]
@@ -165,7 +165,7 @@ public partial class CertificateServerFeatures
     [When("the client sends a POST-as-GET request with a non-empty payload")]
     public async Task WhenTheClientSendsAPostAsGetRequestWithANonEmptyPayload()
     {
-        await EnsureAccountCreatedAsync();
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
 
         var orderContext = await AcmeState.Context!.NewOrder(null, ["localhost"]).ConfigureAwait(false);
         var signedPayload = CreateSignedPayload(
@@ -200,7 +200,7 @@ public partial class CertificateServerFeatures
     [When("the client sends a newAccount request signed with a kid instead of a jwk")]
     public async Task WhenTheClientSendsANewAccountRequestSignedWithAKidInsteadOfAJwk()
     {
-        await EnsureAccountCreatedAsync();
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
 
         var signedPayload = CreateSignedPayload(
             AcmeState.Key!,
@@ -219,7 +219,7 @@ public partial class CertificateServerFeatures
     [When("the client sends an existing-account request signed with a jwk instead of a kid")]
     public async Task WhenTheClientSendsAnExistingAccountRequestSignedWithAJwkInsteadOfAKid()
     {
-        await EnsureAccountCreatedAsync();
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
 
         await SendJwkSignedRequestAsync(
             AcmeState.Key!,
@@ -271,13 +271,13 @@ public partial class CertificateServerFeatures
     [When("the ACME server rejects a request for a protocol reason")]
     public async Task WhenTheAcmeServerRejectsARequestForAProtocolReason()
     {
-        await SendReplayNonceFailureAsync();
+        await SendReplayNonceFailureAsync().ConfigureAwait(false);
     }
 
     [When("the ACME server returns an error response to a POST request")]
     public async Task WhenTheAcmeServerReturnsAnErrorResponseToAPostRequest()
     {
-        await SendReplayNonceFailureAsync();
+        await SendReplayNonceFailureAsync().ConfigureAwait(false);
     }
 
     [When("multiple identifiers in one request fail for different reasons")]
@@ -299,7 +299,7 @@ public partial class CertificateServerFeatures
     [When("an ACME client creates a new account")]
     public async Task WhenAnAcmeClientCreatesANewAccount()
     {
-        await SendSuccessfulNewAccountRequestAsync();
+        await SendSuccessfulNewAccountRequestAsync().ConfigureAwait(false);
         AcmeState.AccountResponse = DeserializeAccountResponse();
         AcmeState.AccountUrl = AcmeState.Response?.Headers.Location;
         AcmeState.OrdersUrl = AcmeState.AccountResponse?.Orders;
@@ -308,7 +308,7 @@ public partial class CertificateServerFeatures
     [When("the client requests onlyReturnExisting for an existing account key")]
     public async Task WhenTheClientRequestsOnlyReturnExistingForAnExistingAccountKey()
     {
-        await EnsureAccountCreatedAsync();
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
         await SendOnlyReturnExistingRequestAsync(AcmeState.Key!, expectSuccess: true).ConfigureAwait(false);
 
         AcmeState.AccountResponse = DeserializeAccountResponse();
@@ -326,14 +326,14 @@ public partial class CertificateServerFeatures
     [When("the client fetches an existing account by its account URL")]
     public async Task WhenTheClientFetchesAnExistingAccountByItsAccountUrl()
     {
-        await EnsureAccountCreatedAsync();
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
         AcmeState.AccountResponse = await AcmeState.AccountContext!.Resource().ConfigureAwait(false);
     }
 
     [When("the client updates an existing account")]
     public async Task WhenTheClientUpdatesAnExistingAccount()
     {
-        await EnsureAccountCreatedAsync();
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
 
         AcmeState.ExpectedContacts = ["mailto:updated@example.com", "mailto:security@example.com"];
         AcmeState.AccountResponse = await AcmeState.AccountContext!
@@ -345,7 +345,7 @@ public partial class CertificateServerFeatures
     [When("the client POSTs an account object with status \"deactivated\" to its account URL")]
     public async Task WhenTheClientPostsAnAccountObjectWithStatusDeactivatedToItsAccountUrl()
     {
-        await EnsureAccountCreatedAsync();
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
         AcmeState.AccountResponse = await AcmeState.AccountContext!.Deactivate().ConfigureAwait(false);
     }
 
@@ -354,7 +354,7 @@ public partial class CertificateServerFeatures
     [When("the client deactivates their account")]
     public async Task WhenTheClientDeactivatesTheirAccount()
     {
-        await EnsureAccountCreatedAsync();
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
         AcmeState.AccountResponse = await AcmeState.AccountContext!.Deactivate().ConfigureAwait(false);
         Assert.Equal(AcmeAccountStatus.Deactivated, AcmeState.AccountResponse?.Status);
     }
@@ -434,7 +434,7 @@ public partial class CertificateServerFeatures
     [When("the client fetches the account orders URL")]
     public async Task WhenTheClientFetchesTheAccountOrdersUrl()
     {
-        await EnsureAccountCreatedAsync();
+        await EnsureAccountCreatedAsync().ConfigureAwait(false);
 
         var orderContext = await AcmeState.Context!.NewOrder(null, ["localhost"]).ConfigureAwait(false);
         AcmeState.ExpectedOrderUrls = [orderContext.Location];
@@ -859,7 +859,7 @@ public partial class CertificateServerFeatures
     {
         Assert.NotNull(AcmeState.SignedPayload);
 
-        await SendAcmeRequestAsync(HttpMethod.Post, "/new-account", AcmeState.SignedPayload);
+        await SendAcmeRequestAsync(HttpMethod.Post, "/new-account", AcmeState.SignedPayload).ConfigureAwait(false);
 
         Assert.Equal(HttpStatusCode.BadRequest, AcmeState.Response?.StatusCode);
     }
@@ -1371,7 +1371,7 @@ public partial class CertificateServerFeatures
 
         await Assert.ThrowsAsync<Acme.Abstractions.Exceptions.NotAllowedException>(() =>
             orderService.ProcessChallenge(alternateAccount, GetOrderId(), GetAuthorizationId(), GetChallengeId(),
-                CancellationToken.None));
+                CancellationToken.None)).ConfigureAwait(false);
     }
 
     [Then("the ACME server MUST deactivate the authorization")]
@@ -2315,7 +2315,7 @@ public partial class CertificateServerFeatures
         await WhenTheClientPostsToAnAcmeResource().ConfigureAwait(false);
         Assert.Equal(HttpStatusCode.Created, AcmeState.Response?.StatusCode);
         Assert.False(string.IsNullOrWhiteSpace(AcmeState.RawRequestBody));
-        await SendRawAcmeRequestAsync(HttpMethod.Post, "/new-account", AcmeState.RawRequestBody!);
+        await SendRawAcmeRequestAsync(HttpMethod.Post, "/new-account", AcmeState.RawRequestBody!).ConfigureAwait(false);
         Assert.Equal(HttpStatusCode.BadRequest, AcmeState.Response?.StatusCode);
     }
 
@@ -2353,7 +2353,7 @@ public partial class CertificateServerFeatures
     private async Task SendAcmeRequestAsync(HttpMethod method, string path, JwsPayload? payload = null)
     {
         await SendRawAcmeRequestAsync(method, path,
-            payload == null ? null : JsonSerializer.Serialize(payload), "application/jose+json");
+            payload == null ? null : JsonSerializer.Serialize(payload), "application/jose+json").ConfigureAwait(false);
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026",
@@ -2362,7 +2362,7 @@ public partial class CertificateServerFeatures
         Justification = "These conformance tests run in the standard test runtime and do not target AOT publishing.")]
     private async Task SendAcmeRequestAsync(HttpMethod method, string path, JwsPayload payload, string contentType)
     {
-        await SendRawAcmeRequestAsync(method, path, JsonSerializer.Serialize(payload), contentType);
+        await SendRawAcmeRequestAsync(method, path, JsonSerializer.Serialize(payload), contentType).ConfigureAwait(false);
     }
 
     private JsonDocument ParseProblemDocument()
@@ -3308,9 +3308,9 @@ public partial class CertificateServerFeatures
             request.Content = new StringContent(requestBody, Encoding.UTF8, contentType);
         }
 
-        var response = await client.SendAsync(request);
+        var response = await client.SendAsync(request).ConfigureAwait(false);
         AcmeState.Response = response;
-        AcmeState.ResponseBytes = await response.Content.ReadAsByteArrayAsync();
+        AcmeState.ResponseBytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
         AcmeState.RawRequestBody = requestBody;
         AcmeState.RequestContentType = request.Content?.Headers.ContentType?.MediaType;
         if (!string.IsNullOrWhiteSpace(requestBody))

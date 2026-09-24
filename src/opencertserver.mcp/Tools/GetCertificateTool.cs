@@ -32,7 +32,7 @@ public class GetCertificateTool
         }
 
         var certs = store.GetCertificatesById(cancellationToken, serialBytes);
-        var certList = await certs.ToListAsync(cancellationToken);
+        var certList = await certs.ToListAsync(cancellationToken).ConfigureAwait(false);
 
         if (!certList.Any())
         {
@@ -45,7 +45,7 @@ public class GetCertificateTool
 
         // Look up revocation status from store
         var inventory = await store.GetInventory(0, int.MaxValue, cancellationToken)
-            .FirstOrDefaultAsync(i => i.SerialNumber.Equals(serialNumber, StringComparison.OrdinalIgnoreCase), cancellationToken);
+            .FirstOrDefaultAsync(i => i.SerialNumber.Equals(serialNumber, StringComparison.OrdinalIgnoreCase), cancellationToken).ConfigureAwait(false);
 
         return new McpCertificateItem
         {

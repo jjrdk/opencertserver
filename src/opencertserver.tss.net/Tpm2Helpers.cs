@@ -169,19 +169,19 @@ public class PrimaryHelpers
     public async Task<Tpm2CreatePrimaryResponse>
         CreatePrimaryRsaAsync(int keyLen, AuthValue useAuth)
     {
-        return await CreatePrimaryRsaAsyncInternal(keyLen, useAuth.AuthVal, null, null);
+        return await CreatePrimaryRsaAsyncInternal(keyLen, useAuth.AuthVal, null, null).ConfigureAwait(false);
     }
 
     public async Task<Tpm2CreatePrimaryResponse>
         CreatePrimaryRsaAsync(int keyLen, AuthValue useAuth, TpmHash adminPolicy)
     {
-        return await CreatePrimaryRsaAsyncInternal(keyLen, useAuth.AuthVal, adminPolicy, null);
+        return await CreatePrimaryRsaAsyncInternal(keyLen, useAuth.AuthVal, adminPolicy, null).ConfigureAwait(false);
     }
 
     public async Task<Tpm2CreatePrimaryResponse>
         CreatePrimaryRsaAsync(int keyLen, byte[] useAuth)
     {
-        return await CreatePrimaryRsaAsyncInternal(keyLen, useAuth, null, null);
+        return await CreatePrimaryRsaAsyncInternal(keyLen, useAuth, null, null).ConfigureAwait(false);
     }
 
     internal async Task<Tpm2CreatePrimaryResponse> CreatePrimaryRsaAsyncInternal(
@@ -226,7 +226,7 @@ public class PrimaryHelpers
 
         var outsideInfo = Globs.GetRandomBytes(8);
         return await H.Tpm.CreatePrimaryAsync(TpmRh.Owner, sensCreate,
-            parms, outsideInfo, theSelection);
+            parms, outsideInfo, theSelection).ConfigureAwait(false);
     }
 } // class PrimaryHelpers
 
@@ -290,7 +290,7 @@ public class KeyHelpers
             sensCreate,
             signKeyPubTemplate,
             [],
-            []);
+            []).ConfigureAwait(false);
         return newKey;
     }
 } // class KeyHelpers

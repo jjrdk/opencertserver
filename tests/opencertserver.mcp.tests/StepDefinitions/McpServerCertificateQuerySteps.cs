@@ -26,7 +26,7 @@ public sealed class McpServerCertificateQuerySteps
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pss);
         var csr = Convert.ToBase64String(request.CreateSigningRequest());
-        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr });
+        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate failed: {result.ErrorMessage}");
         TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
     }
@@ -34,7 +34,7 @@ public sealed class McpServerCertificateQuerySteps
     [When("the MCP server invokes \"list_certificates\" with page (.+) and pageSize (.+)")]
     public async Task WhenListWithPageAndPageSize(int page, int pageSize)
     {
-        var result = await _fixture.InvokeMcpToolAsync("list_certificates", new { page, pageSize });
+        var result = await _fixture.InvokeMcpToolAsync("list_certificates", new { page, pageSize }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
 
         if (result.IsSuccess)
@@ -46,7 +46,7 @@ public sealed class McpServerCertificateQuerySteps
     [When("the MCP server invokes \"search_certificates\" with no filter parameters")]
     public async Task WhenSearchWithNoFilters()
     {
-        var result = await _fixture.InvokeMcpToolAsync("search_certificates", new { });
+        var result = await _fixture.InvokeMcpToolAsync("search_certificates", new { }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
         if (result.IsSuccess)
         {
@@ -62,7 +62,7 @@ public sealed class McpServerCertificateQuerySteps
             throw new Exception("No cert in shared state — run the Background step first");
         }
 
-        var result = await _fixture.InvokeMcpToolAsync(toolName, new { serialNumber = TestSharedState.SignedCert.SerialNumber });
+        var result = await _fixture.InvokeMcpToolAsync(toolName, new { serialNumber = TestSharedState.SignedCert.SerialNumber }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
         if (result.IsSuccess)
         {
@@ -80,7 +80,7 @@ public sealed class McpServerCertificateQuerySteps
         }
 
         var serial = TestSharedState.SignedCert.SerialNumber;
-        var result = await _fixture.InvokeMcpToolAsync("get_certificate", new { serialNumber = serial });
+        var result = await _fixture.InvokeMcpToolAsync("get_certificate", new { serialNumber = serial }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
         if (result.IsSuccess)
         {
@@ -91,7 +91,7 @@ public sealed class McpServerCertificateQuerySteps
     [When("the MCP server invokes \"get_certificate\" with serial number \"(.+)\"")]
     public async Task WhenGetBySpecificSerial(string serial)
     {
-        var result = await _fixture.InvokeMcpToolAsync("get_certificate", new { serialNumber = serial });
+        var result = await _fixture.InvokeMcpToolAsync("get_certificate", new { serialNumber = serial }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
         if (result.IsSuccess)
         {
@@ -102,7 +102,7 @@ public sealed class McpServerCertificateQuerySteps
     [When("the MCP server invokes \"get_certificate\" without providing a serial number")]
     public async Task WhenGetWithoutSerial()
     {
-        var result = await _fixture.InvokeMcpToolAsync("get_certificate", new { });
+        var result = await _fixture.InvokeMcpToolAsync("get_certificate", new { }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
         TestSharedState.SignedCert = result.IsSuccess
             ? (McpCertificateItem)result.Content!
@@ -112,7 +112,7 @@ public sealed class McpServerCertificateQuerySteps
     [When("the MCP server invokes \"get_ca_certificates\" with includeFullChain false")]
     public async Task WhenGetCaCertsNoChain()
     {
-        var result = await _fixture.InvokeMcpToolAsync("get_ca_certificates", new { includeFullChain = false });
+        var result = await _fixture.InvokeMcpToolAsync("get_ca_certificates", new { includeFullChain = false }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
         TestSharedState.CaCertsResult = (McpCaCertificatesResult)result.Content!;
     }
@@ -120,7 +120,7 @@ public sealed class McpServerCertificateQuerySteps
     [When("the MCP server invokes \"get_ca_certificates\" with includeFullChain true")]
     public async Task WhenGetCaCertsWithChain()
     {
-        var result = await _fixture.InvokeMcpToolAsync("get_ca_certificates", new { includeFullChain = true });
+        var result = await _fixture.InvokeMcpToolAsync("get_ca_certificates", new { includeFullChain = true }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
         TestSharedState.CaCertsResult = (McpCaCertificatesResult)result.Content!;
     }
@@ -129,7 +129,7 @@ public sealed class McpServerCertificateQuerySteps
     public async Task WhenGetCaCertsWithProfile(string profileName)
     {
         var result =
-            await _fixture.InvokeMcpToolAsync("get_ca_certificates", new { profileName, includeFullChain = false });
+            await _fixture.InvokeMcpToolAsync("get_ca_certificates", new { profileName, includeFullChain = false }).ConfigureAwait(false);
         TestSharedState.ToolResult = result;
         TestSharedState.CaCertsResult = (McpCaCertificatesResult)result.Content!;
     }

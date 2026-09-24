@@ -58,7 +58,7 @@ public class GetRevocationStatusTool
                 serialBytes
             );
 
-            var (_, status, revokedInfo) = await store.GetCertificateStatus(certId, cancellationToken);
+            var (_, status, revokedInfo) = await store.GetCertificateStatus(certId, cancellationToken).ConfigureAwait(false);
 
             results.Add(new McpCertStatusCheckResult
             {

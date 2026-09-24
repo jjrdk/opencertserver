@@ -64,7 +64,7 @@ public class AppleAttestFailureModeSteps
     [When(@"the provider receives an empty attestation object")]
     public async Task WhenEmptyAttestationObject()
     {
-        try { await _provider!.GenerateAndSignQuoteAsync(null!, Array.Empty<byte>()); }
+        try { await _provider!.GenerateAndSignQuoteAsync(null!, Array.Empty<byte>()).ConfigureAwait(false); }
         catch (Exception ex) { _thrownException = ex; }
     }
 
@@ -80,7 +80,7 @@ public class AppleAttestFailureModeSteps
         _provider = BuildProvider(_native);
         var attestationObject = new byte[64];
         Random.Shared.NextBytes(attestationObject);
-        try { await _provider.GenerateAndSignQuoteAsync(null!, attestationObject); }
+        try { await _provider.GenerateAndSignQuoteAsync(null!, attestationObject).ConfigureAwait(false); }
         catch (Exception ex) { _thrownException = ex; }
     }
 
@@ -93,7 +93,7 @@ public class AppleAttestFailureModeSteps
         _provider = BuildProvider(_native);
         var attestationObject = new byte[64];
         Random.Shared.NextBytes(attestationObject);
-        try { await _provider.GenerateAndSignQuoteAsync(null!, attestationObject); }
+        try { await _provider.GenerateAndSignQuoteAsync(null!, attestationObject).ConfigureAwait(false); }
         catch (Exception ex) { _thrownException = ex; }
     }
 
@@ -103,14 +103,14 @@ public class AppleAttestFailureModeSteps
         // Simulate being on an Apple device by calling the native interop's GenerateKeyAsync directly
         // (AppleSeProvider.GetDeviceIdAsync checks OperatingSystem.IsMacOS which returns false in CI,
         //  so we invoke the native interop directly to test that the exception propagates correctly.)
-        try { await _native.GenerateKeyAsync(); }
+        try { await _native.GenerateKeyAsync().ConfigureAwait(false); }
         catch (Exception ex) { _thrownException = ex; }
     }
 
     [When(@"the provider's GetDeviceIdAsync is called directly")]
     public async Task WhenGetDeviceIdAsyncCalled()
     {
-        try { await _provider!.GetDeviceIdAsync(); }
+        try { await _provider!.GetDeviceIdAsync().ConfigureAwait(false); }
         catch (Exception ex) { _thrownException = ex; }
     }
 

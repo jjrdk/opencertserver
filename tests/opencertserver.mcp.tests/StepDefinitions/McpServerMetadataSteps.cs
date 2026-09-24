@@ -21,7 +21,7 @@ public sealed class McpServerMetadataSteps
     [When("the MCP server invokes \"get_server_metadata\"")]
     public async Task WhenGetServerMetadata()
     {
-        var result = await _fixture.InvokeMcpToolAsync("get_server_metadata", new { });
+        var result = await _fixture.InvokeMcpToolAsync("get_server_metadata", new { }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"get_server_metadata failed: {result.ErrorMessage}");
         _metadata = (McpServerMetadata)result.Content!;
         TestSharedState.ServerMetadata = _metadata;

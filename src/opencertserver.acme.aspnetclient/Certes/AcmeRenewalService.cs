@@ -63,7 +63,7 @@ public sealed partial class AcmeRenewalService : IAcmeRenewalService
 
     public async Task StoppingAsync(CancellationToken cancellationToken)
     {
-        await _tokenSource.CancelAsync();
+        await _tokenSource.CancelAsync().ConfigureAwait(false);
         if (_renewalLoop is not null)
         {
             try

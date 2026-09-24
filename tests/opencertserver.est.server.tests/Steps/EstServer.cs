@@ -53,7 +53,7 @@ public class EstServer
             ECDsa ecdsa => new CertificateRequest(subjectName, ecdsa, HashAlgorithmName.SHA256),
             _ => throw new ArgumentOutOfRangeException(nameof(key), key, null)
         };
-        var response = await ca.SignCertificateRequest(csr, profile);
+        var response = await ca.SignCertificateRequest(csr, profile).ConfigureAwait(false);
         return response switch
         {
             SignCertificateResponse.Success success => success.Certificate,
@@ -86,7 +86,7 @@ public class EstServer
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
 
         var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaCert).Build();
-        await host.StartAsync();
+        await host.StartAsync().ConfigureAwait(false);
         _server = host.GetTestServer();
     }
 
@@ -177,14 +177,14 @@ public class EstServer
                 key = rsa;
                 _context["privateKey"] = rsa.ExportRSAPrivateKey();
                 _context["publicKey"] = key.ExportSubjectPublicKeyInfo();
-                _context["certificate"] = await GetCertificate(rsa);
+                _context["certificate"] = await GetCertificate(rsa).ConfigureAwait(false);
                 break;
             case "ecdsa":
                 var ecDsa = ECDsa.Create();
                 key = ecDsa;
                 _context["privateKey"] = ecDsa.ExportECPrivateKey();
                 _context["publicKey"] = key.ExportSubjectPublicKeyInfo();
-                _context["certificate"] = await GetCertificate(ecDsa);
+                _context["certificate"] = await GetCertificate(ecDsa).ConfigureAwait(false);
                 break;
         }
 
@@ -198,7 +198,7 @@ public class EstServer
             key,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
             certificate: _context["certificate"] as X509Certificate2
-        );
+        ).ConfigureAwait(false);
         _context["enrolledCertificate"] = cert;
     }
 
@@ -221,12 +221,12 @@ public class EstServer
         {
             case "rsa":
                 var rsa = RSA.Create();
-                clientCertificate = await GetCertificate(rsa);
+                clientCertificate = await GetCertificate(rsa).ConfigureAwait(false);
                 request = new CertificateRequest(subjectName, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
                 break;
             case "ecdsa":
                 var ecDsa = ECDsa.Create();
-                clientCertificate = await GetCertificate(ecDsa);
+                clientCertificate = await GetCertificate(ecDsa).ConfigureAwait(false);
                 request = new CertificateRequest(subjectName, ecDsa, HashAlgorithmName.SHA256);
                 break;
             default:
@@ -238,7 +238,7 @@ public class EstServer
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment, false));
         request.CertificateExtensions.Add(sanBuilder.Build());
 
-        var (_, cert) = await SubmitSimpleEnrollAsync(request, profile.ToLowerInvariant(), clientCertificate);
+        var (_, cert) = await SubmitSimpleEnrollAsync(request, profile.ToLowerInvariant(), clientCertificate).ConfigureAwait(false);
         _context["enrolledCertificate"] = cert;
     }
 
@@ -257,13 +257,13 @@ public class EstServer
         };
         requestMessage.Headers.TransferEncoding.Add(new TransferCodingHeaderValue("base64"));
 
-        var response = await httpClient.SendAsync(requestMessage);
+        var response = await httpClient.SendAsync(requestMessage).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
-            return (await response.Content.ReadAsStringAsync(), null);
+            return (await response.Content.ReadAsStringAsync().ConfigureAwait(false), null);
         }
 
-        var b64 = await response.Content.ReadAsStringAsync();
+        var b64 = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var bytes = b64.Base64DecodeBytes();
         var reader = new AsnReader(bytes, AsnEncodingRules.DER);
         var contentInfo = new CmsContentInfo(reader);
@@ -281,7 +281,7 @@ public class EstServer
     public async Task WhenAnUnauthenticatedClientSubmitsAValidRsaCertificateSigningRequestCsr(string profile)
     {
         using var rsa = RSA.Create();
-        var c = await GetCertificate(rsa);
+        var c = await GetCertificate(rsa).ConfigureAwait(false);
         var client = new EstClient(
             new Uri("https://localhost/"),
             options: null,
@@ -292,7 +292,7 @@ public class EstServer
             rsa,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
             certificate: c
-        );
+        ).ConfigureAwait(false);
         _context["errorMessage"] = error;
         _context["enrolledCertificate"] = cert;
     }
@@ -302,7 +302,7 @@ public class EstServer
     {
         using var handler = _server.CreateHandler();
         using var rsa = ECDsa.Create();
-        var c = await GetCertificate(rsa);
+        var c = await GetCertificate(rsa).ConfigureAwait(false);
         var client = new EstClient(
             new Uri("https://localhost/"),
             options: null,
@@ -312,7 +312,7 @@ public class EstServer
             rsa,
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment,
             certificate: c
-        );
+        ).ConfigureAwait(false);
         _context["errorMessage"] = error;
         _context["enrolledCertificate"] = cert;
     }
@@ -326,7 +326,7 @@ public class EstServer
             messageHandler: _server.CreateHandler(),
             profileName: profile);
         var attributes = await client.GetCsrAttributes(
-            new AuthenticationHeaderValue("Bearer", "valid-jwt"));
+            new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
 
         Assert.NotNull(attributes);
         _context["csrAttributes"] = attributes;
@@ -386,7 +386,7 @@ public class EstServer
                     using var rsa = RSA.Create();
                     rsa.ImportSubjectPublicKeyInfo(publicKey, out _);
                     rsa.ImportRSAPrivateKey(privateKey, out _);
-                    var (_, c) = await client.ReEnroll(rsa, cert[0]);
+                    var (_, c) = await client.ReEnroll(rsa, cert[0]).ConfigureAwait(false);
                     cert = c;
                     break;
                 }
@@ -395,7 +395,7 @@ public class EstServer
                     using var ecdsa = ECDsa.Create();
                     ecdsa.ImportSubjectPublicKeyInfo(publicKey, out _);
                     ecdsa.ImportECPrivateKey(privateKey, out _);
-                    var (_, c) = await client.ReEnroll(ecdsa, cert[0]);
+                    var (_, c) = await client.ReEnroll(ecdsa, cert[0]).ConfigureAwait(false);
                     cert = c;
                     break;
                 }
@@ -421,7 +421,7 @@ public class EstServer
             options: null,
             messageHandler: _server.CreateHandler(),
             profileName: profileName);
-        var certs = await client.ServerCertificates();
+        var certs = await client.ServerCertificates().ConfigureAwait(false);
         _context["certificates"] = certs;
     }
 

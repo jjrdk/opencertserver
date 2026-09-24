@@ -57,7 +57,7 @@ public sealed class AppleSeProvider : IAttestationProvider
         }
 
         _logger.LogInformation("Generating Secure Enclave key via DCAppAttestService");
-        return await _native.GenerateKeyAsync();
+        return await _native.GenerateKeyAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -87,17 +87,17 @@ public sealed class AppleSeProvider : IAttestationProvider
             throw new ArgumentException("Nonce/attestation object must not be empty.", nameof(nonce));
 
         if (_options.UseDeviceAttestation && IsApplePlatform())
-            return await GenerateAttestationOnDeviceAsync(nonce);
+            return await GenerateAttestationOnDeviceAsync(nonce).ConfigureAwait(false);
 
-        return await VerifyAttestationOnServerAsync(nonce);
+        return await VerifyAttestationOnServerAsync(nonce).ConfigureAwait(false);
     }
 
     private async Task<byte[]> GenerateAttestationOnDeviceAsync(byte[] challenge)
     {
         _logger.LogInformation("Generating App Attest attestation object on Apple device");
-        var keyId = await _native.GenerateKeyAsync();
+        var keyId = await _native.GenerateKeyAsync().ConfigureAwait(false);
         var clientDataHash = SHA256.HashData(challenge);
-        var attestationObject = await _native.AttestKeyAsync(keyId, clientDataHash);
+        var attestationObject = await _native.AttestKeyAsync(keyId, clientDataHash).ConfigureAwait(false);
         _logger.LogInformation("Attestation object generated for key {KeyId}", keyId);
         return attestationObject;
     }
@@ -124,7 +124,7 @@ public sealed class AppleSeProvider : IAttestationProvider
         HttpResponseMessage response;
         try
         {
-            response = await _httpClient.PostAsync(endpoint, content);
+            response = await _httpClient.PostAsync(endpoint, content).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -134,12 +134,12 @@ public sealed class AppleSeProvider : IAttestationProvider
 
         if (!response.IsSuccessStatusCode)
         {
-            var body = await response.Content.ReadAsStringAsync();
+            var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             throw new VendorApiException("Apple", endpoint, (int)response.StatusCode,
                 $"Apple verification server rejected attestation (HTTP {(int)response.StatusCode}): {body}");
         }
 
-        return await response.Content.ReadAsByteArrayAsync();
+        return await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
     }
 
     private static bool IsApplePlatform() =>

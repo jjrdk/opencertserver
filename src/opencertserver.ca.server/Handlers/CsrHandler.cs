@@ -27,7 +27,7 @@ public static class CsrHandler
             using var reader = new StreamReader(body);
             var csrPem = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
             var certResponse = await ca.SignCertificateRequestPem(csrPem, profileName, user.Identity as ClaimsIdentity,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken).ConfigureAwait(false);
             if (certResponse is SignCertificateResponse.Success success)
             {
                 CaInstruments.CsrSuccesses.Add(1);

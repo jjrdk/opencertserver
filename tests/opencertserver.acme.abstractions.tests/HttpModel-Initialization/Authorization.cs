@@ -14,7 +14,7 @@ public sealed class Authorization
         var account = new Model.Account(new JsonWebKey(StaticTestData.JwkJson), new List<string> { "some@example.com" },
             null);
         var order = new Model.Order(account,
-            new List<Identifier> { new Identifier { Type = IdentifierType.Dns, Value = "*.example.com" } }, null);
+            new List<Identifier> { new() { Type = IdentifierType.Dns, Value = "*.example.com" } }, null);
         var authorization = new Model.Authorization(order, order.Identifiers.First(), DateTimeOffset.UtcNow);
         var challenge = new Model.Challenge(authorization, "http-01");
 

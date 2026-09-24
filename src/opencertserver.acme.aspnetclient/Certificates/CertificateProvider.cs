@@ -144,7 +144,7 @@ public sealed partial class CertificateProvider : IProvideCertificates
              ? placedOrder.Challenges
                   .Select(DnsRecordFor)
                   .Where(r => r is not null)
-                  .Select(r => (DnsChallengeRecord)r!)
+                  .Cast<DnsChallengeRecord>()
                   .Distinct()
                   .ToArray()
              : [];
