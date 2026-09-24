@@ -119,7 +119,7 @@ public sealed class LetsEncryptChallengeApprovalMiddlewareTests
             OrderFinalizedCts = new CancellationTokenSource();
         }
 
-        public Task<PlacedOrder> PlaceOrder(string[] domains)
+        public Task<PlacedOrder> PlaceOrder(ChallengeType challengeType, string[] domains)
         {
             var challengeDtos = new[] { new ChallengeDto(AcmeToken, AcmeResponse, []) };
 

@@ -14,7 +14,7 @@ public interface IAuthorizationContext : IResourceContext<Authorization>
     Task<IEnumerable<IChallengeContext>> Challenges();
 
     /// <summary>
-    /// Deactivates this authzorization.
+    /// Deactivates this authorization.
     /// </summary>
     /// <returns>
     /// The authorization deactivated.

@@ -70,6 +70,14 @@ public abstract class AcmeOptions
     public string KeyAlgorithm { get; init; } = SecurityAlgorithms.EcdsaSha256;
 
     /// <summary>
+    /// The ACME challenge type used when placing an order. Defaults to
+    /// <see cref="ChallengeType.Http01"/>, which is answered in-process by the
+    /// <c>AcmeChallengeApprovalMiddleware</c>. Set to <see cref="ChallengeType.Dns01"/> to publish
+    /// <c>_acme-challenge</c> TXT records via a registered <see cref="IDnsChallengeProvider"/>.
+    /// </summary>
+    public ChallengeType ChallengeType { get; init; } = ChallengeType.Http01;
+
+    /// <summary>
     /// Get or set a delay before the initial run of the renewal service (subsequent runs will be determined by <see cref="RenewalFrequency"/>). Defaults to zero (no delay).
     /// On some platform/deployment systems (e.g Azure Slot Swap) we do not want the renewal service to start immediately, because we may not
     /// yet have incoming requests (e.g. for challenges) directed to us.

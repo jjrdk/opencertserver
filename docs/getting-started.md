@@ -269,12 +269,36 @@ what the conformance tests drive:
 
 ```csharp
 // IAcmeClient
-var placed = await client.PlaceOrder(["localhost"]);
+var placed = await client.PlaceOrder(ChallengeType.Http01, ["localhost"]);
 var (cert, keyPem, collection) = await client.FinalizeOrder(placed, "change-me");
-// cert       : the issued leaf
-// keyPem     : the PEM private key that signed the CSR
+// cert        : the issued leaf
+// keyPem      : the PEM private key that signed the CSR
 // collection : leaf followed by the issuer chain (persist this, not just the leaf)
 ```
+
+By default the renewal engine answers `http-01` in-process (the
+`AcmeChallengeApprovalMiddleware` serves `/.well-known/acme-challenge/{token}`). To answer `dns-01`
+instead, set `ChallengeType` on the options and register a provider that publishes the
+`_acme-challenge` TXT records into your DNS zone:
+
+```csharp
+using OpenCertServer.Acme.AspNetClient.Certes;
+
+var options = new LetsEncryptOptions
+{
+    // ...
+    ChallengeType = ChallengeType.Dns01   // publish _acme-challenge TXT records via a provider
+};
+
+builder.Services.AddAcmeClient(options)
+        .AddAcmeDnsChallenge(myDnsProvider)   // Cloudflare / Route53 / Azure DNS / your own
+        .AddAcmeFileCertificatePersistence("acme-certificates");
+```
+
+The provider implements `IDnsChallengeProvider` (`PlaceChallengesAsync` writes the TXT records
+before the ACME server validates and `RemoveChallengesAsync` clears them afterwards). When no
+provider is registered the no-op `NullDnsChallengeProvider` is used, so the `http-01` path is
+unaffected unless `ChallengeType.Dns01` is selected.
 
 Persistence strategies are pluggable: `AddAcmeFileCertificatePersistence` /
 `AddAcmeFileChallengePersistence` for disk, `AddAcmeInMemoryCertificatesPersistence` /
