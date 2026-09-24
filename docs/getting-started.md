@@ -290,8 +290,7 @@ var options = new LetsEncryptOptions
     ChallengeType = ChallengeType.Dns01   // publish _acme-challenge TXT records via a provider
 };
 
-builder.Services.AddAcmeClient(options)
-        .AddAcmeDnsChallenge(myDnsProvider)   // Cloudflare / Route53 / Azure DNS / your own
+builder.Services.AddAcmeClient(options, myDnsProviderFactory)   // Cloudflare / Route53 / Azure DNS / your own
         .AddAcmeFileCertificatePersistence("acme-certificates");
 ```
 
