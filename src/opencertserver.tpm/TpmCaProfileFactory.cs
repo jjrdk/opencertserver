@@ -133,7 +133,8 @@ public sealed class TpmCaProfileFactory : IDisposable
     private X509Certificate2 SelfSignCaCertificate(AsymmetricAlgorithm key)
     {
         var dn = new X500DistinguishedName(_options.CaSubjectName);
-        var notBefore = DateTimeOffset.UtcNow.Date;
+        // Midnight UTC with a zero offset - DateTimeOffset.UtcNow.Date would be read as local time (#81).
+        var notBefore = new DateTimeOffset(DateTimeOffset.UtcNow.UtcDateTime.Date, TimeSpan.Zero);
         var notAfter = notBefore.Add(_options.CaCertificateValidity);
 
         var request = key switch

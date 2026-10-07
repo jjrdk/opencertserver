@@ -32,6 +32,12 @@ are secured by TLS client-certificate authentication (`certserver` runs `UseHttp
 `UseHttpsClientCertificate` and
 `CertificateAuthenticationDefaults.AuthenticationScheme` = `"Certificate"`).
 
+**Validity window.** When the caller does not request a `notBefore` - EST never does, ACME only when
+the order carries one - an issued certificate is valid from midnight UTC of the day it is issued, for
+the profile's `CertificateValidity`. The same applies to the CA's own self-signed certificates. This
+does not depend on the server's local time zone
+([CertificateValidity.feature](../tests/opencertserver.certserver.tests/Features/CertificateValidity.feature)).
+
 ### GET /ca/crl
 
 - Description: Retrieve the current Certificate Revocation List for the CA (or a profile).
