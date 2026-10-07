@@ -183,7 +183,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             _ => throw new NotSupportedException()
         };
 
-        var effectiveNotBefore = notBefore?.ToUniversalTime() ?? DateTimeOffset.UtcNow.Date;
+        var effectiveNotBefore = notBefore?.ToUniversalTime() ?? UtcToday();
         var effectiveNotAfter = notAfter?.ToUniversalTime() ?? effectiveNotBefore.Add(profile.CertificateValidity);
         if (effectiveNotAfter <= effectiveNotBefore)
         {
@@ -375,6 +375,16 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         return (parent, SelfSignCert(usageFlags, certificateValidity, parentReq));
     }
 
+    /// <summary>
+    /// Midnight of the current UTC day, with a zero offset.
+    /// </summary>
+    /// <remarks>
+    /// <c>DateTimeOffset.UtcNow.Date</c> is a <see cref="DateTime"/> with <see cref="DateTimeKind.Unspecified"/>;
+    /// converting it back to <see cref="DateTimeOffset"/> applies the local offset of the server, so a
+    /// certificate issued west of UTC would only become valid hours later. See issue #81.
+    /// </remarks>
+    internal static DateTimeOffset UtcToday() => new(DateTimeOffset.UtcNow.UtcDateTime.Date, TimeSpan.Zero);
+
     private static X509Certificate2 SelfSignCert(
         X509KeyUsageFlags usageFlags,
         TimeSpan certificateValidity,
@@ -384,9 +394,10 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         parentReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(parentReq.PublicKey, false));
         parentReq.CertificateExtensions.Add(new X509KeyUsageExtension(usageFlags, true));
 
+        var today = UtcToday();
         var parentCert = parentReq.CreateSelfSigned(
-            DateTimeOffset.UtcNow.Date,
-            DateTimeOffset.UtcNow.Date.Add(certificateValidity));
+            today,
+            today.Add(certificateValidity));
 
         return parentCert;
     }
@@ -460,11 +471,12 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             _ => throw new NotSupportedException()
         };
 
+        var today = UtcToday();
         return request.Create(
             issuerCertificate.SubjectName,
             signatureGenerator,
-            DateTimeOffset.UtcNow.Date,
-            DateTimeOffset.UtcNow.Date.Add(certificateValidity),
+            today,
+            today.Add(certificateValidity),
             RandomNumberGenerator.GetBytes(16));
     }
 
