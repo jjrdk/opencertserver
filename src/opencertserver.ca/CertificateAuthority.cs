@@ -533,6 +533,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     public void Dispose()
     {
         _config.Dispose();
+        _certificateIdGenerator.Dispose();
     }
 
     private sealed partial class OwnCertificateValidation(IStoreCaProfiles caProfiles, ILogger logger)

@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 
 namespace OpenCertServer.Ca;
 
-public interface IGenerateCertificateId
+public interface IGenerateCertificateId : IDisposable
 {
     /// <summary>
     /// Generates a unique identifier for the given X.509 certificate.
@@ -11,7 +11,7 @@ public interface IGenerateCertificateId
     byte[] GenerateId();
 }
 
-public class RandomNumberCertificateIdGenerator : IGenerateCertificateId, IDisposable
+public class RandomNumberCertificateIdGenerator : IGenerateCertificateId
 {
     private readonly RandomNumberGenerator _rng = RandomNumberGenerator.Create();
 
