@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Security.Claims;
