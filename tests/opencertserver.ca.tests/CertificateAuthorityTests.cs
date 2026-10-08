@@ -60,6 +60,7 @@ public sealed class CertificateAuthorityTests : IDisposable
                 []),
             new InMemoryCertificateStore(),
             new ValidateAll(),
+            new RandomNumberCertificateIdGenerator(),
             new NullLogger<CertificateAuthority>());
     }
 

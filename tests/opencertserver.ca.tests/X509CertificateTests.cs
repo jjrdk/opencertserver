@@ -30,6 +30,7 @@ public sealed class X509CertificateTests : IDisposable
                 []),
             new InMemoryCertificateStore(),
             new ValidateAll(),
+            new RandomNumberCertificateIdGenerator(),
             new NullLogger<CertificateAuthority>());
     }
 
