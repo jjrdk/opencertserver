@@ -317,7 +317,7 @@ fetch it by CA or by profile.
         number) prevents an attacker from crafting a certificate with the same serial number as a
         victim's certificate and using it to trigger self-service revocation.
       - **Administrative**: the caller's authenticated identity carries the role claim
-        `CaAdmin` (`RevocationAuthorizationConstants.CaAdminRole`). Admins may revoke any
+        `ca_admin` (`RevocationAuthorizationConstants.CaAdminRole`). Admins may revoke any
         certificate in the CA.
    Any other combination returns `403 Forbidden`.
 * The authorization policy for the revoke endpoint is named `"ca_revoke"`
