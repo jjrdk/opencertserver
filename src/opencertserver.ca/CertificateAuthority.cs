@@ -151,6 +151,11 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
 
         LogCreatingCertificateForSubjectName(request.SubjectName.Name);
 
+        if (MakeEndEntityRequest(request) is { } refusal)
+        {
+            return new SignCertificateResponse.Error(refusal);
+        }
+
         var toRemove = request.CertificateExtensions
             .Where(ext => ext is X509AuthorityInformationAccessExtension
              or X509AuthorityKeyIdentifierExtension)
@@ -235,6 +240,54 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
 
         return new SignCertificateResponse.Error(errors);
     }
+
+    /// <summary>
+    /// Makes the request an end-entity request. Returns why it is refused, or null when it
+    /// may be issued.
+    /// </summary>
+    /// <remarks>
+    /// Extensions used to be copied from the CSR except AIA, AKI and CRL distribution points.
+    /// A CSR asking for basicConstraints CA:TRUE and keyCertSign therefore yielded a working
+    /// subordinate CA for anyone allowed to enroll. The CA's own certificates (self-signed,
+    /// rollover, TPM) are created directly and never pass through here.
+    /// </remarks>
+    internal static string? MakeEndEntityRequest(CertificateRequest request)
+    {
+        var extensions = request.CertificateExtensions;
+
+        if (extensions.OfType<X509BasicConstraintsExtension>().Any(b => b.CertificateAuthority))
+        {
+            return "The request asks for a CA certificate; only end-entity certificates are issued.";
+        }
+
+        const X509KeyUsageFlags caUsages = X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign;
+        if (extensions.OfType<X509KeyUsageExtension>().Any(k => (k.KeyUsages & caUsages) != 0))
+        {
+            return "The request asks for keyCertSign or cRLSign; only end-entity certificates are issued.";
+        }
+
+        // Only the CA decides these - never the requester. certificatePolicies is the CA's
+        // assertion that relying parties authorize on (e.g. strongSwan's cert_policy).
+        string[] caOnly =
+        [
+            Oids.BasicConstraints2, Oids.BasicConstraints, NameConstraintsOid, PolicyConstraintsOid,
+            PolicyMappingsOid, InhibitAnyPolicyOid, CertificatePoliciesOid, Oids.SubjectKeyIdentifier
+        ];
+        foreach (var extension in extensions.Where(e => e.Oid?.Value is { } oid && caOnly.Contains(oid)).ToArray())
+        {
+            extensions.Remove(extension);
+        }
+
+        extensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
+        extensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+        return null;
+    }
+
+    private const string NameConstraintsOid = "2.5.29.30";
+    private const string CertificatePoliciesOid = "2.5.29.32";
+    private const string PolicyMappingsOid = "2.5.29.33";
+    private const string PolicyConstraintsOid = "2.5.29.36";
+    private const string InhibitAnyPolicyOid = "2.5.29.54";
 
     /// <inheritdoc/>
     public async Task<SignCertificateResponse> SignCertificateRequestPem(

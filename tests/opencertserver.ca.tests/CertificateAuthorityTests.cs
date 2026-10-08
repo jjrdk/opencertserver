@@ -152,6 +152,91 @@ public sealed class CertificateAuthorityTests : IDisposable
             string.Join(", ", chain.ChainStatus.Select(s => s.StatusInformation.Trim())));
     }
 
+    // A CSR used to be able to ask for basicConstraints CA:TRUE and keyCertSign and got
+    // exactly that - a working subordinate CA for anyone allowed to enroll.
+    [Fact]
+    public async Task RequestForCaCertificateIsRefused()
+    {
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("CN=Wants to be a CA", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        req.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+
+        var response = await _authority.SignCertificateRequest(req, "rsa",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var error = Assert.IsType<SignCertificateResponse.Error>(response);
+        Assert.Contains("CA certificate", string.Join(" ", error.Errors));
+    }
+
+    [Fact]
+    public async Task RequestForKeyCertSignIsRefused()
+    {
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("CN=Wants keyCertSign", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        req.CertificateExtensions.Add(new X509KeyUsageExtension(
+            X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
+
+        var response = await _authority.SignCertificateRequest(req, "rsa",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.IsType<SignCertificateResponse.Error>(response);
+    }
+
+    [Fact]
+    public async Task IssuedCertificateIsEndEntityWithOwnSubjectKeyIdentifier()
+    {
+        // A bare request without basicConstraints and SKI: both come from the CA.
+        using var rsa = RSA.Create(2048);
+        var bare = new CertificateRequest("CN=Bare", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        var response = await _authority.SignCertificateRequest(bare, "rsa",
+            cancellationToken: TestContext.Current.CancellationToken) as SignCertificateResponse.Success;
+
+        var basic = response!.Certificate.Extensions.OfType<X509BasicConstraintsExtension>().Single();
+        Assert.False(basic.CertificateAuthority);
+        Assert.True(basic.Critical);
+        var ski = response.Certificate.Extensions.OfType<X509SubjectKeyIdentifierExtension>().Single();
+        Assert.Equal(
+            new X509SubjectKeyIdentifierExtension(response.Certificate.PublicKey, false).SubjectKeyIdentifier,
+            ski.SubjectKeyIdentifier);
+    }
+
+    // A request that already says CA:FALSE and brings a SKI of its own gets exactly one of
+    // each, from the CA.
+    [Fact]
+    public async Task RequestedBasicConstraintsAndSkiAreReplacedNotDuplicated()
+    {
+        using var rsa = RSA.Create(2048);
+        var req = CreateCertificateRequest(rsa);
+        req.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension([1, 2, 3, 4], false));
+
+        var response = await _authority.SignCertificateRequest(req, "rsa",
+            cancellationToken: TestContext.Current.CancellationToken) as SignCertificateResponse.Success;
+        var extensions = response!.Certificate.Extensions.Cast<X509Extension>().ToArray();
+
+        Assert.Single(extensions, e => e.Oid?.Value == "2.5.29.19");
+        var ski = Assert.Single(extensions.OfType<X509SubjectKeyIdentifierExtension>());
+        Assert.NotEqual("01020304", ski.SubjectKeyIdentifier);
+    }
+
+    // Policies, name constraints and the policy-processing extensions are the CA's to set:
+    // ones the requester brings along are dropped.
+    [Theory]
+    [InlineData("2.5.29.32", new byte[] { 0x30, 0x06, 0x30, 0x04, 0x06, 0x02, 0x2A, 0x03 })] // certificatePolicies
+    [InlineData("2.5.29.30", new byte[] { 0x30, 0x0B, 0xA0, 0x09, 0x30, 0x07, 0x82, 0x05, 0x2E, 0x74, 0x65, 0x73, 0x74 })] // nameConstraints
+    [InlineData("2.5.29.36", new byte[] { 0x30, 0x03, 0x80, 0x01, 0x00 })] // policyConstraints
+    [InlineData("2.5.29.54", new byte[] { 0x02, 0x01, 0x00 })] // inhibitAnyPolicy
+    public async Task CaOnlyExtensionFromRequestIsNotTakenOver(string oid, byte[] value)
+    {
+        using var rsa = RSA.Create(2048);
+        var req = CreateCertificateRequest(rsa);
+        req.CertificateExtensions.Add(new X509Extension(new Oid(oid), value, false));
+
+        var response = await _authority.SignCertificateRequest(req, "rsa",
+            cancellationToken: TestContext.Current.CancellationToken) as SignCertificateResponse.Success;
+
+        Assert.DoesNotContain(response!.Certificate.Extensions.Cast<X509Extension>(), e => e.Oid?.Value == oid);
+    }
+
     private static CertificateRequest CreateCertificateRequest(RSA rsa)
     {
         var req = new CertificateRequest(
