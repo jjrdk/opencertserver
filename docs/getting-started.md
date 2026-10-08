@@ -50,7 +50,7 @@ dotnet opencertserver.certserver.dll \
 | `--port <n>` | HTTPS port to listen on (default: `5001`). |
 | `--ocsp <url>` | Repeatable. OCSP responder URL embedded in issued certificates' AIA extension. |
 | `--ca-issuer <url>` | Repeatable. CA Issuer URL embedded in the AIA extension of issued certificates. |
-| `--authority <url>` | JWT token authority for bearer-token authentication (default: `https://identity.reimers.dk`). |
+| `--authority <url>` | JWT token authority for bearer-token authentication (Required). |
 
 ### Mode 2 — Existing CA certificates
 

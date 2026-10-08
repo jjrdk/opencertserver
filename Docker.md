@@ -46,7 +46,7 @@ spec:
       containers:
         - name: opencertserver
           image: jjrdk/opencertserver:latest
-          args: ["--authority https://identity.reimers.dk --rsa", "/var/lib/cert-volume/rsa-cert", "--rsa-key", "/var/lib/cert-volume/rsa-privatekey","--ec", "/var/lib/cert-volume/ecdsa-cert", "--ec-key", "/var/lib/cert-volume/ecdsa-privatekey"]
+          args: ["--authority https://your.authority.url --rsa", "/var/lib/cert-volume/rsa-cert", "--rsa-key", "/var/lib/cert-volume/rsa-privatekey","--ec", "/var/lib/cert-volume/ecdsa-cert", "--ec-key", "/var/lib/cert-volume/ecdsa-privatekey"]
           ports:
           - containerPort: 8084
           env:

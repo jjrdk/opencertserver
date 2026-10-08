@@ -140,7 +140,7 @@ internal static class Program
         }
 
         var a = Array.IndexOf(args, "--authority");
-        var authority = a >= 0 ? args[a + 1] : "https://identity.reimers.dk";
+        var authority = a >= 0 ? args[a + 1] : throw new Exception("No authority specified. Use --authority <url> to specify the authority URL.");
 
         var forwardedHeadersOptions = CreateForwardedHeaderOptions();
 

@@ -15,7 +15,7 @@ internal class ConfigureJwtBearerOptions(JwtParameters parameters) : IPostConfig
         options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateAudience = false,
+            ValidateAudience = true,
             ValidateIssuer = true,
             ValidIssuer = parameters.Authority,
             ClockSkew = TimeSpan.FromMinutes(5)
