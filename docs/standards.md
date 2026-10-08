@@ -117,7 +117,9 @@ in the loop. It's the protocol that backs Let's Encrypt. OpenCertServer is a ful
 * **JWS protection** — compact JWS with `alg`, `nonce`, `url`, and either `jwk` (first request) or
    `kid` (subsequent requests).
 * **Revocation** (`POST /revoke-cert`) — revoke via ACME or via the authenticated CA endpoint
-   `DELETE /ca/revoke` (both require proof of possession of the target key).
+   `DELETE /ca/revoke`. Both require proof of possession of the target key. The CA endpoint
+   additionally enforces self-service (the presented certificate must be the CA-issued certificate
+   with that serial number) or administrative authorization (the `ca_admin` role).
 * **Storage** — `AddAcmeInMemoryStore` (default) or `AddAcmeFileStore(configuration)`; custom stores
    implement `IStoreAccounts`, `IStoreOrders`, `INonceStore`.
 * **Profiles** — an optional `profile` field on orders maps to a named CA profile, so a single ACME
@@ -305,10 +307,23 @@ fetch it by CA or by profile.
 **What OpenCertServer implements:**
 
 * `GET /ca/crl` and `GET /ca/{profile}/crl` return `application/pkix-crl` bodies, cached for 12 hours.
-* `DELETE /ca/revoke` is authenticated: the caller must present a client certificate and sign
-   `serialNumber + reason` with the matching private key (SHA-256). This "proof of possession"
-   requirement is the anti-revocation mechanism — only the key holder (or the CA itself) can revoke
-   the target.
+* `DELETE /ca/revoke` is authenticated and authorized. The caller must:
+   1. Present a TLS client certificate.
+   2. Supply a SHA-256 signature of `serialNumber + reason` made with that certificate's private key
+      (proof of key possession).
+   3. Pass one of two authorization checks:
+      - **Self-service**: the presented certificate's serial number **and thumbprint** must match the
+        certificate stored in the CA's issuance store. Matching on the thumbprint (not only the serial
+        number) prevents an attacker from crafting a certificate with the same serial number as a
+        victim's certificate and using it to trigger self-service revocation.
+      - **Administrative**: the caller's authenticated identity carries the role claim
+        `CaAdmin` (`RevocationAuthorizationConstants.CaAdminRole`). Admins may revoke any
+        certificate in the CA.
+   Any other combination returns `403 Forbidden`.
+* The authorization policy for the revoke endpoint is named `"ca_revoke"`
+  (`RevocationAuthorizationConstants.RevocationPolicyName`). Register it with
+  `services.AddCertificateAuthorityAuthorization()` and optionally pass a configure action to add
+  further restrictions (e.g. require a specific authentication scheme).
 * Revocation reasons (`keyCompromise`, `cessationOfOperation`, etc.) are passed as query parameters.
 * CRL Distribution Point URLs are embedded in issued certs when `--crl` is supplied at startup.
 

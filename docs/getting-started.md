@@ -366,6 +366,15 @@ services.AddAuthentication()
           options.CacheSize = 1024;
           options.CacheEntryExpiration = TimeSpan.FromMinutes(5);
         });
+
+// 6. Authorization — registers the default "ca_revoke" policy for DELETE /ca/revoke.
+//    Pass a configure action to tighten the policy further (e.g. require a specific scheme).
+//    Users with the "ca_admin" role claim may revoke any certificate; all others are limited to
+//    self-service revocation (revoking the certificate they hold).
+services.AddCertificateAuthorityAuthorization();
+//    — or — with an additional restriction:
+// services.AddCertificateAuthorityAuthorization(p => p.RequireAuthenticatedUser()
+//     .AddAuthenticationSchemes(CertificateAuthenticationDefaults.AuthenticationScheme));
 ```
 
 ```csharp
@@ -393,7 +402,7 @@ app.UseHttpsRedirection()
 | ACME | `/order/{id}/finalize` | POST | JWS |
 | ACME | `/order/{id}/certificate` | POST | JWS |
 | CA | `/ca/csr` | POST | Yes |
-| CA | `/ca/revoke` | DELETE | Yes |
+| CA | `/ca/revoke` | DELETE | Yes (mTLS + signature; self-service or `ca_admin` role) |
 | CA | `/ca/crl`, `/ca/{profile}/crl` | GET | No |
 | CA | `/ca/ocsp`, `/ca/ocsp/{requestEncoded}` | POST/GET | No |
 
