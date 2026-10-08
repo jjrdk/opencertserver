@@ -117,7 +117,7 @@ namespace OpenCertServer.CertServer.Tests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CertificateAuthority.feature.ndjson", 4);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CertificateAuthority.feature.ndjson", 7);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -213,6 +213,126 @@ namespace OpenCertServer.CertServer.Tests.Features
         await testRunner.AndAsync("I revoke the certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 15
+        await testRunner.ThenAsync("the certificate should be in the CRL", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="Unauthorized cross-certificate revocation is rejected")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Certificate lifecycle management")]
+        [global::Xunit.TraitAttribute("Description", "Unauthorized cross-certificate revocation is rejected")]
+        public async global::System.Threading.Tasks.Task UnauthorizedCross_CertificateRevocationIsRejected()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "2";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Unauthorized cross-certificate revocation is rejected", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 17
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 3
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 18
+        await testRunner.WhenAsync("I enroll with a valid JWT", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 19
+        await testRunner.AndAsync("I get a certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 20
+        await testRunner.AndAsync("I try to revoke the certificate with a different key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 21
+        await testRunner.ThenAsync("the revocation should be rejected with status Forbidden", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="Revocation with a crafted certificate of matching serial is rejected")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Certificate lifecycle management")]
+        [global::Xunit.TraitAttribute("Description", "Revocation with a crafted certificate of matching serial is rejected")]
+        public async global::System.Threading.Tasks.Task RevocationWithACraftedCertificateOfMatchingSerialIsRejected()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "3";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Revocation with a crafted certificate of matching serial is rejected", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 23
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 3
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 24
+        await testRunner.WhenAsync("I enroll with a valid JWT", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 25
+        await testRunner.AndAsync("I get a certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 26
+        await testRunner.AndAsync("I try to revoke the certificate with a crafted certificate of the same serial", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 27
+        await testRunner.ThenAsync("the revocation should be rejected with status Forbidden", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="Admin can revoke any certificate")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Certificate lifecycle management")]
+        [global::Xunit.TraitAttribute("Description", "Admin can revoke any certificate")]
+        public async global::System.Threading.Tasks.Task AdminCanRevokeAnyCertificate()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "4";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Admin can revoke any certificate", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 29
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 3
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 30
+        await testRunner.WhenAsync("I enroll with a valid JWT", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 31
+        await testRunner.AndAsync("I get a certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 32
+        await testRunner.AndAsync("an admin revokes the certificate with a different key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 33
         await testRunner.ThenAsync("the certificate should be in the CRL", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }

@@ -1,7 +1,9 @@
 namespace OpenCertServer.Ca.Server.Handlers;
 
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -46,6 +48,42 @@ public static class RevocationHandler
                 activity?.SetStatus(ActivityStatusCode.Error, "Signature verification failed");
                 CaInstruments.RevocationDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
                 return;
+            }
+
+            // Self-service: verify the presented client certificate is the CA-issued certificate with serial sn.
+            // Serial-number equality alone is insufficient — an attacker could craft a certificate with the
+            // same serial number. We confirm identity by comparing thumbprints against the CA's store.
+            var isSelfService = false;
+            if (string.Equals(clientCert.GetSerialNumberString(), serialNumberHex, StringComparison.OrdinalIgnoreCase))
+            {
+                var store = context.RequestServices.GetRequiredService<IStoreCertificates>();
+                var serialBytes = Convert.FromHexString(serialNumberHex);
+                var storedCert = await store
+                    .GetCertificatesById(context.RequestAborted, [serialBytes.AsMemory()])
+                    .FirstOrDefaultAsync(context.RequestAborted)
+                    .ConfigureAwait(false);
+
+                isSelfService = storedCert != null && string.Equals(
+                    storedCert.Thumbprint,
+                    clientCert.Thumbprint,
+                    StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (!isSelfService)
+            {
+                var isAdmin = context.User.Claims.Any(c =>
+                    c.Value == RevocationAuthorizationConstants.CaAdminRole &&
+                    (c.Type == ClaimTypes.Role || c.Type == "role"));
+
+                if (!isAdmin)
+                {
+                    context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+                    await context.Response.CompleteAsync().ConfigureAwait(false);
+                    CaInstruments.RevocationFailures.Add(1);
+                    activity?.SetStatus(ActivityStatusCode.Error, "Not authorized to revoke this certificate");
+                    CaInstruments.RevocationDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+                    return;
+                }
             }
 
             if (string.IsNullOrEmpty(serialNumberHex)
