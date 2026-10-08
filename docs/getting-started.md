@@ -393,11 +393,9 @@ app.UseHttpsRedirection()
 | ACME | `/order/{id}/finalize` | POST | JWS |
 | ACME | `/order/{id}/certificate` | POST | JWS |
 | CA | `/ca/csr` | POST | Yes |
-| CA | `/ca/inventory` | GET | No |
 | CA | `/ca/revoke` | DELETE | Yes |
 | CA | `/ca/crl`, `/ca/{profile}/crl` | GET | No |
 | CA | `/ca/ocsp`, `/ca/ocsp/{requestEncoded}` | POST/GET | No |
-| CA | `/ca/certificate` | GET | No |
 
 See the [Documentation index](documentation.md) for request/response detail and
 [Implemented standards](standards.md) for the behaviour each endpoint guarantees.
