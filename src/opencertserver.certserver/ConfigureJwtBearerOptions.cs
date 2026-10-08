@@ -18,6 +18,7 @@ internal class ConfigureJwtBearerOptions(JwtParameters parameters) : IPostConfig
             ValidateAudience = true,
             ValidateIssuer = true,
             ValidIssuer = parameters.Authority,
+            ValidAudiences = parameters.Audiences,
             ClockSkew = TimeSpan.FromMinutes(5)
         };
     }
@@ -26,4 +27,6 @@ internal class ConfigureJwtBearerOptions(JwtParameters parameters) : IPostConfig
 internal record JwtParameters
 {
     public required string Authority { get; init; }
+
+    public required string[] Audiences { get; init; }
 }
