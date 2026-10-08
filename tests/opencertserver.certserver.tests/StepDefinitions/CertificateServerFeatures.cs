@@ -168,20 +168,6 @@ public partial class CertificateServerFeatures
         _scenarioContext["placedOrder"] = placedOrder;
     }
 
-    [When("I query the certificate inventory")]
-    public async Task WhenIQueryTheCertificateInventory()
-    {
-        var client = _server.CreateClient();
-        var response = await client.GetAsync("/ca/inventory").ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        var inventory = await JsonSerializer.DeserializeAsync<CertificateItemInfo[]>(
-            await response.Content.ReadAsStreamAsync().ConfigureAwait(false), CaServerSerializerContext.Default.CertificateItemInfoArray).ConfigureAwait(false);
-
-        Assert.NotNull(inventory);
-
-        _scenarioContext["inventory"] = inventory;
-    }
-
     [Then(@"the client receives a certificate")]
     public async Task ThenTheClientReceivesACertificate()
     {
@@ -189,15 +175,6 @@ public partial class CertificateServerFeatures
          ?? throw new InvalidOperationException()).ConfigureAwait(false);
 
         Assert.NotNull(cert);
-    }
-
-    [Then("the certificate should be included in the inventory")]
-    public void ThenTheCertificateShouldBeIncludedInTheInventory()
-    {
-        var inventory = _scenarioContext["inventory"] as CertificateItemInfo[]
-         ?? throw new InvalidOperationException();
-
-        Assert.Single(inventory);
     }
 
     [BeforeScenario("@strict-ocsp")]

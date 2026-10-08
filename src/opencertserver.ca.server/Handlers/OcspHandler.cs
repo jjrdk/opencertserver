@@ -57,13 +57,13 @@ public static class OcspHandler
         CaInstruments.OcspDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
     }
 
-    public static async Task HandleGet(HttpContext context)
+    public static async Task HandleGet(HttpContext context, string requestEncoded)
     {
         CaInstruments.OcspRequests.Add(1);
         var sw = Stopwatch.GetTimestamp();
         using var activity = CaInstruments.ActivitySource.StartActivity(ActivityNames.OcspRequest);
         var cancellationToken = context.RequestAborted;
-        var encodedRequest = context.Request.RouteValues["requestEncoded"] as string;
+        var encodedRequest = requestEncoded;
         if (string.IsNullOrWhiteSpace(encodedRequest))
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
