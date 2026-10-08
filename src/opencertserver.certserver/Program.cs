@@ -1,12 +1,12 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
+
 namespace OpenCertServer.CertServer;
 
 using System.Security.Cryptography;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Est.Server.Handlers;
-
 using System.Linq;
 using System.Numerics;
 using System.Security.Authentication;
@@ -140,7 +140,14 @@ internal static class Program
         }
 
         var a = Array.IndexOf(args, "--authority");
-        var authority = a >= 0 ? args[a + 1] : throw new Exception("No authority specified. Use --authority <url> to specify the authority URL.");
+        var authority = a >= 0
+            ? args[a + 1]
+            : throw new Exception("No authority specified. Use --authority <url> to specify the authority URL.");
+
+        var aud = Array.IndexOf(args, "--audience");
+        var audiences = aud >= 0
+            ? args[aud + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : throw new Exception("No audience specified. Use --audience <url> to specify the audience URL.");
 
         var forwardedHeadersOptions = CreateForwardedHeaderOptions();
 
@@ -155,7 +162,7 @@ internal static class Program
             .Services
             .AddAcmeServer(builder.Configuration)
             .AddAcmeInMemoryStore()
-            .AddSingleton(new JwtParameters { Authority = authority })
+            .AddSingleton(new JwtParameters { Authority = authority, Audiences = audiences })
             .AddSingleton<ICsrValidator, DefaultCsrValidator>()
             .AddSingleton<IIssueCertificates, DefaultIssuer>()
             .ConfigureOptions<ConfigureJwtBearerOptions>()
@@ -209,10 +216,11 @@ internal static class Program
     {
         var certificate = await CreateCert(args, certArgument, keyArgument).ConfigureAwait(false);
         var privateKey = getPrivateKey(certificate)
-            ?? throw new InvalidOperationException(
+         ?? throw new InvalidOperationException(
                 $"The certificate configured for profile '{profileName}' does not expose a compatible private key.");
         var activeCertificate = X509Certificate2.CreateFromPem(certificate.ExportCertificatePem());
-        var publishedCertificatePath = GetArgumentValue(args, publishedArgument) ?? configuration[$"{profileName}:PublishedPem"];
+        var publishedCertificatePath =
+            GetArgumentValue(args, publishedArgument) ?? configuration[$"{profileName}:PublishedPem"];
 
         return new CaProfile
         {
@@ -253,7 +261,8 @@ internal static class Program
         }
 
         X509Certificate2Collection publishedCertificates = [];
-        AddUniqueCertificate(publishedCertificates, X509Certificate2.CreateFromPem(activeCertificate.ExportCertificatePem()));
+        AddUniqueCertificate(publishedCertificates,
+            X509Certificate2.CreateFromPem(activeCertificate.ExportCertificatePem()));
         foreach (var certificate in importedCertificates)
         {
             AddUniqueCertificate(publishedCertificates, certificate);
@@ -267,7 +276,7 @@ internal static class Program
         X509Certificate2 certificate)
     {
         if (collection.Any(existing =>
-                string.Equals(existing.Thumbprint, certificate.Thumbprint, StringComparison.OrdinalIgnoreCase)))
+            string.Equals(existing.Thumbprint, certificate.Thumbprint, StringComparison.OrdinalIgnoreCase)))
         {
             certificate.Dispose();
             return;
