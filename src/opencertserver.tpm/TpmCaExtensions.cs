@@ -33,8 +33,6 @@ public static class TpmCaExtensions
     {
         var options = new TpmCaOptions();
         configureOptions(options);
-        services.AddSingleton(
-            certificateIdGenerator ?? new RandomNumberCertificateIdGenerator());
         services.AddSingleton(options);
         services.AddSingleton<ITpmKeyProvider>(sp => new TssTpmKeyProvider(sp.GetRequiredService<TpmCaOptions>()));
         services.AddSingleton<TpmCaProfileFactory>(sp => new TpmCaProfileFactory(
@@ -64,7 +62,7 @@ public static class TpmCaExtensions
                 sp.GetRequiredService<CaConfiguration>(),
                 sp.GetRequiredService<IStoreCertificates>(),
                 chainValidation ?? new AcceptAllX509Chains(),
-                sp.GetRequiredService<IGenerateCertificateId>(),
+                certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
                 sp.GetRequiredService<ILogger<CertificateAuthority>>(),
                 sp.GetServices<IValidateCertificateRequests>().ToArray()));
 
