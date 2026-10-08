@@ -48,13 +48,21 @@ does not depend on the server's local time zone
 
 - Description: Revoke a certificate.
 - Query parameters:
-   - `sn` (base64 string, required): the serial number of the certificate to revoke.
+   - `sn` (hex string, required): the serial number of the certificate to revoke.
    - `reason` (string, required): the revocation reason (e.g. `keyCompromise`,
      `cessationOfOperation`).
    - `signature` (base64 string, required): a SHA-256 signature of `serialNumber + reason` produced
-     with the private key of the certificate being revoked (proof of possession). Only the key
-     holder or the CA itself can revoke the target.
-- Response: `200` on success.
+     with the private key of the certificate being presented (proof of key possession).
+- Authorization: requires an authenticated user (policy `"CaRevoke"`). Two paths are accepted:
+   - **Self-service** — the presented client certificate is the same certificate being revoked
+     (serial number matches **and** thumbprint matches the copy stored in the CA's certificate
+     store). This confirms the certificate was issued by this CA, not just any certificate that
+     happens to share the same serial number.
+   - **Administrative** — the caller's identity carries the claim `role = CaAdmin`
+     (see `RevocationAuthorizationConstants.CaAdminRole`). Admins may revoke any certificate.
+   - Any other combination returns `403 Forbidden`.
+- Response: `200` on success, `404` if the serial number is unknown, `401` if authentication
+  fails, `403` if authorization fails.
 
 ### GET /ca/inventory
 
@@ -247,8 +255,13 @@ OpenCertServer authenticates differently per protocol:
 - **ACME** — RFC 8555 account-based authentication: the first request presents the account key as a
    JWS `jwk`; subsequent requests reference it via `kid`. External account binding (EAB) is
    supported via `IExternalAccountBindingService`, which verifies the EAB JWS signature.
-- **CA endpoints** (`/ca/*`) — a client certificate over TLS. Revocation additionally requires a
-   signature over `serialNumber + reason` from the target key (proof of possession).
+- **CA endpoints** (`/ca/*`) — a client certificate over TLS. Revocation (`DELETE /ca/revoke`)
+   additionally requires a SHA-256 signature over `serialNumber + reason` signed with the
+   presented key (proof of possession), **and** enforces one of two authorization paths: the
+   presented certificate must be the CA-issued certificate with that serial number (self-service),
+   or the caller must hold the `CaAdmin` role (administrative revocation). Register the default
+   policy with `services.AddCertificateAuthorityAuthorization()`; the policy name constant is
+   `RevocationAuthorizationConstants.RevocationPolicyName`.
 - **YARP-accelerated ACME** — the YARP extension validates `http-01` by answering the domain's
    `/.well-known/acme-challenge/{token}` and can issue one cert per route selected by SNI.
 
