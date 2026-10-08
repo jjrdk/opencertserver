@@ -58,9 +58,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         _certificateIdGenerator = certificateIdGenerator;
         _validators =
         [
-            .. validators,
-            new OwnCertificateValidation(_config.Profiles, _logger),
-            new DistinguishedNameValidation(_logger)
+            .. validators
         ];
     }
 
@@ -151,14 +149,25 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
 
         LogCreatingCertificateForSubjectName(request.SubjectName.Name);
 
+        // Filter: keep only extensions explicitly allowed by the profile; everything else is dropped.
+        var allowedOids = new HashSet<string>(profile.AllowedCsrExtensions, StringComparer.Ordinal);
         var toRemove = request.CertificateExtensions
-            .Where(ext => ext is X509AuthorityInformationAccessExtension
-             or X509AuthorityKeyIdentifierExtension)
-            .Concat(request.CertificateExtensions.Where(ext => ext.Oid?.Value == Oids.CrlDistributionPoints))
+            .Where(ext => ext.Oid?.Value is null || !allowedOids.Contains(ext.Oid.Value))
             .ToArray();
         foreach (var ext in toRemove)
         {
             request.CertificateExtensions.Remove(ext);
+        }
+
+        // Always add a fresh SKI derived from the CSR public key; SKI is never copied from the CSR.
+        request.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+
+        // Add basicConstraints CA:FALSE only when none was copied from the CSR.
+        // Profiles that list 2.5.29.19 (basicConstraints) in AllowedCsrExtensions may issue
+        // intermediate CA certificates; in that case the CSR-supplied value is preserved.
+        if (!request.CertificateExtensions.OfType<X509BasicConstraintsExtension>().Any())
+        {
+            request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
         }
 
         if (_config.CrlUrls.Length > 0)
@@ -511,87 +520,11 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         return X509Certificate2.CreateFromPem(certificate.ExportCertificatePem());
     }
 
-    private static byte[] ExportSubjectPublicKeyInfo(X509Certificate2 certificate)
-    {
-        using var rsa = certificate.GetRSAPublicKey();
-        if (rsa != null)
-        {
-            return rsa.ExportSubjectPublicKeyInfo();
-        }
-
-        using var ecdsa = certificate.GetECDsaPublicKey();
-        if (ecdsa != null)
-        {
-            return ecdsa.ExportSubjectPublicKeyInfo();
-        }
-
-        throw new NotSupportedException(
-            $"Unsupported certificate public key algorithm '{certificate.PublicKey.Oid.Value}'.");
-    }
-
     /// <inheritdoc/>
     public void Dispose()
     {
         _config.Dispose();
         _certificateIdGenerator.Dispose();
-    }
-
-    private sealed partial class OwnCertificateValidation(IStoreCaProfiles caProfiles, ILogger logger)
-        : IValidateCertificateRequests
-    {
-        public async Task<string?> Validate(
-            CertificateRequest request,
-            string? profile = null,
-            ClaimsIdentity? requestor = null,
-            X509Certificate2? reenrollingFrom = null,
-            CancellationToken cancellationToken = default)
-        {
-            var caProfile = await caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
-            var result = reenrollingFrom == null
-             || caProfile.CertificateChain
-                    .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);
-            if (result)
-            {
-                return null;
-            }
-
-            LogCouldNotValidateReEnrollmentFromReEnrollingFrom(reenrollingFrom!.IssuerName.Name);
-            return "Re-enrollment certificate is not issued by this CA";
-        }
-
-        [LoggerMessage(LogLevel.Error, "Could not validate re-enrollment from {ReenrollingFrom}")]
-        partial void LogCouldNotValidateReEnrollmentFromReEnrollingFrom(string reenrollingFrom);
-    }
-
-    private sealed partial class DistinguishedNameValidation : IValidateCertificateRequests
-    {
-        private readonly ILogger _logger;
-
-        public DistinguishedNameValidation(ILogger logger)
-        {
-            _logger = logger;
-        }
-
-        public Task<string?> Validate(
-            CertificateRequest request,
-            string? profile,
-            ClaimsIdentity? requestor,
-            X509Certificate2? reenrollingFrom = null,
-            CancellationToken cancellationToken = default)
-        {
-            if (request.SubjectName.Format(true)
-                .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-                .Any(x => x.StartsWith("CN=")))
-            {
-                return Task.FromResult<string?>(null);
-            }
-
-            LogDistinguishedNameNameDoesNotContainACommonNameCnAttribute(request.SubjectName.Format(false));
-            return Task.FromResult<string?>("Subject name must contain a Common Name (CN) attribute");
-        }
-
-        [LoggerMessage(LogLevel.Error, "{DistinguishedName} name does not contain a Common Name (CN) attribute")]
-        partial void LogDistinguishedNameNameDoesNotContainACommonNameCnAttribute(string distinguishedName);
     }
 
     [LoggerMessage(LogLevel.Error, "Could not validate request")]
@@ -602,4 +535,82 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
 
     [LoggerMessage(LogLevel.Error, "{Errors}")]
     partial void LogErrors(string errors);
+}
+
+public sealed partial class CaExtensionValidation : IValidateCertificateRequests
+{
+    private readonly IStoreCaProfiles _caProfiles;
+    private readonly ILogger _logger;
+
+    public CaExtensionValidation(IStoreCaProfiles caProfiles, ILogger<CaExtensionValidation> logger)
+    {
+        _caProfiles = caProfiles;
+        _logger = logger;
+    }
+
+    public async Task<string?> Validate(
+        CertificateRequest request,
+        string? profile = null,
+        ClaimsIdentity? requestor = null,
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default)
+    {
+        var caProfile = await _caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
+        var allowedOids = caProfile.AllowedCsrExtensions;
+
+        var basicConstraints = request.CertificateExtensions.OfType<X509BasicConstraintsExtension>()
+            .FirstOrDefault();
+        if (basicConstraints?.CertificateAuthority == true && !allowedOids.Contains("2.5.29.19"))
+        {
+            LogCsrRequestsCaCertificate();
+            return "CSR must not request CA:TRUE in basicConstraints";
+        }
+
+        var keyUsage = request.CertificateExtensions.OfType<X509KeyUsageExtension>().FirstOrDefault();
+        const X509KeyUsageFlags caFlags = X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign;
+        if (keyUsage != null && (keyUsage.KeyUsages & caFlags) != 0 && !allowedOids.Contains("2.5.29.15"))
+        {
+            LogCsrRequestsCaKeyUsage();
+            return "CSR must not request CA key usages (keyCertSign or cRLSign)";
+        }
+
+        return null;
+    }
+
+    [LoggerMessage(LogLevel.Error, "CSR requests CA:TRUE in basicConstraints")]
+    partial void LogCsrRequestsCaCertificate();
+
+    [LoggerMessage(LogLevel.Error, "CSR requests CA key usages (keyCertSign or cRLSign)")]
+    partial void LogCsrRequestsCaKeyUsage();
+}
+
+public sealed partial class DistinguishedNameValidation : IValidateCertificateRequests
+{
+    private readonly ILogger _logger;
+
+    public DistinguishedNameValidation(ILogger<DistinguishedNameValidation> logger)
+    {
+        _logger = logger;
+    }
+
+    public Task<string?> Validate(
+        CertificateRequest request,
+        string? profile,
+        ClaimsIdentity? requestor,
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.SubjectName.Format(true)
+            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+            .Any(x => x.StartsWith("CN=")))
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        LogDistinguishedNameNameDoesNotContainACommonNameCnAttribute(request.SubjectName.Format(false));
+        return Task.FromResult<string?>("Subject name must contain a Common Name (CN) attribute");
+    }
+
+    [LoggerMessage(LogLevel.Error, "{DistinguishedName} name does not contain a Common Name (CN) attribute")]
+    partial void LogDistinguishedNameNameDoesNotContainACommonNameCnAttribute(string distinguishedName);
 }

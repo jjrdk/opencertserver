@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace OpenCertServer.Est.Tests.Steps;
 
 using System.Formats.Asn1;

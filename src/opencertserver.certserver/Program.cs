@@ -171,6 +171,7 @@ internal static class Program
             .ConfigureOptions<ConfigureJwtBearerOptions>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
             .AddAuthorization()
+            .AddCertificateAuthorityAuthorization()
             .AddHealthChecks();
         builder.WebHost.UseKestrel(options =>
             {

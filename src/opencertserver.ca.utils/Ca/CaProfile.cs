@@ -292,6 +292,24 @@ public record CaProfile : IDisposable
     }
 
     /// <summary>
+    /// Gets the OIDs of CSR extensions that are permitted to be copied into issued certificates.
+    /// Extensions present in the CSR but whose OID is not in this list are silently discarded.
+    /// The default set is restricted to safe leaf-certificate extensions (SAN and EKU).
+    /// </summary>
+    /// <remarks>
+    /// Dangerous CA-structural extensions are blocked by default. To allow a profile to issue
+    /// intermediate CA certificates, add <c>2.5.29.19</c> (basicConstraints) and <c>2.5.29.15</c>
+    /// (keyUsage) to this list. A fresh SKI is always added from the public key regardless of
+    /// what is in this list. SKI from the CSR is never copied.
+    /// </remarks>
+    public IReadOnlyList<string> AllowedCsrExtensions { get; init; } =
+    [
+        Oids.KeyUsage,
+        Oids.SubjectAltName,
+        "2.5.29.37", // Extended Key Usage
+    ];
+
+    /// <summary>
     /// Gets the OCSP freshness window for responses issued by this CA profile.
     /// </summary>
     public TimeSpan OcspFreshnessWindow { get; init; } = TimeSpan.FromHours(1);
