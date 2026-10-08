@@ -186,7 +186,7 @@ internal static class Program
             .UseUrls($"https://*:{port}");
         var app = builder.Build();
         app.UseHttpsRedirection()
-            .UseCors(c => c.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(_ => true).AllowCredentials())
+            .UseCors("TrustedClients")
             .UseForwardedHeaders(forwardedHeadersOptions)
             .UseHealthChecks("/health")
             .UseAcmeServer()
