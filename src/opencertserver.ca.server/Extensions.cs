@@ -152,8 +152,6 @@ public static class Extensions
         {
             policy.RequireAuthenticatedUser();
         });
-        groupBuilder.MapGet("/inventory", InventoryHandler.Handle)
-            .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(1)); }).AllowAnonymous();
         groupBuilder
             .MapDelete("/revoke", RevocationHandler.Handle).RequireAuthorization(policy =>
             {
@@ -165,8 +163,7 @@ public static class Extensions
             .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
         groupBuilder.MapPost("/ocsp", OcspHandler.Handle).WithName("ocsp").AllowAnonymous();
         groupBuilder.MapGet("/ocsp/{requestEncoded}", OcspHandler.HandleGet).WithName("ocspGet").AllowAnonymous();
-        groupBuilder.MapGet("/certificate", CertificateRetrievalHandler.HandleGet)
-            .AllowAnonymous();
+
         return endpoints;
     }
 }
