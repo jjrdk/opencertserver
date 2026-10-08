@@ -87,7 +87,7 @@ public partial class CertificateServerFeatures
                 .Replace(ServiceDescriptor.Singleton<IAllowedIdentifiersPolicy>(new TestAllowedIdentifiersPolicy()))
                 .AddSingleton<ICsrValidator, DefaultCsrValidator>()
                 .AddAcmeInMemoryStore()
-                .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
+                .ConfigureOptions<ConfigureTestCertificateAuthenticationOptions>()
                 .AddRouting()
                 .AddAuthorization()
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
