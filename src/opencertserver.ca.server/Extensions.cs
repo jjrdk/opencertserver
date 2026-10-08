@@ -30,11 +30,13 @@ public static class Extensions
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The CA server configuration.</param>
     /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
+    /// <param name="certificateIdGenerator">The certificate ID generator.</param>
     /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
     public static IServiceCollection AddCertificateAuthority(
         this IServiceCollection services,
         CaConfiguration configuration,
-        IValidateX509Chains? chainValidation = null)
+        IValidateX509Chains? chainValidation = null,
+        IGenerateCertificateId? certificateIdGenerator = null)
     {
         services.AddSingleton(configuration);
         services.AddSingleton(configuration.Profiles);
@@ -43,6 +45,7 @@ public static class Extensions
             configuration,
             sp.GetRequiredService<IStoreCertificates>(),
             chainValidation ?? new ValidateAll(),
+            certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
             sp.GetRequiredService<ILogger<CertificateAuthority>>()));
     }
 
@@ -53,11 +56,13 @@ public static class Extensions
     /// <param name="services">The service collection.</param>
     /// <param name="configurationFactory">The configuration loader</param>
     /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
+    /// <param name="certificateIdGenerator">The certificate ID generator.</param>
     /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
     public static IServiceCollection AddCertificateAuthority(
         this IServiceCollection services,
         Func<IServiceProvider, CaConfiguration> configurationFactory,
-        IValidateX509Chains? chainValidation = null)
+        IValidateX509Chains? chainValidation = null,
+        IGenerateCertificateId? certificateIdGenerator = null)
     {
         services.AddSingleton(configurationFactory);
         services.AddTransient(sp => sp.GetRequiredService<CaConfiguration>().Profiles);
@@ -66,6 +71,7 @@ public static class Extensions
             sp.GetRequiredService<CaConfiguration>(),
             sp.GetRequiredService<IStoreCertificates>(),
             chainValidation ?? new ValidateAll(),
+            certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
             sp.GetRequiredService<ILogger<CertificateAuthority>>(),
             sp.GetServices<IValidateCertificateRequests>().ToArray()));
     }
@@ -81,6 +87,7 @@ public static class Extensions
     /// <param name="caIssuersUrls">The known CA issuer URLs.</param>
     /// <param name="certificateValidity">The duration of the issued certificates.</param>
     /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
+    /// <param name="certificateIdGenerator">The certificate ID generator.</param>
     /// <param name="strictOcspHttpBinding">Whether to enforce strict OCSP HTTP binding, including content-type validation for POST requests.</param>
     /// <param name="ocspFreshnessWindow">The OCSP freshness window for responses.</param>
     /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
@@ -92,6 +99,7 @@ public static class Extensions
         string[]? caIssuersUrls = null,
         TimeSpan certificateValidity = default,
         IValidateX509Chains? chainValidation = null,
+        IGenerateCertificateId? certificateIdGenerator = null,
         bool strictOcspHttpBinding = false,
         TimeSpan ocspFreshnessWindow = default)
     {
@@ -124,6 +132,7 @@ public static class Extensions
                 config,
                 sp.GetRequiredService<IStoreCertificates>(),
                 chainValidation ?? new ValidateAll(),
+                certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
                 sp.GetRequiredService<ILogger<CertificateAuthority>>(),
                 validators: sp.GetServices<IValidateCertificateRequests>().ToArray());
             return certificateAuthority;

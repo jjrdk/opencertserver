@@ -46,6 +46,7 @@ public class McpServerFixture : IDisposable
             caConfig,
             store,
             new NullChainValidator(),
+            new RandomNumberCertificateIdGenerator(),
             caLogger);
 
         _host = Host.CreateDefaultBuilder()
@@ -61,7 +62,7 @@ public class McpServerFixture : IDisposable
                 services.AddSingleton<IStoreCaProfiles>(caConfig.Profiles);
                 services.AddSingleton<ICertificateAuthority>(certAuthority);
                 services.AddSingleton<CertificateAuthority>(certAuthority);
-                services.AddSingleton<IResponderId>(new ResponderIdByKey(RSA.Create(2048)!.ExportSubjectPublicKeyInfo()));
+                services.AddSingleton<IResponderId>(new ResponderIdByKey(RSA.Create(2048).ExportSubjectPublicKeyInfo()));
             })
             .Build();
         _host.Start();

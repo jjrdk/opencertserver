@@ -30,21 +30,24 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     private readonly ILogger<ICertificateAuthority> _logger;
     private readonly IStoreCertificates _certificateStore;
     private readonly IValidateX509Chains _x509ChainValidation;
+    private readonly IGenerateCertificateId _certificateIdGenerator;
     private readonly IValidateCertificateRequests[] _validators;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CertificateAuthority"/> class.
     /// </summary>
     /// <param name="config">The <see cref="CaConfiguration"/>.</param>
-    /// <param name="certificateStore"></param>
-    /// <param name="x509ChainValidation"></param>
-    /// <param name="logger"></param>
-    /// <param name="validators"></param>
+    /// <param name="certificateStore">The certificate store.</param>
+    /// <param name="x509ChainValidation">The X509 chain validation.</param>
+    /// <param name="certificateIdGenerator">The certificate ID generator.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="validators">The validators.</param>
     /// <exception cref="ArgumentException"></exception>
     public CertificateAuthority(
         CaConfiguration config,
         IStoreCertificates certificateStore,
         IValidateX509Chains x509ChainValidation,
+        IGenerateCertificateId certificateIdGenerator,
         ILogger<CertificateAuthority> logger,
         params IValidateCertificateRequests[] validators)
     {
@@ -52,6 +55,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         _logger = logger;
         _certificateStore = certificateStore;
         _x509ChainValidation = x509ChainValidation;
+        _certificateIdGenerator = certificateIdGenerator;
         _validators =
         [
             .. validators,
@@ -195,7 +199,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             x509SignatureGenerator,
             effectiveNotBefore,
             effectiveNotAfter,
-            BitConverter.GetBytes(DateTimeOffset.UtcNow.Ticks));
+            _certificateIdGenerator.GenerateId());
 
         using var chain = new X509Chain();
         chain.ChainPolicy = new X509ChainPolicy
