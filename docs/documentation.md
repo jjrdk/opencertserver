@@ -48,7 +48,7 @@ does not depend on the server's local time zone
 
 - Description: Revoke a certificate.
 - Query parameters:
-   - `sn` (hex string, required): the serial number of the certificate to revoke.
+   - `sn` (base64 string, required): the serial number of the certificate to revoke.
    - `reason` (string, required): the revocation reason (e.g. `keyCompromise`,
      `cessationOfOperation`).
    - `signature` (base64 string, required): a SHA-256 signature of `serialNumber + reason` produced

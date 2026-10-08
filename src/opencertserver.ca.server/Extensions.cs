@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using OpenCertServer.Ca.Utils.Ca;
 using Utils.Ocsp;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -140,6 +141,31 @@ public static class Extensions
     }
 
     /// <summary>
+    /// Registers the default authorization policy for the certificate revocation endpoint.
+    /// The policy requires an authenticated user; operators may supply an additional configure action
+    /// to impose further restrictions (e.g. requiring a specific scheme or claim).
+    /// Call this method before <see cref="MapCertificateAuthorityServer"/>.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configureRevocationPolicy">
+    /// Optional additional configuration applied on top of <c>RequireAuthenticatedUser()</c>.
+    /// </param>
+    /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
+    public static IServiceCollection AddCertificateAuthorityAuthorization(
+        this IServiceCollection services,
+        Action<AuthorizationPolicyBuilder>? configureRevocationPolicy = null)
+    {
+        return services.AddAuthorization(options =>
+        {
+            options.AddPolicy(RevocationAuthorizationConstants.RevocationPolicyName, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                configureRevocationPolicy?.Invoke(policy);
+            });
+        });
+    }
+
+    /// <summary>
     /// Registers the certificate authority server endpoints to the application's request pipeline.
     /// The OCSP endpoint of the certificate server requires a <see cref="IResponderId"/> service to be registered.
     /// </summary>
@@ -162,10 +188,8 @@ public static class Extensions
             policy.RequireAuthenticatedUser();
         });
         groupBuilder
-            .MapDelete("/revoke", RevocationHandler.Handle).RequireAuthorization(policy =>
-            {
-                policy.RequireAuthenticatedUser();
-            });
+            .MapDelete("/revoke", RevocationHandler.Handle)
+            .RequireAuthorization(RevocationAuthorizationConstants.RevocationPolicyName);
         groupBuilder.MapGet("/crl", CrlHandler.Handle)
             .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
         groupBuilder.MapGet("/{profileName}/crl", CrlHandler.HandleProfile)

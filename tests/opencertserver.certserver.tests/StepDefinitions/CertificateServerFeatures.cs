@@ -90,6 +90,7 @@ public partial class CertificateServerFeatures
                 .ConfigureOptions<ConfigureTestCertificateAuthenticationOptions>()
                 .AddRouting()
                 .AddAuthorization()
+                .AddCertificateAuthorityAuthorization()
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
                 {
@@ -104,9 +105,15 @@ public partial class CertificateServerFeatures
                                 return Task.CompletedTask;
                             }
 
+                            // Grant the CaAdmin role when the test token explicitly requests it.
+                            var authHeader = c.Request.Headers.Authorization.ToString();
+                            var role = authHeader.Contains("admin-token", StringComparison.OrdinalIgnoreCase)
+                                ? RevocationAuthorizationConstants.CaAdminRole
+                                : "user";
+
                             c.Principal =
                                 new ClaimsPrincipal(
-                                    new ClaimsIdentity([new Claim("role", "user")],
+                                    new ClaimsIdentity([new Claim("role", role)],
                                         JwtBearerDefaults.AuthenticationScheme));
                             c.Properties = new OAuthChallengeProperties
                             {
