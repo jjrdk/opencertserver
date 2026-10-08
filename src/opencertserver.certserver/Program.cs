@@ -42,8 +42,11 @@ internal static class Program
                     pb
                         .WithOrigins(
                             builder
-                                .Configuration.GetRequiredSection("Cors")
-                                .GetValue<string[]>("TrustedOrigins")!)
+                                .Configuration.GetSection("Cors:TrustedOrigins")
+                                .GetChildren()
+                                .Select(origin => origin.Value)
+                                .OfType<string>()
+                                .ToArray())
                         .AllowCredentials()
                         .AllowAnyHeader()
                         .AllowAnyMethod();
@@ -167,6 +170,7 @@ internal static class Program
             .AddSingleton<IIssueCertificates, DefaultIssuer>()
             .ConfigureOptions<ConfigureJwtBearerOptions>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
+            .AddAuthorization()
             .AddHealthChecks();
         builder.WebHost.UseKestrel(options =>
             {
