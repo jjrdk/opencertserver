@@ -18,12 +18,13 @@ public class RandomNumberCertificateIdGenerator : IGenerateCertificateId, IDispo
     public byte[] GenerateId()
     {
         var randomNumber = new byte[16]; // 128-bit identifier
-        _rng.GetBytes(randomNumber);
+        _rng.GetNonZeroBytes(randomNumber);
         return randomNumber;
     }
 
     public void Dispose()
     {
         _rng.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
