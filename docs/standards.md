@@ -313,8 +313,7 @@ fetch it by CA or by profile.
 * CRL Distribution Point URLs are embedded in issued certs when `--crl` is supplied at startup.
 
 **Where it lives.** `src/opencertserver.ca.server/Handlers/CrlHandler.cs`,
-`RevocationHandler.cs`, `CertificateRetrievalHandler.cs`, and
-`InventoryHandler.cs` (for `GET /ca/inventory`). Metrics are in `CaInstruments.cs`.
+`RevocationHandler.cs`, `CertificateRetrievalHandler.cs`. Metrics are in `CaInstruments.cs`.
 
 **Tests that prove it.**
 * [CrlConformance.feature](../tests/opencertserver.certserver.tests/Features/CrlConformance.feature) —
