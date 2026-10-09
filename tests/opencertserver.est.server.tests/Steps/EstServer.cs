@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -209,6 +210,135 @@ public class EstServer
         string profileName)
     {
         // Mirrors the real-world case of a urn:uuid SAN entry that must survive simpleenroll.
+        var (request, clientCertificate) = await CreateSanUriRequestAsync(profile).ConfigureAwait(false);
+        var (_, cert) = await SubmitSimpleEnrollAsync(request, profile.ToLowerInvariant(), clientCertificate).ConfigureAwait(false);
+        _context["enrolledCertificate"] = cert;
+    }
+
+    [When(
+        """^a client submits a valid (.+?) CSR containing a SAN URI encoded as (.+?) using the "(.+?)" certificate profile$""")]
+    public async Task WhenAClientSubmitsAValidCsrContainingASanUriEncodedAs(
+        string profile,
+        string encoding,
+        string profileName)
+    {
+        var (request, clientCertificate) = await CreateSanUriRequestAsync(profile).ConfigureAwait(false);
+        var base64 = request.ToPkcs10Base64();
+        var body = encoding switch
+        {
+            // RFC 8951 §3.1: CR, LF, space and tab inside base64 content are to be tolerated.
+            "base64 with line breaks" => string.Join("\r\n", base64.Chunk(64).Select(c => new string(c))),
+            "base64 with spaces" => string.Join(" ", base64.Chunk(16).Select(c => new string(c))),
+            "PEM" => request.ToPkcs10Pem(),
+            _ => throw new ArgumentOutOfRangeException(nameof(encoding), encoding, null)
+        };
+
+        var (error, cert) = await SubmitSimpleEnrollAsync(request, profileName, clientCertificate, body)
+            .ConfigureAwait(false);
+        Assert.True(error == null, error);
+        _context["enrolledCertificate"] = cert;
+    }
+
+    [When(
+        "^a client requests server-side key generation with a (.+?) CSR for a (\\d+) key containing a SAN URI and key usage$")]
+    public async Task WhenAClientRequestsServerSideKeyGeneration(string profile, int size)
+    {
+        AsymmetricAlgorithm csrKey = profile switch
+        {
+            "rsa" => RSA.Create(size),
+            "ecdsa" => ECDsa.Create(size switch
+            {
+                256 => ECCurve.NamedCurves.nistP256,
+                384 => ECCurve.NamedCurves.nistP384,
+                521 => ECCurve.NamedCurves.nistP521,
+                _ => throw new ArgumentOutOfRangeException(nameof(size), size, null)
+            }),
+            _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, null)
+        };
+        var (request, clientCertificate) = await CreateSanUriRequestAsync(profile, csrKey).ConfigureAwait(false);
+
+        using var handler = new TestMessageHandler(_server, clientCertificate);
+        using var httpClient = new HttpClient(handler);
+        var response = await httpClient.PostAsync(
+            new Uri($"https://localhost/.well-known/est/{profile}/serverkeygen"),
+            new StringContent(request.ToPkcs10Base64(), Encoding.UTF8, "application/pkcs10")).ConfigureAwait(false);
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+
+        var boundary = response.Content.Headers.ContentType!.Parameters
+            .Single(p => p.Name.Equals("boundary", StringComparison.OrdinalIgnoreCase)).Value!.Trim('"');
+        var reader = new MultipartReader(boundary,
+            await response.Content.ReadAsStreamAsync().ConfigureAwait(false));
+        var parts = new List<(MediaTypeHeaderValue ContentType, string Body)>();
+        while (await reader.ReadNextSectionAsync().ConfigureAwait(false) is { } section)
+        {
+            using var sectionReader = new StreamReader(section.Body);
+            parts.Add((MediaTypeHeaderValue.Parse(section.ContentType!),
+                await sectionReader.ReadToEndAsync().ConfigureAwait(false)));
+        }
+
+        Assert.Equal(2, parts.Count);
+        _context["serverKeyPart"] = parts[0];
+        _context["certificatePart"] = parts[1];
+    }
+
+    [Then("^the server-generated key is a (.+?) key of size (\\d+)$")]
+    public void ThenTheServerGeneratedKeyIsOfSize(string profile, int size)
+    {
+        var (contentType, body) = ((MediaTypeHeaderValue, string))_context["serverKeyPart"]!;
+        Assert.Equal("application/pkcs8", contentType.MediaType);
+        var pkcs8 = Convert.FromBase64String(body);
+        AsymmetricAlgorithm key = profile == "rsa" ? RSA.Create() : ECDsa.Create();
+        switch (key)
+        {
+            case RSA rsa:
+                rsa.ImportPkcs8PrivateKey(pkcs8, out _);
+                break;
+            case ECDsa ecdsa:
+                ecdsa.ImportPkcs8PrivateKey(pkcs8, out _);
+                break;
+        }
+
+        Assert.Equal(size, key.KeySize);
+        _context["serverGeneratedKey"] = key;
+    }
+
+    [Then("the certificate part is a certs-only response containing only the issued certificate")]
+    public void ThenTheCertificatePartIsACertsOnlyResponse()
+    {
+        var (contentType, body) = ((MediaTypeHeaderValue, string))_context["certificatePart"]!;
+        Assert.Equal("application/pkcs7-mime", contentType.MediaType);
+        Assert.Equal("certs-only", contentType.Parameters
+            .Single(p => p.Name.Equals("smime-type", StringComparison.OrdinalIgnoreCase)).Value?.Trim('"'));
+
+        var contentInfo = new CmsContentInfo(new AsnReader(Convert.FromBase64String(body), AsnEncodingRules.DER));
+        Assert.Equal(Oids.Pkcs7Signed, contentInfo.ContentType.Value);
+        var signedData = new SignedData(new AsnReader(contentInfo.EncodedContent, AsnEncodingRules.DER));
+        var certificates = new X509Certificate2Collection(signedData.Certificates ?? []);
+        Assert.Single(certificates);
+        _context["enrolledCertificate"] = certificates;
+    }
+
+    [Then("the issued certificate belongs to the server-generated key")]
+    public void ThenTheIssuedCertificateBelongsToTheServerGeneratedKey()
+    {
+        var certificates = (X509Certificate2Collection)_context["enrolledCertificate"]!;
+        var key = (AsymmetricAlgorithm)_context["serverGeneratedKey"]!;
+        Assert.Equal(key.ExportSubjectPublicKeyInfo(), certificates[0].PublicKey.ExportSubjectPublicKeyInfo());
+    }
+
+    [Then("the response contains only the issued certificate")]
+    public void ThenTheResponseContainsOnlyTheIssuedCertificate()
+    {
+        var certificates = (X509Certificate2Collection)_context["enrolledCertificate"]!;
+        Assert.Single(certificates);
+        Assert.DoesNotContain(certificates[0].Extensions.OfType<X509BasicConstraintsExtension>(),
+            constraints => constraints.CertificateAuthority);
+    }
+
+    private async Task<(CertificateRequest Request, X509Certificate2 ClientCertificate)> CreateSanUriRequestAsync(
+        string profile,
+        AsymmetricAlgorithm? key = null)
+    {
         var sanUri = new Uri($"urn:uuid:{Guid.NewGuid()}");
         _context["requestedSanUri"] = sanUri;
         var sanBuilder = new SubjectAlternativeNameBuilder();
@@ -220,12 +350,12 @@ public class EstServer
         switch (profile.ToLowerInvariant())
         {
             case "rsa":
-                var rsa = RSA.Create();
+                var rsa = key as RSA ?? RSA.Create();
                 clientCertificate = await GetCertificate(rsa).ConfigureAwait(false);
                 request = new CertificateRequest(subjectName, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
                 break;
             case "ecdsa":
-                var ecDsa = ECDsa.Create();
+                var ecDsa = key as ECDsa ?? ECDsa.Create();
                 clientCertificate = await GetCertificate(ecDsa).ConfigureAwait(false);
                 request = new CertificateRequest(subjectName, ecDsa, HashAlgorithmName.SHA256);
                 break;
@@ -237,15 +367,14 @@ public class EstServer
         request.CertificateExtensions.Add(new X509KeyUsageExtension(
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment, false));
         request.CertificateExtensions.Add(sanBuilder.Build());
-
-        var (_, cert) = await SubmitSimpleEnrollAsync(request, profile.ToLowerInvariant(), clientCertificate).ConfigureAwait(false);
-        _context["enrolledCertificate"] = cert;
+        return (request, clientCertificate);
     }
 
     private async Task<(string? Error, X509Certificate2Collection? Certificates)> SubmitSimpleEnrollAsync(
         CertificateRequest request,
         string profileName,
-        X509Certificate2 clientCertificate)
+        X509Certificate2 clientCertificate,
+        string? body = null)
     {
         using var handler = new TestMessageHandler(_server, clientCertificate);
         using var httpClient = new HttpClient(handler);
@@ -253,7 +382,7 @@ public class EstServer
         {
             Method = HttpMethod.Post,
             RequestUri = new Uri($"https://localhost/.well-known/est/{profileName}/simpleenroll"),
-            Content = new StringContent(request.ToPkcs10Base64(), Encoding.UTF8, "application/pkcs10")
+            Content = new StringContent(body ?? request.ToPkcs10Base64(), Encoding.UTF8, "application/pkcs10")
         };
         requestMessage.Headers.TransferEncoding.Add(new TransferCodingHeaderValue("base64"));
 

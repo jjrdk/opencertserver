@@ -79,7 +79,7 @@ internal static class SimpleEnrollHandler
             var requestContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                requestContent = requestContent.NormalizeBase64();
+                requestContent = Convert.ToBase64String(EstRequestBody.DecodeCsr(requestContent));
             }
             catch (FormatException f)
             {

@@ -1284,7 +1284,9 @@ public partial class CertificateServerFeatures
     [Then("the response MUST contain one private key part and one certificate part")]
     public async Task ThenTheResponseMustContainOnePrivateKeyPartAndOneCertificatePart()
     {
-        var payload = await GetMultipartContent().Select(s => s.ContentType!).ToArrayAsync().ConfigureAwait(false);
+        var payload = await GetMultipartContent()
+            .Select(s => MediaTypeHeaderValue.Parse(s.ContentType!).MediaType)
+            .ToArrayAsync().ConfigureAwait(false);
         Assert.Equal(2, payload.Length);
         Assert.Equal(1, payload.Count(contentType =>
             string.Equals(contentType, "application/pkcs8", StringComparison.OrdinalIgnoreCase)));
@@ -1323,10 +1325,30 @@ public partial class CertificateServerFeatures
     }
 
     [Then("the certificate part MUST exactly match the certificate response used for \"(.+)\"")]
-    public void ThenTheCertificatePartMustExactlyMatchTheCertificateResponseUsedFor(string operation)
+    public async Task ThenTheCertificatePartMustExactlyMatchTheCertificateResponseUsedFor(string operation)
     {
         var payload = GetResponseText(Encoding.Latin1);
         Assert.DoesNotContain("BEGIN CERTIFICATE", payload, StringComparison.OrdinalIgnoreCase);
+
+        // The /simpleenroll response is "application/pkcs7-mime; smime-type=certs-only" with the issued
+        // certificate only (RFC 7030 §4.2.3).
+        // A section's body is only readable until the reader moves on, so it is read inside the loop.
+        MediaTypeHeaderValue? contentType = null;
+        var body = string.Empty;
+        await foreach (var section in GetMultipartContent().ConfigureAwait(false))
+        {
+            contentType = MediaTypeHeaderValue.Parse(section.ContentType!);
+            using var reader = new StreamReader(section.Body);
+            body = await reader.ReadToEndAsync().ConfigureAwait(false);
+        }
+
+        Assert.NotNull(contentType);
+        Assert.Equal("application/pkcs7-mime", contentType.MediaType);
+        Assert.Equal("certs-only", contentType.Parameters
+            .Single(p => p.Name.Equals("smime-type", StringComparison.OrdinalIgnoreCase)).Value?.Trim('"'));
+        var contentInfo = new CmsContentInfo(new AsnReader(Convert.FromBase64String(body), AsnEncodingRules.DER));
+        var signedData = new SignedData(new AsnReader(contentInfo.EncodedContent, AsnEncodingRules.DER));
+        Assert.Single(signedData.Certificates ?? []);
     }
 
     [Then("the response content type MUST be \"multipart/mixed\"")]
