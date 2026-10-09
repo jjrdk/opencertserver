@@ -12,10 +12,12 @@ using Microsoft.AspNetCore.Mvc;
 using Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
 using Ca.Utils.Pkcs7;
+using OpenCertServer.Ca.Utils.X509.Templates;
 using Response;
 
 internal static class ServerKeyGenHandler
 {
+    private const string SmimeCapabilitiesAttributeOid = "1.2.840.113549.1.9.15";
     private const string KeyProtectionHeader = "X-Est-Keygen-Protection";
     private const string KeyProtectionStatusHeader = "X-Est-Keygen-Protection-Status";
     private const string SmimeCapabilitiesHeader = "X-Est-Smime-Capabilities";
@@ -120,7 +122,7 @@ internal static class ServerKeyGenHandler
                     return new RetryAfterResult(retryAfter, pendingMessage);
                 }
 
-                var encryptedKeyDelivery = GetRequestedEncryptedKeyDelivery(httpRequest);
+                var encryptedKeyDelivery = GetRequestedEncryptedKeyDelivery(httpRequest, csrDer);
                 if (encryptedKeyDelivery.ErrorResult != null)
                 {
                     return encryptedKeyDelivery.ErrorResult;
@@ -140,12 +142,15 @@ internal static class ServerKeyGenHandler
                 if (newCert is SignCertificateResponse.Success success)
                 {
                     var mpr = new MultipartContent("mixed");
+                    var privateKeyPart = encryptedKeyDelivery.UseEncryptedKeyPart
+                        ? CreateEncryptedKeyResponse(privateKey.Pkcs8, csr)
+                        : privateKey.Pkcs8.Base64Encode();
                     mpr.Add(encryptedKeyDelivery.UseEncryptedKeyPart
                         ? new EstMultipartBase64Content(
-                            privateKey.Pkcs8.Base64Encode(),
+                            privateKeyPart,
                             Constants.PemMimeType,
                             smimeType: "server-generated-key")
-                        : new EstMultipartBase64Content(privateKey.Pkcs8.Base64Encode(), Constants.Pkcs8));
+                        : new EstMultipartBase64Content(privateKeyPart, Constants.Pkcs8));
                     mpr.Add(new EstMultipartBase64Content(CreateCertsOnlyResponse(success.Certificate),
                         Constants.PemMimeType,
                         smimeType: "certs-only"));
@@ -244,18 +249,27 @@ internal static class ServerKeyGenHandler
     }
 
     private static (bool UseEncryptedKeyPart, IResult? ErrorResult) GetRequestedEncryptedKeyDelivery(
-        HttpRequest httpRequest)
+        HttpRequest httpRequest,
+        byte[] csrDer)
     {
+        var csrAttributes = ReadCsrAttributes(csrDer);
+        var hasSmimeCapabilitiesAttribute = csrAttributes.Any(attribute =>
+            string.Equals(attribute.Oid.Value, SmimeCapabilitiesAttributeOid, StringComparison.Ordinal));
+        var requestedViaLegacyHeaders =
+            !string.IsNullOrWhiteSpace(httpRequest.Headers[KeyProtectionHeader].ToString()) ||
+            !string.IsNullOrWhiteSpace(httpRequest.Headers[SmimeCapabilitiesHeader].ToString()) ||
+            !string.IsNullOrWhiteSpace(httpRequest.Headers[SymmetricDecryptKeyIdentifierHeader].ToString()) ||
+            !string.IsNullOrWhiteSpace(httpRequest.Headers[AsymmetricDecryptKeyIdentifierHeader].ToString());
         var prefersEncryptedKeyPart = PrefersEncryptedKeyPart(httpRequest);
-        var requestedProtection = httpRequest.Headers[KeyProtectionHeader].ToString();
-        var useEncryptedKeyPart = prefersEncryptedKeyPart || !string.IsNullOrWhiteSpace(requestedProtection);
+
+        var useEncryptedKeyPart = hasSmimeCapabilitiesAttribute || requestedViaLegacyHeaders || prefersEncryptedKeyPart;
         if (!useEncryptedKeyPart)
         {
             return (false, null);
         }
 
         var smimeCapabilities = httpRequest.Headers[SmimeCapabilitiesHeader].ToString();
-        if (string.IsNullOrWhiteSpace(smimeCapabilities))
+        if (!hasSmimeCapabilitiesAttribute && string.IsNullOrWhiteSpace(smimeCapabilities))
         {
             return (true, Results.Text(
                         "Encrypted server-side key delivery requires the SMIMECapabilities attribute.",
@@ -266,6 +280,7 @@ internal static class ServerKeyGenHandler
 
         var symmetricIdentifier = httpRequest.Headers[SymmetricDecryptKeyIdentifierHeader].ToString();
         var asymmetricIdentifier = httpRequest.Headers[AsymmetricDecryptKeyIdentifierHeader].ToString();
+        var requestedProtection = httpRequest.Headers[KeyProtectionHeader].ToString();
         var protection = requestedProtection.Trim().ToLowerInvariant();
         var hasSymmetricIdentifier = !string.IsNullOrWhiteSpace(symmetricIdentifier);
         var hasAsymmetricIdentifier = !string.IsNullOrWhiteSpace(asymmetricIdentifier);
@@ -297,6 +312,110 @@ internal static class ServerKeyGenHandler
                         (int)HttpStatusCode.BadRequest));
         }
 
+        if (string.Equals(protection, "symmetric", StringComparison.Ordinal))
+        {
+            return (true, Results.Text(
+                        "Symmetric encrypted server-side key delivery is not supported.",
+                        Constants.TextPlainMimeType,
+                        Encoding.UTF8,
+                        (int)HttpStatusCode.BadRequest));
+        }
+
         return (true, null);
+    }
+
+    private static IReadOnlyList<CsrAttribute> ReadCsrAttributes(byte[] csrDer)
+    {
+        var reader = new AsnReader(
+            csrDer,
+            AsnEncodingRules.DER,
+            new AsnReaderOptions { SkipSetSortOrderVerification = true });
+        var certificationRequestReader = reader.ReadSequence();
+        var certificationRequestInfoReader = certificationRequestReader.ReadSequence();
+        _ = certificationRequestInfoReader.ReadInteger();
+        _ = certificationRequestInfoReader.ReadEncodedValue(); // subject
+        _ = certificationRequestInfoReader.ReadEncodedValue(); // subjectPublicKeyInfo
+
+        if (!certificationRequestInfoReader.HasData ||
+            !certificationRequestInfoReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
+        {
+            return [];
+        }
+
+        var attributesReader =
+            certificationRequestInfoReader.ReadSetOf(new Asn1Tag(TagClass.ContextSpecific, 0));
+        List<CsrAttribute> attributes = [];
+        while (attributesReader.HasData)
+        {
+            attributes.Add(new CsrAttribute(attributesReader));
+        }
+
+        return attributes;
+    }
+
+    private static string CreateEncryptedKeyResponse(byte[] privateKeyPkcs8, CertificateRequest csr)
+    {
+        if (csr.PublicKey.Oid.Value != Oids.Rsa)
+        {
+            throw new NotSupportedException("Encrypted key delivery currently supports only RSA request public keys.");
+        }
+
+        using var recipientRsa = RSA.Create();
+        recipientRsa.ImportSubjectPublicKeyInfo(csr.PublicKey.ExportSubjectPublicKeyInfo(), out _);
+
+        var contentEncryptionKey = RandomNumberGenerator.GetBytes(32);
+        var iv = RandomNumberGenerator.GetBytes(16);
+        var encryptedPrivateKey = EncryptAes256Cbc(privateKeyPkcs8, contentEncryptionKey, iv);
+        var encryptedContentKey = recipientRsa.Encrypt(contentEncryptionKey, RSAEncryptionPadding.Pkcs1);
+
+        var ivWriter = new AsnWriter(AsnEncodingRules.DER);
+        ivWriter.WriteOctetString(iv);
+
+        var recipientInfo = new RecipientInfo(new KeyTransRecipientInfo(
+            version: 2,
+            rid: new RecipientIdentifier(ComputeSubjectKeyIdentifier(csr.PublicKey.ExportSubjectPublicKeyInfo())),
+            keyEncryptionAlgorithm: new CmsAlgorithmIdentifier(
+                Oids.Rsa.InitializeOid(Oids.RsaFriendlyName),
+                encodedParameters: new byte[] { 0x05, 0x00 }),
+            encryptedKey: encryptedContentKey));
+
+        var envelopedData = new EnvelopedData(
+            version: 2,
+            recipientInfos: [recipientInfo],
+            encryptedContentInfo: new EncryptedContentInfo(
+                contentType: Oids.Pkcs7Data.InitializeOid(Oids.Pkcs7DataFriendlyName),
+                contentEncryptionAlgorithm: new CmsAlgorithmIdentifier(
+                    Oids.Aes256Cbc.InitializeOid(Oids.Aes256CbcFriendlyName),
+                    ivWriter.Encode()),
+                encryptedContent: encryptedPrivateKey));
+
+        var contentInfo = new CmsContentInfo(
+            Oids.Pkcs7Enveloped.InitializeOid(Oids.Pkcs7EnvelopedFriendlyName),
+            envelopedData);
+
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        contentInfo.Encode(writer);
+        return writer.Encode().Base64Encode();
+    }
+
+    private static byte[] EncryptAes256Cbc(byte[] plaintext, byte[] key, byte[] iv)
+    {
+        using var aes = Aes.Create();
+        aes.KeySize = 256;
+        aes.Key = key;
+        aes.IV = iv;
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+        using var encryptor = aes.CreateEncryptor();
+        return encryptor.TransformFinalBlock(plaintext, 0, plaintext.Length);
+    }
+
+    private static byte[] ComputeSubjectKeyIdentifier(byte[] spki)
+    {
+        var spkiReader = new AsnReader(spki, AsnEncodingRules.DER);
+        var spkiSequence = spkiReader.ReadSequence();
+        _ = spkiSequence.ReadSequence();
+        var publicKeyBits = spkiSequence.ReadBitString(out _);
+        return SHA1.HashData(publicKeyBits);
     }
 }
