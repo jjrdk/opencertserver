@@ -54,9 +54,15 @@ public sealed class TestMessageHandler : HttpMessageHandler
                 }
             }, cancellationToken).ConfigureAwait(false);
 
+        var content = new StreamContent(response.Response.Body);
+        if (response.Response.ContentType is { } contentType)
+        {
+            content.Headers.TryAddWithoutValidation("Content-Type", contentType);
+        }
+
         return new HttpResponseMessage
         {
-            Content = new StreamContent(response.Response.Body),
+            Content = content,
             StatusCode = (HttpStatusCode)response.Response.StatusCode
         };
     }

@@ -87,17 +87,11 @@ internal static class SimpleReEnrollHandler
             CertificateRequest request;
             try
             {
-                request = PemEncoding.TryFind(requestBody, out _)
-                    ? CertificateRequest.LoadSigningRequestPem(
-                        requestBody,
-                        HashAlgorithmName.SHA256,
-                        CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
-                        RSASignaturePadding.Pss)
-                    : CertificateRequest.LoadSigningRequest(
-                        requestBody.Base64DecodeBytes(),
-                        HashAlgorithmName.SHA256,
-                        CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
-                        RSASignaturePadding.Pss);
+                request = CertificateRequest.LoadSigningRequest(
+                    EstRequestBody.DecodeCsr(requestBody),
+                    HashAlgorithmName.SHA256,
+                    CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
+                    RSASignaturePadding.Pss);
             }
             catch (Exception ex)
             {
@@ -148,7 +142,9 @@ internal static class SimpleReEnrollHandler
                 return Results.Text(success.Certificate.ToPemChain(success.Issuers), Constants.PemFile);
             }
 
-            X509Certificate2[] content = [success.Certificate, .. success.Issuers];
+            // RFC 7030 §4.2.2 refers to §4.2.3: "containing only the certificate that was issued". The issuers are
+            // available from /cacerts, as for /simpleenroll.
+            X509Certificate2[] content = [success.Certificate];
             var signedResponse = new SignedData(version: 1, certificates: content);
             var contentInfo = new CmsContentInfo(
                 Oids.Pkcs7Signed.InitializeOid(Oids.Pkcs7SignedFriendlyName),

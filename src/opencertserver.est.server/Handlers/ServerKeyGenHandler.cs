@@ -83,7 +83,7 @@ internal static class ServerKeyGenHandler
                 var requestContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    requestContent = requestContent.NormalizeBase64();
+                    requestContent = Convert.ToBase64String(EstRequestBody.DecodeCsr(requestContent));
                 }
                 catch (FormatException f)
                 {
@@ -147,7 +147,8 @@ internal static class ServerKeyGenHandler
                             smimeType: "server-generated-key")
                         : new EstMultipartBase64Content(privateKey.Pkcs8.Base64Encode(), Constants.Pkcs8));
                     mpr.Add(new EstMultipartBase64Content(CreateCertsOnlyResponse(success.Certificate),
-                        Constants.PemMimeType));
+                        Constants.PemMimeType,
+                        smimeType: "certs-only"));
                     return Results.Stream(
                         await mpr.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false), mpr.Headers.ContentType!.ToString());
                 }
@@ -170,19 +171,52 @@ internal static class ServerKeyGenHandler
     private static (CertificateRequest Request, byte[] Pkcs8) CreateServerSideRsaRequest(
         CertificateRequest signingRequest)
     {
-        var rsa = RSA.Create();
+        // RFC 7030 §4.4.1: the public key of the CSR is ignored, but its size is the client's statement of what it
+        // wants; without one the platform default applies.
+        using var requestedKey = signingRequest.PublicKey.GetRSAPublicKey();
+        var rsa = requestedKey == null ? RSA.Create() : RSA.Create(requestedKey.KeySize);
         var pkcs8 = rsa.ExportPkcs8PrivateKey();
-        return (
-            new CertificateRequest(signingRequest.SubjectName, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss),
-            pkcs8);
+        var request = new CertificateRequest(signingRequest.SubjectName, rsa, HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pss);
+        CopyRequestContent(signingRequest, request);
+        return (request, pkcs8);
     }
 
     private static (CertificateRequest Request, byte[] Pkcs8) CreateServerSideEcRequest(
         CertificateRequest signingRequest)
     {
-        var ecdsa = ECDsa.Create();
+        using var requestedKey = signingRequest.PublicKey.GetECDsaPublicKey();
+        var ecdsa = requestedKey == null
+            ? ECDsa.Create()
+            : ECDsa.Create(requestedKey.ExportParameters(false).Curve);
         var pkcs8 = ecdsa.ExportPkcs8PrivateKey();
-        return (new CertificateRequest(signingRequest.SubjectName, ecdsa, HashAlgorithmName.SHA256), pkcs8);
+        var request = new CertificateRequest(signingRequest.SubjectName, ecdsa, HashAlgorithmName.SHA256);
+        CopyRequestContent(signingRequest, request);
+        return (request, pkcs8);
+    }
+
+    /// <summary>
+    /// RFC 7030 §4.4.1: "the server SHOULD treat the CSR as it would any enroll or re-enroll CSR; the only
+    /// distinction here is that the server MUST ignore the public key values and signature in the CSR." The
+    /// requested extensions and attributes therefore travel with the new key to the CA. A subject key identifier
+    /// is left out: it describes the client's key, not the one generated here.
+    /// </summary>
+    private static void CopyRequestContent(CertificateRequest source, CertificateRequest target)
+    {
+        foreach (var extension in source.CertificateExtensions)
+        {
+            if (extension.Oid?.Value == Oids.SubjectKeyIdentifier)
+            {
+                continue;
+            }
+
+            target.CertificateExtensions.Add(extension);
+        }
+
+        foreach (var attribute in source.OtherRequestAttributes)
+        {
+            target.OtherRequestAttributes.Add(attribute);
+        }
     }
 
     private static string CreateCertsOnlyResponse(X509Certificate2 certificate)
