@@ -566,22 +566,12 @@ public sealed partial class CaExtensionValidation : IValidateCertificateRequests
             return "CSR must not request CA:TRUE in basicConstraints";
         }
 
-        var keyUsage = request.CertificateExtensions.OfType<X509KeyUsageExtension>().FirstOrDefault();
-        const X509KeyUsageFlags caFlags = X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign;
-        if (keyUsage != null && (keyUsage.KeyUsages & caFlags) != 0 && !allowedOids.Contains("2.5.29.15"))
-        {
-            LogCsrRequestsCaKeyUsage();
-            return "CSR must not request CA key usages (keyCertSign or cRLSign)";
-        }
-
         return null;
     }
 
     [LoggerMessage(LogLevel.Error, "CSR requests CA:TRUE in basicConstraints")]
     partial void LogCsrRequestsCaCertificate();
 
-    [LoggerMessage(LogLevel.Error, "CSR requests CA key usages (keyCertSign or cRLSign)")]
-    partial void LogCsrRequestsCaKeyUsage();
 }
 
 public sealed partial class DistinguishedNameValidation : IValidateCertificateRequests

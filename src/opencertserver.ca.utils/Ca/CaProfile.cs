@@ -304,7 +304,6 @@ public record CaProfile : IDisposable
     /// </remarks>
     public IReadOnlyList<string> AllowedCsrExtensions { get; init; } =
     [
-        Oids.KeyUsage,
         Oids.SubjectAltName,
         "2.5.29.37", // Extended Key Usage
     ];
