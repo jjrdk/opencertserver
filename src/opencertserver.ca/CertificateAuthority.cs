@@ -139,6 +139,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         }
 
         var results = await Task.WhenAll(_validators.Select(v =>
+            // ReSharper disable once AccessToModifiedClosure
             v.Validate(request, profileName, requestor, reenrollingFrom, cancellationToken))).ConfigureAwait(false);
         var validationResult = results.Where(r => r != null).ToArray();
         if (validationResult.Length > 0)
@@ -149,44 +150,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
 
         LogCreatingCertificateForSubjectName(request.SubjectName.Name);
 
-        // Filter: keep only extensions explicitly allowed by the profile; everything else is dropped.
-        var allowedOids = new HashSet<string>(profile.AllowedCsrExtensions, StringComparer.Ordinal);
-        var toRemove = request.CertificateExtensions
-            .Where(ext => ext.Oid?.Value is null || !allowedOids.Contains(ext.Oid.Value))
-            .ToArray();
-        foreach (var ext in toRemove)
-        {
-            request.CertificateExtensions.Remove(ext);
-        }
-
-        // Always add a fresh SKI derived from the CSR public key; SKI is never copied from the CSR.
-        request.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
-
-        // Add basicConstraints CA:FALSE only when none was copied from the CSR.
-        // Profiles that list 2.5.29.19 (basicConstraints) in AllowedCsrExtensions may issue
-        // intermediate CA certificates; in that case the CSR-supplied value is preserved.
-        if (!request.CertificateExtensions.OfType<X509BasicConstraintsExtension>().Any())
-        {
-            request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
-        }
-
-        if (_config.CrlUrls.Length > 0)
-        {
-            request.CertificateExtensions.Add(
-                CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(_config.CrlUrls));
-        }
-
-        if (_config.OcspUrls.Length > 0 || _config.CaIssuersUrls.Length > 0)
-        {
-            request.CertificateExtensions.Add(
-                new X509AuthorityInformationAccessExtension(_config.OcspUrls, _config.CaIssuersUrls));
-        }
-
-        request.CertificateExtensions.Add(
-            X509AuthorityKeyIdentifierExtension.CreateFromCertificate(
-                profile.CertificateChain[0],
-                includeKeyIdentifier: true,
-                includeIssuerAndSerial: false));
+        request = CleanCsrExtensions(request, profile);
 
         var profilePrivateKey = profile.PrivateKey;
         var x509SignatureGenerator = profilePrivateKey switch
@@ -243,6 +207,49 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         LogErrors(string.Join(";", errors));
 
         return new SignCertificateResponse.Error(errors);
+    }
+
+    private CertificateRequest CleanCsrExtensions(CertificateRequest request, CaProfile profile)
+    {
+        // Filter: keep only extensions explicitly allowed by the profile; everything else is dropped.
+        var allowedOids = new HashSet<string>(profile.AllowedCsrExtensions, StringComparer.Ordinal);
+        var toRemove = request.CertificateExtensions
+            .Where(ext => ext.Oid?.Value is null || !allowedOids.Contains(ext.Oid.Value))
+            .ToArray();
+        foreach (var ext in toRemove)
+        {
+            request.CertificateExtensions.Remove(ext);
+        }
+
+        // Always add a fresh SKI derived from the CSR public key; SKI is never copied from the CSR.
+        request.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+
+        // Add basicConstraints CA:FALSE only when none was copied from the CSR.
+        // Profiles that list 2.5.29.19 (basicConstraints) in AllowedCsrExtensions may issue
+        // intermediate CA certificates; in that case the CSR-supplied value is preserved.
+        if (!request.CertificateExtensions.OfType<X509BasicConstraintsExtension>().Any())
+        {
+            request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
+        }
+
+        if (_config.CrlUrls.Length > 0)
+        {
+            request.CertificateExtensions.Add(
+                CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(_config.CrlUrls));
+        }
+
+        if (_config.OcspUrls.Length > 0 || _config.CaIssuersUrls.Length > 0)
+        {
+            request.CertificateExtensions.Add(
+                new X509AuthorityInformationAccessExtension(_config.OcspUrls, _config.CaIssuersUrls));
+        }
+
+        request.CertificateExtensions.Add(
+            X509AuthorityKeyIdentifierExtension.CreateFromCertificate(
+                profile.CertificateChain[0],
+                includeKeyIdentifier: true,
+                includeIssuerAndSerial: false));
+        return request;
     }
 
     /// <inheritdoc/>
@@ -537,6 +544,50 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     partial void LogErrors(string errors);
 }
 
+public sealed partial class KeyCrlSignatureValidation : IValidateCertificateRequests
+{
+    private readonly ILogger _logger;
+
+    public KeyCrlSignatureValidation(ILogger<KeyCrlSignatureValidation> logger)
+    {
+        _logger = logger;
+    }
+
+    public Task<string?> Validate(
+        CertificateRequest request,
+        string? profile = null,
+        ClaimsIdentity? requestor = null,
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default)
+    {
+        var keyUsage = request.CertificateExtensions.OfType<X509KeyUsageExtension>().FirstOrDefault();
+        if(keyUsage == null)
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        if (keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.CrlSign))
+        {
+            LogCsrRequestsCrlSignInKeyUsage();
+            return Task.FromResult<string?>("CSR must not request CRL Sign in keyUsage");
+        }
+
+        if (keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.KeyCertSign))
+        {
+            LogCsrRequestsKeyCertSignInKeyUsage();
+            return Task.FromResult<string?>("CSR must not request Key Cert Sign in keyUsage");
+        }
+
+        return Task.FromResult<string?>(null);
+    }
+
+    [LoggerMessage(LogLevel.Error, "CSR requests Key Cert Sign in keyUsage")]
+    partial void LogCsrRequestsKeyCertSignInKeyUsage();
+
+    [LoggerMessage(LogLevel.Error, "CSR requests CRL Sign in keyUsage")]
+    partial void LogCsrRequestsCrlSignInKeyUsage();
+}
+
 public sealed partial class CaExtensionValidation : IValidateCertificateRequests
 {
     private readonly IStoreCaProfiles _caProfiles;
@@ -560,7 +611,7 @@ public sealed partial class CaExtensionValidation : IValidateCertificateRequests
 
         var basicConstraints = request.CertificateExtensions.OfType<X509BasicConstraintsExtension>()
             .FirstOrDefault();
-        if (basicConstraints?.CertificateAuthority == true && !allowedOids.Contains("2.5.29.19"))
+        if (basicConstraints?.CertificateAuthority == true && !allowedOids.Contains(Oids.KeyUsage))
         {
             LogCsrRequestsCaCertificate();
             return "CSR must not request CA:TRUE in basicConstraints";

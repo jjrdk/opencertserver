@@ -145,6 +145,7 @@ public static class Extensions
             services.AddSingleton<IValidateCertificateRequests, CaExtensionValidation>();
             services.AddSingleton<IValidateCertificateRequests, OwnCertificateValidation>();
             services.AddSingleton<IValidateCertificateRequests, DistinguishedNameValidation>();
+            services.AddSingleton<IValidateCertificateRequests, KeyCrlSignatureValidation>();
             return services;
         }
 
