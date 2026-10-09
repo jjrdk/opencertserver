@@ -472,7 +472,7 @@ public partial class CertificateServerFeatures
         await SendServerKeyGenerationRequestAsync(
             requestEncryptedKeyDelivery: true,
             includeProtectionMetadata: true,
-            protection: "symmetric",
+            protection: "asymmetric",
             protectionMaterialStatus: "available").ConfigureAwait(false);
     }
 
@@ -1320,8 +1320,24 @@ public partial class CertificateServerFeatures
     [Then("the private key part MUST be RFC 4648 base64-encoded DER CMS EnvelopedData")]
     public void ThenThePrivateKeyPartMustBeRfc4648Base64EncodedDerCmsEnvelopedData()
     {
-        Assert.True(IsAsciiBase64(ExtractFirstMultipartBody()),
+        var body = ExtractFirstMultipartBody();
+        Assert.True(IsAsciiBase64(body),
             "The encrypted private-key part was not emitted as RFC 4648 base64 text.");
+
+        var der = Convert.FromBase64String(body);
+        var reader = new AsnReader(
+            der,
+            AsnEncodingRules.DER,
+            new AsnReaderOptions { SkipSetSortOrderVerification = true });
+        var contentInfo = new CmsContentInfo(reader);
+        Assert.Equal(Oids.Pkcs7Enveloped, contentInfo.ContentType.Value);
+        var envelopedDataReader = new AsnReader(
+            contentInfo.EncodedContent,
+            AsnEncodingRules.DER,
+            new AsnReaderOptions { SkipSetSortOrderVerification = true });
+        var envelopedData = new EnvelopedData(envelopedDataReader);
+        Assert.NotEmpty(envelopedData.RecipientInfos);
+        Assert.Equal(Oids.Pkcs7Data, envelopedData.EncryptedContentInfo.ContentType.Value);
     }
 
     [Then("the certificate part MUST exactly match the certificate response used for \"(.+)\"")]
