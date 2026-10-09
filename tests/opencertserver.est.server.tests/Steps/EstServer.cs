@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace OpenCertServer.Est.Tests.Steps;
 
 using System.Formats.Asn1;
@@ -85,7 +83,7 @@ public class EstServer
         rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
         rsaReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(rsaReq.PublicKey, false));
         rsaReq.CertificateExtensions.Add(new X509KeyUsageExtension(
-            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, false));
+            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
 
         var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaCert).Build();
@@ -98,6 +96,30 @@ public class EstServer
         X509Certificate2 ecdsaPrivate,
         X509Certificate2 webCert)
     {
+        var caProfiles = new CaProfileSet(
+            "rsa",
+            new CaProfile
+            {
+                CertificateChain =
+                    [X509Certificate2.CreateFromPem(rsaPrivate.ExportCertificatePem())],
+                Name = "rsa",
+                CertificateValidity = TimeSpan.FromDays(90),
+                CrlNumber = BigInteger.Zero,
+                PrivateKey = rsaPrivate.GetRSAPrivateKey()!,
+                AllowedCsrExtensions = [Oids.SubjectAltName, Oids.EnhancedKeyUsage, Oids.KeyUsage]
+            },
+            new CaProfile
+            {
+                CertificateChain =
+                    [X509Certificate2.CreateFromPem(ecdsaPrivate.ExportCertificatePem())],
+                Name = "ecdsa",
+                CertificateValidity = TimeSpan.FromDays(90),
+                CrlNumber = BigInteger.Zero,
+                PrivateKey = ecdsaPrivate.GetECDsaPrivateKey()!,
+                AllowedCsrExtensions = [Oids.SubjectAltName, Oids.EnhancedKeyUsage, Oids.KeyUsage]
+            }
+        );
+
         var webBuilder = new HostBuilder().ConfigureWebHost(builder =>
         {
             builder.UseTestServer()
@@ -118,27 +140,7 @@ public class EstServer
                     sc.AddInMemoryCertificateStore()
                         .AddCertificateAuthority(
                             new CaConfiguration(
-                                new CaProfileSet(
-                                    "rsa",
-                                    new CaProfile
-                                    {
-                                        CertificateChain =
-                                            [X509Certificate2.CreateFromPem(rsaPrivate.ExportCertificatePem())],
-                                        Name = "rsa",
-                                        CertificateValidity = TimeSpan.FromDays(90),
-                                        CrlNumber = BigInteger.Zero,
-                                        PrivateKey = rsaPrivate.GetRSAPrivateKey()!
-                                    },
-                                    new CaProfile
-                                    {
-                                        CertificateChain =
-                                            [X509Certificate2.CreateFromPem(ecdsaPrivate.ExportCertificatePem())],
-                                        Name = "ecdsa",
-                                        CertificateValidity = TimeSpan.FromDays(90),
-                                        CrlNumber = BigInteger.Zero,
-                                        PrivateKey = ecdsaPrivate.GetECDsaPrivateKey()!
-                                    }
-                                ),
+                                caProfiles,
                                 ["test"],
                                 [],
                                 []))
@@ -369,7 +371,10 @@ public class EstServer
         request.CertificateExtensions.Add(new X509KeyUsageExtension(
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.DataEncipherment, false));
         request.CertificateExtensions.Add(sanBuilder.Build());
-        return (request, clientCertificate);
+
+        var (_, cert) = await SubmitSimpleEnrollAsync(request, profile.ToLowerInvariant(), clientCertificate)
+            .ConfigureAwait(false);
+        _context["enrolledCertificate"] = cert;
     }
 
     private async Task<(string? Error, X509Certificate2Collection? Certificates)> SubmitSimpleEnrollAsync(
@@ -379,6 +384,7 @@ public class EstServer
         string? body = null)
     {
         using var handler = new TestMessageHandler(_server, clientCertificate);
+        // ReSharper disable once ShortLivedHttpClient
         using var httpClient = new HttpClient(handler);
         var requestMessage = new HttpRequestMessage
         {
@@ -513,23 +519,23 @@ public class EstServer
         switch (keytype)
         {
             case "RSA":
-                {
-                    using var rsa = RSA.Create();
-                    rsa.ImportSubjectPublicKeyInfo(publicKey, out _);
-                    rsa.ImportRSAPrivateKey(privateKey, out _);
-                    var (_, c) = await client.ReEnroll(rsa, cert[0]).ConfigureAwait(false);
-                    cert = c;
-                    break;
-                }
+            {
+                using var rsa = RSA.Create();
+                rsa.ImportSubjectPublicKeyInfo(publicKey, out _);
+                rsa.ImportRSAPrivateKey(privateKey, out _);
+                var (_, c) = await client.ReEnroll(rsa, cert[0]).ConfigureAwait(false);
+                cert = c;
+                break;
+            }
             case "ECDsa":
-                {
-                    using var ecdsa = ECDsa.Create();
-                    ecdsa.ImportSubjectPublicKeyInfo(publicKey, out _);
-                    ecdsa.ImportECPrivateKey(privateKey, out _);
-                    var (_, c) = await client.ReEnroll(ecdsa, cert[0]).ConfigureAwait(false);
-                    cert = c;
-                    break;
-                }
+            {
+                using var ecdsa = ECDsa.Create();
+                ecdsa.ImportSubjectPublicKeyInfo(publicKey, out _);
+                ecdsa.ImportECPrivateKey(privateKey, out _);
+                var (_, c) = await client.ReEnroll(ecdsa, cert[0]).ConfigureAwait(false);
+                cert = c;
+                break;
+            }
             default:
                 throw new InvalidOperationException($"Unknown key type: {keytype}");
         }
