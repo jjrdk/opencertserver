@@ -9,7 +9,7 @@
     <PackageVersion Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.100.5" />
     <PackageVersion Include="Cake.Docker" Version="1.5.0" />
     <PackageVersion Include="Cake.Frosting" Version="6.3.0" />
-    <PackageVersion Include="DnsClientX" Version="2.1.0" />
+    <PackageVersion Include="DnsClientX" Version="2.1.2" />
     <PackageVersion Include="GitVersion.MsBuild" Version="6.8.2" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Certificate" Version="10.0.12" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
@@ -33,10 +33,10 @@
     <PackageVersion Include="NuGet.Protocol" Version="7.9.0" />
     <PackageVersion Include="Reqnroll.xUnit.v3" Version="3.3.4" />
     <PackageVersion Include="System.CommandLine" Version="2.0.12" />
-    <PackageVersion Include="Testcontainers" Version="4.15.0" />
+    <PackageVersion Include="Testcontainers" Version="4.16.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
     <PackageVersion Include="xUnit.v3" Version="4.0.0" />
-    <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.1" />
+    <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.2" />
     <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
   </ItemGroup>
 </Project>
