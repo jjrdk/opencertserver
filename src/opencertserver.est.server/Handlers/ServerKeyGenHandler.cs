@@ -128,6 +128,15 @@ internal static class ServerKeyGenHandler
                     return encryptedKeyDelivery.ErrorResult;
                 }
 
+                if (encryptedKeyDelivery.UseEncryptedKeyPart && csr.PublicKey.Oid.Value != Oids.Rsa)
+                {
+                    return Results.Text(
+                        "Encrypted server-side key delivery requires an RSA CSR public key.",
+                        Constants.TextPlainMimeType,
+                        Encoding.UTF8,
+                        (int)HttpStatusCode.BadRequest);
+                }
+
                 var privateKey = csr.PublicKey.Oid.Value switch
                 {
                     Oids.Rsa => CreateServerSideRsaRequest(csr),
@@ -355,11 +364,6 @@ internal static class ServerKeyGenHandler
 
     private static string CreateEncryptedKeyResponse(byte[] privateKeyPkcs8, CertificateRequest csr)
     {
-        if (csr.PublicKey.Oid.Value != Oids.Rsa)
-        {
-            throw new NotSupportedException("Encrypted key delivery currently supports only RSA request public keys.");
-        }
-
         using var recipientRsa = RSA.Create();
         recipientRsa.ImportSubjectPublicKeyInfo(csr.PublicKey.ExportSubjectPublicKeyInfo(), out _);
 
