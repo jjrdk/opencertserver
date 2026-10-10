@@ -135,6 +135,7 @@ public sealed class CaProfileTests : IDisposable
     {
         Assert.Contains("2.5.29.17", _profile.AllowedCsrExtensions);
         Assert.Contains("2.5.29.37", _profile.AllowedCsrExtensions);
+        Assert.Contains("2.5.29.15", _profile.AllowedCsrExtensions);
     }
 
     [Fact]
