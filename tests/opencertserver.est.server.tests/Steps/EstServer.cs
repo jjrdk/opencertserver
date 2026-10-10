@@ -262,6 +262,7 @@ public class EstServer
         var (request, clientCertificate) = await CreateSanUriRequestAsync(profile, csrKey).ConfigureAwait(false);
 
         using var handler = new TestMessageHandler(_server, clientCertificate);
+        // ReSharper disable once ShortLivedHttpClient
         using var httpClient = new HttpClient(handler);
         var response = await httpClient.PostAsync(
             new Uri($"https://localhost/.well-known/est/{profile}/serverkeygen"),
