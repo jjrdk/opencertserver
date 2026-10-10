@@ -45,9 +45,21 @@ the one OpenCertServer's `est-enroll` CLI and `EstClient` wrap.
 | `GET /.well-known/est/csrattrs` | §4.5 (with [RFC 9908](#rst-9908--csr-attribute-templates)) | A `CsrAttributesResponse` in `application/csrattrs` telling the client which template to use. |
 | `POST /.well-known/est/simpleenroll` | §4.2 | Accepts PEM/DER PKCS#10; returns leaf+chain in `application/pkix-cert` or `application/pem-certificate-chain` via `Accept`. |
 | `POST /.well-known/est/simplereenroll` | §4.2.3 | Re-enrolls using the current cert (mTLS) or a JWT. |
-| `POST /.well-known/est/serverkeygen` | §4.4 | Server generates the ECDSA key on the client's behalf; returns a `multipart/mixed` bundle with the private key. |
+| `POST /.well-known/est/serverkeygen` | §4.4 | Server generates the key on the client's behalf; returns a `multipart/mixed` bundle with the private key, optionally encrypted (see below). |
 | `/{profile}/…` | §3.2.2 | Per-profile variants of the above let one server act as multiple logical CAs. |
 | `Content-Transfer-Encoding` / whitespace | [RFC 8951](#rst-8951--est-clarifications) §3.2/§3.3 | Tolerated, per the EST clarifications. |
+
+**Encrypted key delivery (§4.4.1.2, §4.4.2).** A client asks for it with an `SMIMECapabilities` attribute
+and an `AsymmetricDecryptKeyIdentifier` attribute (`1.2.840.113549.1.9.16.2.54`) in the CSR; the
+`X-Est-*` headers are accepted as a fallback. The private key is returned as an AsymmetricKeyPackage
+(RFC 5958) in a CMS SignedData, signed by the CA profile that issues the certificate, inside an
+EnvelopedData (RSAES-OAEP with SHA-256, AES-CBC chosen from the client's `SMIMECapabilities`).
+Limitations: the only key the server holds for encryption is the CSR's own public key, so the
+identifier must be that key's subject key identifier (SHA-1 of the key bits) and the key must be RSA;
+any other identifier is refused with 400 as §4.4.1.2 requires. Note that §4.4.1 has the server
+ignore the CSR public key otherwise - using it as the key-transport key is this server's choice of
+where the identified key comes from. Symmetric protection (`DecryptKeyIdentifier`, §4.4.1.1) is not
+supported and is refused with 400.
 
 **Where it lives.**
 Endpoints are mapped in

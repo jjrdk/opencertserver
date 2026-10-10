@@ -476,6 +476,40 @@ public partial class CertificateServerFeatures
             protectionMaterialStatus: "available").ConfigureAwait(false);
     }
 
+    [When("the client names its key-encryption key and algorithms only through CSR attributes")]
+    public async Task WhenTheClientNamesItsKeyEncryptionKeyAndAlgorithmsOnlyThroughCsrAttributes()
+    {
+        await SendServerKeyGenerationRequestAsync(
+            requestEncryptedKeyDelivery: true,
+            includeProtectionMetadata: true,
+            protection: "asymmetric",
+            protectionMaterialStatus: "available",
+            keyDeliveryAsCsrAttributes: true).ConfigureAwait(false);
+    }
+
+    [When("the client names a key-encryption key in the CSR that the EST server does not hold")]
+    public async Task WhenTheClientNamesAKeyEncryptionKeyInTheCsrThatTheEstServerDoesNotHold()
+    {
+        await SendServerKeyGenerationRequestAsync(
+            requestEncryptedKeyDelivery: true,
+            includeProtectionMetadata: true,
+            protection: "asymmetric",
+            protectionMaterialStatus: "available",
+            keyDeliveryAsCsrAttributes: true,
+            unknownKeyIdentifier: true).ConfigureAwait(false);
+    }
+
+    [When("the client names a symmetric key-encryption key in the CSR")]
+    public async Task WhenTheClientNamesASymmetricKeyEncryptionKeyInTheCsr()
+    {
+        await SendServerKeyGenerationRequestAsync(
+            requestEncryptedKeyDelivery: true,
+            includeProtectionMetadata: true,
+            protection: "symmetric",
+            protectionMaterialStatus: "available",
+            keyDeliveryAsCsrAttributes: true).ConfigureAwait(false);
+    }
+
     [When("the EST server returns the certificate part of a server-side key generation response")]
     public async Task WhenTheEstServerReturnsTheCertificatePartOfAServerSideKeyGenerationResponse()
     {
@@ -1337,7 +1371,8 @@ public partial class CertificateServerFeatures
             new AsnReaderOptions { SkipSetSortOrderVerification = true });
         var envelopedData = new EnvelopedData(envelopedDataReader);
         Assert.NotEmpty(envelopedData.RecipientInfos);
-        Assert.Equal(Oids.Pkcs7Data, envelopedData.EncryptedContentInfo.ContentType.Value);
+        // RFC 7030 §4.4.2: the enveloped content is the SignedData of the key generator.
+        Assert.Equal(Oids.Pkcs7Signed, envelopedData.EncryptedContentInfo.ContentType.Value);
         // Save for the subsequent decrypt+verify step.
         ConformanceState.EnvelopedData = envelopedData;
     }
@@ -1370,7 +1405,8 @@ public partial class CertificateServerFeatures
         var encryptedContent = envelopedData.EncryptedContentInfo.EncryptedContent;
         Assert.NotNull(encryptedContent);
         using var decryptor = aes.CreateDecryptor();
-        var pkcs8 = decryptor.TransformFinalBlock(encryptedContent!, 0, encryptedContent!.Length);
+        var signedData = decryptor.TransformFinalBlock(encryptedContent!, 0, encryptedContent!.Length);
+        var (pkcs8, signerCertificate) = OpenSignedKeyPackage(signedData);
 
         // --- Extract the public key from the PKCS#8 PrivateKeyInfo ---
         using var serverGeneratedKey = RSA.Create();
@@ -1387,12 +1423,67 @@ public partial class CertificateServerFeatures
 
         var certContentInfo = new CmsContentInfo(
             new AsnReader(Convert.FromBase64String(certBody), AsnEncodingRules.DER));
-        var signedData = new SignedData(
+        var certsOnly = new SignedData(
             new AsnReader(certContentInfo.EncodedContent, AsnEncodingRules.DER));
-        var cert = Assert.Single(signedData.Certificates ?? []);
+        var cert = Assert.Single(certsOnly.Certificates ?? []);
 
         // --- Assert that the decrypted key belongs to the issued certificate ---
         Assert.Equal(serverKeySpki, cert.PublicKey.ExportSubjectPublicKeyInfo());
+        // --- and that the key was signed by the CA that issued it ---
+        Assert.Equal(cert.IssuerName.RawData, signerCertificate.SubjectName.RawData);
+    }
+
+    /// <summary>
+    /// Reads the SignedData (RFC 5652 §5) that RFC 7030 §4.4.2 places inside the EnvelopedData, verifies its
+    /// signature and message digest and returns the PKCS#8 from the AsymmetricKeyPackage (RFC 5958) it carries.
+    /// </summary>
+    private static (byte[] Pkcs8, X509Certificate2 SignerCertificate) OpenSignedKeyPackage(byte[] signedData)
+    {
+        var options = new AsnReaderOptions { SkipSetSortOrderVerification = true };
+        var signedDataReader = new AsnReader(signedData, AsnEncodingRules.DER, options).ReadSequence();
+        Assert.Equal(3, (int)signedDataReader.ReadInteger());
+        _ = signedDataReader.ReadSetOf(); // digestAlgorithms
+        var encapsulatedContentInfo = signedDataReader.ReadSequence();
+        Assert.Equal("2.16.840.1.101.2.1.2.78.5", encapsulatedContentInfo.ReadObjectIdentifier());
+        var keyPackage = encapsulatedContentInfo
+            .ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true))
+            .ReadOctetString();
+        var certificates = signedDataReader.ReadSetOf(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+        var signerCertificate = X509CertificateLoader.LoadCertificate(certificates.ReadEncodedValue().Span);
+
+        var signerInfo = signedDataReader.ReadSetOf().ReadSequence();
+        Assert.Equal(1, (int)signerInfo.ReadInteger());
+        _ = signerInfo.ReadSequence(); // issuerAndSerialNumber
+        _ = signerInfo.ReadSequence(); // digestAlgorithm
+        var signedAttributes = signerInfo.ReadEncodedValue().ToArray();
+        _ = signerInfo.ReadSequence(); // signatureAlgorithm
+        var signature = signerInfo.ReadOctetString();
+
+        // RFC 5652 §5.4: the signature covers the signed attributes with an explicit SET OF tag.
+        signedAttributes[0] = 0x31;
+        using var rsa = signerCertificate.GetRSAPublicKey();
+        using var ecdsa = rsa == null ? signerCertificate.GetECDsaPublicKey() : null;
+        Assert.True(rsa != null
+            ? rsa.VerifyData(signedAttributes, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
+            : ecdsa!.VerifyData(signedAttributes, signature, HashAlgorithmName.SHA256,
+                DSASignatureFormat.Rfc3279DerSequence));
+
+        byte[]? messageDigest = null;
+        var attributes = new AsnReader(signedAttributes, AsnEncodingRules.DER, options).ReadSetOf();
+        while (attributes.HasData)
+        {
+            var attribute = attributes.ReadSequence();
+            if (attribute.ReadObjectIdentifier() == Oids.MessageDigest)
+            {
+                messageDigest = attribute.ReadSetOf().ReadOctetString();
+            }
+        }
+
+        Assert.Equal(SHA256.HashData(keyPackage), messageDigest);
+
+        // AsymmetricKeyPackage ::= SEQUENCE SIZE (1..MAX) OF OneAsymmetricKey
+        var pkcs8 = new AsnReader(keyPackage, AsnEncodingRules.DER).ReadSequence().ReadEncodedValue().ToArray();
+        return (pkcs8, signerCertificate);
     }
 
     [Then("the certificate part MUST exactly match the certificate response used for \"(.+)\"")]
@@ -1719,7 +1810,9 @@ public partial class CertificateServerFeatures
         bool requestEncryptedKeyDelivery = false,
         bool includeProtectionMetadata = false,
         string protection = "symmetric",
-        string protectionMaterialStatus = "available")
+        string protectionMaterialStatus = "available",
+        bool keyDeliveryAsCsrAttributes = false,
+        bool unknownKeyIdentifier = false)
     {
         // For asymmetric encrypted delivery, we need a fresh RSA key whose SKI can be sent
         // as the AsymmetricDecryptKeyIdentifier.  The server validates the identifier against
@@ -1729,7 +1822,8 @@ public partial class CertificateServerFeatures
         string? csrSkiHex = null;
 
         if (requestEncryptedKeyDelivery &&
-            string.Equals(protection, "asymmetric", StringComparison.OrdinalIgnoreCase) &&
+            (keyDeliveryAsCsrAttributes ||
+                string.Equals(protection, "asymmetric", StringComparison.OrdinalIgnoreCase)) &&
             includeProtectionMetadata)
         {
             recipientKey = RSA.Create(2048);
@@ -1741,11 +1835,36 @@ public partial class CertificateServerFeatures
             req.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
             req.CertificateExtensions.Add(
                 new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
-            csrPem = req.ToPkcs10Base64();
             // Compute the CSR public key's SubjectKeyIdentifier (SHA-1 of the raw key bits),
             // matching the server's ComputeSubjectKeyIdentifier helper.
             var skiExt = new X509SubjectKeyIdentifierExtension(req.PublicKey, false);
             csrSkiHex = skiExt.SubjectKeyIdentifier!;  // uppercase hex
+            if (keyDeliveryAsCsrAttributes)
+            {
+                // RFC 7030 §4.4.1, §4.4.1.1 and §4.4.1.2: SMIMECapabilities and DecryptKeyIdentifier or
+                // AsymmetricDecryptKeyIdentifier as CSR attributes, as a client following the RFC sends them.
+                var capabilities = new AsnWriter(AsnEncodingRules.DER);
+                using (capabilities.PushSequence())
+                using (capabilities.PushSequence())
+                {
+                    capabilities.WriteObjectIdentifier(Oids.Aes256Cbc);
+                }
+
+                req.OtherRequestAttributes.Add(
+                    new AsnEncodedData(new Oid("1.2.840.113549.1.9.15"), capabilities.Encode()));
+                var symmetric = string.Equals(protection, "symmetric", StringComparison.OrdinalIgnoreCase);
+                var identifier = new AsnWriter(AsnEncodingRules.DER);
+                identifier.WriteOctetString(symmetric
+                    ? Encoding.ASCII.GetBytes("test-secret")
+                    : unknownKeyIdentifier
+                        ? RandomNumberGenerator.GetBytes(20)
+                        : skiExt.SubjectKeyIdentifierBytes.Span);
+                req.OtherRequestAttributes.Add(new AsnEncodedData(
+                    new Oid(symmetric ? "1.2.840.113549.1.9.16.2.37" : "1.2.840.113549.1.9.16.2.54"),
+                    identifier.Encode()));
+            }
+
+            csrPem = req.ToPkcs10Base64();
         }
 
         csrPem ??= CreatePemCsr();
@@ -1763,10 +1882,12 @@ public partial class CertificateServerFeatures
             BuildOperationPath("/serverkeygen"),
             content,
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt"),
-            accept: requestEncryptedKeyDelivery ? "multipart/mixed; smime-type=server-generated-key" : null,
+            accept: requestEncryptedKeyDelivery && !keyDeliveryAsCsrAttributes
+                ? "multipart/mixed; smime-type=server-generated-key"
+                : null,
             configureMessage: message =>
             {
-                if (!requestEncryptedKeyDelivery)
+                if (!requestEncryptedKeyDelivery || keyDeliveryAsCsrAttributes)
                 {
                     return;
                 }
