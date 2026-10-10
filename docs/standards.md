@@ -267,7 +267,9 @@ structural extensions (nameConstraints, certificatePolicies, etc.) they are not 
 (basicConstraints) to the profile's `AllowedCsrExtensions`. The `CaExtensionValidation` and
 `KeyCrlSignatureValidation` validators both gate on this OID: CA:TRUE in basicConstraints is
 rejected unless `2.5.29.19` is in the list, and keyCertSign/cRLSign in keyUsage are rejected unless
-`2.5.29.19` is in the list (profile-aware, not a blanket ban).
+`2.5.29.19` is in the list (profile-aware, not a blanket ban). Within such a profile, keyCertSign is
+still rejected unless the CSR also asserts CA:TRUE (RFC 5280 §4.2.1.3); cRLSign on its own is
+accepted, as indirect CRL issuers need not be CAs.
 
 **Server-managed extensions.** SKI (2.5.29.14), AKI (2.5.29.35), AIA (1.3.6.1.5.5.7.1.1), and
 CRLDP (2.5.29.31) are always regenerated from the CA's own state and are stripped from the CSR
