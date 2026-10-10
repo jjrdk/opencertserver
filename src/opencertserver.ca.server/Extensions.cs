@@ -14,155 +14,163 @@ using Handlers;
 
 public static class Extensions
 {
-    /// <summary>
-    /// Registers an in-memory certificate store to the service collection.
-    ///
-    /// This is useful for testing and development purposes, but should not be used in production environments.
-    /// </summary>
-    /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
-    public static IServiceCollection AddInMemoryCertificateStore(this IServiceCollection services)
-    {
-        return services.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore());
-    }
-
-    /// <summary>
-    /// Registers a certificate authority to the service collection with the provided configuration and optional chain validation function.
-    /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The CA server configuration.</param>
-    /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
-    /// <param name="certificateIdGenerator">The certificate ID generator.</param>
-    /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
-    public static IServiceCollection AddCertificateAuthority(
-        this IServiceCollection services,
-        CaConfiguration configuration,
-        IValidateX509Chains? chainValidation = null,
-        IGenerateCertificateId? certificateIdGenerator = null)
+    extension(IServiceCollection services)
     {
-        services.AddSingleton(configuration);
-        services.AddSingleton(configuration.Profiles);
-        services.AddSingleton<IValidateOcspRequest, OcspRequestSignatureValidator>();
-        return services.AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
-            configuration,
-            sp.GetRequiredService<IStoreCertificates>(),
-            chainValidation ?? new ValidateAll(),
-            certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
-            sp.GetRequiredService<ILogger<CertificateAuthority>>()));
-    }
-
-    /// <summary>
-    /// Registers a certificate authority to the service collection with the provided configuration loader and
-    /// optional chain validation function.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configurationFactory">The configuration loader</param>
-    /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
-    /// <param name="certificateIdGenerator">The certificate ID generator.</param>
-    /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
-    public static IServiceCollection AddCertificateAuthority(
-        this IServiceCollection services,
-        Func<IServiceProvider, CaConfiguration> configurationFactory,
-        IValidateX509Chains? chainValidation = null,
-        IGenerateCertificateId? certificateIdGenerator = null)
-    {
-        services.AddSingleton(configurationFactory);
-        services.AddTransient(sp => sp.GetRequiredService<CaConfiguration>().Profiles);
-        services.AddSingleton<IValidateOcspRequest, OcspRequestSignatureValidator>();
-        return services.AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
-            sp.GetRequiredService<CaConfiguration>(),
-            sp.GetRequiredService<IStoreCertificates>(),
-            chainValidation ?? new ValidateAll(),
-            certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
-            sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-            sp.GetServices<IValidateCertificateRequests>().ToArray()));
-    }
-
-    /// <summary>
-    /// Registers a self-signed certificate authority to the service collection with the provided
-    /// <see cref="X500DistinguishedName"/> and optional OCSP and CA Issuers URLs.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="distinguishedName">The <see cref="X500DistinguishedName"/> of the server.</param>
-    /// <param name="ocspUrls">The known OCSP responder URLs.</param>
-    /// <param name="crlUrls">The known CRL distribution point URLs.</param>
-    /// <param name="caIssuersUrls">The known CA issuer URLs.</param>
-    /// <param name="certificateValidity">The duration of the issued certificates.</param>
-    /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
-    /// <param name="certificateIdGenerator">The certificate ID generator.</param>
-    /// <param name="strictOcspHttpBinding">Whether to enforce strict OCSP HTTP binding, including content-type validation for POST requests.</param>
-    /// <param name="ocspFreshnessWindow">The OCSP freshness window for responses.</param>
-    /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
-    public static IServiceCollection AddSelfSignedCertificateAuthority(
-        this IServiceCollection services,
-        X500DistinguishedName distinguishedName,
-        string[]? ocspUrls = null,
-        string[]? crlUrls = null,
-        string[]? caIssuersUrls = null,
-        TimeSpan certificateValidity = default,
-        IValidateX509Chains? chainValidation = null,
-        IGenerateCertificateId? certificateIdGenerator = null,
-        bool strictOcspHttpBinding = false,
-        TimeSpan ocspFreshnessWindow = default)
-    {
-        var config = new CaConfiguration(
-            new CaProfileSet(
-                "default",
-                CertificateAuthority.CreateSelfSignedRsa(
-                    "default",
-                    distinguishedName,
-                    certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
-                    BigInteger.Zero,
-                    ocspFreshnessWindow == TimeSpan.Zero ? TimeSpan.FromHours(1) : ocspFreshnessWindow),
-                CertificateAuthority.CreateSelfSignedEcdsa(
-                    "ecdsa",
-                    distinguishedName,
-                    certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
-                    BigInteger.Zero,
-                    ocspFreshnessWindow == TimeSpan.Zero ? TimeSpan.FromHours(1) : ocspFreshnessWindow)
-            ),
-            ocspUrls ?? [],
-            crlUrls ?? [],
-            caIssuersUrls ?? [],
-            strictOcspHttpBinding);
-        services.AddSingleton(config);
-        services.AddSingleton(config.Profiles);
-        services.AddSingleton<IValidateOcspRequest, OcspRequestSignatureValidator>();
-        return services.AddSingleton<ICertificateAuthority>(sp =>
+        /// <summary>
+        /// Registers an in-memory certificate store to the service collection.
+        ///
+        /// This is useful for testing and development purposes, but should not be used in production environments.
+        /// </summary>
+        /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
+        public IServiceCollection AddInMemoryCertificateStore()
         {
-            var certificateAuthority = new CertificateAuthority(
-                config,
+            return services.AddSingleton<IStoreCertificates>(new InMemoryCertificateStore());
+        }
+
+        /// <summary>
+        /// Registers a certificate authority to the service collection with the provided configuration and optional chain validation function.
+        /// </summary>
+        /// <param name="configuration">The CA server configuration.</param>
+        /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
+        /// <param name="certificateIdGenerator">The certificate ID generator.</param>
+        /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
+        public IServiceCollection AddCertificateAuthority(
+            CaConfiguration configuration,
+            IValidateX509Chains? chainValidation = null,
+            IGenerateCertificateId? certificateIdGenerator = null)
+        {
+            services.AddSingleton(configuration);
+            services.AddSingleton(configuration.Profiles);
+            services.RegisterCaDependencies();
+            return services.AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
+                configuration,
                 sp.GetRequiredService<IStoreCertificates>(),
                 chainValidation ?? new ValidateAll(),
                 certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
                 sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                validators: sp.GetServices<IValidateCertificateRequests>().ToArray());
-            return certificateAuthority;
-        });
-    }
+                [.. sp.GetServices<IValidateCertificateRequests>()]));
+        }
 
-    /// <summary>
-    /// Registers the default authorization policy for the certificate revocation endpoint.
-    /// The policy requires an authenticated user; operators may supply an additional configure action
-    /// to impose further restrictions (e.g. requiring a specific scheme or claim).
-    /// Call this method before <see cref="MapCertificateAuthorityServer"/>.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configureRevocationPolicy">
-    /// Optional additional configuration applied on top of <c>RequireAuthenticatedUser()</c>.
-    /// </param>
-    /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
-    public static IServiceCollection AddCertificateAuthorityAuthorization(
-        this IServiceCollection services,
-        Action<AuthorizationPolicyBuilder>? configureRevocationPolicy = null)
-    {
-        return services.AddAuthorization(options =>
+        /// <summary>
+        /// Registers a certificate authority to the service collection with the provided configuration loader and
+        /// optional chain validation function.
+        /// </summary>
+        /// <param name="configurationFactory">The configuration loader</param>
+        /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
+        /// <param name="certificateIdGenerator">The certificate ID generator.</param>
+        /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
+        public IServiceCollection AddCertificateAuthority(
+            Func<IServiceProvider, CaConfiguration> configurationFactory,
+            IValidateX509Chains? chainValidation = null,
+            IGenerateCertificateId? certificateIdGenerator = null)
         {
-            options.AddPolicy(RevocationAuthorizationConstants.RevocationPolicyName, policy =>
+            services.AddSingleton(configurationFactory);
+            services.AddTransient(sp => sp.GetRequiredService<CaConfiguration>().Profiles);
+            services.RegisterCaDependencies();
+            return services.AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
+                sp.GetRequiredService<CaConfiguration>(),
+                sp.GetRequiredService<IStoreCertificates>(),
+                chainValidation ?? new ValidateAll(),
+                certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
+                sp.GetRequiredService<ILogger<CertificateAuthority>>(),
+                [.. sp.GetServices<IValidateCertificateRequests>()]));
+        }
+
+        /// <summary>
+        /// Registers a self-signed certificate authority to the service collection with the provided
+        /// <see cref="X500DistinguishedName"/> and optional OCSP and CA Issuers URLs.
+        /// </summary>
+        /// <param name="distinguishedName">The <see cref="X500DistinguishedName"/> of the server.</param>
+        /// <param name="ocspUrls">The known OCSP responder URLs.</param>
+        /// <param name="crlUrls">The known CRL distribution point URLs.</param>
+        /// <param name="caIssuersUrls">The known CA issuer URLs.</param>
+        /// <param name="certificateValidity">The duration of the issued certificates.</param>
+        /// <param name="chainValidation">The <see cref="X509Chain"/> validation.</param>
+        /// <param name="certificateIdGenerator">The certificate ID generator.</param>
+        /// <param name="strictOcspHttpBinding">Whether to enforce strict OCSP HTTP binding, including content-type validation for POST requests.</param>
+        /// <param name="ocspFreshnessWindow">The OCSP freshness window for responses.</param>
+        /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
+        public IServiceCollection AddSelfSignedCertificateAuthority(
+            X500DistinguishedName distinguishedName,
+            string[]? ocspUrls = null,
+            string[]? crlUrls = null,
+            string[]? caIssuersUrls = null,
+            TimeSpan certificateValidity = default,
+            IValidateX509Chains? chainValidation = null,
+            IGenerateCertificateId? certificateIdGenerator = null,
+            bool strictOcspHttpBinding = false,
+            TimeSpan ocspFreshnessWindow = default)
+        {
+            var config = new CaConfiguration(
+                new CaProfileSet(
+                    "default",
+                    CertificateAuthority.CreateSelfSignedRsa(
+                        "default",
+                        distinguishedName,
+                        certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
+                        BigInteger.Zero,
+                        ocspFreshnessWindow == TimeSpan.Zero ? TimeSpan.FromHours(1) : ocspFreshnessWindow),
+                    CertificateAuthority.CreateSelfSignedEcdsa(
+                        "ecdsa",
+                        distinguishedName,
+                        certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
+                        BigInteger.Zero,
+                        ocspFreshnessWindow == TimeSpan.Zero ? TimeSpan.FromHours(1) : ocspFreshnessWindow)
+                ),
+                ocspUrls ?? [],
+                crlUrls ?? [],
+                caIssuersUrls ?? [],
+                strictOcspHttpBinding);
+            services.AddSingleton(config);
+            services.AddSingleton(config.Profiles);
+            services.RegisterCaDependencies();
+            return services.AddSingleton<ICertificateAuthority>(sp =>
             {
-                policy.RequireAuthenticatedUser();
-                configureRevocationPolicy?.Invoke(policy);
+                var logger = sp.GetRequiredService<ILogger<CertificateAuthority>>();
+                var certificateAuthority = new CertificateAuthority(
+                    config,
+                    sp.GetRequiredService<IStoreCertificates>(),
+                    chainValidation ?? new ValidateAll(),
+                    certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
+                    logger,
+                    validators: [.. sp.GetServices<IValidateCertificateRequests>()]);
+                return certificateAuthority;
             });
-        });
+        }
+
+        private IServiceCollection RegisterCaDependencies()
+        {
+            services.AddSingleton<IValidateOcspRequest, OcspRequestSignatureValidator>();
+            services.AddSingleton<IValidateCertificateRequests, CaExtensionValidation>();
+            services.AddSingleton<IValidateCertificateRequests, OwnCertificateValidation>();
+            services.AddSingleton<IValidateCertificateRequests, DistinguishedNameValidation>();
+            services.AddSingleton<IValidateCertificateRequests, KeyCrlSignatureValidation>();
+            return services;
+        }
+
+        /// <summary>
+        /// Registers the default authorization policy for the certificate revocation endpoint.
+        /// The policy requires an authenticated user; operators may supply an additional configure action
+        /// to impose further restrictions (e.g. requiring a specific scheme or claim).
+        /// Call this method before <see cref="MapCertificateAuthorityServer"/>.
+        /// </summary>
+        /// <param name="configureRevocationPolicy">
+        /// Optional additional configuration applied on top of <c>RequireAuthenticatedUser()</c>.
+        /// </param>
+        /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
+        public IServiceCollection AddCertificateAuthorityAuthorization(
+            Action<AuthorizationPolicyBuilder>? configureRevocationPolicy = null)
+        {
+            return services.AddAuthorization(options =>
+            {
+                options.AddPolicy(RevocationAuthorizationConstants.RevocationPolicyName, policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    configureRevocationPolicy?.Invoke(policy);
+                });
+            });
+        }
     }
 
     /// <summary>

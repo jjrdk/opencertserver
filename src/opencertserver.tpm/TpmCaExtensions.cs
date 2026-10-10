@@ -47,7 +47,6 @@ public static class TpmCaExtensions
             var ecdsaProfile = factory.CreateOrLoadEcDsaProfile("ecdsa");
             return new CaProfileSet("default", rsaProfile, ecdsaProfile);
         });
-
         services.AddSingleton<CaConfiguration>(sp =>
             new CaConfiguration(
                 sp.GetRequiredService<IStoreCaProfiles>(),
@@ -57,6 +56,10 @@ public static class TpmCaExtensions
                 strictOcspHttpBinding));
 
         services.AddSingleton<IValidateOcspRequest, OcspRequestSignatureValidator>();
+        services.AddSingleton<IValidateCertificateRequests, CaExtensionValidation>();
+        services.AddSingleton<IValidateCertificateRequests, OwnCertificateValidation>();
+        services.AddSingleton<IValidateCertificateRequests, DistinguishedNameValidation>();
+        services.AddSingleton<IValidateCertificateRequests, KeyCrlSignatureValidation>();
         services.AddSingleton<ICertificateAuthority>(sp =>
             new CertificateAuthority(
                 sp.GetRequiredService<CaConfiguration>(),

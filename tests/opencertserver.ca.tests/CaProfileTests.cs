@@ -130,6 +130,57 @@ public sealed class CaProfileTests : IDisposable
         return (privateKey, certificate);
     }
 
+    [Fact]
+    public void DefaultAllowedCsrExtensionsContainsSanAndEku()
+    {
+        Assert.Contains("2.5.29.17", _profile.AllowedCsrExtensions);
+        Assert.Contains("2.5.29.37", _profile.AllowedCsrExtensions);
+        Assert.Contains("2.5.29.15", _profile.AllowedCsrExtensions);
+    }
+
+    [Fact]
+    public void DefaultAllowedCsrExtensionsDoesNotContainCaDangerousExtensions()
+    {
+        // basicConstraints (both OID variants), nameConstraints,
+        // certificatePolicies, policyMappings, policyConstraints, inhibitAnyPolicy, SKI
+        string[] dangerous = ["2.5.29.10", "2.5.29.19", "2.5.29.14",
+                               "2.5.29.30", "2.5.29.32", "2.5.29.33", "2.5.29.36", "2.5.29.54"];
+        foreach (var oid in dangerous)
+        {
+            Assert.DoesNotContain(oid, _profile.AllowedCsrExtensions);
+        }
+    }
+
+    [Fact]
+    public void AllowedCsrExtensionsCanBeOverriddenViaWithExpression()
+    {
+        var custom = new[] { "2.5.29.17" };
+        var modified = _profile with { AllowedCsrExtensions = custom };
+
+        Assert.Single(modified.AllowedCsrExtensions);
+        Assert.Equal("2.5.29.17", modified.AllowedCsrExtensions[0]);
+        // Original profile is unchanged
+        Assert.Contains("2.5.29.37", _profile.AllowedCsrExtensions);
+    }
+
+    [Fact]
+    public void ProfileWithCaExtensionsAllowedContainsBasicConstraintsAndKeyUsage()
+    {
+        var caIssuingProfile = _profile with
+        {
+            AllowedCsrExtensions = [.. _profile.AllowedCsrExtensions, "2.5.29.19", "2.5.29.15"]
+        };
+
+        Assert.Contains("2.5.29.19", caIssuingProfile.AllowedCsrExtensions);
+        Assert.Contains("2.5.29.15", caIssuingProfile.AllowedCsrExtensions);
+    }
+
+    [Fact]
+    public void AllowedCsrExtensionsDefaultIsNotEmpty()
+    {
+        Assert.NotEmpty(_profile.AllowedCsrExtensions);
+    }
+
     public void Dispose()
     {
         _profile.Dispose();

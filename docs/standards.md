@@ -254,6 +254,31 @@ and Apple Secure Element so the ACME server can talk to any of them behind `IAtt
    `acme.server` handlers (`type`, `status`, `detail`); see the "Error response shapes" scenarios in
    [AcmeConformance.feature](../tests/opencertserver.certserver.tests/Features/AcmeConformance.feature).
 
+### CSR extension allow-list (`AllowedCsrExtensions`)
+
+**What it is.** A per-profile security boundary on `CaProfile` that controls which X.509 extensions
+the CA copies from a CSR into the issued certificate. Extensions not on the list are silently
+dropped before signing, so an enrollee cannot obtain a CA certificate or poison issued certs with
+structural extensions (nameConstraints, certificatePolicies, etc.) they are not entitled to.
+
+**Defaults.** The default list is SAN (2.5.29.17), EKU (2.5.29.37), and keyUsage (2.5.29.15).
+
+**CA issuance opt-in.** To let a profile issue intermediate CA certificates, add `2.5.29.19`
+(basicConstraints) to the profile's `AllowedCsrExtensions`. The `CaExtensionValidation` and
+`KeyCrlSignatureValidation` validators both gate on this OID: CA:TRUE in basicConstraints is
+rejected unless `2.5.29.19` is in the list, and keyCertSign in keyUsage is rejected unless
+`2.5.29.19` is in the list. When the profile does allow CA issuance, keyCertSign is additionally
+tied to CA:TRUE — a CSR asserting keyCertSign without CA:TRUE is rejected (RFC 5280 §4.2.1.3).
+cRLSign without keyCertSign is freely allowed on CA-enabled profiles (indirect CRL issuers).
+
+**Server-managed extensions.** SKI (2.5.29.14), AKI (2.5.29.35), AIA (1.3.6.1.5.5.7.1.1), and
+CRLDP (2.5.29.31) are always regenerated from the CA's own state and are stripped from the CSR
+unconditionally — listing them in `AllowedCsrExtensions` has no effect.
+
+**Where it lives.** `src/opencertserver.ca.utils/Ca/CaProfile.cs` (`AllowedCsrExtensions`),
+enforced by `CaExtensionValidation`, `KeyCrlSignatureValidation`, and `CleanCsrExtensions` in
+`src/opencertserver.ca/CertificateAuthority.cs`.
+
 ---
 
 ## Revocation & status
@@ -317,7 +342,7 @@ fetch it by CA or by profile.
         number) prevents an attacker from crafting a certificate with the same serial number as a
         victim's certificate and using it to trigger self-service revocation.
       - **Administrative**: the caller's authenticated identity carries the role claim
-        `CaAdmin` (`RevocationAuthorizationConstants.CaAdminRole`). Admins may revoke any
+        `ca_admin` (`RevocationAuthorizationConstants.CaAdminRole`). Admins may revoke any
         certificate in the CA.
    Any other combination returns `403 Forbidden`.
 * The authorization policy for the revoke endpoint is named `"ca_revoke"`
