@@ -18,7 +18,8 @@ public sealed class UnprotectedAttributes : IAsnValue
 
     public UnprotectedAttributes(AsnReader reader)
     {
-        var setReader = reader.ReadSetOf();
+        // Decode as [1] IMPLICIT SET, symmetric with Encode(writer, [1]).
+        var setReader = reader.ReadSetOf(new Asn1Tag(TagClass.ContextSpecific, 1));
         List<byte[]> attributes = [];
         while (setReader.HasData)
         {

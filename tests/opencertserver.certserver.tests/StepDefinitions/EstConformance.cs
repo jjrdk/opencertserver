@@ -1338,6 +1338,61 @@ public partial class CertificateServerFeatures
         var envelopedData = new EnvelopedData(envelopedDataReader);
         Assert.NotEmpty(envelopedData.RecipientInfos);
         Assert.Equal(Oids.Pkcs7Data, envelopedData.EncryptedContentInfo.ContentType.Value);
+        // Save for the subsequent decrypt+verify step.
+        ConformanceState.EnvelopedData = envelopedData;
+    }
+
+    [Then("the decrypted server-generated private key MUST match the public key in the issued certificate")]
+    public async Task ThenTheDecryptedServerGeneratedPrivateKeyMustMatchThePublicKeyInTheIssuedCertificate()
+    {
+        var recipientKey = ConformanceState.EncryptedKeyDeliveryRecipientKey;
+        var envelopedData = ConformanceState.EnvelopedData;
+        Assert.NotNull(recipientKey);
+        Assert.NotNull(envelopedData);
+
+        // --- Decrypt the Content Encryption Key (CEK) ---
+        var keyTrans = envelopedData.RecipientInfos
+            .Select(ri => ri.KeyTransRecipientInfo)
+            .First(kt => kt != null)!;
+        var cek = recipientKey.Decrypt(keyTrans.EncryptedKey, RSAEncryptionPadding.OaepSHA256);
+
+        // --- Decrypt the content ---
+        // IV is the OCTET STRING wrapped inside the content-encryption algorithm parameters.
+        var ivReader = new AsnReader(
+            envelopedData.EncryptedContentInfo.ContentEncryptionAlgorithm.EncodedParameters,
+            AsnEncodingRules.DER);
+        var iv = ivReader.ReadOctetString();
+        using var aes = Aes.Create();
+        aes.Key = cek;
+        aes.IV = iv;
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+        var encryptedContent = envelopedData.EncryptedContentInfo.EncryptedContent;
+        Assert.NotNull(encryptedContent);
+        using var decryptor = aes.CreateDecryptor();
+        var pkcs8 = decryptor.TransformFinalBlock(encryptedContent!, 0, encryptedContent!.Length);
+
+        // --- Extract the public key from the PKCS#8 PrivateKeyInfo ---
+        using var serverGeneratedKey = RSA.Create();
+        serverGeneratedKey.ImportPkcs8PrivateKey(pkcs8, out _);
+        var serverKeySpki = serverGeneratedKey.ExportSubjectPublicKeyInfo();
+
+        // --- Get the issued certificate from the second multipart part ---
+        var certBody = string.Empty;
+        await foreach (var section in GetMultipartContent().ConfigureAwait(false))
+        {
+            using var reader = new StreamReader(section.Body);
+            certBody = await reader.ReadToEndAsync().ConfigureAwait(false);
+        }
+
+        var certContentInfo = new CmsContentInfo(
+            new AsnReader(Convert.FromBase64String(certBody), AsnEncodingRules.DER));
+        var signedData = new SignedData(
+            new AsnReader(certContentInfo.EncodedContent, AsnEncodingRules.DER));
+        var cert = Assert.Single(signedData.Certificates ?? []);
+
+        // --- Assert that the decrypted key belongs to the issued certificate ---
+        Assert.Equal(serverKeySpki, cert.PublicKey.ExportSubjectPublicKeyInfo());
     }
 
     [Then("the certificate part MUST exactly match the certificate response used for \"(.+)\"")]
@@ -1666,7 +1721,43 @@ public partial class CertificateServerFeatures
         string protection = "symmetric",
         string protectionMaterialStatus = "available")
     {
-        var content = new StringContent(CreatePemCsr(), Encoding.UTF8, "application/pkcs10");
+        // For asymmetric encrypted delivery, we need a fresh RSA key whose SKI can be sent
+        // as the AsymmetricDecryptKeyIdentifier.  The server validates the identifier against
+        // the CSR's public key SKI, so both must be computed from the same key.
+        RSA? recipientKey = null;
+        string? csrPem = null;
+        string? csrSkiHex = null;
+
+        if (requestEncryptedKeyDelivery &&
+            string.Equals(protection, "asymmetric", StringComparison.OrdinalIgnoreCase) &&
+            includeProtectionMetadata)
+        {
+            recipientKey = RSA.Create(2048);
+            var req = new CertificateRequest(
+                new X500DistinguishedName("CN=test"),
+                recipientKey,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pss);
+            req.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
+            req.CertificateExtensions.Add(
+                new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
+            csrPem = req.ToPkcs10Base64();
+            // Compute the CSR public key's SubjectKeyIdentifier (SHA-1 of the raw key bits),
+            // matching the server's ComputeSubjectKeyIdentifier helper.
+            var skiExt = new X509SubjectKeyIdentifierExtension(req.PublicKey, false);
+            csrSkiHex = skiExt.SubjectKeyIdentifier!;  // uppercase hex
+        }
+
+        csrPem ??= CreatePemCsr();
+
+        // Capture for later use in the decrypt+verify assertion.
+        if (recipientKey != null)
+        {
+            ConformanceState.EncryptedKeyDeliveryRecipientKey?.Dispose();
+            ConformanceState.EncryptedKeyDeliveryRecipientKey = recipientKey;
+        }
+
+        var content = new StringContent(csrPem, Encoding.UTF8, "application/pkcs10");
         return SendRequestAsync(
             HttpMethod.Post,
             BuildOperationPath("/serverkeygen"),
@@ -1695,7 +1786,8 @@ public partial class CertificateServerFeatures
 
                 if (string.Equals(protection, "asymmetric", StringComparison.OrdinalIgnoreCase))
                 {
-                    message.Headers.Add(AsymmetricDecryptKeyIdentifierHeader, "test-recipient");
+                    // Send the CSR public key's SKI so the server can validate the identifier.
+                    message.Headers.Add(AsymmetricDecryptKeyIdentifierHeader, csrSkiHex!);
                 }
                 else
                 {
@@ -2230,6 +2322,10 @@ public partial class CertificateServerFeatures
         public CertificateSigningRequestTemplate? Template { get; set; }
         public string? PreRollOverRootThumbprint { get; set; }
         public string? PostRollOverRootThumbprint { get; set; }
+        // Key used to encrypt the server-generated private key; needed to decrypt + verify the round trip.
+        public RSA? EncryptedKeyDeliveryRecipientKey { get; set; }
+        // Decoded EnvelopedData from the encrypted key part; shared between structural and round-trip steps.
+        public EnvelopedData? EnvelopedData { get; set; }
     }
 
     private sealed class CapturingHandler : HttpMessageHandler

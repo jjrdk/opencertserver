@@ -41,8 +41,9 @@ public sealed class EnvelopedData : IAsnValue
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
         {
-            OriginatorInfo = new OriginatorInfo(
-                sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0)));
+            // Pass the outer reader; OriginatorInfo reads the [0] IMPLICIT sequence itself so
+            // the decode is symmetric with its Encode(writer, [0]) call.
+            OriginatorInfo = new OriginatorInfo(sequenceReader);
         }
 
         var recipientInfosReader = sequenceReader.ReadSetOf();
@@ -57,8 +58,8 @@ public sealed class EnvelopedData : IAsnValue
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1)))
         {
-            UnprotectedAttributes = new UnprotectedAttributes(
-                sequenceReader.ReadSetOf(new Asn1Tag(TagClass.ContextSpecific, 1)));
+            // Same pattern: pass the outer reader; UnprotectedAttributes reads the [1] set itself.
+            UnprotectedAttributes = new UnprotectedAttributes(sequenceReader);
         }
 
         sequenceReader.ThrowIfNotEmpty();
