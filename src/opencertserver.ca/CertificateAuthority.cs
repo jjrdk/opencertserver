@@ -596,6 +596,19 @@ public sealed partial class KeyCrlSignatureValidation : IValidateCertificateRequ
         var caProfile = await _caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
         if (caProfile.AllowedCsrExtensions.Contains(Oids.BasicConstraints2))
         {
+            // RFC 5280 §4.2.1.3: keyCertSign MUST only appear when the cA bit is also asserted.
+            // cRLSign without keyCertSign is legitimate (indirect CRL issuers).
+            if (keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.KeyCertSign))
+            {
+                var basicConstraints = request.CertificateExtensions
+                    .OfType<X509BasicConstraintsExtension>().FirstOrDefault();
+                if (basicConstraints?.CertificateAuthority != true)
+                {
+                    LogCsrRequestsKeyCertSignWithoutCaTrue();
+                    return "CSR requests keyCertSign but does not assert CA:TRUE in basicConstraints (RFC 5280 §4.2.1.3)";
+                }
+            }
+
             return null;
         }
 
@@ -619,6 +632,9 @@ public sealed partial class KeyCrlSignatureValidation : IValidateCertificateRequ
 
     [LoggerMessage(LogLevel.Error, "CSR requests CRL Sign in keyUsage")]
     partial void LogCsrRequestsCrlSignInKeyUsage();
+
+    [LoggerMessage(LogLevel.Error, "CSR requests keyCertSign without CA:TRUE in basicConstraints")]
+    partial void LogCsrRequestsKeyCertSignWithoutCaTrue();
 }
 
 public sealed partial class CaExtensionValidation : IValidateCertificateRequests
