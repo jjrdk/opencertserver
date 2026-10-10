@@ -266,8 +266,10 @@ structural extensions (nameConstraints, certificatePolicies, etc.) they are not 
 **CA issuance opt-in.** To let a profile issue intermediate CA certificates, add `2.5.29.19`
 (basicConstraints) to the profile's `AllowedCsrExtensions`. The `CaExtensionValidation` and
 `KeyCrlSignatureValidation` validators both gate on this OID: CA:TRUE in basicConstraints is
-rejected unless `2.5.29.19` is in the list, and keyCertSign/cRLSign in keyUsage are rejected unless
-`2.5.29.19` is in the list (profile-aware, not a blanket ban).
+rejected unless `2.5.29.19` is in the list, and keyCertSign in keyUsage is rejected unless
+`2.5.29.19` is in the list. When the profile does allow CA issuance, keyCertSign is additionally
+tied to CA:TRUE — a CSR asserting keyCertSign without CA:TRUE is rejected (RFC 5280 §4.2.1.3).
+cRLSign without keyCertSign is freely allowed on CA-enabled profiles (indirect CRL issuers).
 
 **Server-managed extensions.** SKI (2.5.29.14), AKI (2.5.29.35), AIA (1.3.6.1.5.5.7.1.1), and
 CRLDP (2.5.29.31) are always regenerated from the CA's own state and are stripped from the CSR
