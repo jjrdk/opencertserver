@@ -66,7 +66,7 @@ public sealed class CertificateAuthorityTests : IDisposable
             new CaExtensionValidation(caProfileSet, NullLogger<CaExtensionValidation>.Instance),
             new DistinguishedNameValidation(NullLogger<DistinguishedNameValidation>.Instance),
             new OwnCertificateValidation(caProfileSet, NullLogger<OwnCertificateValidation>.Instance),
-            new KeyCrlSignatureValidation(NullLogger<KeyCrlSignatureValidation>.Instance)
+            new KeyCrlSignatureValidation(caProfileSet, NullLogger<KeyCrlSignatureValidation>.Instance)
         );
     }
 
