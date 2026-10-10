@@ -122,16 +122,20 @@ internal static class ServerKeyGenHandler
                     return new RetryAfterResult(retryAfter, pendingMessage);
                 }
 
-                var encryptedKeyDelivery = GetRequestedEncryptedKeyDelivery(httpRequest, csrDer);
+                var encryptedKeyDelivery = GetRequestedEncryptedKeyDelivery(httpRequest, csrDer, csr);
                 if (encryptedKeyDelivery.ErrorResult != null)
                 {
                     return encryptedKeyDelivery.ErrorResult;
                 }
 
+                // Key transport (RSA) is the only supported key-encryption mechanism.
+                // The recipient key is the one identified by AsymmetricDecryptKeyIdentifier
+                // (validated as the CSR's own public key in GetRequestedEncryptedKeyDelivery);
+                // it must therefore be RSA.
                 if (encryptedKeyDelivery.UseEncryptedKeyPart && csr.PublicKey.Oid.Value != Oids.Rsa)
                 {
                     return Results.Text(
-                        "Encrypted server-side key delivery requires an RSA CSR public key.",
+                        "The identified recipient key is not an RSA key; only RSA key transport is supported.",
                         Constants.TextPlainMimeType,
                         Encoding.UTF8,
                         (int)HttpStatusCode.BadRequest);
@@ -152,7 +156,7 @@ internal static class ServerKeyGenHandler
                 {
                     var mpr = new MultipartContent("mixed");
                     var privateKeyPart = encryptedKeyDelivery.UseEncryptedKeyPart
-                        ? CreateEncryptedKeyResponse(privateKey.Pkcs8, csr)
+                        ? CreateEncryptedKeyResponse(privateKey.Pkcs8, csr, encryptedKeyDelivery.ContentEncryptionAlgorithmOid!)
                         : privateKey.Pkcs8.Base64Encode();
                     mpr.Add(encryptedKeyDelivery.UseEncryptedKeyPart
                         ? new EstMultipartBase64Content(
@@ -257,9 +261,11 @@ internal static class ServerKeyGenHandler
                 StringComparison.OrdinalIgnoreCase));
     }
 
-    private static (bool UseEncryptedKeyPart, IResult? ErrorResult) GetRequestedEncryptedKeyDelivery(
-        HttpRequest httpRequest,
-        byte[] csrDer)
+    private static (bool UseEncryptedKeyPart, IResult? ErrorResult, string? ContentEncryptionAlgorithmOid)
+        GetRequestedEncryptedKeyDelivery(
+            HttpRequest httpRequest,
+            byte[] csrDer,
+            CertificateRequest csr)
     {
         var csrAttributes = ReadCsrAttributes(csrDer);
         var hasSmimeCapabilitiesAttribute = csrAttributes.Any(attribute =>
@@ -274,17 +280,17 @@ internal static class ServerKeyGenHandler
         var useEncryptedKeyPart = hasSmimeCapabilitiesAttribute || requestedViaLegacyHeaders || prefersEncryptedKeyPart;
         if (!useEncryptedKeyPart)
         {
-            return (false, null);
+            return (false, null, null);
         }
 
-        var smimeCapabilities = httpRequest.Headers[SmimeCapabilitiesHeader].ToString();
-        if (!hasSmimeCapabilitiesAttribute && string.IsNullOrWhiteSpace(smimeCapabilities))
+        var smimeCapabilitiesHeader = httpRequest.Headers[SmimeCapabilitiesHeader].ToString();
+        if (!hasSmimeCapabilitiesAttribute && string.IsNullOrWhiteSpace(smimeCapabilitiesHeader))
         {
             return (true, Results.Text(
                         "Encrypted server-side key delivery requires the SMIMECapabilities attribute.",
                         Constants.TextPlainMimeType,
                         Encoding.UTF8,
-                        (int)HttpStatusCode.BadRequest));
+                        (int)HttpStatusCode.BadRequest), null);
         }
 
         var symmetricIdentifier = httpRequest.Headers[SymmetricDecryptKeyIdentifierHeader].ToString();
@@ -307,7 +313,7 @@ internal static class ServerKeyGenHandler
                         "Encrypted server-side key delivery requires a DecryptKeyIdentifier or AsymmetricDecryptKeyIdentifier attribute.",
                         Constants.TextPlainMimeType,
                         Encoding.UTF8,
-                        (int)HttpStatusCode.BadRequest));
+                        (int)HttpStatusCode.BadRequest), null);
         }
 
         var protectionStatus = httpRequest.Headers[KeyProtectionStatusHeader].ToString();
@@ -318,7 +324,7 @@ internal static class ServerKeyGenHandler
                         "The requested key-encryption material is unavailable or unusable.",
                         Constants.TextPlainMimeType,
                         Encoding.UTF8,
-                        (int)HttpStatusCode.BadRequest));
+                        (int)HttpStatusCode.BadRequest), null);
         }
 
         if (string.Equals(protection, "symmetric", StringComparison.Ordinal))
@@ -327,10 +333,114 @@ internal static class ServerKeyGenHandler
                         "Symmetric encrypted server-side key delivery is not supported.",
                         Constants.TextPlainMimeType,
                         Encoding.UTF8,
-                        (int)HttpStatusCode.BadRequest));
+                        (int)HttpStatusCode.BadRequest), null);
         }
 
-        return (true, null);
+        // RFC 7030 §4.4.1.2: when AsymmetricDecryptKeyIdentifier is present, the server MUST
+        // match it against a held key and MUST terminate the request if no match is found.
+        // This server holds the recipient key identified by the CSR's own SubjectKeyIdentifier.
+        if (hasAsymmetricIdentifier)
+        {
+            var csrSki = ComputeSubjectKeyIdentifier(csr.PublicKey.ExportSubjectPublicKeyInfo());
+            var csrSkiHex = Convert.ToHexString(csrSki);
+            var csrSkiBase64 = Convert.ToBase64String(csrSki);
+            if (!string.Equals(asymmetricIdentifier, csrSkiHex, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(asymmetricIdentifier, csrSkiBase64, StringComparison.Ordinal))
+            {
+                return (true, Results.Text(
+                            "The server does not hold a key matching the specified AsymmetricDecryptKeyIdentifier.",
+                            Constants.TextPlainMimeType,
+                            Encoding.UTF8,
+                            (int)HttpStatusCode.BadRequest), null);
+            }
+        }
+
+        // RFC 7030 §4.4.1: pick the first content-encryption algorithm from the client's
+        // SMIMECapabilities that this server supports.
+        var selectedAlgorithm = SelectContentEncryptionAlgorithm(csrAttributes, smimeCapabilitiesHeader);
+        if (selectedAlgorithm == null)
+        {
+            return (true, Results.Text(
+                        "None of the algorithms listed in the SMIMECapabilities attribute are supported.",
+                        Constants.TextPlainMimeType,
+                        Encoding.UTF8,
+                        (int)HttpStatusCode.BadRequest), null);
+        }
+
+        return (true, null, selectedAlgorithm);
+    }
+
+    private static string? SelectContentEncryptionAlgorithm(
+        IReadOnlyList<CsrAttribute> csrAttributes,
+        string smimeCapabilitiesHeader)
+    {
+        // Server-supported content-encryption OIDs in preference order.
+        var serverSupported = new[] { Oids.Aes256Cbc, Oids.Aes128Cbc };
+
+        var clientOids = new List<string>();
+
+        // Parse OIDs from the CSR's SMIMECapabilities attribute (OID 1.2.840.113549.1.9.15).
+        // The attribute value is a DER SEQUENCE OF SMIMECapability where each SMIMECapability
+        // is a SEQUENCE { capabilityID OBJECT IDENTIFIER, parameters ANY OPTIONAL }.
+        var smimeAttr = csrAttributes.FirstOrDefault(attribute =>
+            string.Equals(attribute.Oid.Value, SmimeCapabilitiesAttributeOid, StringComparison.Ordinal));
+        if (smimeAttr != null)
+        {
+            foreach (var value in smimeAttr.Values)
+            {
+                try
+                {
+                    var capReader = new AsnReader(value, AsnEncodingRules.DER,
+                        new AsnReaderOptions { SkipSetSortOrderVerification = true });
+                    var capsSeq = capReader.ReadSequence();
+                    while (capsSeq.HasData)
+                    {
+                        var capSeq = capsSeq.ReadSequence();
+                        clientOids.Add(capSeq.ReadObjectIdentifier());
+                    }
+                }
+                catch (AsnContentException)
+                {
+                    // Skip malformed capability values.
+                }
+            }
+        }
+
+        // Parse OIDs (or friendly names) from the X-Est-Smime-Capabilities header.
+        if (!string.IsNullOrWhiteSpace(smimeCapabilitiesHeader))
+        {
+            foreach (var token in smimeCapabilitiesHeader.Split([',', ';', ' '],
+                         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var oid = MapSmimeCapabilityNameToOid(token);
+                if (oid != null)
+                {
+                    clientOids.Add(oid);
+                }
+            }
+        }
+
+        // Return the first client-listed OID that the server supports (client order takes priority).
+        foreach (var oid in clientOids)
+        {
+            if (Array.IndexOf(serverSupported, oid) >= 0)
+            {
+                return oid;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? MapSmimeCapabilityNameToOid(string name)
+    {
+        return name.ToLowerInvariant() switch
+        {
+            "aes256-cbc" or "aes-256-cbc" or "aes256" => Oids.Aes256Cbc,
+            "aes128-cbc" or "aes-128-cbc" or "aes128" => Oids.Aes128Cbc,
+            // Treat unrecognised tokens as OID strings directly.
+            _ => name
+        };
     }
 
     private static IReadOnlyList<CsrAttribute> ReadCsrAttributes(byte[] csrDer)
@@ -362,15 +472,33 @@ internal static class ServerKeyGenHandler
         return attributes;
     }
 
-    private static string CreateEncryptedKeyResponse(byte[] privateKeyPkcs8, CertificateRequest csr)
+    /// <summary>
+    /// Wraps the private key in a CMS EnvelopedData structure (RFC 5652) using:
+    /// <list type="bullet">
+    ///   <item>id-RSAES-OAEP with SHA-256 for key transport (RFC 8017 §7.1 recommendation)</item>
+    ///   <item>the content-encryption algorithm selected from the client's SMIMECapabilities</item>
+    /// </list>
+    /// The recipient is identified by the CSR public key's SubjectKeyIdentifier.
+    /// </summary>
+    private static string CreateEncryptedKeyResponse(
+        byte[] privateKeyPkcs8,
+        CertificateRequest csr,
+        string contentEncryptionAlgorithmOid)
     {
         using var recipientRsa = RSA.Create();
         recipientRsa.ImportSubjectPublicKeyInfo(csr.PublicKey.ExportSubjectPublicKeyInfo(), out _);
 
-        var contentEncryptionKey = RandomNumberGenerator.GetBytes(32);
+        var (keySize, algorithmOid, algorithmFriendlyName) = contentEncryptionAlgorithmOid switch
+        {
+            Oids.Aes128Cbc => (16, Oids.Aes128Cbc, Oids.Aes128CbcFriendlyName),
+            _ => (32, Oids.Aes256Cbc, Oids.Aes256CbcFriendlyName)
+        };
+
+        var contentEncryptionKey = RandomNumberGenerator.GetBytes(keySize);
         var iv = RandomNumberGenerator.GetBytes(16);
-        var encryptedPrivateKey = EncryptAes256Cbc(privateKeyPkcs8, contentEncryptionKey, iv);
-        var encryptedContentKey = recipientRsa.Encrypt(contentEncryptionKey, RSAEncryptionPadding.Pkcs1);
+        var encryptedPrivateKey = EncryptAesCbc(privateKeyPkcs8, contentEncryptionKey, iv);
+        // RFC 8017 §7.1: use RSAES-OAEP (SHA-256) in preference to RSAES-PKCS1-v1_5 for new applications.
+        var encryptedContentKey = recipientRsa.Encrypt(contentEncryptionKey, RSAEncryptionPadding.OaepSHA256);
 
         var ivWriter = new AsnWriter(AsnEncodingRules.DER);
         ivWriter.WriteOctetString(iv);
@@ -379,8 +507,8 @@ internal static class ServerKeyGenHandler
             version: 2,
             rid: new RecipientIdentifier(ComputeSubjectKeyIdentifier(csr.PublicKey.ExportSubjectPublicKeyInfo())),
             keyEncryptionAlgorithm: new CmsAlgorithmIdentifier(
-                Oids.Rsa.InitializeOid(Oids.RsaFriendlyName),
-                encodedParameters: new byte[] { 0x05, 0x00 }),
+                Oids.RsaOaep.InitializeOid(Oids.RsaOaepFriendlyName),
+                encodedParameters: BuildOaepSha256Parameters()),
             encryptedKey: encryptedContentKey));
 
         var envelopedData = new EnvelopedData(
@@ -389,7 +517,7 @@ internal static class ServerKeyGenHandler
             encryptedContentInfo: new EncryptedContentInfo(
                 contentType: Oids.Pkcs7Data.InitializeOid(Oids.Pkcs7DataFriendlyName),
                 contentEncryptionAlgorithm: new CmsAlgorithmIdentifier(
-                    Oids.Aes256Cbc.InitializeOid(Oids.Aes256CbcFriendlyName),
+                    algorithmOid.InitializeOid(algorithmFriendlyName),
                     ivWriter.Encode()),
                 encryptedContent: encryptedPrivateKey));
 
@@ -402,10 +530,48 @@ internal static class ServerKeyGenHandler
         return writer.Encode().Base64Encode();
     }
 
-    private static byte[] EncryptAes256Cbc(byte[] plaintext, byte[] key, byte[] iv)
+    /// <summary>
+    /// Builds the RSAES-OAEP-params DER value for SHA-256 hash and MGF1-SHA256 mask generation.
+    /// </summary>
+    private static byte[] BuildOaepSha256Parameters()
+    {
+        // RSAES-OAEP-params ::= SEQUENCE {
+        //   hashAlgorithm      [0] HashAlgorithm    -- sha256
+        //   maskGenAlgorithm   [1] MaskGenAlgorithm -- mgf1 with sha256
+        // }
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        using (writer.PushSequence())
+        {
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0)))
+            {
+                using (writer.PushSequence())
+                {
+                    writer.WriteObjectIdentifier(Oids.Sha256);
+                    writer.WriteNull();
+                }
+            }
+
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1)))
+            {
+                using (writer.PushSequence())
+                {
+                    writer.WriteObjectIdentifier(Oids.Mgf1);
+                    using (writer.PushSequence())
+                    {
+                        writer.WriteObjectIdentifier(Oids.Sha256);
+                        writer.WriteNull();
+                    }
+                }
+            }
+        }
+
+        return writer.Encode();
+    }
+
+    private static byte[] EncryptAesCbc(byte[] plaintext, byte[] key, byte[] iv)
     {
         using var aes = Aes.Create();
-        aes.KeySize = 256;
+        aes.KeySize = key.Length * 8;
         aes.Key = key;
         aes.IV = iv;
         aes.Mode = CipherMode.CBC;

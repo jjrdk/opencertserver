@@ -23,7 +23,8 @@ public sealed class OriginatorInfo : IAsnValue
 
     public OriginatorInfo(AsnReader reader)
     {
-        var sequenceReader = reader.ReadSequence();
+        // Decode as [0] IMPLICIT SEQUENCE, symmetric with Encode(writer, [0]).
+        var sequenceReader = reader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
         {

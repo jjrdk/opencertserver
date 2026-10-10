@@ -306,6 +306,7 @@ Unified EST conformance requirements from RFC 7030 as updated by RFC 8951 and RF
             Then the private key part MUST use the content type "application/pkcs7-mime"
             And the private key part MUST include the smime-type parameter "server-generated-key"
             And the private key part MUST be RFC 4648 base64-encoded DER CMS EnvelopedData
+            And the decrypted server-generated private key MUST match the public key in the issued certificate
 
         Scenario: RFC 7030 Section 4.4.2 requires the certificate part to match simple enrollment semantics
             Given the EST server implements "/serverkeygen"

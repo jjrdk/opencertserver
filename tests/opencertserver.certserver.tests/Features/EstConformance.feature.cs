@@ -1952,6 +1952,10 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 308
             await testRunner.AndAsync("the private key part MUST be RFC 4648 base64-encoded DER CMS EnvelopedData", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
+#line 309
+            await testRunner.AndAsync("the decrypted server-generated private key MUST match the public key in the issue" +
+                        "d certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
             }
             await this.ScenarioCleanupAsync();
         }
@@ -1970,7 +1974,7 @@ namespace OpenCertServer.CertServer.Tests.Features
                     "emantics", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Optional server-side key generation using /serverkeygen", null, tagsOfRule);
-#line 310
+#line 311
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1983,14 +1987,14 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 311
+#line 312
             await testRunner.GivenAsync("the EST server implements \"/serverkeygen\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 312
+#line 313
             await testRunner.WhenAsync("the EST server returns the certificate part of a server-side key generation respo" +
                         "nse", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 313
+#line 314
             await testRunner.ThenAsync("the certificate part MUST exactly match the certificate response used for \"/simpl" +
                         "eenroll\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
@@ -2012,7 +2016,7 @@ namespace OpenCertServer.CertServer.Tests.Features
                     "ing", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Optional server-side key generation using /serverkeygen", null, tagsOfRule);
-#line 315
+#line 316
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2025,20 +2029,20 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 316
+#line 317
             await testRunner.GivenAsync("the EST server implements \"/serverkeygen\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 317
+#line 318
             await testRunner.WhenAsync("the EST server rejects a server-side key generation request", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 318
+#line 319
             await testRunner.ThenAsync("the response MUST use an HTTP 4xx or 5xx status code", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 319
+#line 320
             await testRunner.AndAsync("if the content type is not set the response body MUST be a plaintext human-readab" +
                         "le error message", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 320
+#line 321
             await testRunner.AndAsync("the server MAY use the \"text/plain\" content type for the human-readable error", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2059,7 +2063,7 @@ namespace OpenCertServer.CertServer.Tests.Features
                     "on expectations", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 324
+#line 325
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2072,10 +2076,10 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 325
+#line 326
             await testRunner.WhenAsync("the EST client requests \"/.well-known/est/csrattrs\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 326
+#line 327
             await testRunner.ThenAsync("the EST server SHOULD NOT require client authentication or authorization to reply" +
                         "", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
@@ -2094,7 +2098,7 @@ namespace OpenCertServer.CertServer.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 defines the status codes for CSR attributes availability", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 328
+#line 329
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2107,20 +2111,20 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 329
+#line 330
             await testRunner.WhenAsync("locally configured policy provides CSR attributes for the authenticated EST clien" +
                         "t", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 330
+#line 331
             await testRunner.ThenAsync("the response MUST use HTTP status code 200", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 331
+#line 332
             await testRunner.WhenAsync("CSR attributes are unavailable", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 332
+#line 333
             await testRunner.ThenAsync("the response MAY use HTTP status code 204 or HTTP status code 404", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 333
+#line 334
             await testRunner.AndAsync("the EST server MAY still reject a later enrollment request for incomplete CSR att" +
                         "ributes", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -2139,7 +2143,7 @@ namespace OpenCertServer.CertServer.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 and RFC 8951 define the CSR attributes response encoding", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 335
+#line 336
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2152,16 +2156,16 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 336
+#line 337
             await testRunner.WhenAsync("the EST server returns CSR attributes", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 337
+#line 338
             await testRunner.ThenAsync("the response content type MUST be \"application/csrattrs\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 338
+#line 339
             await testRunner.AndAsync("the response body MUST be RFC 4648 base64-encoded DER", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 339
+#line 340
             await testRunner.AndAsync("the response body MUST encode a CsrAttrs SEQUENCE", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2182,7 +2186,7 @@ namespace OpenCertServer.CertServer.Tests.Features
                     "nts", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 341
+#line 342
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2195,10 +2199,10 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 342
+#line 343
             await testRunner.WhenAsync("the CSR attributes response contains an unrecognized OID or attribute", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 343
+#line 344
             await testRunner.ThenAsync("the client MUST ignore the unrecognized OID or attribute", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -2216,7 +2220,7 @@ namespace OpenCertServer.CertServer.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 defines empty CSR attributes semantics", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 345
+#line 346
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2229,13 +2233,13 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 346
+#line 347
             await testRunner.WhenAsync("the EST server has no specific additional CSR information to request", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 347
+#line 348
             await testRunner.ThenAsync("the EST server MAY return an empty CsrAttrs SEQUENCE", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 348
+#line 349
             await testRunner.AndAsync("the empty CsrAttrs SEQUENCE MUST be treated as equivalent to HTTP 204 or HTTP 404" +
                         "", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -2257,7 +2261,7 @@ namespace OpenCertServer.CertServer.Tests.Features
                     "licitly", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 350
+#line 351
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2270,16 +2274,16 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 351
+#line 352
             await testRunner.WhenAsync("the CA requires a particular cryptographic algorithm or signature scheme", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 352
+#line 353
             await testRunner.ThenAsync("the EST server MUST provide that requirement in the CSR attributes response", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 353
+#line 354
             await testRunner.WhenAsync("the EST server requires linking identity and proof-of-possession", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 354
+#line 355
             await testRunner.ThenAsync("the CSR attributes response MUST include the challengePassword OID", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -2300,7 +2304,7 @@ namespace OpenCertServer.CertServer.Tests.Features
                     " the requested CSR", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 356
+#line 357
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2313,10 +2317,10 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 357
+#line 358
             await testRunner.WhenAsync("the EST server encodes CSR attributes", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 358
+#line 359
             await testRunner.ThenAsync("the structure of the CSR attributes response SHOULD reflect the structure of the " +
                         "CSR being requested", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
@@ -2338,7 +2342,7 @@ namespace OpenCertServer.CertServer.Tests.Features
                     " CSR attributes response", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 360
+#line 361
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2351,21 +2355,21 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 361
+#line 362
             await testRunner.WhenAsync("the EST server encodes extension requirements using the original RFC 7030 CSR att" +
                         "ributes format", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 362
+#line 363
             await testRunner.ThenAsync("the attribute type MUST be id-ExtensionReq", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 363
+#line 364
             await testRunner.AndAsync("there MUST be only one id-ExtensionReq attribute", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 364
+#line 365
             await testRunner.AndAsync("the id-ExtensionReq values field MUST contain exactly one element of type Extensi" +
                         "ons", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 365
+#line 366
             await testRunner.AndAsync("the Extensions value MUST NOT contain multiple Extension elements with the same e" +
                         "xtnID", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -2387,7 +2391,7 @@ namespace OpenCertServer.CertServer.Tests.Features
                     "ttributes response", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 367
+#line 368
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2400,18 +2404,18 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 368
+#line 369
             await testRunner.WhenAsync("the EST server requires a public key of a specific type using the original RFC 70" +
                         "30 CSR attributes format", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 369
+#line 370
             await testRunner.ThenAsync("the response MUST include exactly one attribute whose type identifies the require" +
                         "d key type", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 370
+#line 371
             await testRunner.AndAsync("the values field MAY be empty if no further key requirements are imposed", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 371
+#line 372
             await testRunner.AndAsync("otherwise the values field MUST contain suitable parameters for the chosen key ty" +
                         "pe", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -2433,7 +2437,7 @@ namespace OpenCertServer.CertServer.Tests.Features
                     "e styles", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 373
+#line 374
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2446,13 +2450,13 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 374
+#line 375
             await testRunner.WhenAsync("the EST server needs to interoperate with legacy and updated clients", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 375
+#line 376
             await testRunner.ThenAsync("the EST server MAY include the legacy unstructured CSR attributes elements", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 376
+#line 377
             await testRunner.AndAsync("the EST server MAY also include the CertificationRequestInfoTemplate elements for" +
                         " updated clients", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -2474,7 +2478,7 @@ namespace OpenCertServer.CertServer.Tests.Features
                     "ibutes form when both are present", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 378
+#line 379
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2487,14 +2491,14 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 379
+#line 380
             await testRunner.WhenAsync("the CSR attributes response contains both legacy and template-based CSR attribute" +
                         " encodings", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 380
+#line 381
             await testRunner.ThenAsync("a client that understands both encodings MUST use only the template-based form", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 381
+#line 382
             await testRunner.AndAsync("the client MUST ignore the other CsrAttrs elements", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2515,7 +2519,7 @@ namespace OpenCertServer.CertServer.Tests.Features
                     "ds", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 383
+#line 384
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2528,24 +2532,24 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 384
+#line 385
             await testRunner.WhenAsync("the EST server returns a CertificationRequestInfoTemplate", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 385
+#line 386
             await testRunner.ThenAsync("the version field MUST be v1", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 386
+#line 387
             await testRunner.AndAsync("the subject field MUST be present if the server places requirements on the subjec" +
                         "t RDNs", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 387
+#line 388
             await testRunner.AndAsync("the subject field MUST be absent if the server places no subject RDN requirements" +
                         "", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 388
+#line 389
             await testRunner.AndAsync("each required RDN type MUST be present in the subject field", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 389
+#line 390
             await testRunner.AndAsync("each RDN type that is not required MUST be absent from the subject field", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2563,7 +2567,7 @@ namespace OpenCertServer.CertServer.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 9908 Section 3.4 constrains the CertificationRequestInfoTemplate key fields", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 391
+#line 392
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2576,20 +2580,20 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 392
+#line 393
             await testRunner.WhenAsync("the EST server returns a CertificationRequestInfoTemplate", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 393
+#line 394
             await testRunner.ThenAsync("the subjectPKInfo field MUST be absent if the server places no key requirements", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 394
+#line 395
             await testRunner.AndAsync("the subjectPKInfo field MUST be present if the server places key requirements", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 395
+#line 396
             await testRunner.AndAsync("when RSA key size requirements are specified the subjectPublicKey field MUST be p" +
                         "resent with a placeholder modulus of the desired length", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 396
+#line 397
             await testRunner.AndAsync("otherwise the subjectPublicKey field MUST be absent", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2607,7 +2611,7 @@ namespace OpenCertServer.CertServer.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 9908 Section 3.4 constrains template-based extension requirements", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 398
+#line 399
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2620,24 +2624,24 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 399
+#line 400
             await testRunner.WhenAsync("the EST server returns a CertificationRequestInfoTemplate", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 400
+#line 401
             await testRunner.ThenAsync("full X.509 extension requirements MUST use id-ExtensionReq", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 401
+#line 402
             await testRunner.AndAsync("partial X.509 extension requirements MAY use id-aa-extensionReqTemplate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 402
+#line 403
             await testRunner.AndAsync("the attributes field MUST NOT contain multiple id-aa-extensionReqTemplate attribu" +
                         "tes", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 403
+#line 404
             await testRunner.AndAsync("the attributes field MUST NOT contain both id-ExtensionReq and id-aa-extensionReq" +
                         "Template", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 404
+#line 405
             await testRunner.AndAsync("each id-aa-extensionReqTemplate values field MUST contain exactly one element of " +
                         "type ExtensionTemplate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
