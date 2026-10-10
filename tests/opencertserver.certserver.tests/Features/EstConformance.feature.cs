@@ -126,7 +126,7 @@ namespace OpenCertServer.CertServer.Tests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/EstConformance.feature.ndjson", 67);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/EstConformance.feature.ndjson", 70);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -1960,18 +1960,18 @@ namespace OpenCertServer.CertServer.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.4.2 requires the certificate part to match simple enrollment s" +
-            "emantics")]
+        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Sections 4.4.1 and 4.4.1.2 carry the key-delivery request as CSR attribu" +
+            "tes")]
         [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.4.2 requires the certificate part to match simple enrollment s" +
-            "emantics")]
-        public async global::System.Threading.Tasks.Task RFC7030Section4_4_2RequiresTheCertificatePartToMatchSimpleEnrollmentSemantics()
+        [global::Xunit.TraitAttribute("Description", "RFC 7030 Sections 4.4.1 and 4.4.1.2 carry the key-delivery request as CSR attribu" +
+            "tes")]
+        public async global::System.Threading.Tasks.Task RFC7030Sections4_4_1And4_4_1_2CarryTheKey_DeliveryRequestAsCSRAttributes()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "49";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.4.2 requires the certificate part to match simple enrollment s" +
-                    "emantics", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Sections 4.4.1 and 4.4.1.2 carry the key-delivery request as CSR attribu" +
+                    "tes", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Optional server-side key generation using /serverkeygen", null, tagsOfRule);
 #line 311
@@ -1991,10 +1991,139 @@ namespace OpenCertServer.CertServer.Tests.Features
             await testRunner.GivenAsync("the EST server implements \"/serverkeygen\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 313
+            await testRunner.WhenAsync("the client names its key-encryption key and algorithms only through CSR attribute" +
+                        "s", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 314
+            await testRunner.ThenAsync("the private key part MUST use the content type \"application/pkcs7-mime\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 315
+            await testRunner.AndAsync("the private key part MUST be RFC 4648 base64-encoded DER CMS EnvelopedData", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 316
+            await testRunner.AndAsync("the decrypted server-generated private key MUST match the public key in the issue" +
+                        "d certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.4.1.2 requires an error for an AsymmetricDecryptKeyIdentifier " +
+            "the server does not hold")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.4.1.2 requires an error for an AsymmetricDecryptKeyIdentifier " +
+            "the server does not hold")]
+        public async global::System.Threading.Tasks.Task RFC7030Section4_4_1_2RequiresAnErrorForAnAsymmetricDecryptKeyIdentifierTheServerDoesNotHold()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "50";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.4.1.2 requires an error for an AsymmetricDecryptKeyIdentifier " +
+                    "the server does not hold", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Optional server-side key generation using /serverkeygen", null, tagsOfRule);
+#line 318
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 319
+            await testRunner.GivenAsync("the EST server implements \"/serverkeygen\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 320
+            await testRunner.WhenAsync("the client names a key-encryption key in the CSR that the EST server does not hol" +
+                        "d", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 321
+            await testRunner.ThenAsync("the EST server MUST terminate the request with an error", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.4.1.1 symmetric key encryption is refused rather than replaced" +
+            " by another protection")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.4.1.1 symmetric key encryption is refused rather than replaced" +
+            " by another protection")]
+        public async global::System.Threading.Tasks.Task RFC7030Section4_4_1_1SymmetricKeyEncryptionIsRefusedRatherThanReplacedByAnotherProtection()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "51";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.4.1.1 symmetric key encryption is refused rather than replaced" +
+                    " by another protection", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Optional server-side key generation using /serverkeygen", null, tagsOfRule);
+#line 323
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 324
+            await testRunner.GivenAsync("the EST server implements \"/serverkeygen\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 325
+            await testRunner.WhenAsync("the client names a symmetric key-encryption key in the CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 326
+            await testRunner.ThenAsync("the EST server MUST terminate the request with an error", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.4.2 requires the certificate part to match simple enrollment s" +
+            "emantics")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.4.2 requires the certificate part to match simple enrollment s" +
+            "emantics")]
+        public async global::System.Threading.Tasks.Task RFC7030Section4_4_2RequiresTheCertificatePartToMatchSimpleEnrollmentSemantics()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "52";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.4.2 requires the certificate part to match simple enrollment s" +
+                    "emantics", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Optional server-side key generation using /serverkeygen", null, tagsOfRule);
+#line 328
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 329
+            await testRunner.GivenAsync("the EST server implements \"/serverkeygen\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 330
             await testRunner.WhenAsync("the EST server returns the certificate part of a server-side key generation respo" +
                         "nse", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 314
+#line 331
             await testRunner.ThenAsync("the certificate part MUST exactly match the certificate response used for \"/simpl" +
                         "eenroll\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
@@ -2011,12 +2140,12 @@ namespace OpenCertServer.CertServer.Tests.Features
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "50";
+            string pickleIndex = "53";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.4.2 and RFC 8951 define server-side key generation error handl" +
                     "ing", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Optional server-side key generation using /serverkeygen", null, tagsOfRule);
-#line 316
+#line 333
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2029,20 +2158,20 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 317
+#line 334
             await testRunner.GivenAsync("the EST server implements \"/serverkeygen\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 318
+#line 335
             await testRunner.WhenAsync("the EST server rejects a server-side key generation request", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 319
+#line 336
             await testRunner.ThenAsync("the response MUST use an HTTP 4xx or 5xx status code", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 320
+#line 337
             await testRunner.AndAsync("if the content type is not set the response body MUST be a plaintext human-readab" +
                         "le error message", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 321
+#line 338
             await testRunner.AndAsync("the server MAY use the \"text/plain\" content type for the human-readable error", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2058,132 +2187,9 @@ namespace OpenCertServer.CertServer.Tests.Features
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "51";
+            string pickleIndex = "54";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Sections 4.5 and 4.5.1 define the /csrattrs request and its authenticati" +
                     "on expectations", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 325
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 326
-            await testRunner.WhenAsync("the EST client requests \"/.well-known/est/csrattrs\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 327
-            await testRunner.ThenAsync("the EST server SHOULD NOT require client authentication or authorization to reply" +
-                        "", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.5.2 defines the status codes for CSR attributes availability")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.5.2 defines the status codes for CSR attributes availability")]
-        public async global::System.Threading.Tasks.Task RFC7030Section4_5_2DefinesTheStatusCodesForCSRAttributesAvailability()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "52";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 defines the status codes for CSR attributes availability", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 329
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 330
-            await testRunner.WhenAsync("locally configured policy provides CSR attributes for the authenticated EST clien" +
-                        "t", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 331
-            await testRunner.ThenAsync("the response MUST use HTTP status code 200", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 332
-            await testRunner.WhenAsync("CSR attributes are unavailable", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 333
-            await testRunner.ThenAsync("the response MAY use HTTP status code 204 or HTTP status code 404", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 334
-            await testRunner.AndAsync("the EST server MAY still reject a later enrollment request for incomplete CSR att" +
-                        "ributes", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.5.2 and RFC 8951 define the CSR attributes response encoding")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.5.2 and RFC 8951 define the CSR attributes response encoding")]
-        public async global::System.Threading.Tasks.Task RFC7030Section4_5_2AndRFC8951DefineTheCSRAttributesResponseEncoding()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "53";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 and RFC 8951 define the CSR attributes response encoding", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 336
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 337
-            await testRunner.WhenAsync("the EST server returns CSR attributes", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 338
-            await testRunner.ThenAsync("the response content type MUST be \"application/csrattrs\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 339
-            await testRunner.AndAsync("the response body MUST be RFC 4648 base64-encoded DER", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 340
-            await testRunner.AndAsync("the response body MUST encode a CsrAttrs SEQUENCE", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.5.2 requires unrecognized CSR attributes to be ignored by clie" +
-            "nts")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.5.2 requires unrecognized CSR attributes to be ignored by clie" +
-            "nts")]
-        public async global::System.Threading.Tasks.Task RFC7030Section4_5_2RequiresUnrecognizedCSRAttributesToBeIgnoredByClients()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "54";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 requires unrecognized CSR attributes to be ignored by clie" +
-                    "nts", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
 #line 342
@@ -2200,24 +2206,25 @@ namespace OpenCertServer.CertServer.Tests.Features
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 343
-            await testRunner.WhenAsync("the CSR attributes response contains an unrecognized OID or attribute", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+            await testRunner.WhenAsync("the EST client requests \"/.well-known/est/csrattrs\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 344
-            await testRunner.ThenAsync("the client MUST ignore the unrecognized OID or attribute", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+            await testRunner.ThenAsync("the EST server SHOULD NOT require client authentication or authorization to reply" +
+                        "", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.5.2 defines empty CSR attributes semantics")]
+        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.5.2 defines the status codes for CSR attributes availability")]
         [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.5.2 defines empty CSR attributes semantics")]
-        public async global::System.Threading.Tasks.Task RFC7030Section4_5_2DefinesEmptyCSRAttributesSemantics()
+        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.5.2 defines the status codes for CSR attributes availability")]
+        public async global::System.Threading.Tasks.Task RFC7030Section4_5_2DefinesTheStatusCodesForCSRAttributesAvailability()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "55";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 defines empty CSR attributes semantics", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 defines the status codes for CSR attributes availability", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
 #line 346
@@ -2234,12 +2241,134 @@ namespace OpenCertServer.CertServer.Tests.Features
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 347
-            await testRunner.WhenAsync("the EST server has no specific additional CSR information to request", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+            await testRunner.WhenAsync("locally configured policy provides CSR attributes for the authenticated EST clien" +
+                        "t", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 348
-            await testRunner.ThenAsync("the EST server MAY return an empty CsrAttrs SEQUENCE", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+            await testRunner.ThenAsync("the response MUST use HTTP status code 200", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 349
+            await testRunner.WhenAsync("CSR attributes are unavailable", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 350
+            await testRunner.ThenAsync("the response MAY use HTTP status code 204 or HTTP status code 404", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 351
+            await testRunner.AndAsync("the EST server MAY still reject a later enrollment request for incomplete CSR att" +
+                        "ributes", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.5.2 and RFC 8951 define the CSR attributes response encoding")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.5.2 and RFC 8951 define the CSR attributes response encoding")]
+        public async global::System.Threading.Tasks.Task RFC7030Section4_5_2AndRFC8951DefineTheCSRAttributesResponseEncoding()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "56";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 and RFC 8951 define the CSR attributes response encoding", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
+#line 353
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 354
+            await testRunner.WhenAsync("the EST server returns CSR attributes", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 355
+            await testRunner.ThenAsync("the response content type MUST be \"application/csrattrs\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 356
+            await testRunner.AndAsync("the response body MUST be RFC 4648 base64-encoded DER", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 357
+            await testRunner.AndAsync("the response body MUST encode a CsrAttrs SEQUENCE", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.5.2 requires unrecognized CSR attributes to be ignored by clie" +
+            "nts")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.5.2 requires unrecognized CSR attributes to be ignored by clie" +
+            "nts")]
+        public async global::System.Threading.Tasks.Task RFC7030Section4_5_2RequiresUnrecognizedCSRAttributesToBeIgnoredByClients()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "57";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 requires unrecognized CSR attributes to be ignored by clie" +
+                    "nts", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
+#line 359
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 360
+            await testRunner.WhenAsync("the CSR attributes response contains an unrecognized OID or attribute", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 361
+            await testRunner.ThenAsync("the client MUST ignore the unrecognized OID or attribute", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.5.2 defines empty CSR attributes semantics")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.5.2 defines empty CSR attributes semantics")]
+        public async global::System.Threading.Tasks.Task RFC7030Section4_5_2DefinesEmptyCSRAttributesSemantics()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "58";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 defines empty CSR attributes semantics", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
+#line 363
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 364
+            await testRunner.WhenAsync("the EST server has no specific additional CSR information to request", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 365
+            await testRunner.ThenAsync("the EST server MAY return an empty CsrAttrs SEQUENCE", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 366
             await testRunner.AndAsync("the empty CsrAttrs SEQUENCE MUST be treated as equivalent to HTTP 204 or HTTP 404" +
                         "", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -2256,139 +2385,9 @@ namespace OpenCertServer.CertServer.Tests.Features
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "56";
+            string pickleIndex = "59";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 requires algorithm and POP requirements to be signaled exp" +
                     "licitly", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 351
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 352
-            await testRunner.WhenAsync("the CA requires a particular cryptographic algorithm or signature scheme", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 353
-            await testRunner.ThenAsync("the EST server MUST provide that requirement in the CSR attributes response", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 354
-            await testRunner.WhenAsync("the EST server requires linking identity and proof-of-possession", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 355
-            await testRunner.ThenAsync("the CSR attributes response MUST include the challengePassword OID", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.5.2 recommends structural alignment between CSR attributes and" +
-            " the requested CSR")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.5.2 recommends structural alignment between CSR attributes and" +
-            " the requested CSR")]
-        public async global::System.Threading.Tasks.Task RFC7030Section4_5_2RecommendsStructuralAlignmentBetweenCSRAttributesAndTheRequestedCSR()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "57";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 recommends structural alignment between CSR attributes and" +
-                    " the requested CSR", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 357
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 358
-            await testRunner.WhenAsync("the EST server encodes CSR attributes", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 359
-            await testRunner.ThenAsync("the structure of the CSR attributes response SHOULD reflect the structure of the " +
-                        "CSR being requested", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="RFC 9908 Section 3.2 constrains legacy extension requirements in the unstructured" +
-            " CSR attributes response")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 9908 Section 3.2 constrains legacy extension requirements in the unstructured" +
-            " CSR attributes response")]
-        public async global::System.Threading.Tasks.Task RFC9908Section3_2ConstrainsLegacyExtensionRequirementsInTheUnstructuredCSRAttributesResponse()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "58";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 9908 Section 3.2 constrains legacy extension requirements in the unstructured" +
-                    " CSR attributes response", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 361
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 362
-            await testRunner.WhenAsync("the EST server encodes extension requirements using the original RFC 7030 CSR att" +
-                        "ributes format", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 363
-            await testRunner.ThenAsync("the attribute type MUST be id-ExtensionReq", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 364
-            await testRunner.AndAsync("there MUST be only one id-ExtensionReq attribute", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 365
-            await testRunner.AndAsync("the id-ExtensionReq values field MUST contain exactly one element of type Extensi" +
-                        "ons", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 366
-            await testRunner.AndAsync("the Extensions value MUST NOT contain multiple Extension elements with the same e" +
-                        "xtnID", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="RFC 9908 Section 3.2 constrains public key requirements in the unstructured CSR a" +
-            "ttributes response")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 9908 Section 3.2 constrains public key requirements in the unstructured CSR a" +
-            "ttributes response")]
-        public async global::System.Threading.Tasks.Task RFC9908Section3_2ConstrainsPublicKeyRequirementsInTheUnstructuredCSRAttributesResponse()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "59";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 9908 Section 3.2 constrains public key requirements in the unstructured CSR a" +
-                    "ttributes response", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
 #line 368
@@ -2405,36 +2404,33 @@ namespace OpenCertServer.CertServer.Tests.Features
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 369
-            await testRunner.WhenAsync("the EST server requires a public key of a specific type using the original RFC 70" +
-                        "30 CSR attributes format", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+            await testRunner.WhenAsync("the CA requires a particular cryptographic algorithm or signature scheme", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 370
-            await testRunner.ThenAsync("the response MUST include exactly one attribute whose type identifies the require" +
-                        "d key type", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+            await testRunner.ThenAsync("the EST server MUST provide that requirement in the CSR attributes response", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 371
-            await testRunner.AndAsync("the values field MAY be empty if no further key requirements are imposed", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+            await testRunner.WhenAsync("the EST server requires linking identity and proof-of-possession", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 372
-            await testRunner.AndAsync("otherwise the values field MUST contain suitable parameters for the chosen key ty" +
-                        "pe", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+            await testRunner.ThenAsync("the CSR attributes response MUST include the challengePassword OID", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="RFC 9908 Section 3.4 allows coexistence of legacy and template-based CSR attribut" +
-            "e styles")]
+        [global::Xunit.FactAttribute(DisplayName="RFC 7030 Section 4.5.2 recommends structural alignment between CSR attributes and" +
+            " the requested CSR")]
         [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 9908 Section 3.4 allows coexistence of legacy and template-based CSR attribut" +
-            "e styles")]
-        public async global::System.Threading.Tasks.Task RFC9908Section3_4AllowsCoexistenceOfLegacyAndTemplate_BasedCSRAttributeStyles()
+        [global::Xunit.TraitAttribute("Description", "RFC 7030 Section 4.5.2 recommends structural alignment between CSR attributes and" +
+            " the requested CSR")]
+        public async global::System.Threading.Tasks.Task RFC7030Section4_5_2RecommendsStructuralAlignmentBetweenCSRAttributesAndTheRequestedCSR()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "60";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 9908 Section 3.4 allows coexistence of legacy and template-based CSR attribut" +
-                    "e styles", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 7030 Section 4.5.2 recommends structural alignment between CSR attributes and" +
+                    " the requested CSR", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
 #line 374
@@ -2451,12 +2447,145 @@ namespace OpenCertServer.CertServer.Tests.Features
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 375
-            await testRunner.WhenAsync("the EST server needs to interoperate with legacy and updated clients", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+            await testRunner.WhenAsync("the EST server encodes CSR attributes", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 376
+            await testRunner.ThenAsync("the structure of the CSR attributes response SHOULD reflect the structure of the " +
+                        "CSR being requested", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 9908 Section 3.2 constrains legacy extension requirements in the unstructured" +
+            " CSR attributes response")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 9908 Section 3.2 constrains legacy extension requirements in the unstructured" +
+            " CSR attributes response")]
+        public async global::System.Threading.Tasks.Task RFC9908Section3_2ConstrainsLegacyExtensionRequirementsInTheUnstructuredCSRAttributesResponse()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "61";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 9908 Section 3.2 constrains legacy extension requirements in the unstructured" +
+                    " CSR attributes response", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
+#line 378
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 379
+            await testRunner.WhenAsync("the EST server encodes extension requirements using the original RFC 7030 CSR att" +
+                        "ributes format", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 380
+            await testRunner.ThenAsync("the attribute type MUST be id-ExtensionReq", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 381
+            await testRunner.AndAsync("there MUST be only one id-ExtensionReq attribute", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 382
+            await testRunner.AndAsync("the id-ExtensionReq values field MUST contain exactly one element of type Extensi" +
+                        "ons", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 383
+            await testRunner.AndAsync("the Extensions value MUST NOT contain multiple Extension elements with the same e" +
+                        "xtnID", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 9908 Section 3.2 constrains public key requirements in the unstructured CSR a" +
+            "ttributes response")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 9908 Section 3.2 constrains public key requirements in the unstructured CSR a" +
+            "ttributes response")]
+        public async global::System.Threading.Tasks.Task RFC9908Section3_2ConstrainsPublicKeyRequirementsInTheUnstructuredCSRAttributesResponse()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "62";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 9908 Section 3.2 constrains public key requirements in the unstructured CSR a" +
+                    "ttributes response", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
+#line 385
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 386
+            await testRunner.WhenAsync("the EST server requires a public key of a specific type using the original RFC 70" +
+                        "30 CSR attributes format", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 387
+            await testRunner.ThenAsync("the response MUST include exactly one attribute whose type identifies the require" +
+                        "d key type", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 388
+            await testRunner.AndAsync("the values field MAY be empty if no further key requirements are imposed", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 389
+            await testRunner.AndAsync("otherwise the values field MUST contain suitable parameters for the chosen key ty" +
+                        "pe", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 9908 Section 3.4 allows coexistence of legacy and template-based CSR attribut" +
+            "e styles")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "EST conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 9908 Section 3.4 allows coexistence of legacy and template-based CSR attribut" +
+            "e styles")]
+        public async global::System.Threading.Tasks.Task RFC9908Section3_4AllowsCoexistenceOfLegacyAndTemplate_BasedCSRAttributeStyles()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "63";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 9908 Section 3.4 allows coexistence of legacy and template-based CSR attribut" +
+                    "e styles", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
+#line 391
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 392
+            await testRunner.WhenAsync("the EST server needs to interoperate with legacy and updated clients", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 393
             await testRunner.ThenAsync("the EST server MAY include the legacy unstructured CSR attributes elements", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 377
+#line 394
             await testRunner.AndAsync("the EST server MAY also include the CertificationRequestInfoTemplate elements for" +
                         " updated clients", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -2473,12 +2602,12 @@ namespace OpenCertServer.CertServer.Tests.Features
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "61";
+            string pickleIndex = "64";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 9908 Section 4 requires updated clients to prefer the template-based CSR attr" +
                     "ibutes form when both are present", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 379
+#line 396
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2491,14 +2620,14 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 380
+#line 397
             await testRunner.WhenAsync("the CSR attributes response contains both legacy and template-based CSR attribute" +
                         " encodings", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 381
+#line 398
             await testRunner.ThenAsync("a client that understands both encodings MUST use only the template-based form", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 382
+#line 399
             await testRunner.AndAsync("the client MUST ignore the other CsrAttrs elements", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2514,12 +2643,12 @@ namespace OpenCertServer.CertServer.Tests.Features
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "62";
+            string pickleIndex = "65";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 9908 Section 3.4 constrains the CertificationRequestInfoTemplate subject fiel" +
                     "ds", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 384
+#line 401
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2532,24 +2661,24 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 385
+#line 402
             await testRunner.WhenAsync("the EST server returns a CertificationRequestInfoTemplate", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 386
+#line 403
             await testRunner.ThenAsync("the version field MUST be v1", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 387
+#line 404
             await testRunner.AndAsync("the subject field MUST be present if the server places requirements on the subjec" +
                         "t RDNs", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 388
+#line 405
             await testRunner.AndAsync("the subject field MUST be absent if the server places no subject RDN requirements" +
                         "", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 389
+#line 406
             await testRunner.AndAsync("each required RDN type MUST be present in the subject field", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 390
+#line 407
             await testRunner.AndAsync("each RDN type that is not required MUST be absent from the subject field", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2563,11 +2692,11 @@ namespace OpenCertServer.CertServer.Tests.Features
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "63";
+            string pickleIndex = "66";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 9908 Section 3.4 constrains the CertificationRequestInfoTemplate key fields", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 392
+#line 409
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2580,20 +2709,20 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 393
+#line 410
             await testRunner.WhenAsync("the EST server returns a CertificationRequestInfoTemplate", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 394
+#line 411
             await testRunner.ThenAsync("the subjectPKInfo field MUST be absent if the server places no key requirements", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 395
+#line 412
             await testRunner.AndAsync("the subjectPKInfo field MUST be present if the server places key requirements", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 396
+#line 413
             await testRunner.AndAsync("when RSA key size requirements are specified the subjectPublicKey field MUST be p" +
                         "resent with a placeholder modulus of the desired length", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 397
+#line 414
             await testRunner.AndAsync("otherwise the subjectPublicKey field MUST be absent", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -2607,11 +2736,11 @@ namespace OpenCertServer.CertServer.Tests.Features
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "64";
+            string pickleIndex = "67";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 9908 Section 3.4 constrains template-based extension requirements", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CSR attributes using /csrattrs", null, tagsOfRule);
-#line 399
+#line 416
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -2624,24 +2753,24 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 400
+#line 417
             await testRunner.WhenAsync("the EST server returns a CertificationRequestInfoTemplate", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 401
+#line 418
             await testRunner.ThenAsync("full X.509 extension requirements MUST use id-ExtensionReq", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 402
+#line 419
             await testRunner.AndAsync("partial X.509 extension requirements MAY use id-aa-extensionReqTemplate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 403
+#line 420
             await testRunner.AndAsync("the attributes field MUST NOT contain multiple id-aa-extensionReqTemplate attribu" +
                         "tes", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 404
+#line 421
             await testRunner.AndAsync("the attributes field MUST NOT contain both id-ExtensionReq and id-aa-extensionReq" +
                         "Template", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 405
+#line 422
             await testRunner.AndAsync("each id-aa-extensionReqTemplate values field MUST contain exactly one element of " +
                         "type ExtensionTemplate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
