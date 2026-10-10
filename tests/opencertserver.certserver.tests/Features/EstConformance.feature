@@ -306,6 +306,24 @@ Unified EST conformance requirements from RFC 7030 as updated by RFC 8951 and RF
             Then the private key part MUST use the content type "application/pkcs7-mime"
             And the private key part MUST include the smime-type parameter "server-generated-key"
             And the private key part MUST be RFC 4648 base64-encoded DER CMS EnvelopedData
+            And the decrypted server-generated private key MUST match the public key in the issued certificate
+
+        Scenario: RFC 7030 Sections 4.4.1 and 4.4.1.2 carry the key-delivery request as CSR attributes
+            Given the EST server implements "/serverkeygen"
+            When the client names its key-encryption key and algorithms only through CSR attributes
+            Then the private key part MUST use the content type "application/pkcs7-mime"
+            And the private key part MUST be RFC 4648 base64-encoded DER CMS EnvelopedData
+            And the decrypted server-generated private key MUST match the public key in the issued certificate
+
+        Scenario: RFC 7030 Section 4.4.1.2 requires an error for an AsymmetricDecryptKeyIdentifier the server does not hold
+            Given the EST server implements "/serverkeygen"
+            When the client names a key-encryption key in the CSR that the EST server does not hold
+            Then the EST server MUST terminate the request with an error
+
+        Scenario: RFC 7030 Section 4.4.1.1 symmetric key encryption is refused rather than replaced by another protection
+            Given the EST server implements "/serverkeygen"
+            When the client names a symmetric key-encryption key in the CSR
+            Then the EST server MUST terminate the request with an error
 
         Scenario: RFC 7030 Section 4.4.2 requires the certificate part to match simple enrollment semantics
             Given the EST server implements "/serverkeygen"
