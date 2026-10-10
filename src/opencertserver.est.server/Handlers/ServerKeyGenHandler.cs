@@ -9,6 +9,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
 using Ca.Utils.Pkcs7;
@@ -18,6 +19,12 @@ using Response;
 internal static class ServerKeyGenHandler
 {
     private const string SmimeCapabilitiesAttributeOid = "1.2.840.113549.1.9.15";
+    // RFC 7030 §4.4.1.2: id-aa-asymmDecryptKeyID, an OCTET STRING.
+    private const string AsymmetricDecryptKeyIdentifierAttributeOid = "1.2.840.113549.1.9.16.2.54";
+    // RFC 4108 §2.2.5, referenced by RFC 7030 §4.4.1.1: id-aa-decryptKeyID, an OCTET STRING.
+    private const string DecryptKeyIdentifierAttributeOid = "1.2.840.113549.1.9.16.2.37";
+    // RFC 5958 §1: id-ct-KP-aKeyPackage.
+    private const string AsymmetricKeyPackageOid = "2.16.840.1.101.2.1.2.78.5";
     private const string KeyProtectionHeader = "X-Est-Keygen-Protection";
     private const string KeyProtectionStatusHeader = "X-Est-Keygen-Protection-Status";
     private const string SmimeCapabilitiesHeader = "X-Est-Smime-Capabilities";
@@ -155,9 +162,34 @@ internal static class ServerKeyGenHandler
                 if (newCert is SignCertificateResponse.Success success)
                 {
                     var mpr = new MultipartContent("mixed");
-                    var privateKeyPart = encryptedKeyDelivery.UseEncryptedKeyPart
-                        ? CreateEncryptedKeyResponse(privateKey.Pkcs8, csr, encryptedKeyDelivery.ContentEncryptionAlgorithmOid!)
-                        : privateKey.Pkcs8.Base64Encode();
+                    string privateKeyPart;
+                    if (encryptedKeyDelivery.UseEncryptedKeyPart)
+                    {
+                        // RFC 7030 §4.4.2: the key generator signs the key before it is enveloped. The key is
+                        // generated here and certified by the CA profile, so that profile's key signs it.
+                        var caProfiles = httpRequest.HttpContext.RequestServices.GetService<IStoreCaProfiles>();
+                        if (caProfiles == null)
+                        {
+                            return Results.Text(
+                                "Encrypted server-side key delivery requires access to the CA profile's signing key.",
+                                Constants.TextPlainMimeType,
+                                Encoding.UTF8,
+                                (int)HttpStatusCode.BadRequest);
+                        }
+
+                        var signer = await caProfiles.GetProfile(
+                            string.IsNullOrEmpty(profileName) ? null : profileName,
+                            cancellationToken).ConfigureAwait(false);
+                        privateKeyPart = CreateEncryptedKeyResponse(
+                            CreateSignedKeyPackage(privateKey.Pkcs8, signer),
+                            csr,
+                            encryptedKeyDelivery.ContentEncryptionAlgorithmOid!);
+                    }
+                    else
+                    {
+                        privateKeyPart = privateKey.Pkcs8.Base64Encode();
+                    }
+
                     mpr.Add(encryptedKeyDelivery.UseEncryptedKeyPart
                         ? new EstMultipartBase64Content(
                             privateKeyPart,
@@ -270,6 +302,11 @@ internal static class ServerKeyGenHandler
         var csrAttributes = ReadCsrAttributes(csrDer);
         var hasSmimeCapabilitiesAttribute = csrAttributes.Any(attribute =>
             string.Equals(attribute.Oid.Value, SmimeCapabilitiesAttributeOid, StringComparison.Ordinal));
+        // RFC 7030 §4.4.1: the key to encrypt with is named by an attribute in the CSR. The X-Est-* headers remain
+        // as a fallback for clients that send them.
+        var asymmetricIdentifierAttribute =
+            ReadOctetStringAttribute(csrAttributes, AsymmetricDecryptKeyIdentifierAttributeOid);
+        var symmetricIdentifierAttribute = ReadOctetStringAttribute(csrAttributes, DecryptKeyIdentifierAttributeOid);
         var requestedViaLegacyHeaders =
             !string.IsNullOrWhiteSpace(httpRequest.Headers[KeyProtectionHeader].ToString()) ||
             !string.IsNullOrWhiteSpace(httpRequest.Headers[SmimeCapabilitiesHeader].ToString()) ||
@@ -277,7 +314,11 @@ internal static class ServerKeyGenHandler
             !string.IsNullOrWhiteSpace(httpRequest.Headers[AsymmetricDecryptKeyIdentifierHeader].ToString());
         var prefersEncryptedKeyPart = PrefersEncryptedKeyPart(httpRequest);
 
-        var useEncryptedKeyPart = hasSmimeCapabilitiesAttribute || requestedViaLegacyHeaders || prefersEncryptedKeyPart;
+        var useEncryptedKeyPart = hasSmimeCapabilitiesAttribute ||
+            asymmetricIdentifierAttribute != null ||
+            symmetricIdentifierAttribute != null ||
+            requestedViaLegacyHeaders ||
+            prefersEncryptedKeyPart;
         if (!useEncryptedKeyPart)
         {
             return (false, null, null);
@@ -297,8 +338,10 @@ internal static class ServerKeyGenHandler
         var asymmetricIdentifier = httpRequest.Headers[AsymmetricDecryptKeyIdentifierHeader].ToString();
         var requestedProtection = httpRequest.Headers[KeyProtectionHeader].ToString();
         var protection = requestedProtection.Trim().ToLowerInvariant();
-        var hasSymmetricIdentifier = !string.IsNullOrWhiteSpace(symmetricIdentifier);
-        var hasAsymmetricIdentifier = !string.IsNullOrWhiteSpace(asymmetricIdentifier);
+        var hasSymmetricIdentifier =
+            symmetricIdentifierAttribute != null || !string.IsNullOrWhiteSpace(symmetricIdentifier);
+        var hasAsymmetricIdentifier =
+            asymmetricIdentifierAttribute != null || !string.IsNullOrWhiteSpace(asymmetricIdentifier);
 
         var hasRequiredIdentifier = protection switch
         {
@@ -327,7 +370,14 @@ internal static class ServerKeyGenHandler
                         (int)HttpStatusCode.BadRequest), null);
         }
 
-        if (string.Equals(protection, "symmetric", StringComparison.Ordinal))
+        // A DecryptKeyIdentifier without an AsymmetricDecryptKeyIdentifier asks for symmetric protection (§4.4.1.1),
+        // even without the protection header; encrypting to the CSR key instead would hand the client an envelope
+        // it did not ask for.
+        var symmetricRequested = string.Equals(protection, "symmetric", StringComparison.Ordinal) ||
+            (!string.Equals(protection, "asymmetric", StringComparison.Ordinal) &&
+                hasSymmetricIdentifier &&
+                !hasAsymmetricIdentifier);
+        if (symmetricRequested)
         {
             return (true, Results.Text(
                         "Symmetric encrypted server-side key delivery is not supported.",
@@ -342,10 +392,11 @@ internal static class ServerKeyGenHandler
         if (hasAsymmetricIdentifier)
         {
             var csrSki = ComputeSubjectKeyIdentifier(csr.PublicKey.ExportSubjectPublicKeyInfo());
-            var csrSkiHex = Convert.ToHexString(csrSki);
-            var csrSkiBase64 = Convert.ToBase64String(csrSki);
-            if (!string.Equals(asymmetricIdentifier, csrSkiHex, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(asymmetricIdentifier, csrSkiBase64, StringComparison.Ordinal))
+            var matches = asymmetricIdentifierAttribute != null
+                ? asymmetricIdentifierAttribute.AsSpan().SequenceEqual(csrSki)
+                : string.Equals(asymmetricIdentifier, Convert.ToHexString(csrSki), StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(asymmetricIdentifier, Convert.ToBase64String(csrSki), StringComparison.Ordinal);
+            if (!matches)
             {
                 return (true, Results.Text(
                             "The server does not hold a key matching the specified AsymmetricDecryptKeyIdentifier.",
@@ -443,6 +494,26 @@ internal static class ServerKeyGenHandler
         };
     }
 
+    private static byte[]? ReadOctetStringAttribute(IReadOnlyList<CsrAttribute> csrAttributes, string oid)
+    {
+        var value = csrAttributes
+            .FirstOrDefault(attribute => string.Equals(attribute.Oid.Value, oid, StringComparison.Ordinal))?
+            .Values.FirstOrDefault();
+        if (value == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return new AsnReader(value, AsnEncodingRules.DER).ReadOctetString();
+        }
+        catch (AsnContentException)
+        {
+            return null;
+        }
+    }
+
     private static IReadOnlyList<CsrAttribute> ReadCsrAttributes(byte[] csrDer)
     {
         var reader = new AsnReader(
@@ -473,7 +544,130 @@ internal static class ServerKeyGenHandler
     }
 
     /// <summary>
-    /// Wraps the private key in a CMS EnvelopedData structure (RFC 5652) using:
+    /// RFC 7030 §4.4.2: "the private key is placed inside of a CMS SignedData. The SignedData is signed by the party
+    /// that generated the private key". The key travels as an AsymmetricKeyPackage (RFC 5958 §2) holding the
+    /// PKCS#8 PrivateKeyInfo, which is OneAsymmetricKey version 1. The signer is identified by issuer and serial
+    /// number, and its certificate is included so the client can verify against /cacerts.
+    /// </summary>
+    /// <returns>The DER encoding of the SignedData content.</returns>
+    private static byte[] CreateSignedKeyPackage(byte[] privateKeyPkcs8, CaProfile signer)
+    {
+        var signerCertificate = signer.CertificateChain[0];
+        var (signatureAlgorithmOid, writeNullParameters) = signer.PrivateKey switch
+        {
+            RSA => (Oids.RsaPkcs1Sha256, true),
+            ECDsa => (Oids.ECDsaWithSha256, false),
+            _ => throw new NotSupportedException(
+                $"Signing the server-generated key with a '{signer.PrivateKey.GetType().Name}' key is not supported.")
+        };
+
+        var keyPackageWriter = new AsnWriter(AsnEncodingRules.DER);
+        using (keyPackageWriter.PushSequence())
+        {
+            keyPackageWriter.WriteEncodedValue(privateKeyPkcs8);
+        }
+
+        var keyPackage = keyPackageWriter.Encode();
+
+        // RFC 5652 §5.4: the signature covers the DER encoding of the signed attributes with an explicit SET OF tag.
+        var signedAttributes = WriteSignedAttributes(null, keyPackage);
+        var signature = signer.PrivateKey switch
+        {
+            RSA rsa => rsa.SignData(signedAttributes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1),
+            ECDsa ecdsa => ecdsa.SignData(signedAttributes, HashAlgorithmName.SHA256,
+                DSASignatureFormat.Rfc3279DerSequence),
+            _ => throw new UnreachableException()
+        };
+
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        using (writer.PushSequence())
+        {
+            // RFC 5652 §5.1: version 3, because the encapsulated content type is not id-data.
+            writer.WriteInteger(3);
+            using (writer.PushSetOf())
+            {
+                WriteAlgorithmIdentifier(writer, Oids.Sha256, false);
+            }
+
+            using (writer.PushSequence())
+            {
+                writer.WriteObjectIdentifier(AsymmetricKeyPackageOid);
+                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true)))
+                {
+                    writer.WriteOctetString(keyPackage);
+                }
+            }
+
+            using (writer.PushSetOf(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true)))
+            {
+                writer.WriteEncodedValue(signerCertificate.RawData);
+            }
+
+            using (writer.PushSetOf())
+            {
+                using (writer.PushSequence())
+                {
+                    // RFC 5652 §5.3: version 1 with an issuerAndSerialNumber signer identifier.
+                    writer.WriteInteger(1);
+                    using (writer.PushSequence())
+                    {
+                        writer.WriteEncodedValue(signerCertificate.IssuerName.RawData);
+                        writer.WriteInteger(signerCertificate.SerialNumberBytes.Span);
+                    }
+
+                    WriteAlgorithmIdentifier(writer, Oids.Sha256, false);
+                    writer.WriteEncodedValue(
+                        WriteSignedAttributes(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true), keyPackage));
+                    WriteAlgorithmIdentifier(writer, signatureAlgorithmOid, writeNullParameters);
+                    writer.WriteOctetString(signature);
+                }
+            }
+        }
+
+        return writer.Encode();
+    }
+
+    private static byte[] WriteSignedAttributes(Asn1Tag? tag, byte[] content)
+    {
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        using (writer.PushSetOf(tag))
+        {
+            using (writer.PushSequence())
+            {
+                writer.WriteObjectIdentifier(Oids.ContentType);
+                using (writer.PushSetOf())
+                {
+                    writer.WriteObjectIdentifier(AsymmetricKeyPackageOid);
+                }
+            }
+
+            using (writer.PushSequence())
+            {
+                writer.WriteObjectIdentifier(Oids.MessageDigest);
+                using (writer.PushSetOf())
+                {
+                    writer.WriteOctetString(SHA256.HashData(content));
+                }
+            }
+        }
+
+        return writer.Encode();
+    }
+
+    private static void WriteAlgorithmIdentifier(AsnWriter writer, string oid, bool nullParameters)
+    {
+        using (writer.PushSequence())
+        {
+            writer.WriteObjectIdentifier(oid);
+            if (nullParameters)
+            {
+                writer.WriteNull();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Wraps the signed key package in a CMS EnvelopedData structure (RFC 5652) using:
     /// <list type="bullet">
     ///   <item>id-RSAES-OAEP with SHA-256 for key transport (RFC 8017 §7.1 recommendation)</item>
     ///   <item>the content-encryption algorithm selected from the client's SMIMECapabilities</item>
@@ -481,7 +675,7 @@ internal static class ServerKeyGenHandler
     /// The recipient is identified by the CSR public key's SubjectKeyIdentifier.
     /// </summary>
     private static string CreateEncryptedKeyResponse(
-        byte[] privateKeyPkcs8,
+        byte[] signedKeyPackage,
         CertificateRequest csr,
         string contentEncryptionAlgorithmOid)
     {
@@ -496,7 +690,7 @@ internal static class ServerKeyGenHandler
 
         var contentEncryptionKey = RandomNumberGenerator.GetBytes(keySize);
         var iv = RandomNumberGenerator.GetBytes(16);
-        var encryptedPrivateKey = EncryptAesCbc(privateKeyPkcs8, contentEncryptionKey, iv);
+        var encryptedPrivateKey = EncryptAesCbc(signedKeyPackage, contentEncryptionKey, iv);
         // RFC 8017 §7.1: use RSAES-OAEP (SHA-256) in preference to RSAES-PKCS1-v1_5 for new applications.
         var encryptedContentKey = recipientRsa.Encrypt(contentEncryptionKey, RSAEncryptionPadding.OaepSHA256);
 
@@ -515,7 +709,7 @@ internal static class ServerKeyGenHandler
             version: 2,
             recipientInfos: [recipientInfo],
             encryptedContentInfo: new EncryptedContentInfo(
-                contentType: Oids.Pkcs7Data.InitializeOid(Oids.Pkcs7DataFriendlyName),
+                contentType: Oids.Pkcs7Signed.InitializeOid(Oids.Pkcs7SignedFriendlyName),
                 contentEncryptionAlgorithm: new CmsAlgorithmIdentifier(
                     algorithmOid.InitializeOid(algorithmFriendlyName),
                     ivWriter.Encode()),
