@@ -375,6 +375,7 @@ public class EstServer
         var (_, cert) = await SubmitSimpleEnrollAsync(request, profile.ToLowerInvariant(), clientCertificate)
             .ConfigureAwait(false);
         _context["enrolledCertificate"] = cert;
+        return (request, clientCertificate);
     }
 
     private async Task<(string? Error, X509Certificate2Collection? Certificates)> SubmitSimpleEnrollAsync(
