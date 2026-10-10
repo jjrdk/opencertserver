@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenCertServer.Ca.Utils.Ca;
 using Utils.X509Extensions;
 using Utils;
@@ -56,10 +57,15 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         _certificateStore = certificateStore;
         _x509ChainValidation = x509ChainValidation;
         _certificateIdGenerator = certificateIdGenerator;
-        _validators =
-        [
-            .. validators
-        ];
+        _validators = validators.Length > 0
+            ? [.. validators]
+            :
+            [
+                new CaExtensionValidation(_config.Profiles, NullLogger<CaExtensionValidation>.Instance),
+                new OwnCertificateValidation(_config.Profiles, NullLogger<OwnCertificateValidation>.Instance),
+                new DistinguishedNameValidation(NullLogger<DistinguishedNameValidation>.Instance),
+                new KeyCrlSignatureValidation(_config.Profiles, NullLogger<KeyCrlSignatureValidation>.Instance),
+            ];
     }
 
     public static CaProfile CreateSelfSignedRsa(
@@ -211,6 +217,23 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
 
     private CertificateRequest CleanCsrExtensions(CertificateRequest request, CaProfile profile)
     {
+        // Server-managed OIDs are always regenerated below; strip them first to prevent duplicates
+        // even if the caller listed them in AllowedCsrExtensions.
+        var serverManagedOids = new HashSet<string>(StringComparer.Ordinal)
+        {
+            Oids.SubjectKeyIdentifier,         // 2.5.29.14 — fresh SKI always generated from public key
+            Oids.AuthorityInformationAccess,   // 1.3.6.1.5.5.7.1.1 — added from config (OCSP/CA issuers)
+            Oids.CrlDistributionPoints,        // 2.5.29.31 — added from config (CRL URLs)
+            Oids.AuthorityKeyIdentifier,       // 2.5.29.35 — added from issuer certificate
+        };
+        var serverManaged = request.CertificateExtensions
+            .Where(ext => ext.Oid?.Value is not null && serverManagedOids.Contains(ext.Oid.Value))
+            .ToArray();
+        foreach (var ext in serverManaged)
+        {
+            request.CertificateExtensions.Remove(ext);
+        }
+
         // Filter: keep only extensions explicitly allowed by the profile; everything else is dropped.
         var allowedOids = new HashSet<string>(profile.AllowedCsrExtensions, StringComparer.Ordinal);
         var toRemove = request.CertificateExtensions
@@ -221,7 +244,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             request.CertificateExtensions.Remove(ext);
         }
 
-        // Always add a fresh SKI derived from the CSR public key; SKI is never copied from the CSR.
+        // Always add a fresh SKI derived from the CSR public key.
         request.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
 
         // Add basicConstraints CA:FALSE only when none was copied from the CSR.
@@ -546,14 +569,16 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
 
 public sealed partial class KeyCrlSignatureValidation : IValidateCertificateRequests
 {
+    private readonly IStoreCaProfiles _caProfiles;
     private readonly ILogger _logger;
 
-    public KeyCrlSignatureValidation(ILogger<KeyCrlSignatureValidation> logger)
+    public KeyCrlSignatureValidation(IStoreCaProfiles caProfiles, ILogger<KeyCrlSignatureValidation> logger)
     {
+        _caProfiles = caProfiles;
         _logger = logger;
     }
 
-    public Task<string?> Validate(
+    public async Task<string?> Validate(
         CertificateRequest request,
         string? profile = null,
         ClaimsIdentity? requestor = null,
@@ -561,24 +586,32 @@ public sealed partial class KeyCrlSignatureValidation : IValidateCertificateRequ
         CancellationToken cancellationToken = default)
     {
         var keyUsage = request.CertificateExtensions.OfType<X509KeyUsageExtension>().FirstOrDefault();
-        if(keyUsage == null)
+        if (keyUsage == null)
         {
-            return Task.FromResult<string?>(null);
+            return null;
+        }
+
+        // keyCertSign and cRLSign are only permitted when the profile explicitly opts into CA issuance
+        // by listing 2.5.29.19 (basicConstraints) in AllowedCsrExtensions.
+        var caProfile = await _caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
+        if (caProfile.AllowedCsrExtensions.Contains(Oids.BasicConstraints2))
+        {
+            return null;
         }
 
         if (keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.CrlSign))
         {
             LogCsrRequestsCrlSignInKeyUsage();
-            return Task.FromResult<string?>("CSR must not request CRL Sign in keyUsage");
+            return "CSR must not request CRL Sign in keyUsage";
         }
 
         if (keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.KeyCertSign))
         {
             LogCsrRequestsKeyCertSignInKeyUsage();
-            return Task.FromResult<string?>("CSR must not request Key Cert Sign in keyUsage");
+            return "CSR must not request Key Cert Sign in keyUsage";
         }
 
-        return Task.FromResult<string?>(null);
+        return null;
     }
 
     [LoggerMessage(LogLevel.Error, "CSR requests Key Cert Sign in keyUsage")]
@@ -611,7 +644,7 @@ public sealed partial class CaExtensionValidation : IValidateCertificateRequests
 
         var basicConstraints = request.CertificateExtensions.OfType<X509BasicConstraintsExtension>()
             .FirstOrDefault();
-        if (basicConstraints?.CertificateAuthority == true && !allowedOids.Contains(Oids.KeyUsage))
+        if (basicConstraints?.CertificateAuthority == true && !allowedOids.Contains(Oids.BasicConstraints2))
         {
             LogCsrRequestsCaCertificate();
             return "CSR must not request CA:TRUE in basicConstraints";
