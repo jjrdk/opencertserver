@@ -207,7 +207,7 @@ internal static class ScepHandler
     /// certificate is the proof, so it is checked cryptographically here: it must chain to
     /// this profile's CA, be valid now, not be revoked, and carry the same subject as the
     /// request. The CA core compares only the issuer name of <c>reenrollingFrom</c>, which a
-    /// self-signed certificate can imitate. Returns the reason for a refusal, or null.
+    /// self-signed certificate can imitate (#96). Returns the reason for a refusal, or null.
     /// </summary>
     private static async Task<string?> CheckRenewal(
         X509Certificate2 previous,

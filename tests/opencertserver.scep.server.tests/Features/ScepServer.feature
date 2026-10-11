@@ -83,8 +83,8 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
         And the renewed certificate has the same subject and a new key
         And the previous certificate is revoked
 
-    # The CA core accepts reenrollingFrom by issuer name alone. A certificate signed by
-    # another key under the same CA name must not pass as proof.
+    # The CA core accepts reenrollingFrom by issuer name alone (#96). A certificate signed
+    # by another key under the same CA name must not pass as proof.
     Scenario: A renewal signed with a look-alike certificate is refused
         Given a certificate server that complies with SCEP (RFC 8894)
         When a client renews with a certificate from a look-alike CA of the same name
