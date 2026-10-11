@@ -316,6 +316,15 @@ public sealed class DeviceAttestValidationSteps : IDisposable
             _challenge, _account ?? CreateTestAccount(), CancellationToken.None).ConfigureAwait(false);
     }
 
+    [When(@"the server validates the challenge with no trusted roots configured")]
+    public async Task WhenTheServerValidatesTheChallengeWithNoRoots()
+    {
+        Assert.NotNull(_challenge);
+        var validator = new DeviceAttestChallengeValidator(new StaticAttestationTrustProvider([]));
+        (_resultIsValid, _resultError) = await validator.ValidateChallenge(
+            _challenge, _account ?? CreateTestAccount(), CancellationToken.None).ConfigureAwait(false);
+    }
+
     [When(@"the server validates the same challenge again with a trusted CA injected")]
     public async Task WhenTheServerValidatesTheSameChallengeAgainWithTrustedCa()
     {

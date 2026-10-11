@@ -106,7 +106,7 @@ namespace OpenCertServer.CertServer.Tests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/device-attest-validation.feature.ndjson", 13);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/device-attest-validation.feature.ndjson", 14);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -465,18 +465,21 @@ namespace OpenCertServer.CertServer.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="Nonce mismatch causes validation failure")]
+        [global::Xunit.FactAttribute(DisplayName="Challenge validator rejects attestation when trust provider has no configured roo" +
+            "ts")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Device Attest Challenge Validation")]
-        [global::Xunit.TraitAttribute("Description", "Nonce mismatch causes validation failure")]
-        public async global::System.Threading.Tasks.Task NonceMismatchCausesValidationFailure()
+        [global::Xunit.TraitAttribute("Description", "Challenge validator rejects attestation when trust provider has no configured roo" +
+            "ts")]
+        public async global::System.Threading.Tasks.Task ChallengeValidatorRejectsAttestationWhenTrustProviderHasNoConfiguredRoots()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "8";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Nonce mismatch causes validation failure", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Challenge validator rejects attestation when trust provider has no configured roo" +
+                    "ts", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 71
+#line 69
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -486,34 +489,35 @@ namespace OpenCertServer.CertServer.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
+#line 70
+    await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 71
+    await testRunner.AndAsync("the challenge has extra data with matching nonce \"dmFsaWROb25jZQ\", a trusted CA-s" +
+                        "igned AIK certificate, and a valid TPM proof signed by the AIK key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
 #line 72
-    await testRunner.GivenAsync("a device-attest-01 challenge with token \"bm9uY2VB\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.WhenAsync("the server validates the challenge with no trusted roots configured", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 73
-    await testRunner.AndAsync("the challenge has extra data with a different nonce \"bm9uY2VC\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 74
-    await testRunner.WhenAsync("the server validates the challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 75
     await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 76
-    await testRunner.AndAsync("the error type contains \"invalid_nonce\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line 74
+    await testRunner.AndAsync("the error type contains \"invalid_attestation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="Missing attestation proof is rejected")]
+        [global::Xunit.FactAttribute(DisplayName="Nonce mismatch causes validation failure")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Device Attest Challenge Validation")]
-        [global::Xunit.TraitAttribute("Description", "Missing attestation proof is rejected")]
-        public async global::System.Threading.Tasks.Task MissingAttestationProofIsRejected()
+        [global::Xunit.TraitAttribute("Description", "Nonce mismatch causes validation failure")]
+        public async global::System.Threading.Tasks.Task NonceMismatchCausesValidationFailure()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "9";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Missing attestation proof is rejected", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Nonce mismatch causes validation failure", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 78
@@ -527,10 +531,10 @@ namespace OpenCertServer.CertServer.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 79
-    await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("a device-attest-01 challenge with token \"bm9uY2VB\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 80
-    await testRunner.AndAsync("the challenge has no extra data", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the challenge has extra data with a different nonce \"bm9uY2VC\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 81
     await testRunner.WhenAsync("the server validates the challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
@@ -539,21 +543,21 @@ namespace OpenCertServer.CertServer.Tests.Features
     await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 83
-    await testRunner.AndAsync("the error type contains \"device_attestation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error type contains \"invalid_nonce\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="Invalid AIK chain causes validation failure")]
+        [global::Xunit.FactAttribute(DisplayName="Missing attestation proof is rejected")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Device Attest Challenge Validation")]
-        [global::Xunit.TraitAttribute("Description", "Invalid AIK chain causes validation failure")]
-        public async global::System.Threading.Tasks.Task InvalidAIKChainCausesValidationFailure()
+        [global::Xunit.TraitAttribute("Description", "Missing attestation proof is rejected")]
+        public async global::System.Threading.Tasks.Task MissingAttestationProofIsRejected()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "10";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Invalid AIK chain causes validation failure", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Missing attestation proof is rejected", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 85
@@ -570,8 +574,7 @@ namespace OpenCertServer.CertServer.Tests.Features
     await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 87
-    await testRunner.AndAsync("the challenge has extra data with matching nonce \"dmFsaWROb25jZQ\" but no AIK cert" +
-                        "ificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the challenge has no extra data", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 88
     await testRunner.WhenAsync("the server validates the challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
@@ -580,6 +583,47 @@ namespace OpenCertServer.CertServer.Tests.Features
     await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 90
+    await testRunner.AndAsync("the error type contains \"device_attestation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="Invalid AIK chain causes validation failure")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Device Attest Challenge Validation")]
+        [global::Xunit.TraitAttribute("Description", "Invalid AIK chain causes validation failure")]
+        public async global::System.Threading.Tasks.Task InvalidAIKChainCausesValidationFailure()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "11";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Invalid AIK chain causes validation failure", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 92
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 93
+    await testRunner.GivenAsync("a device-attest-01 challenge with token \"dmFsaWROb25jZQ\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 94
+    await testRunner.AndAsync("the challenge has extra data with matching nonce \"dmFsaWROb25jZQ\" but no AIK cert" +
+                        "ificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 95
+    await testRunner.WhenAsync("the server validates the challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 96
+    await testRunner.ThenAsync("the result is not valid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 97
     await testRunner.AndAsync("the error type contains \"invalid_attestation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
