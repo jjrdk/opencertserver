@@ -150,7 +150,12 @@ public static class OcspHandler
                 }
             }
 
-            var now = DateTimeOffset.UtcNow;
+            // Whole seconds: producedAt, thisUpdate and nextUpdate carry no fractional seconds, as
+            // most responders do (and as RFC 5280 requires for certificates). A client that decodes
+            // and re-encodes the response data cannot then change its bytes - .NET reads some
+            // fractional GeneralizedTime values one tick low (dotnet/runtime#134839,
+            // ASN1-GENTIME-1).
+            var now = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
             var nextUpdate = now.Add(profile?.OcspFreshnessWindow ?? TimeSpan.FromHours(1));
 
             var searchResults = await Task.WhenAll(

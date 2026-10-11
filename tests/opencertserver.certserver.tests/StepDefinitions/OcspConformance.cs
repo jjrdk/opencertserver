@@ -782,6 +782,19 @@ public partial class CertificateServerFeatures
         }
     }
 
+    [Then("producedAt, thisUpdate and nextUpdate carry no fractional seconds")]
+    public void ThenProducedAtThisUpdateAndNextUpdateCarryNoFractionalSeconds()
+    {
+        var data = OcspState.LastResponse!.ResponseBytes!.GetBasicResponse().TbsResponseData;
+        Assert.Equal(0, data.ProducedAt.Ticks % TimeSpan.TicksPerSecond);
+        foreach (var single in data.Responses)
+        {
+            Assert.Equal(0, single.ThisUpdate.Ticks % TimeSpan.TicksPerSecond);
+            Assert.True(single.NextUpdate.HasValue);
+            Assert.Equal(0, single.NextUpdate.Value.Ticks % TimeSpan.TicksPerSecond);
+        }
+    }
+
     [Then("the responder MUST base the response on current revocation information according to local freshness policy")]
     public void ThenTheResponderMustBaseTheResponseOnCurrentRevocationInformationAccordingToLocalFreshnessPolicy()
     {
@@ -811,10 +824,8 @@ public partial class CertificateServerFeatures
             Assert.Equal(expectedKeyHash, byKey.KeyHash);
         }
 
-        // Verify the actual signature
-        var dataWriter = new AsnWriter(AsnEncodingRules.DER);
-        basicResponse.TbsResponseData.Encode(dataWriter);
-        var dataToVerify = dataWriter.Encode();
+        // Verify the actual signature over the bytes as received, not over a re-encoding.
+        var dataToVerify = basicResponse.TbsResponseDataBytes;
         bool signatureValid;
         if (caCert.GetRSAPublicKey() is { } rsa)
         {
