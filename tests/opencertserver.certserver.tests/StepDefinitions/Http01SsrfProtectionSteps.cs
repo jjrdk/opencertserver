@@ -1,7 +1,9 @@
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
+using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using CertesSlim.Acme;
@@ -29,6 +31,7 @@ public sealed class Http01SsrfProtectionSteps
     private IDnsResolver _dnsResolver = null!;
     private ICaaValidator _caaValidator = null!;
     private FakeHttpHandler _httpHandler = null!;
+    private bool _useProductionHandler;
     private (bool IsValid, AcmeError? Error) _result;
 
     public Http01SsrfProtectionSteps(ScenarioContext ctx)
@@ -42,6 +45,7 @@ public sealed class Http01SsrfProtectionSteps
         _dnsResolver = Substitute.For<IDnsResolver>();
         _caaValidator = Substitute.For<ICaaValidator>();
         _httpHandler = new FakeHttpHandler();
+        _useProductionHandler = false;
 
         _caaValidator
             .ValidateAsync(Arg.Any<Identifier>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -76,12 +80,15 @@ public sealed class Http01SsrfProtectionSteps
     public void GivenChallengeServerReturns302()
     {
         _httpHandler.SetRedirect("http://169.254.169.254/");
+        _useProductionHandler = true;
     }
 
     [When("the http-01 challenge is validated")]
     public async Task WhenHttp01ChallengeIsValidated()
     {
-        var httpClient = new HttpClient(_httpHandler);
+        var httpClient = _useProductionHandler
+            ? new HttpClient(SsrfBlockingSocketsHandler.Create())
+            : new HttpClient(_httpHandler);
         var validator = new ValidateHttp01Challenges(httpClient, _caaValidator, _dnsResolver);
         _result = await validator.ValidateChallenge(_challenge, _account, CancellationToken.None)
             .ConfigureAwait(false);
