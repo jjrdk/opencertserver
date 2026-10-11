@@ -196,3 +196,21 @@ They are intentionally written before adding step implementations so they can dr
         Scenario: RFC 6960 requires an unauthorized response when the server refuses service to the client or target domain
             When responder policy refuses to answer a status request
             Then the OCSP responder MAY return the OCSP response status "unauthorized"
+
+    Rule: Interoperability with an independent OCSP client
+
+        # Server and the other scenarios share the same OCSP classes, so an encoding mistake on
+        # one side is mirrored on the other and nothing fails. OpenSSL is the second implementation.
+        # The RFC 6960 ASN.1 module uses EXPLICIT TAGS; skipped where openssl is not installed.
+        Scenario: OpenSSL reads and verifies the OCSP response to its own request
+            When OpenSSL sends an OCSP request with a nonce for an issued certificate
+            Then OpenSSL verifies the response signature against the CA certificate
+            And OpenSSL reports the certificate as good
+            And OpenSSL finds its nonce in the response
+
+        Scenario: OpenSSL reads a revoked status and its reason
+            When the requested certificate has been revoked
+            And OpenSSL sends an OCSP request with a nonce for an issued certificate
+            Then OpenSSL verifies the response signature against the CA certificate
+            And OpenSSL reports the certificate as revoked for key compromise
+            And OpenSSL finds its nonce in the response

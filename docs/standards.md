@@ -314,6 +314,10 @@ supplied.
    `preferredSignatureAlgorithms` extensions are supported.
 * **Status values** — every `SingleResponse` carries a `tbsResponseData` with `producedAt`/`thisUpdate`
    and optional `nextUpdate`; the response carries `responderID` and the signature.
+* **Encoding.** The RFC 6960 ASN.1 module uses `EXPLICIT TAGS`: `responseBytes`, `certs`, `version`,
+   `responderID`, `nextUpdate`, `revocationReason` and all extension lists are explicitly tagged in
+   requests and responses; only `certStatus` (`good` / `revoked` / `unknown`) is `IMPLICIT`, as the
+   module says. Checked against OpenSSL as an independent client.
 * **Freshness policy** is configurable (`ocspFreshnessWindow`, default 1 hour on the
    `ca.server`) via a freshness window.
 * **Cache.** `CacheOutput` for `GET /ca/ocsp`; fresh responses are signed with the
@@ -329,7 +333,9 @@ maps the endpoint.
    RFC 6960 conformance across nine rules: responder endpoint + OCSP-over-HTTP, request syntax +
    `CertID` matching, successful response structure, certificate status values, response freshness,
    authorized-responder signature requirements, request/response extensions, and multi-request
-   semantics.
+   semantics; plus interoperability with OpenSSL (`openssl ocsp` builds the request with a nonce and
+   verifies signature, nonce and status, for a good and a revoked certificate - skipped where
+   `openssl` is not installed).
 * [OcspFeature.feature](../tests/opencertserver.certserver.tests/Features/OcspFeature.feature) —
    end-to-end: enroll, then check OCSP status.
 * [McpServerRevocation.feature](../tests/opencertserver.mcp.tests/Features/McpServerRevocation.feature) —
