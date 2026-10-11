@@ -24,6 +24,10 @@ public static class ServiceCollectionExtensions
             AcmeServerOptions? acmeServerOptions = null,
             string sectionName = "AcmeServer")
         {
+            var acmeServerConfig = configuration.GetSection(sectionName);
+            acmeServerOptions ??= new AcmeServerOptions();
+            acmeServerConfig.Bind(acmeServerOptions);
+
             services.AddScoped<IRequestValidationService, DefaultRequestValidationService>();
             services.AddScoped<INonceService, DefaultNonceService>();
             services.AddScoped<IAccountService, DefaultAccountService>();
@@ -38,12 +42,21 @@ public static class ServiceCollectionExtensions
 
             if (httpClient == null)
             {
-                services.AddHttpClient<IValidateHttp01Challenges, ValidateHttp01Challenges>();
+                services.AddHttpClient<IValidateHttp01Challenges, ValidateHttp01Challenges>()
+                    .ConfigureHttpClient(client => client.Timeout = acmeServerOptions.UrlRetrievalTimeout);
             }
             else
             {
-                services.AddTransient(httpClient);
-                services.AddTransient<IValidateHttp01Challenges, ValidateHttp01Challenges>();
+                services.AddTransient<IValidateHttp01Challenges>(sp =>
+                    new ValidateHttp01Challenges(
+                        ConfigureUrlRetrievalClient(httpClient(sp), acmeServerOptions.UrlRetrievalTimeout),
+                        sp.GetRequiredService<ICaaValidator>()));
+            }
+
+            static HttpClient ConfigureUrlRetrievalClient(HttpClient client, TimeSpan timeout)
+            {
+                client.Timeout = timeout;
+                return client;
             }
 
             services.AddSingleton<ClientX>(_ => new ClientX(DnsEndpoint.System));
@@ -56,10 +69,6 @@ public static class ServiceCollectionExtensions
             services.AddScoped<IChallengeValidatorFactory, DefaultChallengeValidatorFactory>();
 
             services.AddHostedService<HostedValidationService>();
-
-            var acmeServerConfig = configuration.GetSection(sectionName);
-            acmeServerOptions ??= new AcmeServerOptions();
-            acmeServerConfig.Bind(acmeServerOptions);
 
             services.Configure<AcmeServerOptions>(acmeServerConfig);
 
