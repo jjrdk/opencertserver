@@ -23,17 +23,62 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
         X509Certificate2? reenrollingFrom = null,
         CancellationToken cancellationToken = default)
     {
-        var caProfile = await _caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
-        var result = reenrollingFrom == null
-         || caProfile.CertificateChain
-                .Aggregate(false, (b, cert) => b || reenrollingFrom.IssuerName.Name == cert.SubjectName.Name);
-        if (result)
+        if (reenrollingFrom == null)
         {
             return null;
         }
 
-        LogCouldNotValidateReEnrollmentFromReEnrollingFrom(reenrollingFrom!.IssuerName.Name);
+        var caProfile = await _caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
+        if (IsIssuedBy(reenrollingFrom, caProfile.CertificateChain))
+        {
+            return null;
+        }
+
+        LogCouldNotValidateReEnrollmentFromReEnrollingFrom(reenrollingFrom.IssuerName.Name);
         return "Re-enrollment certificate is not issued by this CA";
+    }
+
+    /// <summary>
+    /// Whether <paramref name="certificate"/> chains to the profile's CA certificates, i.e. was
+    /// signed by one of their keys. Comparing the issuer name is not enough: any self-signed
+    /// certificate can carry the CA's name (#96).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A profile may hold only its issuing intermediate, without the root. A chain then ends at
+    /// that intermediate as a partial chain, and <see cref="X509Chain.Build"/> fails even though
+    /// the certificate is genuine. In that case what counts is the certificate's own link: it
+    /// must have been linked to one of the profile's certificates and carry no error of its own -
+    /// a signature that does not verify against that certificate is reported on the certificate.
+    /// </para>
+    /// <para>
+    /// Validity and revocation of the certificate being renewed are not checked here - this
+    /// validator accepted an expired certificate before and still does; callers that need more
+    /// (EST via TLS, SCEP) check it themselves.
+    /// </para>
+    /// </remarks>
+    private static bool IsIssuedBy(X509Certificate2 certificate, X509Certificate2Collection caCertificates)
+    {
+        using var chain = new X509Chain();
+        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+        chain.ChainPolicy.CustomTrustStore.AddRange(caCertificates);
+        chain.ChainPolicy.ExtraStore.AddRange(caCertificates);
+        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        chain.ChainPolicy.VerificationFlags = X509VerificationFlags.IgnoreNotTimeValid;
+        if (chain.Build(certificate))
+        {
+            return true;
+        }
+
+        if (chain.ChainElements.Count < 2)
+        {
+            return false;
+        }
+
+        var issuer = chain.ChainElements[1].Certificate;
+        return caCertificates.Any(ca => ca.RawData.AsSpan().SequenceEqual(issuer.RawData))
+            && chain.ChainElements[0].ChainElementStatus
+                .All(s => s.Status is X509ChainStatusFlags.NoError or X509ChainStatusFlags.NotTimeValid);
     }
 
     [LoggerMessage(LogLevel.Error, "Could not validate re-enrollment from {ReenrollingFrom}")]
