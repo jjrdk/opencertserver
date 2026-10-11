@@ -38,12 +38,13 @@ public sealed class ScepTestClient(HttpClient http, string path = "/scep")
         string transactionId,
         byte[] senderNonce,
         bool useGet = false,
-        string messageType = "19")
+        string messageType = "19",
+        string encryptionOid = OpenCertServer.Ca.Utils.Oids.Aes128Cbc)
     {
         var csrDer = csr.CreateSigningRequest();
         var enveloped = new EnvelopedCms(
             new ContentInfo(csrDer),
-            new AlgorithmIdentifier(new System.Security.Cryptography.Oid("2.16.840.1.101.3.4.1.42")));
+            new AlgorithmIdentifier(new System.Security.Cryptography.Oid(encryptionOid)));
         enveloped.Encrypt(new CmsRecipient(SubjectIdentifierType.IssuerAndSerialNumber, recipient));
 
         var signed = new SignedCms(new ContentInfo(enveloped.Encode()));
@@ -109,7 +110,8 @@ public sealed record ScepTestResponse(
     string? FailInfo,
     string TransactionId,
     byte[] RecipientNonce,
-    X509Certificate2? Issued)
+    X509Certificate2? Issued,
+    string? EncryptionAlgorithm)
 {
     /// <summary>Verifies and decodes a CertRep; decrypts the certificate with the client's key.</summary>
     public static ScepTestResponse Read(byte[] body, X509Certificate2 clientSigner)
@@ -134,17 +136,19 @@ public sealed record ScepTestResponse(
         }
 
         X509Certificate2? issued = null;
+        string? encryption = null;
         if (pkiStatus == "0")
         {
             var enveloped = new EnvelopedCms();
             enveloped.Decode(signed.ContentInfo.Content);
+            encryption = enveloped.ContentEncryptionAlgorithm.Oid.Value;
             enveloped.Decrypt(new X509Certificate2Collection(clientSigner));
             var certsOnly = new SignedCms();
             certsOnly.Decode(enveloped.ContentInfo.Content);
             issued = certsOnly.Certificates[0];
         }
 
-        return new ScepTestResponse(messageType!, pkiStatus!, failInfo, transactionId!, recipientNonce, issued);
+        return new ScepTestResponse(messageType!, pkiStatus!, failInfo, transactionId!, recipientNonce, issued, encryption);
     }
 
     private static string ReadPrintable(byte[] raw) =>

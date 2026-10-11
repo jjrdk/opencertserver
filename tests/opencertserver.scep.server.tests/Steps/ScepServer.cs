@@ -281,16 +281,47 @@ public sealed class ScepServer : IDisposable
             "The renewed certificate is not on the revocation list.");
     }
 
-    private async Task Enroll(string? challenge, string profile, bool useGet)
+    private async Task Enroll(
+        string? challenge, string profile, bool useGet,
+        string encryptionOid = OpenCertServer.Ca.Utils.Oids.Aes128Cbc, byte[]? senderNonce = null,
+        bool readReply = true)
     {
         _clientKey = RSA.Create(2048);
         _clientSigner = ScepTestClient.CreateTransientSigner(_clientKey);
         var client = new ScepTestClient(_host.GetTestClient(), $"/scep/{profile}");
         _response = await client.Enroll(
             ScepTestClient.CreateCsr(_clientKey, Subject, challenge),
-            _clientSigner, _ra, _transactionId, _senderNonce, useGet).ConfigureAwait(false);
-        await ReadCertRep().ConfigureAwait(false);
+            _clientSigner, _ra, _transactionId, senderNonce ?? _senderNonce, useGet,
+            encryptionOid: encryptionOid).ConfigureAwait(false);
+        if (readReply)
+        {
+            await ReadCertRep().ConfigureAwait(false);
+        }
     }
+
+    // --- Algorithms and nonces (RFC 8894, 2.9, 3.2.1, 3.5.2) -----------------
+
+    private static readonly Dictionary<string, string> Algorithmen = new()
+    {
+        ["AES-128-CBC"] = OpenCertServer.Ca.Utils.Oids.Aes128Cbc,
+        ["AES-256-CBC"] = OpenCertServer.Ca.Utils.Oids.Aes256Cbc,
+        ["3DES-CBC"] = OpenCertServer.Ca.Utils.Oids.TripleDesCbc,
+    };
+
+    [When("a client enrolls with the challenge password {string} and the request encrypted with {string}")]
+    public Task WhenEnrollEncryptedWith(string challenge, string algorithm) =>
+        Enroll(challenge, "rsa", useGet: false, encryptionOid: Algorithmen[algorithm]);
+
+    [Then("the reply is encrypted with {string}")]
+    public void ThenReplyEncryptedWith(string algorithm) =>
+        Assert.Equal(Algorithmen[algorithm], _certRep!.EncryptionAlgorithm);
+
+    [When("a client enrolls with a senderNonce of {int} bytes")]
+    public Task WhenEnrollWithNonceOf(int bytes) =>
+        Enroll(Challenge, "rsa", useGet: false, senderNonce: RandomNumberGenerator.GetBytes(bytes), readReply: false);
+
+    [Then("the server answers HTTP 400")]
+    public void ThenHttp400() => Assert.Equal(HttpStatusCode.BadRequest, _response!.StatusCode);
 
     private async Task ReadCertRep()
     {

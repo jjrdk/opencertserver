@@ -18,12 +18,16 @@ using CmsContentInfoPkcs = System.Security.Cryptography.Pkcs.ContentInfo;
 /// <param name="SignerCertificate">The certificate the client signed with - self-signed for an
 /// initial enrollment, the existing certificate for a renewal. The response is encrypted to it.</param>
 /// <param name="CsrDer">The decrypted PKCS#10 request, if the message carried one.</param>
+/// <param name="ContentEncryptionAlgorithm">The OID of the algorithm the client encrypted its
+/// envelope with - the reply is encrypted with the same one (see <see cref="ScepMessageCodec.ReplyEncryption"/>).
+/// Null when the message carried no envelope.</param>
 public sealed record ScepRequest(
     ScepMessageType MessageType,
     string TransactionId,
     byte[] SenderNonce,
     X509Certificate2 SignerCertificate,
-    byte[]? CsrDer);
+    byte[]? CsrDer,
+    string? ContentEncryptionAlgorithm = null);
 
 /// <summary>
 /// Raised when a SCEP message cannot be processed; carries the <c>failInfo</c> to answer with.
@@ -105,6 +109,13 @@ public static class ScepMessageCodec
                 "messageType, transactionID and senderNonce are required.");
         }
 
+        // RFC 8894, 3.2.1: a 16-byte random number.
+        if (senderNonce.Length != 16)
+        {
+            throw new ScepException(ScepFailInfo.BadRequest,
+                $"senderNonce must be 16 bytes, not {senderNonce.Length}.");
+        }
+
         if (!int.TryParse(messageType, NumberStyles.None, CultureInfo.InvariantCulture, out var typeNumber)
             || !Enum.IsDefined(typeof(ScepMessageType), typeNumber))
         {
@@ -112,6 +123,7 @@ public static class ScepMessageCodec
         }
 
         byte[]? csr = null;
+        string? encryption = null;
         var content = signed.ContentInfo.Content;
         if (content.Length > 0)
         {
@@ -119,6 +131,7 @@ public static class ScepMessageCodec
             {
                 var enveloped = new EnvelopedCms();
                 enveloped.Decode(content);
+                encryption = enveloped.ContentEncryptionAlgorithm.Oid.Value;
                 enveloped.Decrypt(new X509Certificate2Collection(raCertificate));
                 csr = enveloped.ContentInfo.Content;
             }
@@ -129,7 +142,8 @@ public static class ScepMessageCodec
             }
         }
 
-        return new ScepRequest((ScepMessageType)typeNumber, transactionId, senderNonce, signerCertificate, csr);
+        return new ScepRequest((ScepMessageType)typeNumber, transactionId, senderNonce, signerCertificate, csr,
+            encryption);
     }
 
     /// <summary>
@@ -141,10 +155,25 @@ public static class ScepMessageCodec
         var certsOnly = EncodeCertificatesOnly([issued]);
         var enveloped = new EnvelopedCms(
             new CmsContentInfoPkcs(certsOnly),
-            new AlgorithmIdentifier(new Oid(Oids.Aes256Cbc)));
+            new AlgorithmIdentifier(new Oid(ReplyEncryption(request))));
         enveloped.Encrypt(new CmsRecipient(SubjectIdentifierType.IssuerAndSerialNumber, request.SignerCertificate));
         return Sign(enveloped.Encode(), request, "0", null, raCertificate);
     }
+
+    /// <summary>
+    /// The algorithm the reply is encrypted with: the one the client used for its request,
+    /// as long as it is one RFC 8894 names - AES128-CBC, which the capability "AES" promises
+    /// (section 3.5.2) and section 2.9 makes mandatory, the larger AES sizes, or
+    /// triple DES, which older clients may still use. Anything else, or a request without an
+    /// envelope, gets AES128-CBC. The reply used to be AES-256 regardless of the request; a
+    /// client that can do exactly what was promised could not have read it.
+    /// </summary>
+    internal static string ReplyEncryption(ScepRequest request) =>
+        request.ContentEncryptionAlgorithm switch
+        {
+            Oids.Aes128Cbc or Oids.Aes192Cbc or Oids.Aes256Cbc or Oids.TripleDesCbc => request.ContentEncryptionAlgorithm,
+            _ => Oids.Aes128Cbc,
+        };
 
     /// <summary>
     /// Builds a failed <c>CertRep</c> with the given failInfo, signed by the RA.
