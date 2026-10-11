@@ -199,14 +199,24 @@ and Apple Secure Element so the ACME server can talk to any of them behind `IAtt
 
 **What OpenCertServer implements:**
 
-* **Directory advertisement.** `meta.challengeTypesWithAdditionalContent` lists `device-attest-01`,
-   so an ACME client can opt for it when an order is created.
+* **Directory advertisement.** `meta.challengeTypesWithAdditionalContent` lists `device-attest-01`
+   *only when* at least one trusted root CA is configured. With an empty trust provider the challenge
+   type is not offered, so clients will never attempt attestation against a server that cannot verify it.
 * **Validator.** `DeviceAttestChallengeValidator` performs three checks:
-   1. **Chain verification** — the submitted AIK must chain to an injected trusted root CA. A
-      self-signed AIK is rejected with `invalid_attestation`.
+   1. **Chain verification (fail-closed)** — if no trust roots are configured the validator returns
+      `invalid_attestation` immediately. System trust is **never** used as a fallback. When roots are
+      present the AIK must chain to an injected root under custom-trust mode. A self-signed AIK and
+      any cert signed by a root not in the injected set are rejected. Revocation is checked online
+      (`X509RevocationMode.Online`); unknown revocation status (e.g. the manufacturer CA omits CDP/AIA
+      extensions) is tolerated rather than treated as a hard failure, but an explicitly revoked cert
+      will be rejected.
    2. **Proof verification** — a TPM `quote`-style proof whose magic value, attestation type, and
       nonce-bind match the challenge. Garbage bytes or wrong magic ⇒ `invalid_attestation`.
    3. **Anti-replay** — a consumed nonce is rejected on second use with error type `replay_nonce`.
+* **Factory gating.** `DefaultAuthorizationFactory` only creates a `device-attest-01` challenge
+   when `IAttestationTrustProvider.GetTrustedRoots()` returns a non-empty collection. With the
+   default empty `StaticAttestationTrustProvider` registered by `AddAcmeServer`, only `http-01` and
+   `dns-01` are offered.
 * **Factory routing.** `IChallengeValidatorFactory.GetValidator("device-attest-01")` returns the
    device validator; unknown types throw `InvalidOperationException("Unknown Challenge Type")`.
 * **Model.** `DeviceAttestChallengeAnswer` (Nonce, Proof, AikCertificate, DeviceId) is the JSON contract the client submits inside a
@@ -218,12 +228,13 @@ and Apple Secure Element so the ACME server can talk to any of them behind `IAtt
 * Interfaces: `src/opencertserver.acme.abstractions/Services/IAttestationTrustProvider.cs`,
    `IValidateDeviceAttestChallenges.cs`.
 * Server-side validator: `src/opencertserver.acme.server/Services/DeviceAttestChallengeValidator.cs`,
-   `StaticAttestationTrustProvider.cs`, `DefaultChallengeValidatorFactory.cs`.
+   `StaticAttestationTrustProvider.cs`, `DefaultChallengeValidatorFactory.cs`,
+   `DefaultAuthorizationFactory.cs`.
 * Attestation backends: `src/opencertserver.attestation/*` (AMD SEV-SNP, Intel SGX, Apple SE,
    `AppleSeProvider`, `SecurityFrameworkAppleAttestInterop`).
-* Enablement: `AddAcmeServer(...)` already registers an empty `StaticAttestationTrustProvider` and
-   `DeviceAttestChallengeValidator`. To add real trust roots, replace the
-   `IAttestationTrustProvider` singleton with one that returns your manufacturer root CAs:
+* Enablement: `AddAcmeServer(...)` registers an empty `StaticAttestationTrustProvider` and
+   `DeviceAttestChallengeValidator`. With an empty provider no `device-attest-01` challenges are
+   created and any that arrive are rejected. To enable device attestation, replace the singleton:
 
    ```csharp
    services.AddSingleton<OpenCertServer.Acme.Abstractions.Services.IAttestationTrustProvider>(
@@ -233,12 +244,14 @@ and Apple Secure Element so the ACME server can talk to any of them behind `IAtt
 
 **Tests that prove it.**
 * [device-attest-core.feature](../tests/opencertserver.certserver.tests/Features/device-attest-core.feature) —
-   `device-attest-01` is in `ChallengeTypes.AllTypes` and is offered on ACME orders.
+   `device-attest-01` is in `ChallengeTypes.AllTypes`; offered on orders only when trust roots are
+   configured; not offered when trust provider has no roots.
 * [device-attest-directory.feature](../tests/opencertserver.certserver.tests/Features/device-attest-directory.feature) —
    the directory advertises `device-attest-01` alongside `http-01` and `dns-01` under
    `meta.challengeTypesWithAdditionalContent`.
 * [device-attest-validation.feature](../tests/opencertserver.certserver.tests/Features/device-attest-validation.feature) —
    the full validation matrix: self-signed AIK rejected, trusted-CA AIK with valid TPM proof passes,
+   **empty trust provider rejects any attestation (fail-closed)**,
    garbage / wrong-magic / wrong-type / mismatched-extra-data / empty proof rejected, replay
    nonce → `replay_nonce`, nonce-mismatch → `invalid_nonce`, missing proof → `device_attestation`.
 * [device-attest-e2e.feature](../tests/opencertserver.certserver.tests/Features/device-attest-e2e.feature) —

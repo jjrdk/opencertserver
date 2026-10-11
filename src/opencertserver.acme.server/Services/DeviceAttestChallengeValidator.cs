@@ -165,25 +165,31 @@ public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChalle
         if (aikBytes == null)
             return false;
 
+        var roots = _trustProvider.GetTrustedRoots();
+
+        // Fail closed: without explicit trusted manufacturer roots, reject all chains.
+        // System trust is never used as a fallback — any certificate chaining to a
+        // public CA would otherwise pass, defeating the purpose of attestation.
+        if (roots.Count == 0)
+            return false;
+
         try
         {
             using var cert = X509CertificateLoader.LoadCertificate(aikBytes);
             using var chain = new X509Chain();
 
-            chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-            chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
+            // Attempt online revocation checks against manufacturer OCSP/CRL endpoints.
+            // Ignore "unknown" status when distribution points are absent (e.g. test CAs),
+            // but a certificate with a reachable endpoint whose status is Revoked will fail.
+            chain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
+            chain.ChainPolicy.VerificationFlags =
+                X509VerificationFlags.IgnoreEndRevocationUnknown
+                | X509VerificationFlags.IgnoreCertificateAuthorityRevocationUnknown
+                | X509VerificationFlags.IgnoreRootRevocationUnknown;
 
-            var roots = _trustProvider.GetTrustedRoots();
-            if (roots.Count > 0)
-            {
-                // Use custom trust mode so only injected roots are authoritative.
-                chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-                chain.ChainPolicy.CustomTrustStore.AddRange(roots);
-            }
-            else
-            {
-                chain.ChainPolicy.TrustMode = X509ChainTrustMode.System;
-            }
+            // Use custom trust mode so only injected roots are authoritative.
+            chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+            chain.ChainPolicy.CustomTrustStore.AddRange(roots);
 
             return chain.Build(cert);
         }

@@ -426,26 +426,30 @@ See the [Documentation index](documentation.md) for request/response detail and
 
 OpenCertServer adds a `device-attest-01` ACME challenge type (see
 [`ChallengeTypes`](../src/CertesSlim/Acme/Resource/ChallengeTypes.cs)) so a certificate can be
-issued to a hardware-backed device rather than a domain. Enablement is two service registrations:
+issued to a hardware-backed device rather than a domain.
+
+**Default behaviour (fail-closed).** `AddAcmeServer(...)` registers an empty
+`StaticAttestationTrustProvider`. With an empty trust provider, `DefaultAuthorizationFactory` does
+**not** create `device-attest-01` challenges for any order — the challenge type is not advertised
+to clients. If a client submits attestation evidence regardless, `DeviceAttestChallengeValidator`
+rejects it immediately. System trust is never used as a fallback.
+
+To enable device attestation, replace the singleton with one that contains your manufacturer root CAs:
 
 ```csharp
-// The ACME server already registers an empty trust provider and the device-attest validator:
-//   services.AddSingleton<IAttestationTrustProvider>(new StaticAttestationTrustProvider([]));
-//   services.AddScoped<IValidateDeviceAttestChallenges, DeviceAttestChallengeValidator>();
-
 // Supply your manufacturer trust roots (e.g. Apple Attestation CA, Intel ME, AMD PSP):
 services.AddSingleton<OpenCertServer.Acme.Abstractions.Services.IAttestationTrustProvider>(
     _ => new OpenCertServer.Acme.Server.Services.StaticAttestationTrustProvider(
         new X509Certificate2Collection { /* manufacturer root CAs */ }));
 ```
 
-The validator performs three checks (mirrored by
+Once a non-empty trust provider is registered, `device-attest-01` challenges are advertised on orders
+and validated with three checks (mirrored by
 `tests/opencertserver.certserver.tests/Features/device-attest-validation.feature`): **chain
 verification** (the submitted AIK certificate must chain to an injected trusted root — a self-signed
-AIK is rejected), **proof verification** (a TPM proof with the correct magic value/attestation type
-matching the challenge nonce — garbage or wrong-magic fails), and **anti-replay** (a consumed nonce is
-rejected on second use with `replay_nonce`). The directory advertises the type under
-`meta.challengeTypesWithAdditionalContent`.
+AIK is rejected; AIK revocation is checked online), **proof verification** (a TPM proof with the
+correct magic value/attestation type matching the challenge nonce — garbage or wrong-magic fails), and
+**anti-replay** (a consumed nonce is rejected on second use with `replay_nonce`).
 
 For the hardware attestation providers themselves (AMD SEV-SNP, Intel SGX, Apple Secure Element),
 see [Implemented standards → Device attestation](standards.md#device-attestation-device-attest-01).
