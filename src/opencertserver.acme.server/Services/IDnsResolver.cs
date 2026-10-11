@@ -1,6 +1,7 @@
 namespace OpenCertServer.Acme.Server.Services;
 
 using System.Collections.Generic;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using DnsClientX;
@@ -32,6 +33,15 @@ public interface IDnsResolver
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>The text content of the matching TXT records, or an empty list when none are present.</returns>
     Task<IReadOnlyList<string>> ResolveTxtRecordsAsync(
+        string name,
+        CancellationToken cancellationToken);
+    /// <summary>
+    /// Resolves the A and AAAA record set for the given name.
+    /// </summary>
+    /// <param name="name">The name to query.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>The IP addresses published for the name, or an empty list when none are present.</returns>
+    Task<IReadOnlyList<IPAddress>> ResolveIpAddressesAsync(
         string name,
         CancellationToken cancellationToken);
 }
