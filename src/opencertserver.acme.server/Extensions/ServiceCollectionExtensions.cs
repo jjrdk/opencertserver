@@ -9,6 +9,7 @@ using Configuration;
 using DnsClientX;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using RequestServices;
 using Services;
 using Stores;
@@ -38,7 +39,8 @@ public static class ServiceCollectionExtensions
 
             if (httpClient == null)
             {
-                services.AddHttpClient<IValidateHttp01Challenges, ValidateHttp01Challenges>();
+                services.AddHttpClient<IValidateHttp01Challenges, ValidateHttp01Challenges>()
+                    .ConfigurePrimaryHttpMessageHandler(SsrfBlockingSocketsHandler.Create);
             }
             else
             {
@@ -46,7 +48,11 @@ public static class ServiceCollectionExtensions
                 services.AddTransient<IValidateHttp01Challenges, ValidateHttp01Challenges>();
             }
 
-            services.AddSingleton<ClientX>(_ => new ClientX(DnsEndpoint.System));
+            services.AddSingleton<ClientX>(sp =>
+            {
+                var opts = sp.GetRequiredService<IOptions<AcmeServerOptions>>();
+                return new ClientX(opts.Value.DnsEndpoint);
+            });
             services.AddScoped<IDnsResolver, DnsClientXResolver>();
             services.AddScoped<ICaaValidator, CaaValidator>();
             services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();

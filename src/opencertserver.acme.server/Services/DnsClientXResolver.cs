@@ -2,6 +2,7 @@ namespace OpenCertServer.Acme.Server.Services;
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using DnsClientX;
@@ -32,6 +33,18 @@ public sealed class DnsClientXResolver : IDnsResolver
         var records = await ResolveTypedAsync<TxtRecord>(name, DnsRecordType.TXT, cancellationToken)
             .ConfigureAwait(false);
         return records.Select(record => record.Text).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<IPAddress>> ResolveIpAddressesAsync(
+        string name,
+        CancellationToken cancellationToken)
+    {
+        var aTask = ResolveTypedAsync<ARecord>(name, DnsRecordType.A, cancellationToken);
+        var aaaaTask = ResolveTypedAsync<AAAARecord>(name, DnsRecordType.AAAA, cancellationToken);
+        await Task.WhenAll(aTask, aaaaTask).ConfigureAwait(false);
+
+        return [.. aTask.Result.Select(r => r.Address), .. aaaaTask.Result.Select(r => r.Address)];
     }
 
     private async Task<IReadOnlyList<T>> ResolveTypedAsync<T>(
