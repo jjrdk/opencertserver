@@ -94,6 +94,7 @@ ACME behaviour is driven by the `AcmeServer` section of `appsettings.json`:
 {
   "AcmeServer": {
     "WebsiteUrl": "https://pki.example.com",
+    "UrlRetrievalTimeout": "00:01:40",
     "TOS": {
       "RequireAgreement": false,
       "Url": "https://pki.example.com/tos",

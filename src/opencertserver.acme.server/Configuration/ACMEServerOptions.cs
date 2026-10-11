@@ -6,6 +6,8 @@ public sealed class AcmeServerOptions
 
     public string? WebsiteUrl { get; set; }
 
+    public TimeSpan UrlRetrievalTimeout { get; set; } = TimeSpan.FromSeconds(100);
+
     public bool ExternalAccountRequired { get; set; }
 
     public TOSOptions TOS { get; set; } = new();
