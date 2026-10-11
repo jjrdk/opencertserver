@@ -44,7 +44,10 @@ public class TbsRequest : IAsnValue
             var tag = sequenceReader.PeekTag();
             if (tag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
             {
-                Version = (TypeVersion)(int)sequenceReader.ReadInteger(new Asn1Tag(TagClass.ContextSpecific, 0));
+                // version [0] EXPLICIT Version DEFAULT v1
+                var versionReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
+                Version = (TypeVersion)(int)versionReader.ReadInteger();
+                versionReader.ThrowIfNotEmpty();
             }
             else if (tag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
             {
@@ -64,7 +67,10 @@ public class TbsRequest : IAsnValue
             }
             else if (tag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 2)))
             {
-                var extReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 2));
+                // requestExtensions [2] EXPLICIT Extensions
+                var explicitReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 2));
+                var extReader = explicitReader.ReadSequence();
+                explicitReader.ThrowIfNotEmpty();
                 RequestExtensions = [];
                 while (extReader.HasData)
                 {
@@ -107,8 +113,10 @@ public class TbsRequest : IAsnValue
         writer.PushSequence(tag);
         if (Version != TypeVersion.V1)
         {
-            var integer = (int)Version;
-            writer.WriteInteger(integer, new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+            {
+                writer.WriteInteger((int)Version);
+            }
         }
 
         if (RequestorName != null)
@@ -132,13 +140,14 @@ public class TbsRequest : IAsnValue
 
         if (RequestExtensions != null)
         {
-            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 2, true));
-            foreach (var ext in RequestExtensions)
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 2, true)))
+            using (writer.PushSequence())
             {
-                ext.Encode(writer);
+                foreach (var ext in RequestExtensions)
+                {
+                    ext.Encode(writer);
+                }
             }
-
-            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 2, true));
         }
 
         writer.PopSequence(tag);

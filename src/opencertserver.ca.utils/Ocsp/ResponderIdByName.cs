@@ -26,6 +26,10 @@ public class ResponderIdByName : IResponderId
     /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
-        Name.Encode(writer, new Asn1Tag(TagClass.ContextSpecific, 1));
+        // byName [1] EXPLICIT Name (RFC 6960 4.2.1, EXPLICIT TAGS module)
+        using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1)))
+        {
+            Name.Encode(writer);
+        }
     }
 }

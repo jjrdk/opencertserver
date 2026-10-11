@@ -34,9 +34,10 @@ public class RevokedInfo : IAsnValue
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
         {
-            RevocationReason =
-                sequenceReader.ReadEnumeratedValue<X509RevocationReason>(new Asn1Tag(TagClass.ContextSpecific, 0,
-                    true));
+            // revocationReason [0] EXPLICIT CRLReason
+            var reasonReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            RevocationReason = reasonReader.ReadEnumeratedValue<X509RevocationReason>();
+            reasonReader.ThrowIfNotEmpty();
         }
     }
 
@@ -60,7 +61,10 @@ public class RevokedInfo : IAsnValue
             writer.WriteGeneralizedTime(RevocationTime);
             if (RevocationReason.HasValue)
             {
-                writer.WriteEnumeratedValue(RevocationReason.Value, new Asn1Tag(TagClass.ContextSpecific, 0, true));
+                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+                {
+                    writer.WriteEnumeratedValue(RevocationReason.Value);
+                }
             }
         }
     }

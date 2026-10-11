@@ -46,7 +46,10 @@ public class OcspResponse : IAsnValue
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
         {
-            ResponseBytes = new ResponseBytes(sequenceReader, sequenceReader.PeekTag());
+            // responseBytes [0] EXPLICIT ResponseBytes (RFC 6960 4.2.1, EXPLICIT TAGS module).
+            var explicitReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
+            ResponseBytes = new ResponseBytes(explicitReader);
+            explicitReader.ThrowIfNotEmpty();
         }
 
         sequenceReader.ThrowIfNotEmpty();
@@ -70,7 +73,13 @@ public class OcspResponse : IAsnValue
         using (writer.PushSequence(tag))
         {
             writer.WriteEnumeratedValue(ResponseStatus);
-            ResponseBytes?.Encode(writer, new Asn1Tag(TagClass.ContextSpecific, 0));
+            if (ResponseBytes != null)
+            {
+                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0)))
+                {
+                    ResponseBytes.Encode(writer);
+                }
+            }
         }
     }
 }
