@@ -23,7 +23,9 @@ internal static class SsrfBlockingSocketsHandler
     /// </summary>
     internal static readonly IReadOnlyList<IPNetwork> ProhibitedRanges =
     [
+        IPNetwork.Parse("0.0.0.0/8"),      // IPv4 "this host" (0.0.0.0 reaches loopback on Linux)
         IPNetwork.Parse("127.0.0.0/8"),    // IPv4 loopback
+        IPNetwork.Parse("::/128"),          // IPv6 unspecified (reaches loopback on Linux)
         IPNetwork.Parse("::1/128"),         // IPv6 loopback
         IPNetwork.Parse("169.254.0.0/16"), // IPv4 link-local (includes cloud metadata)
         IPNetwork.Parse("fe80::/10"),       // IPv6 link-local
