@@ -13,13 +13,17 @@ using System.Security.Cryptography.X509Certificates;
 /// <param name="RequestDer">The DER encoding of <paramref name="Request"/>, as sent.</param>
 /// <param name="ProfileName">The CA profile the request will be issued from.</param>
 /// <param name="MessageType">Initial enrollment or renewal.</param>
+/// <param name="PreviousCertificate">For a renewal, the certificate the request was signed
+/// with - already verified to be issued by this CA, valid, not revoked and for the same
+/// subject. Null for an initial enrollment.</param>
 public sealed record ScepChallengeContext(
     string TransactionId,
     string? ChallengePassword,
     CertificateRequest Request,
     byte[] RequestDer,
     string? ProfileName,
-    ScepMessageType MessageType);
+    ScepMessageType MessageType,
+    X509Certificate2? PreviousCertificate = null);
 
 /// <summary>
 /// The outcome of a challenge validation.

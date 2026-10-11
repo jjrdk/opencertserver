@@ -4,6 +4,7 @@ using Handlers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 /// <summary>
 /// Registration of the SCEP server (RFC 8894).
@@ -17,9 +18,27 @@ public static class ScepServerExtensions
         /// </summary>
         public IServiceCollection AddScepServer(ScepServerOptions options, IScepChallengeValidator validator)
         {
-            return services
+            services
                 .AddSingleton(options)
-                .AddSingleton(validator);
+                .AddSingleton(validator)
+                .AddSingleton<ScepTransactionIds>();
+            services.TryAddSingleton(TimeProvider.System);
+            return services;
+        }
+
+        /// <summary>
+        /// Adds the SCEP server without a challenge validator of its own. Unless the host
+        /// registers an <see cref="IScepChallengeValidator"/>, every request is refused
+        /// (<see cref="NotConfiguredChallengeValidator"/>).
+        /// </summary>
+        public IServiceCollection AddScepServer(ScepServerOptions options)
+        {
+            services
+                .AddSingleton(options)
+                .AddSingleton<ScepTransactionIds>();
+            services.TryAddSingleton<IScepChallengeValidator, NotConfiguredChallengeValidator>();
+            services.TryAddSingleton(TimeProvider.System);
+            return services;
         }
     }
 

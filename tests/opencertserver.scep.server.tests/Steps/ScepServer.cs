@@ -40,7 +40,12 @@ public sealed class ScepServer : IDisposable
     private readonly byte[] _senderNonce = RandomNumberGenerator.GetBytes(16);
 
     [Given("a certificate server that complies with SCEP \\(RFC 8894\\)")]
-    public async Task GivenACertificateServer()
+    public Task GivenACertificateServer() => StartServer(withChallenge: true);
+
+    [Given("a certificate server with SCEP but no challenge validator")]
+    public Task GivenAServerWithoutValidator() => StartServer(withChallenge: false);
+
+    private async Task StartServer(bool withChallenge)
     {
         using var rsaKey = RSA.Create(2048);
         var rsaReq = new CertificateRequest("CN=SCEP Test RSA CA", rsaKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
@@ -77,7 +82,7 @@ public sealed class ScepServer : IDisposable
                 {
                     services.AddRouting();
                     services.AddAuthorization();
-                    services.AddInMemoryCertificateStore()
+                    services = services.AddInMemoryCertificateStore()
                         .AddCertificateAuthority(new CaConfiguration(
                             new CaProfileSet(
                                 "rsa",
@@ -99,10 +104,11 @@ public sealed class ScepServer : IDisposable
                                 }),
                             ["http://localhost/crl"],
                             [],
-                            []))
-                        .AddScepServer(
-                            new ScepServerOptions { RaCertificate = ra, DefaultProfile = "rsa" },
-                            new SharedSecretChallengeValidator(Challenge));
+                            []));
+                    var options = new ScepServerOptions { RaCertificate = ra, DefaultProfile = "rsa" };
+                    _ = withChallenge
+                        ? services.AddScepServer(options, new SharedSecretChallengeValidator(Challenge))
+                        : services.AddScepServer(options);
                 })
                 .Configure(app => app
                     .UseRouting()
@@ -187,6 +193,94 @@ public sealed class ScepServer : IDisposable
         await ReadCertRep().ConfigureAwait(false);
     }
 
+    // --- Renewal and replay ------------------------------------------------------
+
+    private X509Certificate2? _held;
+    private X509Certificate2? _renewed;
+    private RSA? _newKey;
+
+    [Given("a client holding a certificate from the {string} profile")]
+    public async Task GivenHeldCertificate(string profile)
+    {
+        await Enroll(Challenge, profile, useGet: false).ConfigureAwait(false);
+        ThenSuccess();
+        _held = _certRep!.Issued!.CopyWithPrivateKey(_clientKey!);
+    }
+
+    [Given("that certificate is revoked")]
+    public async Task GivenRevoked()
+    {
+        var ca = _host.Services.GetRequiredService<ICertificateAuthority>();
+        Assert.True(await ca.RevokeCertificate(_held!.GetSerialNumberString(), X509RevocationReason.KeyCompromise)
+            .ConfigureAwait(false));
+    }
+
+    [When("the client renews it with a new key")]
+    public Task WhenRenew() => Renew(Subject, _held!);
+
+    [When("the client renews it for the subject {string}")]
+    public Task WhenRenewOtherSubject(string subject) => Renew(subject, _held!);
+
+    [When("a client renews with a certificate from a look-alike CA of the same name")]
+    public Task WhenRenewLookAlike()
+    {
+        // Same CA name, different key: the issuer name matches, the signature does not.
+        using var fakeKey = RSA.Create(2048);
+        var fakeReq = new CertificateRequest(_rsaCa.SubjectName, fakeKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        fakeReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+        using var fakeCa = fakeReq.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+        var deviceKey = RSA.Create(2048);
+        var deviceReq = new CertificateRequest(Subject, deviceKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        var lookAlike = deviceReq.Create(fakeCa, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddMonths(1),
+                RandomNumberGenerator.GetBytes(16))
+            .CopyWithPrivateKey(deviceKey);
+        Assert.Equal(_rsaCa.SubjectName.Name, lookAlike.IssuerName.Name);
+        return Renew(Subject, lookAlike);
+    }
+
+    [When("the same request is sent again")]
+    public async Task WhenSameAgain()
+    {
+        // Same transaction ID and nonce, as a replay of the captured message would carry.
+        var client = new ScepTestClient(_host.GetTestClient(), "/scep/rsa");
+        _response = await client.Enroll(
+            ScepTestClient.CreateCsr(_clientKey!, Subject, Challenge),
+            _clientSigner!, _ra, _transactionId, _senderNonce).ConfigureAwait(false);
+        await ReadCertRep().ConfigureAwait(false);
+    }
+
+    private async Task Renew(string subject, X509Certificate2 signer)
+    {
+        _newKey = RSA.Create(2048);
+        _clientSigner = signer;
+        var client = new ScepTestClient(_host.GetTestClient(), "/scep/rsa");
+        _response = await client.Enroll(
+            ScepTestClient.CreateCsr(_newKey, subject, challenge: null),
+            signer, _ra, Convert.ToHexString(RandomNumberGenerator.GetBytes(8)), RandomNumberGenerator.GetBytes(16),
+            messageType: "17").ConfigureAwait(false);
+        await ReadCertRep().ConfigureAwait(false);
+        _renewed = _certRep!.Issued;
+    }
+
+    [Then("the renewed certificate has the same subject and a new key")]
+    public void ThenRenewed()
+    {
+        Assert.Equal(_held!.SubjectName.Name, _renewed!.SubjectName.Name);
+        Assert.NotEqual(_held.GetSerialNumberString(), _renewed.GetSerialNumberString());
+        Assert.False(_held.PublicKey.EncodedKeyValue.RawData.AsSpan()
+            .SequenceEqual(_renewed.PublicKey.EncodedKeyValue.RawData));
+    }
+
+    [Then("the previous certificate is revoked")]
+    public async Task ThenPreviousRevoked()
+    {
+        var ca = _host.Services.GetRequiredService<ICertificateAuthority>();
+        var crl = await ca.GetRevocationList("rsa").ConfigureAwait(false);
+        var list = CertificateRevocationListBuilder.Load(crl, out _);
+        Assert.True(list.RemoveEntry(Convert.FromHexString(_held!.GetSerialNumberString())),
+            "The renewed certificate is not on the revocation list.");
+    }
+
     private async Task Enroll(string? challenge, string profile, bool useGet)
     {
         _clientKey = RSA.Create(2048);
@@ -265,6 +359,8 @@ public sealed class ScepServer : IDisposable
     public void Dispose()
     {
         _host?.Dispose();
+        _held?.Dispose();
+        _newKey?.Dispose();
         _clientKey?.Dispose();
         _clientSigner?.Dispose();
         _response?.Dispose();

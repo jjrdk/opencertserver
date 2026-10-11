@@ -20,6 +20,7 @@
         <ProjectReference Include="..\opencertserver.acme.server\opencertserver.acme.server.csproj"/>
         <ProjectReference Include="..\opencertserver.ca.server\opencertserver.ca.server.csproj"/>
         <ProjectReference Include="..\opencertserver.est.server\opencertserver.est.server.csproj"/>
+        <ProjectReference Include="..\opencertserver.scep.server\opencertserver.scep.server.csproj"/>
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens"/>

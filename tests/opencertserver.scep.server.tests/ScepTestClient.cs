@@ -27,14 +27,18 @@ public sealed class ScepTestClient(HttpClient http, string path = "/scep")
         return (response.Content.Headers.ContentType?.MediaType ?? "", cms.Certificates);
     }
 
-    /// <summary>Builds and sends a PKCSReq; returns the HTTP response.</summary>
+    /// <summary>
+    /// Builds and sends a PKCSReq (19) or, signed with the certificate it renews, a
+    /// RenewalReq (17); returns the HTTP response.
+    /// </summary>
     public async Task<HttpResponseMessage> Enroll(
         CertificateRequest csr,
         X509Certificate2 signer,
         X509Certificate2 recipient,
         string transactionId,
         byte[] senderNonce,
-        bool useGet = false)
+        bool useGet = false,
+        string messageType = "19")
     {
         var csrDer = csr.CreateSigningRequest();
         var enveloped = new EnvelopedCms(
@@ -47,7 +51,7 @@ public sealed class ScepTestClient(HttpClient http, string path = "/scep")
         {
             DigestAlgorithm = new System.Security.Cryptography.Oid("2.16.840.1.101.3.4.2.1")
         };
-        cmsSigner.SignedAttributes.Add(Printable(ScepOids.MessageType, "19"));
+        cmsSigner.SignedAttributes.Add(Printable(ScepOids.MessageType, messageType));
         cmsSigner.SignedAttributes.Add(Printable(ScepOids.TransactionId, transactionId));
         cmsSigner.SignedAttributes.Add(Octets(ScepOids.SenderNonce, senderNonce));
         signed.ComputeSignature(cmsSigner);

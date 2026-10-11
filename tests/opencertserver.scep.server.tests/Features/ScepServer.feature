@@ -67,3 +67,57 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
         When a client enrolls asking for basicConstraints CA:TRUE and keyCertSign
         Then the server answers FAILURE with failInfo badRequest
         And no certificate is returned
+
+    Scenario: The server offers renewal
+        Given a certificate server that complies with SCEP (RFC 8894)
+        When a client asks for the CA capabilities
+        Then the capabilities include "Renewal", "SHA-256" and "AES"
+
+    # RFC 8894, 3.3.1.2: a RenewalReq is signed with the certificate it renews. That
+    # certificate is the proof - no challenge password is needed.
+    Scenario: A certificate is renewed with the certificate it replaces
+        Given a certificate server that complies with SCEP (RFC 8894)
+        And a client holding a certificate from the "rsa" profile
+        When the client renews it with a new key
+        Then the server answers SUCCESS
+        And the renewed certificate has the same subject and a new key
+        And the previous certificate is revoked
+
+    # The CA core accepts reenrollingFrom by issuer name alone. A certificate signed by
+    # another key under the same CA name must not pass as proof.
+    Scenario: A renewal signed with a look-alike certificate is refused
+        Given a certificate server that complies with SCEP (RFC 8894)
+        When a client renews with a certificate from a look-alike CA of the same name
+        Then the server answers FAILURE with failInfo badRequest
+        And no certificate is returned
+
+    Scenario: A renewal for another subject is refused
+        Given a certificate server that complies with SCEP (RFC 8894)
+        And a client holding a certificate from the "rsa" profile
+        When the client renews it for the subject "CN=Anderes Geraet, O=entra-vpn"
+        Then the server answers FAILURE with failInfo badRequest
+        And no certificate is returned
+
+    Scenario: A renewal with a revoked certificate is refused
+        Given a certificate server that complies with SCEP (RFC 8894)
+        And a client holding a certificate from the "rsa" profile
+        And that certificate is revoked
+        When the client renews it with a new key
+        Then the server answers FAILURE with failInfo badRequest
+        And no certificate is returned
+
+    # A captured request must not have the CA issue a second time.
+    Scenario: A replayed transaction is refused
+        Given a certificate server that complies with SCEP (RFC 8894)
+        When a client enrolls with the challenge password "geheim" using the "rsa" profile
+        And the same request is sent again
+        Then the server answers FAILURE with failInfo badRequest
+        And no certificate is returned
+
+    # certserver wires SCEP in by default. Until a challenge is configured, the endpoint
+    # publishes its certificates but issues nothing.
+    Scenario: A server without a challenge validator issues nothing
+        Given a certificate server with SCEP but no challenge validator
+        When a client enrolls with the challenge password "geheim" using the "rsa" profile
+        Then the server answers FAILURE with failInfo badRequest
+        And no certificate is returned

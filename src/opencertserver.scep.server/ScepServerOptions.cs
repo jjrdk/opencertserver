@@ -18,4 +18,11 @@ public sealed class ScepServerOptions
     /// The CA profile to issue from when the request does not name one in the path.
     /// </summary>
     public string? DefaultProfile { get; init; }
+
+    /// <summary>
+    /// How long a transaction ID is remembered. Within this window a second PKCSReq or
+    /// RenewalReq with the same transaction ID is refused, so a captured request cannot be
+    /// replayed to have the CA issue again. Defaults to 24 hours.
+    /// </summary>
+    public TimeSpan TransactionIdWindow { get; init; } = TimeSpan.FromHours(24);
 }

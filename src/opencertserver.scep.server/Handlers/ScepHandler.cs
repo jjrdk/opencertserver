@@ -15,18 +15,18 @@ internal static class ScepHandler
     private const string PkiMessage = "application/x-pki-message";
     private const string CaRaCert = "application/x-x509-ca-ra-cert";
 
-    // RFC 8894, 3.5.2. Renewal is not offered yet; a client that sees it would
-    // send RenewalReq, which this probe answers with badRequest.
-    private const string Capabilities = "POSTPKIOperation\nSHA-256\nAES\nSCEPStandard\n";
+    // RFC 8894, 3.5.2.
+    private const string Capabilities = "POSTPKIOperation\nSHA-256\nAES\nSCEPStandard\nRenewal\n";
 
     public static Task<IResult> Get(
         HttpContext context,
         ScepServerOptions options,
         ICertificateAuthority ca,
         IScepChallengeValidator validator,
+        ScepTransactionIds transactions,
         ILoggerFactory loggers,
         CancellationToken cancellationToken) =>
-        Dispatch(context, null, options, ca, validator, loggers, cancellationToken);
+        Dispatch(context, null, options, ca, validator, transactions, loggers, cancellationToken);
 
     public static Task<IResult> GetProfile(
         string profileName,
@@ -34,9 +34,10 @@ internal static class ScepHandler
         ScepServerOptions options,
         ICertificateAuthority ca,
         IScepChallengeValidator validator,
+        ScepTransactionIds transactions,
         ILoggerFactory loggers,
         CancellationToken cancellationToken) =>
-        Dispatch(context, profileName, options, ca, validator, loggers, cancellationToken);
+        Dispatch(context, profileName, options, ca, validator, transactions, loggers, cancellationToken);
 
     private static async Task<IResult> Dispatch(
         HttpContext context,
@@ -44,6 +45,7 @@ internal static class ScepHandler
         ScepServerOptions options,
         ICertificateAuthority ca,
         IScepChallengeValidator validator,
+        ScepTransactionIds transactions,
         ILoggerFactory loggers,
         CancellationToken cancellationToken)
     {
@@ -53,7 +55,7 @@ internal static class ScepHandler
         {
             "GetCACaps" => Results.Text(Capabilities, "text/plain"),
             "GetCACert" => await GetCaCert(profile, options, ca, cancellationToken).ConfigureAwait(false),
-            "PKIOperation" => await PkiOperation(context, profile, options, ca, validator,
+            "PKIOperation" => await PkiOperation(context, profile, options, ca, validator, transactions,
                 loggers.CreateLogger("OpenCertServer.Scep"), cancellationToken).ConfigureAwait(false),
             _ => Results.BadRequest($"Unsupported operation '{operation}'.")
         };
@@ -77,6 +79,7 @@ internal static class ScepHandler
         ScepServerOptions options,
         ICertificateAuthority ca,
         IScepChallengeValidator validator,
+        ScepTransactionIds transactions,
         ILogger logger,
         CancellationToken cancellationToken)
     {
@@ -115,8 +118,18 @@ internal static class ScepHandler
             return Results.BadRequest(ex.Message);
         }
 
-        if (request.MessageType != ScepMessageType.PkcsReq || request.CsrDer is null)
+        if (request.MessageType is not (ScepMessageType.PkcsReq or ScepMessageType.RenewalReq)
+            || request.CsrDer is null)
         {
+            return Failure(request, ScepFailInfo.BadRequest, options);
+        }
+
+        // A transaction ID is accepted once per window: a captured request, replayed,
+        // would otherwise have the CA issue again.
+        if (!transactions.TryClaim(request.TransactionId))
+        {
+            logger.LogWarning("SCEP transaction {TransactionId} refused: transaction ID already used",
+                request.TransactionId);
             return Failure(request, ScepFailInfo.BadRequest, options);
         }
 
@@ -135,13 +148,29 @@ internal static class ScepHandler
             return Failure(request, ScepFailInfo.BadMessageCheck, options);
         }
 
+        X509Certificate2? previous = null;
+        if (request.MessageType == ScepMessageType.RenewalReq)
+        {
+            var refusal = await CheckRenewal(request.SignerCertificate, csr, profile, ca, cancellationToken)
+                .ConfigureAwait(false);
+            if (refusal is not null)
+            {
+                logger.LogInformation("SCEP transaction {TransactionId}: renewal refused: {Reason}",
+                    request.TransactionId, refusal);
+                return Failure(request, ScepFailInfo.BadRequest, options);
+            }
+
+            previous = request.SignerCertificate;
+        }
+
         var challenge = new ScepChallengeContext(
             request.TransactionId,
             ReadChallengePassword(csr),
             csr,
             request.CsrDer,
             profile,
-            request.MessageType);
+            request.MessageType,
+            previous);
 
         var decision = await validator.Validate(challenge, cancellationToken).ConfigureAwait(false);
         if (!decision.Allowed)
@@ -153,8 +182,9 @@ internal static class ScepHandler
             return Failure(request, ScepFailInfo.BadRequest, options);
         }
 
+        // For a renewal the CA supersedes the previous certificate once the new one is issued.
         var response = await ca.SignCertificateRequest(
-                csr, profile, decision.Requestor, cancellationToken: cancellationToken)
+                csr, profile, decision.Requestor, previous, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         if (response is not SignCertificateResponse.Success success)
         {
@@ -170,6 +200,48 @@ internal static class ScepHandler
         return Results.Bytes(
             ScepMessageCodec.EncodeSuccess(request, success.Certificate, options.RaCertificate),
             PkiMessage);
+    }
+
+    /// <summary>
+    /// A RenewalReq is signed with the certificate it renews (RFC 8894, 3.3.1.2). That
+    /// certificate is the proof, so it is checked cryptographically here: it must chain to
+    /// this profile's CA, be valid now, not be revoked, and carry the same subject as the
+    /// request. The CA core compares only the issuer name of <c>reenrollingFrom</c>, which a
+    /// self-signed certificate can imitate. Returns the reason for a refusal, or null.
+    /// </summary>
+    private static async Task<string?> CheckRenewal(
+        X509Certificate2 previous,
+        CertificateRequest csr,
+        string? profile,
+        ICertificateAuthority ca,
+        CancellationToken cancellationToken)
+    {
+        var roots = await ca.GetRootCertificates(profile, cancellationToken).ConfigureAwait(false);
+        using var chain = new X509Chain();
+        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+        chain.ChainPolicy.CustomTrustStore.AddRange(roots);
+        chain.ChainPolicy.ExtraStore.AddRange(roots);
+        // Revocation is checked against this CA's own list below, not over the network.
+        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        if (!chain.Build(previous))
+        {
+            return "the signing certificate is not a valid certificate of this CA: "
+                + string.Join("; ", chain.ChainStatus.Select(s => s.StatusInformation.Trim()));
+        }
+
+        var crl = await ca.GetRevocationList(profile, cancellationToken).ConfigureAwait(false);
+        var revoked = CertificateRevocationListBuilder.Load(crl, out _);
+        if (revoked.RemoveEntry(Convert.FromHexString(previous.GetSerialNumberString())))
+        {
+            return "the signing certificate is revoked";
+        }
+
+        if (!csr.SubjectName.RawData.AsSpan().SequenceEqual(previous.SubjectName.RawData))
+        {
+            return "the request names a different subject than the certificate it renews";
+        }
+
+        return null;
     }
 
     private static IResult Failure(ScepRequest request, ScepFailInfo failInfo, ScepServerOptions options) =>

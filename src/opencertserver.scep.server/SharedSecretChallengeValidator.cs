@@ -22,6 +22,13 @@ public sealed class SharedSecretChallengeValidator : IScepChallengeValidator
     /// <inheritdoc />
     public Task<ScepChallengeResult> Validate(ScepChallengeContext context, CancellationToken cancellationToken)
     {
+        // A renewal proves itself with the previous certificate, which the handler has
+        // verified; RFC 8894 does not require a challenge password for it.
+        if (context.MessageType == ScepMessageType.RenewalReq && context.PreviousCertificate is not null)
+        {
+            return Task.FromResult(ScepChallengeResult.Allow());
+        }
+
         if (context.ChallengePassword is null)
         {
             return Task.FromResult(ScepChallengeResult.Deny("The request carries no challenge password."));
