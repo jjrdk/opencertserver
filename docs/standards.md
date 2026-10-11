@@ -199,9 +199,10 @@ and Apple Secure Element so the ACME server can talk to any of them behind `IAtt
 
 **What OpenCertServer implements:**
 
-* **Directory advertisement.** `meta.challengeTypesWithAdditionalContent` lists `device-attest-01`
-   *only when* at least one trusted root CA is configured. With an empty trust provider the challenge
-   type is not offered, so clients will never attempt attestation against a server that cannot verify it.
+* **Directory advertisement.** `meta.challengeTypesWithAdditionalContent` always includes
+   `device-attest-01` in the directory metadata. The ACME server still gates challenge creation: when
+   `IAttestationTrustProvider.GetTrustedRoots()` is empty, no `device-attest-01` challenge is created
+   for any order even though the type remains advertised to clients.
 * **Validator.** `DeviceAttestChallengeValidator` performs three checks:
    1. **Chain verification (fail-closed)** — if no trust roots are configured the validator returns
       `invalid_attestation` immediately. System trust is **never** used as a fallback. When roots are
