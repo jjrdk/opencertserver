@@ -31,3 +31,16 @@ Feature: Certificate lifecycle management
         And I get a certificate
         And an admin revokes the certificate with a different key
         Then the certificate should be in the CRL
+
+    Scenario Outline: A profile signs requests of either key algorithm
+        When the CA signs a <request key> certificate request with the "<profile>" profile
+        Then the issued certificate carries the key of the request
+        And the issued certificate is signed with the <signature> algorithm
+        And the issued certificate chains to the "<profile>" CA
+
+        Examples:
+          | request key | profile | signature               |
+          | RSA         | rsa     | sha256WithRSAEncryption |
+          | RSA         | ecdsa   | ecdsa-with-SHA256       |
+          | ECDSA       | rsa     | sha256WithRSAEncryption |
+          | ECDSA       | ecdsa   | ecdsa-with-SHA256       |
