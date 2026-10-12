@@ -158,6 +158,43 @@ public sealed class CertificateAuthorityTests : IDisposable
             string.Join(", ", chain.ChainStatus.Select(s => s.StatusInformation.Trim())));
     }
 
+    [Theory]
+    [InlineData("rsa", "rsa")]
+    [InlineData("rsa", "ecdsa")]
+    [InlineData("ecdsa", "rsa")]
+    [InlineData("ecdsa", "ecdsa")]
+    public async Task ProfileSignsRequestsOfEitherKeyAlgorithm(string requestKey, string profileName)
+    {
+        using AsymmetricAlgorithm key = requestKey == "rsa" ? RSA.Create(2048) : ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var req = key switch
+        {
+            RSA rsa => new CertificateRequest("CN=Test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1),
+            ECDsa ecdsa => new CertificateRequest("CN=Test", ecdsa, HashAlgorithmName.SHA256),
+            _ => throw new NotSupportedException()
+        };
+
+        var response = await _authority.SignCertificateRequestPem(
+            req.ToPkcs10Pem(),
+            profileName,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var success = Assert.IsType<SignCertificateResponse.Success>(response);
+        Assert.Equal(req.PublicKey.Oid.Value, success.Certificate.PublicKey.Oid.Value);
+        Assert.Equal(
+            profileName == "rsa" ? "1.2.840.113549.1.1.11" : "1.2.840.10045.4.3.2",
+            success.Certificate.SignatureAlgorithm.Value);
+
+        using var chain = new X509Chain();
+        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        chain.ChainPolicy.VerificationFlags = X509VerificationFlags.IgnoreNotTimeValid;
+        chain.ChainPolicy.CustomTrustStore.AddRange(success.Issuers);
+
+        Assert.True(
+            chain.Build(success.Certificate),
+            string.Join(", ", chain.ChainStatus.Select(s => s.StatusInformation.Trim())));
+    }
+
     [Fact]
     public async Task CsrWithCaTrueIsRejected()
     {
