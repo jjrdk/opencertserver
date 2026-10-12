@@ -171,9 +171,36 @@ checks it before issuing an ACME certificate for a validated domain.
 **Where it lives.** `src/opencertserver.acme.server/Services/CaaValidator.cs` and
 `DefaultAuthorizationFactory.cs` (wired in via `AddAcmeServer` / `ServiceCollectionExtensions.cs`).
 
+**Fail-closed behaviour.** CAA enforcement is **fail-closed by default**.  If
+`AcmeServer:CAAIdentities` is empty or absent, `CaaValidator` **rejects every order** with a
+`caa` error rather than silently skipping the check.  This prevents mis-issuance in deployments
+where an operator believes CAA is enforced but forgot to supply the identity list.
+
+**Explicit opt-out.** Operators who intentionally do not want CAA enforcement (e.g. isolated lab
+deployments or internal-only CAs with no public DNS) must set:
+
+```json
+{
+  "AcmeServer": {
+    "DisableCaaChecks": true
+  }
+}
+```
+
+Setting `DisableCaaChecks` to `true` bypasses all CAA DNS lookups unconditionally.
+**Never set this on a public-facing CA.**
+
+**Configuration summary.**
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `AcmeServer:CAAIdentities` | `string[]` | `null` | Issuer domain names to match against the CAA RRset. Must be set for CAA enforcement to work. |
+| `AcmeServer:DisableCaaChecks` | `bool` | `false` | When `true`, skips all CAA lookups. Required when `CAAIdentities` is not set and you want to issue without CAA. |
+
 **Tests that prove it.** [AcmeFeature.feature](../tests/opencertserver.certserver.tests/Features/AcmeFeature.feature)
 runs issuance against a CAA-enabled domain; [AcmeConformance.feature](../tests/opencertserver.certserver.tests/Features/AcmeConformance.feature)
-asserts the CAA-gated issuance path and the `accounturi` / `validationmethods` restrictions.
+asserts the CAA-gated issuance path; [AcmeCaaEnforcement.feature](../tests/opencertserver.certserver.tests/Features/AcmeCaaEnforcement.feature)
+covers the fail-closed default and the `DisableCaaChecks` opt-out.
 
 ### RST 8657 — CAA `accounturi` / `validationmethods`
 

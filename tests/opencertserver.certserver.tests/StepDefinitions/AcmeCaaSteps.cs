@@ -39,11 +39,13 @@ public sealed class AcmeCaaSteps
         }
     }
 
-    [BeforeScenario("caa-rfc8657")]
+    [BeforeScenario("caa-rfc8657", "caa-enforcement")]
     public void ResetCaaState()
     {
         _scenarioContext.Remove(nameof(CaaState));
     }
+
+    // ── RFC 8657 Given steps ────────────────────────────────────────────────
 
     [Given("a CAA \"issue\" record for \"([^\"]+)\" authorizing \"([^\"]+)\"")]
     public void GivenAuthorizingRecord(string domain, string issuer)
@@ -81,11 +83,45 @@ public sealed class AcmeCaaSteps
         State.ValidationMethod = validationMethod;
     }
 
+    // ── Enforcement Given steps ─────────────────────────────────────────────
+
+    [Given("CAA identities are not configured")]
+    public void GivenCaaIdentitiesNotConfigured()
+    {
+        State.CaaIdentitiesOverride = Array.Empty<string>();
+        State.CaaIdentitiesOverrideSet = true;
+    }
+
+    [Given("the CAA identity is \"(.+)\"")]
+    public void GivenCaaIdentity(string identity)
+    {
+        State.CaaIdentitiesOverride = [identity];
+        State.CaaIdentitiesOverrideSet = true;
+    }
+
+    [Given("CAA checks are explicitly disabled")]
+    public void GivenCaaChecksDisabled()
+    {
+        State.DisableCaaChecks = true;
+    }
+
+    [Given("there are no CAA records in DNS for \"(.+)\"")]
+    public void GivenNoCaaRecordsInDns(string _)
+    {
+        // no-op: the mock returns empty by default for the enforcement When step
+    }
+
+    // ── When steps ──────────────────────────────────────────────────────────
+
     [When("CAA validation runs for \"(.+)\"")]
     public async Task WhenCaaValidationRuns(string domain)
     {
         var identifier = new Identifier { Type = IdentifierType.Dns, Value = domain };
-        var options = Options.Create(new AcmeServerOptions { CAAIdentities = [CaaIdentity] });
+        var options = Options.Create(new AcmeServerOptions
+        {
+            CAAIdentities = [CaaIdentity],
+            DisableCaaChecks = State.DisableCaaChecks
+        });
         var client = Substitute.For<IDnsResolver>();
         client
             .ResolveCaaRecordsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -95,6 +131,28 @@ public sealed class AcmeCaaSteps
             .ValidateAsync(identifier, State.AccountUri, State.ValidationMethod, CancellationToken.None)
             .ConfigureAwait(false);
     }
+
+    [When("CAA validation runs for \"(.+)\" with no records")]
+    public async Task WhenCaaValidationRunsWithNoRecords(string domain)
+    {
+        var identifier = new Identifier { Type = IdentifierType.Dns, Value = domain };
+        var caaIdentities = State.CaaIdentitiesOverrideSet ? State.CaaIdentitiesOverride : [CaaIdentity];
+        var options = Options.Create(new AcmeServerOptions
+        {
+            CAAIdentities = caaIdentities,
+            DisableCaaChecks = State.DisableCaaChecks
+        });
+        var client = Substitute.For<IDnsResolver>();
+        client
+            .ResolveCaaRecordsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<CaaRecord>());
+        var validator = new CaaValidator(NullLogger<CaaValidator>.Instance, client, options);
+        State.Result = await validator
+            .ValidateAsync(identifier, State.AccountUri, State.ValidationMethod, CancellationToken.None)
+            .ConfigureAwait(false);
+    }
+
+    // ── Then steps ──────────────────────────────────────────────────────────
 
     [Then("the CAA validation must authorize issuance")]
     public void ThenCaaValidationAuthorizes()
@@ -126,5 +184,11 @@ public sealed class AcmeCaaSteps
         public string? ValidationMethod { get; set; }
 
         public AcmeError? Result { get; set; }
+
+        public string[]? CaaIdentitiesOverride { get; set; }
+
+        public bool CaaIdentitiesOverrideSet { get; set; }
+
+        public bool DisableCaaChecks { get; set; }
     }
 }
