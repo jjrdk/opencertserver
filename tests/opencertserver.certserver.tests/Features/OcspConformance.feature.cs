@@ -1124,21 +1124,18 @@ They are intentionally written before adding step implementations so they can dr
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="RFC 6960 requires the responder to base status information on sufficiently recent" +
-            " revocation data")]
+        [global::Xunit.FactAttribute(DisplayName="OCSP time values are written in whole seconds")]
         [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 6960 requires the responder to base status information on sufficiently recent" +
-            " revocation data")]
-        public async global::System.Threading.Tasks.Task RFC6960RequiresTheResponderToBaseStatusInformationOnSufficientlyRecentRevocationData()
+        [global::Xunit.TraitAttribute("Description", "OCSP time values are written in whole seconds")]
+        public async global::System.Threading.Tasks.Task OCSPTimeValuesAreWrittenInWholeSeconds()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "26";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 requires the responder to base status information on sufficiently recent" +
-                    " revocation data", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("OCSP time values are written in whole seconds", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Response freshness and time values", null, tagsOfRule);
-#line 144
+#line 148
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1151,10 +1148,47 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 145
+#line 149
+            await testRunner.WhenAsync("the OCSP responder returns a successful basic response", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 150
+            await testRunner.ThenAsync("producedAt, thisUpdate and nextUpdate carry no fractional seconds", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 6960 requires the responder to base status information on sufficiently recent" +
+            " revocation data")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 6960 requires the responder to base status information on sufficiently recent" +
+            " revocation data")]
+        public async global::System.Threading.Tasks.Task RFC6960RequiresTheResponderToBaseStatusInformationOnSufficientlyRecentRevocationData()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "27";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 requires the responder to base status information on sufficiently recent" +
+                    " revocation data", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Response freshness and time values", null, tagsOfRule);
+#line 152
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 153
             await testRunner.WhenAsync("the OCSP responder returns certificate status information", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 146
+#line 154
             await testRunner.ThenAsync("the responder MUST base the response on current revocation information according " +
                         "to local freshness policy", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
@@ -1171,11 +1205,11 @@ They are intentionally written before adding step implementations so they can dr
             string[] tagsOfScenario = new string[] {
                     "custom-ocsp-freshness"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "27";
+            string pickleIndex = "28";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("OCSP responder freshness policy is configurable", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Response freshness and time values", null, tagsOfRule);
-#line 149
+#line 157
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1188,10 +1222,10 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 150
+#line 158
             await testRunner.WhenAsync("the OCSP responder uses a custom freshness window of 2 hours", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 151
+#line 159
             await testRunner.ThenAsync("the SingleResponse nextUpdate MUST be thisUpdate plus 2 hours", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -1207,12 +1241,12 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "28";
+            string pickleIndex = "29";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 requires successful OCSP responses to be signed by an authorized respond" +
                     "er", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Authorized responder and signature verification requirements", null, tagsOfRule);
-#line 155
+#line 163
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1225,10 +1259,10 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 156
+#line 164
             await testRunner.WhenAsync("the OCSP responder returns a successful basic response", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 157
+#line 165
             await testRunner.ThenAsync("the response signature MUST be generated by the issuing CA or by a delegated OCSP" +
                         " signing certificate authorized by that CA", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
@@ -1243,11 +1277,11 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "29";
+            string pickleIndex = "30";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 defines the delegated OCSP responder certificate requirements", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Authorized responder and signature verification requirements", null, tagsOfRule);
-#line 159
+#line 167
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1260,14 +1294,14 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 160
+#line 168
             await testRunner.WhenAsync("a delegated OCSP responder certificate signs the response", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 161
+#line 169
             await testRunner.ThenAsync("the delegated certificate MUST be issued directly by the CA that issued the certi" +
                         "ficate being checked", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 162
+#line 170
             await testRunner.AndAsync("the delegated certificate MUST assert the id-kp-OCSPSigning extended key usage", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -1283,12 +1317,12 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "30";
+            string pickleIndex = "31";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 requires clients to be able to identify the signer from the response and" +
                     " available certificates", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Authorized responder and signature verification requirements", null, tagsOfRule);
-#line 164
+#line 172
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1301,10 +1335,10 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 165
+#line 173
             await testRunner.WhenAsync("the OCSP responder includes certificates in the response", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 166
+#line 174
             await testRunner.ThenAsync("the included certificates MUST be sufficient for a client to build and validate t" +
                         "he authorized responder chain according to responder policy", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
@@ -1319,78 +1353,8 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "31";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 defines the OCSP nonce extension", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP request and response extensions", null, tagsOfRule);
-#line 170
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 171
-            await testRunner.WhenAsync("an OCSP client includes an OCSP nonce extension in the request", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 172
-            await testRunner.ThenAsync("a nonce-supporting OCSP responder SHOULD include a matching nonce extension in th" +
-                        "e corresponding response", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="RFC 6960 allows the archive cutoff extension")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 6960 allows the archive cutoff extension")]
-        public async global::System.Threading.Tasks.Task RFC6960AllowsTheArchiveCutoffExtension()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "32";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 allows the archive cutoff extension", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP request and response extensions", null, tagsOfRule);
-#line 174
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 175
-            await testRunner.WhenAsync("the OCSP responder provides status for certificates beyond the responder\'s normal" +
-                        " retention window", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 176
-            await testRunner.ThenAsync("the OCSP responder MAY include the archiveCutoff response extension", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="RFC 6960 defines the service locator extension")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 6960 defines the service locator extension")]
-        public async global::System.Threading.Tasks.Task RFC6960DefinesTheServiceLocatorExtension()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "33";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 defines the service locator extension", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 defines the OCSP nonce extension", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP request and response extensions", null, tagsOfRule);
 #line 178
@@ -1407,25 +1371,25 @@ They are intentionally written before adding step implementations so they can dr
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 179
-            await testRunner.WhenAsync("an OCSP request includes the serviceLocator extension", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+            await testRunner.WhenAsync("an OCSP client includes an OCSP nonce extension in the request", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 180
-            await testRunner.ThenAsync("a supporting responder MAY use that extension to locate the authoritative respond" +
-                        "er for the requested certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+            await testRunner.ThenAsync("a nonce-supporting OCSP responder SHOULD include a matching nonce extension in th" +
+                        "e corresponding response", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="RFC 6960 defines the preferred signature algorithms extension")]
+        [global::Xunit.FactAttribute(DisplayName="RFC 6960 allows the archive cutoff extension")]
         [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 6960 defines the preferred signature algorithms extension")]
-        public async global::System.Threading.Tasks.Task RFC6960DefinesThePreferredSignatureAlgorithmsExtension()
+        [global::Xunit.TraitAttribute("Description", "RFC 6960 allows the archive cutoff extension")]
+        public async global::System.Threading.Tasks.Task RFC6960AllowsTheArchiveCutoffExtension()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "34";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 defines the preferred signature algorithms extension", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string pickleIndex = "33";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 allows the archive cutoff extension", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP request and response extensions", null, tagsOfRule);
 #line 182
@@ -1442,9 +1406,79 @@ They are intentionally written before adding step implementations so they can dr
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 183
-            await testRunner.WhenAsync("an OCSP request includes the preferred signature algorithms extension", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+            await testRunner.WhenAsync("the OCSP responder provides status for certificates beyond the responder\'s normal" +
+                        " retention window", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 184
+            await testRunner.ThenAsync("the OCSP responder MAY include the archiveCutoff response extension", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 6960 defines the service locator extension")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 6960 defines the service locator extension")]
+        public async global::System.Threading.Tasks.Task RFC6960DefinesTheServiceLocatorExtension()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "34";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 defines the service locator extension", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP request and response extensions", null, tagsOfRule);
+#line 186
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 187
+            await testRunner.WhenAsync("an OCSP request includes the serviceLocator extension", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 188
+            await testRunner.ThenAsync("a supporting responder MAY use that extension to locate the authoritative respond" +
+                        "er for the requested certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 6960 defines the preferred signature algorithms extension")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 6960 defines the preferred signature algorithms extension")]
+        public async global::System.Threading.Tasks.Task RFC6960DefinesThePreferredSignatureAlgorithmsExtension()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "35";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 defines the preferred signature algorithms extension", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP request and response extensions", null, tagsOfRule);
+#line 190
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 191
+            await testRunner.WhenAsync("an OCSP request includes the preferred signature algorithms extension", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 192
             await testRunner.ThenAsync("a supporting responder SHOULD choose a response signature algorithm compatible wi" +
                         "th the client\'s preference list", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
@@ -1461,85 +1495,9 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "35";
+            string pickleIndex = "36";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 requires the responder to preserve status semantics independently for ea" +
                     "ch requested certificate", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP response semantics for multiple requests and unsupported inputs", null, tagsOfRule);
-#line 188
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 189
-            await testRunner.WhenAsync("an OCSP request contains certificates in different states", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 190
-            await testRunner.ThenAsync("each SingleResponse MUST report the correct status for its own CertID independent" +
-                        " of the other requests", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="RFC 6960 requires unsupported response types to be rejected by clients and only b" +
-            "asic responses to be generated here")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 6960 requires unsupported response types to be rejected by clients and only b" +
-            "asic responses to be generated here")]
-        public async global::System.Threading.Tasks.Task RFC6960RequiresUnsupportedResponseTypesToBeRejectedByClientsAndOnlyBasicResponsesToBeGeneratedHere()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "36";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 requires unsupported response types to be rejected by clients and only b" +
-                    "asic responses to be generated here", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP response semantics for multiple requests and unsupported inputs", null, tagsOfRule);
-#line 192
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 193
-            await testRunner.WhenAsync("the OCSP responder returns a successful response", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 194
-            await testRunner.ThenAsync("the responder MUST use the id-pkix-ocsp-basic response type unless another standa" +
-                        "rdized response type is intentionally implemented", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.FactAttribute(DisplayName="RFC 6960 requires an unauthorized response when the server refuses service to the" +
-            " client or target domain")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
-        [global::Xunit.TraitAttribute("Description", "RFC 6960 requires an unauthorized response when the server refuses service to the" +
-            " client or target domain")]
-        public async global::System.Threading.Tasks.Task RFC6960RequiresAnUnauthorizedResponseWhenTheServerRefusesServiceToTheClientOrTargetDomain()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "37";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 requires an unauthorized response when the server refuses service to the" +
-                    " client or target domain", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP response semantics for multiple requests and unsupported inputs", null, tagsOfRule);
 #line 196
@@ -1556,9 +1514,85 @@ They are intentionally written before adding step implementations so they can dr
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 197
-            await testRunner.WhenAsync("responder policy refuses to answer a status request", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+            await testRunner.WhenAsync("an OCSP request contains certificates in different states", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 198
+            await testRunner.ThenAsync("each SingleResponse MUST report the correct status for its own CertID independent" +
+                        " of the other requests", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 6960 requires unsupported response types to be rejected by clients and only b" +
+            "asic responses to be generated here")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 6960 requires unsupported response types to be rejected by clients and only b" +
+            "asic responses to be generated here")]
+        public async global::System.Threading.Tasks.Task RFC6960RequiresUnsupportedResponseTypesToBeRejectedByClientsAndOnlyBasicResponsesToBeGeneratedHere()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "37";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 requires unsupported response types to be rejected by clients and only b" +
+                    "asic responses to be generated here", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP response semantics for multiple requests and unsupported inputs", null, tagsOfRule);
+#line 200
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 201
+            await testRunner.WhenAsync("the OCSP responder returns a successful response", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 202
+            await testRunner.ThenAsync("the responder MUST use the id-pkix-ocsp-basic response type unless another standa" +
+                        "rdized response type is intentionally implemented", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="RFC 6960 requires an unauthorized response when the server refuses service to the" +
+            " client or target domain")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
+        [global::Xunit.TraitAttribute("Description", "RFC 6960 requires an unauthorized response when the server refuses service to the" +
+            " client or target domain")]
+        public async global::System.Threading.Tasks.Task RFC6960RequiresAnUnauthorizedResponseWhenTheServerRefusesServiceToTheClientOrTargetDomain()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "38";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("RFC 6960 requires an unauthorized response when the server refuses service to the" +
+                    " client or target domain", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP response semantics for multiple requests and unsupported inputs", null, tagsOfRule);
+#line 204
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 205
+            await testRunner.WhenAsync("responder policy refuses to answer a status request", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 206
             await testRunner.ThenAsync("the OCSP responder MAY return the OCSP response status \"unauthorized\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }

@@ -141,6 +141,14 @@ They are intentionally written before adding step implementations so they can dr
             Then the SingleResponse MAY include nextUpdate
             And if nextUpdate is present it MUST NOT be earlier than thisUpdate
 
+        # Not an RFC 6960 requirement: whole seconds keep a client that decodes and re-encodes the
+        # response data from changing its bytes (.NET reads some fractional GeneralizedTime values
+        # one tick low, dotnet/runtime#134839 ASN1-GENTIME-1), and they are what most responders
+        # and RFC 5280 do.
+        Scenario: OCSP time values are written in whole seconds
+            When the OCSP responder returns a successful basic response
+            Then producedAt, thisUpdate and nextUpdate carry no fractional seconds
+
         Scenario: RFC 6960 requires the responder to base status information on sufficiently recent revocation data
             When the OCSP responder returns certificate status information
             Then the responder MUST base the response on current revocation information according to local freshness policy

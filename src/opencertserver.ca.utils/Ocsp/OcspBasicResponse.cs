@@ -34,6 +34,9 @@ public class OcspBasicResponse : IAsnValue
         SignatureAlgorithm = signatureAlgorithm;
         Signature = signature;
         Certs = certs == null ? [] : certs.ToArray().AsReadOnly();
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        tbsResponseData.Encode(writer);
+        TbsResponseDataBytes = writer.Encode();
     }
 
     /// <summary>
@@ -42,6 +45,7 @@ public class OcspBasicResponse : IAsnValue
     public OcspBasicResponse(AsnReader reader)
     {
         var sequenceReader = reader.ReadSequence();
+        TbsResponseDataBytes = sequenceReader.PeekEncodedValue().ToArray();
         TbsResponseData = new ResponseData(sequenceReader);
         SignatureAlgorithm = new AlgorithmIdentifier(sequenceReader);
         Signature = sequenceReader.ReadBitString(out _);
@@ -77,6 +81,19 @@ public class OcspBasicResponse : IAsnValue
     /// Gets the response signature bytes.
     /// </summary>
     public byte[] Signature { get; }
+
+    /// <summary>
+    /// Gets the DER encoding of <see cref="TbsResponseData"/> as it was signed: the bytes as
+    /// received when the response was read, the encoding of the given data otherwise.
+    /// </summary>
+    /// <remarks>
+    /// Verify <see cref="Signature"/> over these bytes, not over a re-encoding of
+    /// <see cref="TbsResponseData"/>. Decoding and re-encoding is not byte-exact: .NET reads a
+    /// GeneralizedTime with fractional seconds one tick low for some values
+    /// (<c>.5174610</c> becomes <c>.5174609</c>; dotnet/runtime#134839, ASN1-GENTIME-1), and a
+    /// signature over the re-encoded bytes then fails although the response is genuine.
+    /// </remarks>
+    public byte[] TbsResponseDataBytes { get; }
 
     /// <summary>
     /// Gets the optional certificates included with the response.
