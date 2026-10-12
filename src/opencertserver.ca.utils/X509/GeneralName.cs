@@ -52,7 +52,7 @@ public class GeneralName : IAsnValue
         Type = (GeneralNameType)tag.TagValue;
         Value = tag.TagValue switch
         {
-            0 /*otherName*/ => new AsnString(tag, reader.ReadObjectIdentifier()),
+            0 /*otherName*/ => new OtherName(reader),
             1 /*rfc822Name*/ or 2 /*dnsName*/ or 6 /*uniformResourceIdentifier*/
                 => new AsnString(tag, reader.ReadCharacterString(UniversalTagNumber.IA5String, tag)),
             4 /*directoryName*/ => new X509Name(reader.ReadEncodedValue()),

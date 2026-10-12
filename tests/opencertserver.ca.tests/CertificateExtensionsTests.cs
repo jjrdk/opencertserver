@@ -5,6 +5,7 @@ namespace OpenCertServer.Ca.Tests
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
     using OpenCertServer.Ca.Utils;
+    using Utils.X509Extensions;
     using Xunit;
     public class CertificateExtensionsTests
     {
@@ -99,6 +100,30 @@ namespace OpenCertServer.Ca.Tests
                     .Select(i => serial.Substring(i * 2, 2).ToLowerInvariant()));
 
             Assert.Contains(colonSerial, text);
+        }
+
+        [Fact]
+        public void GetSubjectAlternativeDnsNamesDoesNotThrowWhenSanContainsUserPrincipalNameOtherName()
+        {
+            // Regression test: a SAN with an otherName (UPN) entry, as issued by
+            // Intune/AD CS, previously caused GeneralNames parsing to throw
+            // AsnContentException and abort extraction of all SAN entries.
+            using var key = RSA.Create(2048);
+            var name = new X500DistinguishedName("CN=upn.example.com");
+            var request = new CertificateRequest(name, key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+
+            var san = new SubjectAlternativeNameBuilder();
+            san.AddUserPrincipalName("alice@example.com");
+            san.AddDnsName("upn.example.com");
+            request.CertificateExtensions.Add(san.Build());
+
+            var notBefore = DateTimeOffset.UtcNow.AddMinutes(-5).DateTime;
+            var notAfter = DateTimeOffset.UtcNow.AddYears(1).DateTime;
+            using var cert = request.CreateSelfSigned(notBefore, notAfter);
+
+            var dnsNames = cert.GetSubjectAlternativeDnsNames();
+
+            Assert.Contains("upn.example.com", dnsNames);
         }
     }
 }

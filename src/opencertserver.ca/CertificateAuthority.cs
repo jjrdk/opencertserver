@@ -749,9 +749,15 @@ public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertifi
             var names = new GeneralNames(extension.RawData).Names;
             foreach (var name in names)
             {
-                if (name.Value is AsnString asnString && !string.IsNullOrWhiteSpace(asnString.Value))
+                var sanValue = name.Value switch
                 {
-                    values.Add(asnString.Value);
+                    AsnString asnString => asnString.Value,
+                    OtherName otherName => otherName.StringValue,
+                    _ => null
+                };
+                if (!string.IsNullOrWhiteSpace(sanValue))
+                {
+                    values.Add(sanValue);
                 }
             }
         }

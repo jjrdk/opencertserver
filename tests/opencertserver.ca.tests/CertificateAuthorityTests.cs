@@ -258,6 +258,110 @@ public sealed class CertificateAuthorityTests : IDisposable
     }
 
     [Fact]
+    public async Task AuthenticatedSubjectValidationAcceptsCsrWhenUserPrincipalNameSanMatchesIdentity()
+    {
+        // Regression test: otherName (UPN) SAN entries, as issued by Intune/AD CS,
+        // previously threw AsnContentException while parsing the SAN list and
+        // surfaced as a generic CSR parse failure rather than being validated.
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("CN=Test Leaf", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var sanBuilder = new SubjectAlternativeNameBuilder();
+        sanBuilder.AddUserPrincipalName("alice@example.com");
+        req.CertificateExtensions.Add(sanBuilder.Build());
+
+        var validator = new AuthenticatedSubjectValidation(
+            NullLogger<AuthenticatedSubjectValidation>.Instance,
+            new AuthenticatedSubjectRequestValueConverter());
+
+        var result = await validator.Validate(
+            req,
+            profile: null,
+            requestor: new ClaimsIdentity([
+                new Claim(ClaimTypes.Name, "alice@example.com")
+            ], "test"),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task AuthenticatedSubjectValidationRejectsCsrWhenUserPrincipalNameSanDoesNotMatchIdentity()
+    {
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("CN=Test Leaf", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var sanBuilder = new SubjectAlternativeNameBuilder();
+        sanBuilder.AddUserPrincipalName("bob@example.com");
+        req.CertificateExtensions.Add(sanBuilder.Build());
+
+        var validator = new AuthenticatedSubjectValidation(
+            NullLogger<AuthenticatedSubjectValidation>.Instance,
+            new AuthenticatedSubjectRequestValueConverter());
+
+        var result = await validator.Validate(
+            req,
+            profile: null,
+            requestor: new ClaimsIdentity([
+                new Claim(ClaimTypes.Name, "alice@example.com")
+            ], "test"),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(result);
+        Assert.Contains("bob@example.com", result!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AuthenticatedSubjectValidationAcceptsCsrWithForeignRfc822NameAndMatchingUserPrincipalNameSan()
+    {
+        // Mixed SAN: a foreign rfc822Name (not matching the identity) alongside a
+        // matching UPN otherName should still validate successfully as long as one
+        // SAN entry matches the authenticated identity.
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("CN=Test Leaf", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var sanBuilder = new SubjectAlternativeNameBuilder();
+        sanBuilder.AddEmailAddress("no-reply@other-domain.example");
+        sanBuilder.AddUserPrincipalName("alice@example.com");
+        req.CertificateExtensions.Add(sanBuilder.Build());
+
+        var validator = new AuthenticatedSubjectValidation(
+            NullLogger<AuthenticatedSubjectValidation>.Instance,
+            new AuthenticatedSubjectRequestValueConverter());
+
+        var result = await validator.Validate(
+            req,
+            profile: null,
+            requestor: new ClaimsIdentity([
+                new Claim(ClaimTypes.Name, "alice@example.com")
+            ], "test"),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task AuthenticatedSubjectValidationIsNoOpWhenRequestorHasNoNameClaimAndSanHasUserPrincipalName()
+    {
+        // An authenticated identity with no ClaimTypes.Name claim means subject
+        // binding is not enforced, regardless of SAN content (including otherName).
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("CN=Test Leaf", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var sanBuilder = new SubjectAlternativeNameBuilder();
+        sanBuilder.AddUserPrincipalName("alice@example.com");
+        req.CertificateExtensions.Add(sanBuilder.Build());
+
+        var validator = new AuthenticatedSubjectValidation(
+            NullLogger<AuthenticatedSubjectValidation>.Instance,
+            new AuthenticatedSubjectRequestValueConverter());
+
+        var result = await validator.Validate(
+            req,
+            profile: null,
+            requestor: new ClaimsIdentity([], "test"),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
     public async Task ProfileWithCaExtensionsAllowedCanIssueCaCertificate()
     {
         using var rsa = RSA.Create(3072);
