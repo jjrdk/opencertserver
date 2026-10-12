@@ -8,46 +8,47 @@ using Xunit;
 using OpenCertServer.Ca.Utils.Ca;
 
 [Binding]
-public sealed class CommonToolsSteps : IDisposable
+public sealed class CommonToolsSteps
 {
     private readonly McpServerFixture _fixture;
+    private readonly McpScenarioContext _context;
 
-    public CommonToolsSteps(McpServerFixture fixture)
+    public CommonToolsSteps(McpServerFixture fixture,
+            McpScenarioContext context)
     {
         _fixture = fixture;
-        TestSharedState.Store = _fixture.Store;
+        _context = context;
+        _context.Store = _fixture.Store;
     }
-
-    public void Dispose() => TestSharedState.Clear();
 
     [When("the MCP server attempts to invoke a non-existent tool")]
     public async Task InvokeNonExistentTool()
     {
         var result = await _fixture.InvokeMcpToolAsync("nonexistent_tool_xyz", new { }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
     }
 
     [When("the MCP server lists tool (.+)")]
     public async Task ListTool(string toolName)
     {
         // Ensure tools are initialized (needed by metadata steps in Scenario Outline)
-        if (TestSharedState.Tools == null)
+        if (_context.Tools == null)
         {
-            TestSharedState.Tools = _fixture.ToolDefinitions;
+            _context.Tools = _fixture.ToolDefinitions;
         }
 
         // Strip surrounding quotes that Scenario Outline substitution may add
         toolName = toolName.Trim('"').Trim('\'');
         var result = await _fixture.InvokeMcpToolAsync(toolName, new { }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
     }
 
     [Then("the result MUST succeed")]
     public void ThenResultMustSucceed()
     {
-        var r = TestSharedState.ToolResult;
-        var cert = TestSharedState.SignedCert;
-        var rev = TestSharedState.RevocationStatusResult;
+        var r = _context.ToolResult;
+        var cert = _context.SignedCert;
+        var rev = _context.RevocationStatusResult;
 
         bool ok = (r != null && r.IsSuccess) ||
             (cert != null) ||
@@ -73,8 +74,8 @@ public sealed class CommonToolsSteps : IDisposable
     [Then("the result MUST indicate failure")]
     public void ThenResultMustIndicateFailure()
     {
-        var r = TestSharedState.ToolResult;
-        var cert = TestSharedState.SignedCert;
+        var r = _context.ToolResult;
+        var cert = _context.SignedCert;
 
         // For signing: failure means cert is null (error path)
         // For other tools: failure means ToolResult.IsSuccess == false
@@ -89,7 +90,7 @@ public sealed class CommonToolsSteps : IDisposable
     [Then("the error message MUST mention (.+) is required")]
     public void ThenErrorContainsRequiredKeyword(string keyword)
     {
-        var r = TestSharedState.ToolResult;
+        var r = _context.ToolResult;
         Assert.NotNull(r);
         Assert.False(r.IsSuccess);
         var msg = r.ErrorMessage ?? "";
@@ -114,7 +115,7 @@ public sealed class CommonToolsSteps : IDisposable
     [Then("the error message MUST mention hex encoding")]
     public void ThenErrorContainsHexKeyword()
     {
-        var r = TestSharedState.ToolResult;
+        var r = _context.ToolResult;
         Assert.NotNull(r);
         Assert.False(r.IsSuccess);
         var msg = r.ErrorMessage ?? "";
@@ -125,7 +126,7 @@ public sealed class CommonToolsSteps : IDisposable
     [Then("the error message MUST mention that no certificate with that serial was found")]
     public void ThenErrorContainsSerialNotFound()
     {
-        var r = TestSharedState.ToolResult;
+        var r = _context.ToolResult;
         Assert.NotNull(r);
         Assert.False(r.IsSuccess);
         var msg = r.ErrorMessage ?? "";
@@ -139,7 +140,7 @@ public sealed class CommonToolsSteps : IDisposable
     public async Task ThenRevocationReasonReflects(string expectedReason)
     {
         // If we have a signed cert that was revoked, check inventory
-        var store = TestSharedState.Store!;
+        var store = _context.Store!;
         if (expectedReason == null)
         {
             throw new Exception("expectedReason is null");
@@ -156,7 +157,7 @@ public sealed class CommonToolsSteps : IDisposable
     [Then("the error description contains (.+)")]
     public void ThenErrorContainsKeyword(string keyword)
     {
-        var r = TestSharedState.ToolResult;
+        var r = _context.ToolResult;
         Assert.NotNull(r);
         var msg = r.ErrorMessage ?? "";
         // Strip surrounding quotes that regex capture groups may include
@@ -168,7 +169,7 @@ public sealed class CommonToolsSteps : IDisposable
     [Then("all tools MUST be registered successfully")]
     public void ThenAllToolsRegistered()
     {
-        var tools = TestSharedState.Tools;
+        var tools = _context.Tools;
         Assert.NotNull(tools);
         Assert.True(tools.Count >= 10, $"Expected >=10 tools, got {tools.Count}");
     }
@@ -176,13 +177,13 @@ public sealed class CommonToolsSteps : IDisposable
     [Then("the tool definition MUST exist")]
     public void ThenToolDefinitionExists()
     {
-        Assert.NotNull(TestSharedState.Tools);
+        Assert.NotNull(_context.Tools);
     }
 
     [Then("it MUST have a non-empty name (.+)")]
     public void ThenToolHasNonEmptyName(string expectedName)
     {
-        var tools = TestSharedState.Tools;
+        var tools = _context.Tools;
         Assert.NotNull(tools);
         // Strip surrounding quotes that Scenario Outline substitution may add
         expectedName = expectedName.Trim('"').Trim('\'');
@@ -193,7 +194,7 @@ public sealed class CommonToolsSteps : IDisposable
     [Then("it MUST have a valid JSON Schema input schema")]
     public void ThenToolHasValidSchema()
     {
-        var tools = TestSharedState.Tools;
+        var tools = _context.Tools;
         Assert.NotNull(tools);
         foreach (var (_, def) in tools)
         {
@@ -212,8 +213,8 @@ public sealed class CommonToolsSteps : IDisposable
     [Then("the items list MUST be a valid array")]
     public void ThenItemsListIsValidArray()
     {
-        Assert.NotNull(TestSharedState.ToolResult);
-        Assert.True(TestSharedState.ToolResult.IsSuccess);
+        Assert.NotNull(_context.ToolResult);
+        Assert.True(_context.ToolResult.IsSuccess);
     }
 
     [Then("the CRL bytes MAY be present when includePem is false")]

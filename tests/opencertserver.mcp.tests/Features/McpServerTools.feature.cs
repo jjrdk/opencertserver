@@ -28,9 +28,9 @@ namespace OpenCertServer.Mcp.Tests.Features
         private static string[] featureTags = new string[] {
                 "mcp-server-tools"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "MCP Server Tool Registration", "    The MCP server MUST register and expose the expected set of certificate autho" +
-                "rity tools.\n    Each tool MUST have a unique name, a non-empty description, and " +
-                "a valid JSON Schema input schema.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "MCP Server Tool Registration", "The MCP server MUST register and expose the expected set of certificate authority" +
+                " tools.\nEach tool MUST have a unique name, a non-empty description, and a valid " +
+                "JSON Schema input schema.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
 #line 1 "McpServerTools.feature"
 #line hidden
@@ -149,7 +149,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 7
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -159,13 +159,13 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 8
-        await testRunner.WhenAsync("the MCP server initializes", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server initializes", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 9
-        await testRunner.ThenAsync("all tools MUST be registered successfully", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("all tools MUST be registered successfully", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 10
-        await testRunner.AndAsync("the server MUST report exactly 10 registered tools", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the server MUST report exactly 10 registered tools", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -194,7 +194,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 12
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -204,19 +204,19 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 13
-        await testRunner.WhenAsync(string.Format("the MCP server lists tool \"{0}\"", toolName), ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync(string.Format("the MCP server lists tool \"{0}\"", toolName), ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 14
-        await testRunner.ThenAsync("the tool definition MUST exist", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the tool definition MUST exist", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 15
-        await testRunner.AndAsync(string.Format("it MUST have a non-empty name \"{0}\"", toolName), ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync(string.Format("it MUST have a non-empty name \"{0}\"", toolName), ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 16
-        await testRunner.AndAsync("it MUST have a non-empty description", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("it MUST have a non-empty description", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 17
-        await testRunner.AndAsync("it MUST have a valid JSON Schema input schema", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("it MUST have a valid JSON Schema input schema", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -234,7 +234,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 32
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -244,13 +244,13 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 33
-        await testRunner.WhenAsync("the MCP server attempts to invoke a non-existent tool", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server attempts to invoke a non-existent tool", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 34
-        await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 35
-        await testRunner.AndAsync("the error code MUST be McpErrorCode.ToolNotFound (1001)", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error code MUST be McpErrorCode.ToolNotFound (1001)", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

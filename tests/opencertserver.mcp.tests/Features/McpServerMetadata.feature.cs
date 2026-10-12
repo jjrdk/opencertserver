@@ -28,9 +28,9 @@ namespace OpenCertServer.Mcp.Tests.Features
         private static string[] featureTags = new string[] {
                 "mcp-server-metadata"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "MCP Server Metadata", "    The get_server_metadata tool MUST return a consistent snapshot of CA\n    serv" +
-                "er configuration including profile information, supported cryptographic\n    prim" +
-                "itives, OCSP/CRL URLs, and EST endpoint paths.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "MCP Server Metadata", "The get_server_metadata tool MUST return a consistent snapshot of CA\nserver confi" +
+                "guration including profile information, supported cryptographic\nprimitives, OCSP" +
+                "/CRL URLs, and EST endpoint paths.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
 #line 1 "McpServerMetadata.feature"
 #line hidden
@@ -149,7 +149,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 8
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -159,37 +159,37 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 9
-        await testRunner.WhenAsync("the MCP server invokes \"get_server_metadata\" with no parameters", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_server_metadata\" with no parameters", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 10
-        await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 11
-        await testRunner.AndAsync("the response MUST include a server name", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include a server name", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 12
-        await testRunner.AndAsync("the response MUST include a server version string", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include a server version string", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 13
-        await testRunner.AndAsync("the response MUST include a list of CA profiles", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include a list of CA profiles", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 14
-        await testRunner.AndAsync("the response MUST include OCSP URLs", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include OCSP URLs", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 15
-        await testRunner.AndAsync("the response MUST include CRL URLs", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include CRL URLs", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 16
-        await testRunner.AndAsync("the response MUST include CA Issuers URLs", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include CA Issuers URLs", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 17
-        await testRunner.AndAsync("the response MUST include EST endpoint URLs", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include EST endpoint URLs", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 18
-        await testRunner.AndAsync("the response MUST include supported key types", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include supported key types", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 19
-        await testRunner.AndAsync("the response MUST include supported signature algorithms", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include supported signature algorithms", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -207,7 +207,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 21
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -217,28 +217,28 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 22
-        await testRunner.WhenAsync("the MCP server invokes \"get_server_metadata\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_server_metadata\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 23
-        await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 24
-        await testRunner.AndAsync("each CA profile MUST have a name", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("each CA profile MUST have a name", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 25
-        await testRunner.AndAsync("each CA profile MUST have a certificate chain", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("each CA profile MUST have a certificate chain", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 26
-        await testRunner.AndAsync("each CA profile MUST indicate whether it has a private key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("each CA profile MUST indicate whether it has a private key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 27
-        await testRunner.AndAsync("each CA profile MUST have a certificate validity period in days", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("each CA profile MUST have a certificate validity period in days", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 28
-        await testRunner.AndAsync("each CA profile MUST indicate whether it has an OCSP signing key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("each CA profile MUST indicate whether it has an OCSP signing key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 29
-        await testRunner.AndAsync("each CA profile MUST include the OCSP freshness window as a string", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("each CA profile MUST include the OCSP freshness window as a string", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -256,7 +256,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 31
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -266,16 +266,16 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 32
-        await testRunner.WhenAsync("the MCP server invokes \"get_server_metadata\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_server_metadata\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 33
-        await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 34
-        await testRunner.AndAsync("the supported key types MUST include \"RSA\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the supported key types MUST include \"RSA\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 35
-        await testRunner.AndAsync("the supported key types MUST include \"ECDSA\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the supported key types MUST include \"ECDSA\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -293,7 +293,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 37
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -303,22 +303,22 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 38
-        await testRunner.WhenAsync("the MCP server invokes \"get_server_metadata\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_server_metadata\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 39
-        await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 40
-        await testRunner.AndAsync("the supported signature algorithms MUST include \"SHA256withRSA\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the supported signature algorithms MUST include \"SHA256withRSA\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 41
-        await testRunner.AndAsync("the supported signature algorithms MUST include \"SHA256withECDSA\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the supported signature algorithms MUST include \"SHA256withECDSA\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 42
-        await testRunner.AndAsync("the supported signature algorithms MUST include \"SHA512withRSA\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the supported signature algorithms MUST include \"SHA512withRSA\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 43
-        await testRunner.AndAsync("the supported signature algorithms MUST include \"SHA512withECDSA\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the supported signature algorithms MUST include \"SHA512withECDSA\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -336,7 +336,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 45
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -346,19 +346,19 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 46
-        await testRunner.WhenAsync("the MCP server invokes \"get_server_metadata\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_server_metadata\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 47
-        await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 48
-        await testRunner.AndAsync("the caBundle endpoint MUST start with \"/.well-known/est\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the caBundle endpoint MUST start with \"/.well-known/est\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 49
-        await testRunner.AndAsync("the simpleEnroll endpoint MUST be \"/.well-known/est/simpleenroll\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the simpleEnroll endpoint MUST be \"/.well-known/est/simpleenroll\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 50
-        await testRunner.AndAsync("the simpleReenroll endpoint MUST be \"/.well-known/est/simplereenroll\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the simpleReenroll endpoint MUST be \"/.well-known/est/simplereenroll\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -376,7 +376,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 52
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -386,19 +386,19 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 53
-        await testRunner.WhenAsync("the MCP server invokes \"get_server_metadata\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_server_metadata\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 54
-        await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 55
-        await testRunner.AndAsync("the reported max CSR key size MUST be at least 2048", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the reported max CSR key size MUST be at least 2048", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 56
-        await testRunner.AndAsync("the reported min CSR key size MUST be at least 2048", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the reported min CSR key size MUST be at least 2048", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 57
-        await testRunner.AndAsync("min MUST be less than or equal to max", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("min MUST be less than or equal to max", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
