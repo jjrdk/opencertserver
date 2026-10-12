@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace OpenCertServer.Acme.Server.Extensions;
 
 using Abstractions.RequestServices;
@@ -9,6 +11,7 @@ using Configuration;
 using DnsClientX;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using RequestServices;
 using Services;
 using Stores;
@@ -43,14 +46,23 @@ public static class ServiceCollectionExtensions
             if (httpClient == null)
             {
                 services.AddHttpClient<IValidateHttp01Challenges, ValidateHttp01Challenges>()
+                    .ConfigurePrimaryHttpMessageHandler(SsrfBlockingSocketsHandler.Create)
                     .ConfigureHttpClient(client => client.Timeout = acmeServerOptions.UrlRetrievalTimeout);
             }
             else
             {
                 services.AddTransient<IValidateHttp01Challenges>(sp =>
-                    new ValidateHttp01Challenges(
-                        ConfigureUrlRetrievalClient(httpClient(sp), acmeServerOptions.UrlRetrievalTimeout),
-                        sp.GetRequiredService<ICaaValidator>()));
+                {
+                    var dnsResolver = sp.GetRequiredService<IDnsResolver>();
+                    return new ValidateHttp01Challenges(
+                        ConfigureUrlRetrievalClient(httpClient(sp),
+                            acmeServerOptions.UrlRetrievalTimeout),
+                        new CaaValidator(
+                            NullLogger<CaaValidator>.Instance,
+                            dnsResolver,
+                            sp.GetRequiredService<IOptions<AcmeServerOptions>>()),
+                        dnsResolver);
+                });
             }
 
             static HttpClient ConfigureUrlRetrievalClient(HttpClient client, TimeSpan timeout)
@@ -59,7 +71,11 @@ public static class ServiceCollectionExtensions
                 return client;
             }
 
-            services.AddSingleton<ClientX>(_ => new ClientX(DnsEndpoint.System));
+            services.AddSingleton<ClientX>(sp =>
+            {
+                var opts = sp.GetRequiredService<IOptions<AcmeServerOptions>>();
+                return new ClientX(opts.Value.DnsEndpoint);
+            });
             services.AddScoped<IDnsResolver, DnsClientXResolver>();
             services.AddScoped<ICaaValidator, CaaValidator>();
             services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();

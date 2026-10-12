@@ -80,6 +80,14 @@
             <MessagesResourceName>Features/device-attest-validation.feature.ndjson</MessagesResourceName>
             <FeatureFileResourceName>Features/device-attest-validation.feature</FeatureFileResourceName>
         </ReqnrollFeatureFile>
+        <ReqnrollFeatureFile Update="Features\Http01SsrfProtection.feature">
+            <NormalizedLogicalName>Features/Http01SsrfProtection.feature</NormalizedLogicalName>
+            <NormalizedRelativeDir>Features/</NormalizedRelativeDir>
+            <CodeBehindFile>Features/Http01SsrfProtection.feature.cs</CodeBehindFile>
+            <MessagesFile>obj\Release/net10.0/Features/Http01SsrfProtection.feature.ndjson</MessagesFile>
+            <MessagesResourceName>Features/Http01SsrfProtection.feature.ndjson</MessagesResourceName>
+            <FeatureFileResourceName>Features/Http01SsrfProtection.feature</FeatureFileResourceName>
+        </ReqnrollFeatureFile>
     </ItemGroup>
 
 </Project>
