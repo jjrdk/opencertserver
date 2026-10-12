@@ -1,6 +1,5 @@
 namespace OpenCertServer.Mcp.Tests;
 
-using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Mcp.Tests.Support;
 using Tools;
@@ -44,8 +43,4 @@ public sealed class McpScenarioContext
     public string? RequestedSerialNumber { get; set; }
 
     public string? IssuedSerialNumber { get; set; }
-
-    // Certificates issued in this scenario that need the raw X509Certificate2
-    // (e.g. for OCSP/hash computation) rather than the flattened item.
-    public readonly List<X509Certificate2> IssuedCerts = new();
 }
