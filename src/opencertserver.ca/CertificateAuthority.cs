@@ -9,6 +9,7 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Ca.Utils.X509;
 using Utils.X509Extensions;
 using Utils;
 
@@ -738,30 +739,19 @@ public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertifi
             values.Add(csrCn);
         }
 
-        var san = request.CertificateExtensions.OfType<X509SubjectAlternativeNameExtension>().FirstOrDefault();
-        if (san != null)
+        foreach (var extension in request.CertificateExtensions.OfType<X509Extension>())
         {
-            foreach (var dns in san.EnumerateDnsNames())
+            if (!string.Equals(extension.Oid?.Value, Oids.SubjectAltName, StringComparison.Ordinal))
             {
-                if (!string.IsNullOrWhiteSpace(dns))
-                {
-                    values.Add(dns);
-                }
+                continue;
             }
 
-            foreach (var email in san.EnumerateRfc822Names())
+            var names = new GeneralNames(extension.RawData).Names;
+            foreach (var name in names)
             {
-                if (!string.IsNullOrWhiteSpace(email))
+                if (name.Value is AsnString asnString && !string.IsNullOrWhiteSpace(asnString.Value))
                 {
-                    values.Add(email);
-                }
-            }
-
-            foreach (var uri in san.EnumerateUris())
-            {
-                if (!string.IsNullOrWhiteSpace(uri))
-                {
-                    values.Add(uri);
+                    values.Add(asnString.Value);
                 }
             }
         }
