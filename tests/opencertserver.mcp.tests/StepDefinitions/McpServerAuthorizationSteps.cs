@@ -51,7 +51,7 @@ public sealed class McpServerAuthorizationSteps
         // Issue as an admin so that the serial exists for later revoke attempts,
         // regardless of which caller is active afterward.
         _fixture.UseAuthenticatedAdminCaller();
-        var csr = McpServerFixture.CreateBase64DerCsr();
+        var csr = _fixture.CreateBase64DerCsrForCurrentCaller();
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate failed: {result.ErrorMessage}");
         var cert = (McpCertificateItem)result.Content!;
@@ -105,7 +105,7 @@ public sealed class McpServerAuthorizationSteps
     [When(@"the MCP server invokes ""sign_certificate"" with a valid CSR")]
     public async Task WhenSignValidCsr()
     {
-        var csr = McpServerFixture.CreateBase64DerCsr();
+        var csr = _fixture.CreateBase64DerCsrForCurrentCaller();
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         _context.ToolResult = result;
         if (result.IsSuccess && result.Content is McpCertificateItem cert)

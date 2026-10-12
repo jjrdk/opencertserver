@@ -55,7 +55,7 @@ public sealed class McpServerRevocationSteps
     public async Task GivenACertificateIsIssued()
     {
         // This issues a cert that goes into the scenario context; also stash in _issuedCerts for OCSP
-        var csr = McpServerFixture.CreateBase64DerCsr();
+        var csr = _fixture.CreateBase64DerCsrForCurrentCaller();
         var mcpResult = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         if (mcpResult.IsSuccess)
         {
@@ -75,7 +75,7 @@ public sealed class McpServerRevocationSteps
         _issuedCerts.Add(cert);
 
         // Also add to shared state so common assertions work
-        var csr = McpServerFixture.CreateBase64DerCsr();
+        var csr = _fixture.CreateBase64DerCsrForCurrentCaller();
         var mcpResult = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         if (mcpResult.IsSuccess)
         {

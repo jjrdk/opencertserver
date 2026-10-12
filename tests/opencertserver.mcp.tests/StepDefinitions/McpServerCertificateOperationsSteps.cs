@@ -34,7 +34,7 @@ public sealed class McpServerCertificateOperationsSteps
     [Scope(Tag = "mcp-server-certificate-operations")]
     public async Task GivenACertificateIsIssued()
     {
-        var csr = McpServerFixture.CreateBase64DerCsr();
+        var csr = _fixture.CreateBase64DerCsrForCurrentCaller();
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate failed: {result.ErrorMessage}");
         _context.SignedCert = (McpCertificateItem)result.Content!;
@@ -43,7 +43,7 @@ public sealed class McpServerCertificateOperationsSteps
     [When("the MCP server invokes \"sign_certificate\" with that CSR")]
     public async Task WhenSignCertificate()
     {
-        var csr = McpServerFixture.CreateBase64DerCsr();
+        var csr = _fixture.CreateBase64DerCsrForCurrentCaller();
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate failed: {result.ErrorMessage}");
         _context.SignedCert = (McpCertificateItem)result.Content!;
@@ -52,7 +52,7 @@ public sealed class McpServerCertificateOperationsSteps
     [When("the MCP server invokes \"sign_certificate\" with that CSR and includePem true")]
     public async Task WhenSignCertificateWithPem()
     {
-        var csr = McpServerFixture.CreateBase64DerCsr();
+        var csr = _fixture.CreateBase64DerCsrForCurrentCaller();
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr, includePem = true }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate with PEM failed: {result.ErrorMessage}");
         _context.SignedCert = (McpCertificateItem)result.Content!;
@@ -62,7 +62,7 @@ public sealed class McpServerCertificateOperationsSteps
         "the MCP server invokes \"sign_certificate\" with that CSR, notBefore \"(.+)\", and notAfter \"(.+)\"")]
     public async Task WhenSignCertificateWithDates(string notBeforeStr, string notAfterStr)
     {
-        var csr = McpServerFixture.CreateBase64DerCsr();
+        var csr = _fixture.CreateBase64DerCsrForCurrentCaller();
         var nb = DateTimeOffset.Parse(notBeforeStr);
         var na = DateTimeOffset.Parse(notAfterStr);
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr, notBefore = nb, notAfter = na }).ConfigureAwait(false);

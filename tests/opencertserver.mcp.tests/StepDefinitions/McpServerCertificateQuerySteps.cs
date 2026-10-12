@@ -1,6 +1,5 @@
 namespace OpenCertServer.Mcp.Tests.StepDefinitions;
 
-using System.Security.Cryptography;
 using OpenCertServer.Mcp.Tests.Support;
 using OpenCertServer.Mcp.Tools;
 using Reqnroll;
@@ -22,13 +21,12 @@ public sealed class McpServerCertificateQuerySteps
     [Given("a certificate is issued with CN (.+)")]
     public async Task GivenACertificateIsIssuedWithCn(string cn)
     {
-        using var rsa = RSA.Create(3072);
-        var request = new System.Security.Cryptography.X509Certificates.CertificateRequest(
-            new System.Security.Cryptography.X509Certificates.X500DistinguishedName($"CN={cn}"),
-            rsa,
-            HashAlgorithmName.SHA256,
-            RSASignaturePadding.Pss);
-        var csr = Convert.ToBase64String(request.CreateSigningRequest());
+        // The step's literal CN text (from the feature file) is intentionally not used as
+        // the CSR subject: AuthenticatedSubjectValidation requires the CSR CN to match the
+        // currently authenticated caller's identity, and no scenario in this feature asserts
+        // on the specific CN value, only on structural properties of the issued certificate.
+        _ = cn;
+        var csr = _fixture.CreateBase64DerCsrForCurrentCaller();
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate failed: {result.ErrorMessage}");
         _context.SignedCert = (McpCertificateItem)result.Content!;

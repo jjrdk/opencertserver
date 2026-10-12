@@ -81,10 +81,11 @@ public class ParameterHandlingSteps
     [When("""the MCP server invokes "([^"]*)" with a PEM CSR""")]
     public async Task WhenInvokeWithPemCsr(string toolName)
     {
-        // Generate a test CSR in PEM format
+        // Generate a test CSR in PEM format. The CN must match the currently authenticated
+        // caller's identity, since AuthenticatedSubjectValidation rejects CN/SAN mismatches.
         using var rsa = RSA.Create(2048);
         var request = new CertificateRequest(
-            "CN=Test PEM CSR",
+            $"CN={_fixture.CurrentCallerName ?? "Test PEM CSR"}",
             rsa,
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pkcs1);
@@ -108,10 +109,11 @@ public class ParameterHandlingSteps
     [When("""the MCP server invokes "([^"]*)" with ISO 8601 dates""")]
     public async Task WhenInvokeWithIso8601Dates(string toolName)
     {
-        // Generate a test CSR
+        // Generate a test CSR. The CN must match the currently authenticated caller's
+        // identity, since AuthenticatedSubjectValidation rejects CN/SAN mismatches.
         using var rsa = RSA.Create(2048);
         var request = new CertificateRequest(
-            "CN=Test ISO Dates",
+            $"CN={_fixture.CurrentCallerName ?? "Test ISO Dates"}",
             rsa,
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pkcs1);
