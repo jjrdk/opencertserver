@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Ca;
+﻿using OpenCertServer.Ca.Utils.X509;
+
+namespace OpenCertServer.Ca;
 
 using System;
 using System.Linq;
