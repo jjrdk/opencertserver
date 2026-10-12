@@ -13,10 +13,13 @@ using Xunit;
 public class ParameterHandlingSteps
 {
     private readonly McpServerFixture _fixture;
+    private readonly McpScenarioContext _context;
 
-    public ParameterHandlingSteps(McpServerFixture fixture)
+    public ParameterHandlingSteps(McpServerFixture fixture,
+            McpScenarioContext context)
     {
         _fixture = fixture;
+        _context = context;
     }
 
     [When("""the MCP server invokes "([^"]*)" with parameters:""")]
@@ -31,14 +34,14 @@ public class ParameterHandlingSteps
             // Handle special placeholders
             if (value == "{issued_serial}")
             {
-                value = TestSharedState.IssuedSerialNumber ?? "0000";
+                value = _context.IssuedSerialNumber ?? "0000";
             }
             else if (value.StartsWith('[') && value.EndsWith(']'))
             {
                 // Parse as JSON array — serial numbers are strings, so quote them
                 var arrayValue = value.Replace("{issued_serial}",
                     $"""
-                     "{TestSharedState.IssuedSerialNumber ?? "0000"}"
+                     "{_context.IssuedSerialNumber ?? "0000"}"
                      """);
                 var jsonArray = JsonSerializer.Deserialize<JsonElement>(arrayValue);
                 parameters[key] = jsonArray;
@@ -64,7 +67,7 @@ public class ParameterHandlingSteps
         }
 
         var result = await _fixture.InvokeMcpToolAsync(toolName, parameters).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
     }
 
     [Given("the MCP server is initialized with a test CA")]
@@ -72,8 +75,7 @@ public class ParameterHandlingSteps
     {
         // Fixture is auto-initialized by Reqnroll via dependency injection.
         // This step is a no-op placeholder to satisfy the Background requirement.
-        // Clears any leftover state from previous scenarios.
-        TestSharedState.Clear();
+        // Each scenario gets a fresh McpScenarioContext, so no cleanup is needed here.
     }
 
     [When("""the MCP server invokes "([^"]*)" with a PEM CSR""")]
@@ -96,10 +98,10 @@ public class ParameterHandlingSteps
         };
 
         var result = await _fixture.InvokeMcpToolAsync(toolName, parameters).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
         if (result.IsSuccess && result.Content is McpCertificateItem cert)
         {
-            TestSharedState.SignedCert = cert;
+            _context.SignedCert = cert;
         }
     }
 
@@ -129,10 +131,10 @@ public class ParameterHandlingSteps
         };
 
         var result = await _fixture.InvokeMcpToolAsync(toolName, parameters).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
         if (result.IsSuccess && result.Content is McpCertificateItem cert)
         {
-            TestSharedState.SignedCert = cert;
+            _context.SignedCert = cert;
         }
     }
 
@@ -157,7 +159,7 @@ public class ParameterHandlingSteps
 
         if (result is SignCertificateResponse.Success success)
         {
-            TestSharedState.IssuedSerialNumber = success.Certificate.GetSerialNumberString();
+            _context.IssuedSerialNumber = success.Certificate.GetSerialNumberString();
         }
         else
         {
@@ -168,7 +170,7 @@ public class ParameterHandlingSteps
     [Then("the error message MUST mention {string}")]
     public void ThenTheErrorMessageMUSTMention(string keyword)
     {
-        var r = TestSharedState.ToolResult;
+        var r = _context.ToolResult;
         Assert.NotNull(r);
         Assert.False(r.IsSuccess);
         var msg = r.ErrorMessage ?? "";
