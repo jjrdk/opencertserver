@@ -33,6 +33,13 @@ public sealed class FileCertificatePersistenceEncryptionTests : IDisposable
     private static X509Certificate2 MakeCert()
         => SelfSignedCertificate.MakeWithSubject("test", DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
 
+    private static X509Certificate2 MakeRsaCert()
+    {
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("cn=rsa-test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        return req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(90));
+    }
+
     // ── Constructor guards ─────────────────────────────────────────────────────────
 
     [Fact]
@@ -176,6 +183,33 @@ public sealed class FileCertificatePersistenceEncryptionTests : IDisposable
         var restoredQ = restored.ExportParameters(false).Q;
         Assert.Equal(originalQ.X, restoredQ.X);
         Assert.Equal(originalQ.Y, restoredQ.Y);
+    }
+
+    [Fact]
+    public async Task PersistRouteKeyRoundTripsRsaKeys()
+    {
+        var cert = MakeRsaCert();
+        using var rsa = cert.GetRSAPrivateKey()!;
+        var plainKeyPem = rsa.ExportRSAPrivateKeyPem();
+
+        await _strategy.PersistRouteKey("route.rsa", plainKeyPem, TestContext.Current.CancellationToken);
+
+        var keyPath = Path.Combine(_root, "route.rsa", "keys", "server.key");
+        var storedContent = await File.ReadAllTextAsync(keyPath, TestContext.Current.CancellationToken);
+
+        Assert.Contains("BEGIN ENCRYPTED PRIVATE KEY", storedContent, StringComparison.Ordinal);
+        Assert.Contains("KEYTYPE:RSA", storedContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("BEGIN RSA PRIVATE KEY", storedContent, StringComparison.Ordinal);
+
+        var retrieved = await _strategy.GetPersistedRouteKey("route.rsa", TestContext.Current.CancellationToken);
+        Assert.NotNull(retrieved);
+        Assert.DoesNotContain("ENCRYPTED", retrieved, StringComparison.Ordinal);
+        Assert.Contains("BEGIN RSA PRIVATE KEY", retrieved, StringComparison.Ordinal);
+
+        using var restored = RSA.Create();
+        restored.ImportFromPem(retrieved);
+        Assert.Equal(rsa.ExportParameters(true).Modulus, restored.ExportParameters(true).Modulus);
+        Assert.Equal(rsa.ExportParameters(true).Exponent, restored.ExportParameters(true).Exponent);
     }
 
     [Fact]
