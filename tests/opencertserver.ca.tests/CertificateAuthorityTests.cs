@@ -3,6 +3,7 @@ namespace OpenCertServer.Ca.Tests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -229,6 +230,31 @@ public sealed class CertificateAuthorityTests : IDisposable
         Assert.NotNull(issued.Extensions["2.5.29.37"]);
         // Certificate policies (2.5.29.32) is not in the allowed list — should be absent
         Assert.Null(issued.Extensions["2.5.29.32"]);
+    }
+
+    [Fact]
+    public async Task AuthenticatedSubjectValidationRejectsCsrWhenSanDoesNotMatchIdentity()
+    {
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("CN=Test Leaf", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var sanBuilder = new SubjectAlternativeNameBuilder();
+        sanBuilder.AddDnsName("www.example.com");
+        req.CertificateExtensions.Add(sanBuilder.Build());
+
+        var validator = new AuthenticatedSubjectValidation(
+            NullLogger<AuthenticatedSubjectValidation>.Instance,
+            new AuthenticatedSubjectRequestValueConverter());
+
+        var result = await validator.Validate(
+            req,
+            profile: null,
+            requestor: new ClaimsIdentity([
+                new Claim(ClaimTypes.Name, "alice@example.com")
+            ], "test"),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(result);
+        Assert.Contains("www.example.com", result!, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
