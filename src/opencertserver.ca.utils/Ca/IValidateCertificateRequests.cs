@@ -24,3 +24,20 @@ public interface IValidateCertificateRequests
         X509Certificate2? reenrollingFrom = null,
         CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Converts a CSR into the values that should be checked against the authenticated identity.
+/// Implementations may read the CSR, the caller identity, and optional profile metadata to decide
+/// which values are allowed for the request. Returning null/empty results means the converter does
+/// not impose an identity restriction for this request.
+/// </summary>
+public interface ICertificateRequestValueConverter
+{
+    /// <summary>
+    /// Gets the candidate values embedded in the CSR that should be compared to the authenticated identity.
+    /// </summary>
+    IReadOnlyCollection<string> GetValues(
+        CertificateRequest request,
+        string? profile = null,
+        ClaimsIdentity? requestor = null);
+}
