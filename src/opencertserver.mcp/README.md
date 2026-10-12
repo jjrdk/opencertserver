@@ -22,7 +22,7 @@ F-02). Configuration is read from the `McpServer` options section, which also ac
 | `McpServer:AuthenticationToken` | *(unset)* | Shared secret that authenticates the process's caller. Required when `EnableCaOperations` is `true`; the server refuses to start without it. Never written to logs or returned in tool output. |
 | `McpServer:CallerName` | `mcp-caller` | Friendly identity of the authenticated caller principal. |
 | `McpServer:RevocationRole` | `ca_admin` | Role required to revoke arbitrary certificates. Defaults to `RevocationAuthorizationConstants.CaAdminRole`, matching the HTTP `ca.server` revocation handler. |
-| `McpServer:AllowSelfSignedTestCa` | `false` | Permits the in-memory, self-signed "MCP Test CA" — for development and tests only. When true CA operations are enabled, the server refuses to start unless this is set or a real, access-controlled CA key is configured. |
+| `McpServer:AllowSelfSignedTestCa` | `false` | Permits the in-memory, self-signed "MCP Test CA" — for development and tests only. When CA operations are enabled, the server refuses to start unless this is set or a real, access-controlled CA key is configured. |
 
 The start gate (`McpServerConfiguration.EnsureConfigured` in `McpAuthorization.cs`) runs before the
 host starts and throws if CA operations are enabled without a token, or without an opted-in CA key.
