@@ -1,5 +1,6 @@
 namespace OpenCertServer.Mcp.Tests.Support;
 
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
@@ -11,8 +12,11 @@ using Microsoft.Extensions.Logging;
 using Ca;
 using Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Ca.Server;
 using Ca.Utils.Ocsp;
+using OpenCertServer.Mcp;
 using OpenCertServer.Mcp.Tools;
+using McpServerOptions = OpenCertServer.Mcp.McpServerOptions;
 using ModelContextProtocol.Server;
 using Microsoft.Extensions.Options;
 
@@ -24,11 +28,29 @@ public class McpServerFixture : IDisposable
     public IStoreCertificates Store { get; }
     private readonly List<X509Certificate2> _issuedCerts = new();
 
+    // The fixture configures an authenticated CA-admin caller by default so the existing
+    // sign/revoke scenarios exercise the authorized path. Individual scenarios can switch the
+    // caller via the Use*Caller helpers to exercise the fail-closed (unauthorized) path.
+    private readonly McpServerOptions _mcpOptions;
+    private ClaimsPrincipal _currentCaller;
+
     public McpServerFixture()
     {
         var loggerFactory = LoggerFactory.Create(builder => { });
         var caLogger = loggerFactory.CreateLogger<CertificateAuthority>();
         var store = new InMemoryCertificateStore();
+
+        _mcpOptions = new McpServerOptions
+        {
+            ServerName = "TestMcpServer",
+            ServerVersion = "1.0.0",
+            EnableCaOperations = true,
+            RequireCallerAuthentication = true,
+            AuthenticationToken = "test-mcp-shared-secret",
+            CallerName = "mcp-test-admin",
+            RevocationRole = RevocationAuthorizationConstants.CaAdminRole
+        };
+        _currentCaller = McpServerConfiguration.BuildAuthenticatedCaller(_mcpOptions);
 
         var caConfig = new CaConfiguration(
             new CaProfileSet("rsa",
@@ -52,17 +74,22 @@ public class McpServerFixture : IDisposable
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices((_, services) =>
             {
-                services.Configure<OpenCertServer.Mcp.McpServerOptions>(o =>
-                {
-                    o.ServerName = "TestMcpServer";
-                    o.ServerVersion = "1.0.0";
-                });
+                // Register a single source of truth for MCP options so the authorization
+                // service and the metadata tool read the same, authenticated admin config.
+                services.AddSingleton<IOptions<OpenCertServer.Mcp.McpServerOptions>>(
+                    new OptionsWrapper<OpenCertServer.Mcp.McpServerOptions>(_mcpOptions));
                 services.AddSingleton(caConfig);
                 services.AddSingleton<IStoreCertificates>(store);
                 services.AddSingleton<IStoreCaProfiles>(caConfig.Profiles);
                 services.AddSingleton<ICertificateAuthority>(certAuthority);
                 services.AddSingleton<CertificateAuthority>(certAuthority);
                 services.AddSingleton<IResponderId>(new ResponderIdByKey(RSA.Create(2048).ExportSubjectPublicKeyInfo()));
+
+                // Route CA-mutating tools through the same authorization as the ca.server
+                // layer. The caller principal is passed live in the tool dispatch (see InvokeMcpToolAsync)
+                // so scenarios can switch it between calls; this service enforces the policy.
+                services.AddSingleton<IMcpAuthorization>(sp =>
+                    new DefaultMcpAuthorization(sp.GetRequiredService<IOptions<OpenCertServer.Mcp.McpServerOptions>>().Value));
             })
             .Build();
         _host.Start();
@@ -162,7 +189,12 @@ public class McpServerFixture : IDisposable
                     GetString(dict, "profileName"),
                     GetBoolean(dict, "includeFullChain", false),
                     cancellationToken).ConfigureAwait(false),
+                // Pass the *live* caller principal (not the DI-cached one) so that
+                // scenarios can switch the caller between sign/revoke attempts. The
+                // authorization service still enforces the policy it was built from.
                 "sign_certificate" => await SignCertificateTool.SignCertificate(
+                    services.GetRequiredService<IMcpAuthorization>(),
+                    _currentCaller,
                     services.GetRequiredService<ICertificateAuthority>(),
                     GetString(dict, "csr") ?? string.Empty,
                     GetString(dict, "profileName"),
@@ -171,6 +203,8 @@ public class McpServerFixture : IDisposable
                     GetBoolean(dict, "includePem", false),
                     cancellationToken).ConfigureAwait(false),
                 "revoke_certificate" => await RevokeCertificateTool.RevokeCertificate(
+                    services.GetRequiredService<IMcpAuthorization>(),
+                    _currentCaller,
                     services.GetRequiredService<ICertificateAuthority>(),
                     GetString(dict, "serialNumber") ?? string.Empty,
                     GetString(dict, "reason") ?? "Unspecified",
@@ -388,6 +422,37 @@ public class McpServerFixture : IDisposable
         }
 
         return null;
+    }
+
+    // ---- Caller toggles ----
+
+    /// <summary>
+    /// Switch the authenticated caller back to the default CA-admin principal.
+    /// </summary>
+    public void UseAuthenticatedAdminCaller()
+    {
+        _currentCaller = McpServerConfiguration.BuildAuthenticatedCaller(_mcpOptions);
+    }
+
+    /// <summary>
+    /// Make the caller an unauthenticated (anonymous) principal to exercise the fail-closed path.
+    /// CA-mutating tools MUST refuse an unauthenticated caller.
+    /// </summary>
+    public void UseUnauthenticatedCaller()
+    {
+        _currentCaller = new ClaimsPrincipal();
+    }
+
+    /// <summary>
+    /// Make the caller authenticated but lacking the CA-admin role, to prove that revocation
+    /// of arbitrary certificates requires the role, while signing does not.
+    /// </summary>
+    public void UseAuthenticatedNonAdminCaller()
+    {
+        var identity = new ClaimsIdentity(
+            new[] { new Claim(ClaimTypes.Name, "mcp-test-user") },
+            authenticationType: "McpSharedSecret");
+        _currentCaller = new ClaimsPrincipal(identity);
     }
 
     public void Dispose()

@@ -43,4 +43,12 @@ public sealed class McpScenarioContext
     public string? RequestedSerialNumber { get; set; }
 
     public string? IssuedSerialNumber { get; set; }
+
+    // The fail-closed CA-operation gate
+    // (McpServerConfiguration.EnsureConfigured) is exercised through these fields.
+    public OpenCertServer.Mcp.McpServerOptions? McpConfigurationOptions { get; set; }
+
+    public Exception? McpConfigurationError { get; set; }
+
+    public bool McpConfigurationStartupAllowed { get; set; }
 }

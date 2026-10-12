@@ -467,7 +467,33 @@ Each tool has a unique name, a non-empty description, a JSON Schema input schema
 `src/opencertserver.mcp/Program.cs`. From a client, an MCP host calls the tool by name with a
 JSON-encoded argument node.
 
-**Where it lives.** `src/opencertserver.mcp/Program.cs` and
+**Security for the destructive tools.** `sign_certificate` and `revoke_certificate`
+are the only `Destructive: true` tools and are therefore gated behind an authenticated,
+authorized caller via `IMcpAuthorization`/`DefaultMcpAuthorization`
+(`src/opencertserver.mcp/McpAuthorization.cs`):
+
+* **Fail-closed by default.** `McpServerOptions.EnableCaOperations` defaults to `false`, so the
+  server starts as a read-only MCP and does **not** register `sign_certificate` /
+  `revoke_certificate`. Read-only tools (CRL / OCSP / query / metadata) remain available.
+* **Opt-in CA operations.** Setting `McpServer:EnableCaOperations = true` registers the two
+  destructive tools, but the server refuses to start unless a `McpServer:AuthenticationToken`
+  is configured and a CA key source is opted into. In production that key must be the real,
+  access-controlled CA key; `McpServer:AllowSelfSignedTestCa` (default `false`) is the explicit,
+  loud switch that permits the in-memory self-signed "MCP Test CA", which is for development and
+  tests only. This gating lives in `McpServerConfiguration.EnsureConfigured` and runs before the
+  host starts.
+* **Per-call authorization.** `McpServerOptions.RequireCallerAuthentication` (default `true`)
+  makes every call require an authenticated caller. Signing requires authentication (mirroring
+  `ca.server`'s `RequireAuthenticatedUser`); revoking additionally requires the
+  `McpServer:RevocationRole` — defaulting to `RevocationAuthorizationConstants.CaAdminRole`
+  (`ca_admin`) — matching the HTTP `ca.server` revocation handler, so a co-located caller may not
+  revoke arbitrary certificates. The authenticated caller's `ClaimsIdentity` is passed to
+  `SignCertificateRequest` as the `requestor` (never `null`), so requestor-aware validators can
+  enforce authority. An unauthenticated/under-privileged call is rejected with an `McpException`
+  before any CA mutation.
+
+**Where it lives.** `src/opencertserver.mcp/Program.cs`,
+`src/opencertserver.mcp/McpAuthorization.cs`, and
 `src/opencertserver.mcp/Tools/*.cs` (one file per tool).
 
 **Tests that prove it.**
@@ -484,6 +510,12 @@ JSON-encoded argument node.
    `includePem` flag on `get_crl`).
 * [McpServerParameterHandling.feature](../tests/opencertserver.mcp.tests/Features/McpServerParameterHandling.feature) —
    parameter validation.
+* [McpServerAuthorization.feature](../tests/opencertserver.mcp.tests/Features/McpServerAuthorization.feature) —
+   Fail-closed authorization: an unauthenticated caller is rejected for both `sign_certificate`
+   and `revoke_certificate`; an authenticated caller without the `ca_admin` role may sign but not
+   revoke; an authenticated `ca_admin` may sign and revoke; and the start gate refuses a CA-enabled
+   server that has no token or has not opted into the self-signed test CA.
+
 
 ### OpenTelemetry metrics & traces
 

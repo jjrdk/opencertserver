@@ -1,5 +1,6 @@
 namespace OpenCertServer.Mcp.Tools;
 
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
@@ -12,6 +13,11 @@ using System.Security.Cryptography.X509Certificates;
 ///        notAfter (string, optional) - ISO 8601 date/time
 ///        includePem (bool, optional) - Include PEM cert in response
 /// Output: Signed certificate metadata + optionally PEM
+///
+/// The caller must be authenticated and authorized via
+/// <see cref="IMcpAuthorization"/>. The authenticated caller's identity is passed to
+/// the CA as the requestor so requestor-aware validators can enforce authority,
+/// instead of the previous <c>requestor: null</c> path.
 /// </summary>
 [McpServerToolType]
 public class SignCertificateTool
@@ -19,6 +25,8 @@ public class SignCertificateTool
     [McpServerTool(Name = "sign_certificate", ReadOnly = false, Idempotent = false, Destructive = true)]
     [Description("Sign a Certificate Signing Request (CSR) and return signed certificate metadata.")]
     public static async Task<McpCertificateItem> SignCertificate(
+        IMcpAuthorization authorization,
+        ClaimsPrincipal caller,
         ICertificateAuthority ca,
         [Description("PEM or Base64-encoded Certificate Signing Request")] string csr,
         [Description("CA profile name (optional, uses default if omitted)")] string? profileName = null,
@@ -27,6 +35,9 @@ public class SignCertificateTool
         [Description("Include PEM-encoded cert and chain in response")] bool includePem = false,
         CancellationToken cancellationToken = default)
     {
+        // Fail closed: refuse to issue a certificate to an unauthenticated/unauthorized caller.
+        await authorization.EnsureAuthorizedAsync(McpCaOperation.Sign, caller, cancellationToken).ConfigureAwait(false);
+
         if (string.IsNullOrWhiteSpace(csr))
         {
             throw new McpException("csr is required");
@@ -67,7 +78,7 @@ public class SignCertificateTool
         var result = await ca.SignCertificateRequest(
             request,
             profileName,
-            requestor: null,
+            requestor: caller.Identity as ClaimsIdentity,
             reenrollingFrom: null,
             notBefore,
             notAfter,
