@@ -467,7 +467,7 @@ Each tool has a unique name, a non-empty description, a JSON Schema input schema
 `src/opencertserver.mcp/Program.cs`. From a client, an MCP host calls the tool by name with a
 JSON-encoded argument node.
 
-**Security for the destructive tools (F-02).** `sign_certificate` and `revoke_certificate`
+**Security for the destructive tools.** `sign_certificate` and `revoke_certificate`
 are the only `Destructive: true` tools and are therefore gated behind an authenticated,
 authorized caller via `IMcpAuthorization`/`DefaultMcpAuthorization`
 (`src/opencertserver.mcp/McpAuthorization.cs`):
@@ -511,7 +511,7 @@ authorized caller via `IMcpAuthorization`/`DefaultMcpAuthorization`
 * [McpServerParameterHandling.feature](../tests/opencertserver.mcp.tests/Features/McpServerParameterHandling.feature) —
    parameter validation.
 * [McpServerAuthorization.feature](../tests/opencertserver.mcp.tests/Features/McpServerAuthorization.feature) —
-   F-02 fail-closed authorization: an unauthenticated caller is rejected for both `sign_certificate`
+   Fail-closed authorization: an unauthenticated caller is rejected for both `sign_certificate`
    and `revoke_certificate`; an authenticated caller without the `ca_admin` role may sign but not
    revoke; an authenticated `ca_admin` may sign and revoke; and the start gate refuses a CA-enabled
    server that has no token or has not opted into the self-signed test CA.

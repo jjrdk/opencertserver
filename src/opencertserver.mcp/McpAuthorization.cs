@@ -141,7 +141,7 @@ public enum McpServerConfigurationResult
 /// Fail-closed gate for starting a CA-capable MCP server.
 /// </summary>
 /// <remarks>
-/// Implements the three preconditions of security-review F-02:
+/// Implements the three security measures that prevent a bare invocation from silently starting a forge-capable CA:
 /// <list type="bullet">
 /// <item>CA-mutating tools are off unless <see cref="McpServerOptions.EnableCaOperations"/>.</item>
 /// <item>When enabled, an <see cref="McpServerOptions.AuthenticationToken"/> is required.</item>

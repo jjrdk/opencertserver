@@ -14,7 +14,7 @@ using System.Security.Cryptography.X509Certificates;
 ///        includePem (bool, optional) - Include PEM cert in response
 /// Output: Signed certificate metadata + optionally PEM
 ///
-/// Security (F-02): the caller must be authenticated and authorized via
+/// The caller must be authenticated and authorized via
 /// <see cref="IMcpAuthorization"/>. The authenticated caller's identity is passed to
 /// the CA as the requestor so requestor-aware validators can enforce authority,
 /// instead of the previous <c>requestor: null</c> path.

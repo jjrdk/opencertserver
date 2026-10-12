@@ -30,7 +30,7 @@ public class McpServerOptions
     public bool EnableTelemetry { get; set; } = true;
 
     // ------------------------------------------------------------------
-    // F-02 security controls: the MCP surface exposes the CA's most
+    // The MCP surface exposes the CA's most
     // destructive operations (issuing and revoking certificates). Every
     // one of them is opt-in and fails closed by default.
     // ------------------------------------------------------------------

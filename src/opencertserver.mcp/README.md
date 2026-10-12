@@ -11,9 +11,8 @@ This project hosts the OpenCertServer Model Context Protocol (MCP) server. It ex
 ## Security / configuration
 
 The two destructive tools, `sign_certificate` and `revoke_certificate`, are gated behind an
-authenticated, authorized caller and fail closed by default (see security-review finding
-F-02). Configuration is read from the `McpServer` options section, which also accepts
-`MCP_`-prefixed environment variables (e.g. `MCP_MCPSERVER_EnableCaOperations`).
+authenticated, authorized caller and fail closed by default. Configuration is read from the `McpServer` 
+options section, which also accepts `MCP_`-prefixed environment variables (e.g. `MCP_MCPSERVER_EnableCaOperations`).
 
 | Option | Default | Meaning |
 |---|---|---|

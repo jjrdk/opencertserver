@@ -44,7 +44,7 @@ public sealed class McpScenarioContext
 
     public string? IssuedSerialNumber { get; set; }
 
-    // F-02 authorization-coverage state: the fail-closed CA-operation gate
+    // The fail-closed CA-operation gate
     // (McpServerConfiguration.EnsureConfigured) is exercised through these fields.
     public OpenCertServer.Mcp.McpServerOptions? McpConfigurationOptions { get; set; }
 

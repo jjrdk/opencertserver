@@ -7,7 +7,7 @@ using Reqnroll;
 using Xunit;
 
 /// <summary>
-/// BDD coverage for security-review finding F-02: the CA-mutating MCP tools
+/// BDD coverage for security-review finding the CA-mutating MCP tools
 /// (sign_certificate, revoke_certificate) must require an authenticated, authorized
 /// caller and the CA surface must fail closed by default.
 /// </summary>

@@ -18,7 +18,6 @@ namespace OpenCertServer.Mcp.Tests.Features
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Reqnroll", "3.0.0.0")]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     [global::Xunit.TraitAttribute("Category", "mcp-server-authorization")]
-    [global::Xunit.TraitAttribute("Category", "f-02")]
     public partial class MCPCAOperationAuthorizationFeature : object, Xunit.IClassFixture<MCPCAOperationAuthorizationFeature.FixtureData>, Xunit.IAsyncLifetime
     {
         
@@ -27,14 +26,12 @@ namespace OpenCertServer.Mcp.Tests.Features
         private Xunit.ITestOutputHelper _testOutputHelper;
         
         private static string[] featureTags = new string[] {
-                "mcp-server-authorization",
-                "f-02"};
+                "mcp-server-authorization"};
         
         private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "MCP CA Operation Authorization", @"The MCP server exposes the CA's most destructive operations: signing certificates
-(sign_certificate) and revoking certificates (revoke_certificate). Per security-review
-finding F-02, these MUST require an authenticated, authorized caller and MUST fail closed
-by default. The authorization routes through the same authorization intent as the HTTP
-ca.server layer (authenticated caller for signing; CA-admin role for revocation).", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+(sign_certificate) and revoking certificates (revoke_certificate). These MUST require an authenticated,
+authorized caller and MUST fail closed by default. The authorization routes through the same authorization
+intent as the HTTP ca.server layer (authenticated caller for signing; CA-admin role for revocation).", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
 #line 1 "McpServerAuthorization.feature"
 #line hidden
@@ -152,7 +149,7 @@ ca.server layer (authenticated caller for signing; CA-admin role for revocation)
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("An unauthenticated caller cannot sign a certificate", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Unauthenticated callers are rejected (fail closed)", null, tagsOfRule);
-#line 13
+#line 11
 this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -162,16 +159,16 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 14
+#line 12
     await testRunner.GivenAsync("the MCP server has no authenticated caller", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 15
+#line 13
     await testRunner.WhenAsync("the MCP server invokes \"sign_certificate\" with a valid CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 16
+#line 14
     await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 17
+#line 15
     await testRunner.ThenAsync("the error message MUST indicate the caller is not authorized", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -189,7 +186,7 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("An unauthenticated caller cannot revoke a certificate", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Unauthenticated callers are rejected (fail closed)", null, tagsOfRule);
-#line 19
+#line 17
 this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -199,20 +196,20 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 20
+#line 18
     await testRunner.GivenAsync("a certificate is issued by an admin caller", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 21
+#line 19
     await testRunner.GivenAsync("the MCP server has no authenticated caller", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 22
+#line 20
     await testRunner.WhenAsync("the MCP server invokes \"revoke_certificate\" with an issued certificate\'s serial n" +
                         "umber", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 23
+#line 21
     await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 24
+#line 22
     await testRunner.ThenAsync("the error message MUST indicate the caller is not authorized", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -230,7 +227,7 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("An authenticated caller without the CA-admin role cannot revoke", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Revoking arbitrary certificates requires the CA-admin role", null, tagsOfRule);
-#line 28
+#line 26
 this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -240,20 +237,20 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 29
+#line 27
     await testRunner.GivenAsync("a certificate is issued by an admin caller", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 30
+#line 28
     await testRunner.GivenAsync("the MCP server has an authenticated caller without the CA-admin role", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 31
+#line 29
     await testRunner.WhenAsync("the MCP server invokes \"revoke_certificate\" with an issued certificate\'s serial n" +
                         "umber", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 32
+#line 30
     await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 33
+#line 31
     await testRunner.ThenAsync("the error message MUST mention the CA-admin role", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -271,7 +268,7 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("An authenticated caller without the CA-admin role may still sign", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Revoking arbitrary certificates requires the CA-admin role", null, tagsOfRule);
-#line 35
+#line 33
 this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -281,13 +278,13 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 36
+#line 34
     await testRunner.GivenAsync("the MCP server has an authenticated caller without the CA-admin role", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 37
+#line 35
     await testRunner.WhenAsync("the MCP server invokes \"sign_certificate\" with a valid CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 38
+#line 36
     await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -305,7 +302,7 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("An authenticated CA-admin caller may sign and revoke", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("An authorized caller may perform CA operations", null, tagsOfRule);
-#line 42
+#line 40
 this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -315,17 +312,17 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 43
+#line 41
     await testRunner.GivenAsync("the MCP server has an authenticated CA-admin caller", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 44
+#line 42
     await testRunner.WhenAsync("the MCP server invokes \"sign_certificate\" with a valid CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 45
+#line 43
     await testRunner.WhenAsync("the MCP server invokes \"revoke_certificate\" with an issued certificate\'s serial n" +
                         "umber", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 46
+#line 44
     await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -343,7 +340,7 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("CA operations require an authentication token", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("The CA surface fails closed by default", null, tagsOfRule);
-#line 50
+#line 48
 this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -353,19 +350,19 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 51
+#line 49
     await testRunner.GivenAsync("the MCP server has CA operations enabled", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 52
+#line 50
     await testRunner.GivenAsync("no authentication token is configured", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 53
+#line 51
     await testRunner.WhenAsync("the MCP server configuration is validated", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 54
+#line 52
     await testRunner.ThenAsync("startup MUST be refused", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 55
+#line 53
     await testRunner.ThenAsync("the refusal reason MUST mention the authentication token", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -383,7 +380,7 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("A self-signed test CA requires an explicit opt-in", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("The CA surface fails closed by default", null, tagsOfRule);
-#line 57
+#line 55
 this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -393,22 +390,22 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 58
+#line 56
     await testRunner.GivenAsync("the MCP server has CA operations enabled", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 59
+#line 57
     await testRunner.GivenAsync("an authentication token is configured", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 60
+#line 58
     await testRunner.GivenAsync("the self-signed test CA is not allowed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 61
+#line 59
     await testRunner.WhenAsync("the MCP server configuration is validated", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 62
+#line 60
     await testRunner.ThenAsync("startup MUST be refused", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 63
+#line 61
     await testRunner.ThenAsync("the refusal reason MUST mention an access-controlled CA", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -426,7 +423,7 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("A fully configured CA-enabled server starts", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("The CA surface fails closed by default", null, tagsOfRule);
-#line 65
+#line 63
 this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -436,19 +433,19 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 66
+#line 64
     await testRunner.GivenAsync("the MCP server has CA operations enabled", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 67
+#line 65
     await testRunner.GivenAsync("an authentication token is configured", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 68
+#line 66
     await testRunner.GivenAsync("the self-signed test CA is allowed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 69
+#line 67
     await testRunner.WhenAsync("the MCP server configuration is validated", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 70
+#line 68
     await testRunner.ThenAsync("startup MUST be allowed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }

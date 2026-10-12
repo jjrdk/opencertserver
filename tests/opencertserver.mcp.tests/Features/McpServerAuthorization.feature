@@ -1,12 +1,10 @@
 @mcp-server-authorization
-@f-02
 Feature: MCP CA Operation Authorization
 
 The MCP server exposes the CA's most destructive operations: signing certificates
-(sign_certificate) and revoking certificates (revoke_certificate). Per security-review
-finding F-02, these MUST require an authenticated, authorized caller and MUST fail closed
-by default. The authorization routes through the same authorization intent as the HTTP
-ca.server layer (authenticated caller for signing; CA-admin role for revocation).
+(sign_certificate) and revoking certificates (revoke_certificate). These MUST require an authenticated,
+authorized caller and MUST fail closed by default. The authorization routes through the same authorization
+intent as the HTTP ca.server layer (authenticated caller for signing; CA-admin role for revocation).
 
 Rule: Unauthenticated callers are rejected (fail closed)
 

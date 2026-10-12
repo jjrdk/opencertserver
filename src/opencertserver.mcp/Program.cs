@@ -53,7 +53,7 @@ public static class Program
             .WithTools<CheckOcspStatusTool>()
             .WithTools<GetCrlTool>();
 
-        // F-02: the CA-mutating tools (sign_certificate, revoke_certificate) are opt-in and
+        // The CA-mutating tools (sign_certificate, revoke_certificate) are opt-in and
         // fail closed. When CA operations are enabled we validate the security preconditions
         // (an authenticated caller and a real, access-controlled CA key) before starting, and
         // refuse to start otherwise so a bare invocation can never forge or revoke certificates.

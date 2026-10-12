@@ -28,7 +28,7 @@ public class McpServerFixture : IDisposable
     public IStoreCertificates Store { get; }
     private readonly List<X509Certificate2> _issuedCerts = new();
 
-    // F-02: the fixture configures an authenticated CA-admin caller by default so the existing
+    // The fixture configures an authenticated CA-admin caller by default so the existing
     // sign/revoke scenarios exercise the authorized path. Individual scenarios can switch the
     // caller via the Use*Caller helpers to exercise the fail-closed (unauthorized) path.
     private readonly McpServerOptions _mcpOptions;
@@ -85,7 +85,7 @@ public class McpServerFixture : IDisposable
                 services.AddSingleton<CertificateAuthority>(certAuthority);
                 services.AddSingleton<IResponderId>(new ResponderIdByKey(RSA.Create(2048).ExportSubjectPublicKeyInfo()));
 
-                // F-02: route CA-mutating tools through the same authorization as the ca.server
+                // Route CA-mutating tools through the same authorization as the ca.server
                 // layer. The caller principal is passed live in the tool dispatch (see InvokeMcpToolAsync)
                 // so scenarios can switch it between calls; this service enforces the policy.
                 services.AddSingleton<IMcpAuthorization>(sp =>
@@ -189,7 +189,7 @@ public class McpServerFixture : IDisposable
                     GetString(dict, "profileName"),
                     GetBoolean(dict, "includeFullChain", false),
                     cancellationToken).ConfigureAwait(false),
-                // F-02: pass the *live* caller principal (not the DI-cached one) so that
+                // Pass the *live* caller principal (not the DI-cached one) so that
                 // scenarios can switch the caller between sign/revoke attempts. The
                 // authorization service still enforces the policy it was built from.
                 "sign_certificate" => await SignCertificateTool.SignCertificate(
@@ -424,7 +424,7 @@ public class McpServerFixture : IDisposable
         return null;
     }
 
-    // ---- F-02 caller toggles ----
+    // ---- Caller toggles ----
 
     /// <summary>
     /// Switch the authenticated caller back to the default CA-admin principal.

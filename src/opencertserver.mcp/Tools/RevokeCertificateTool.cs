@@ -9,7 +9,7 @@ using System.Security.Cryptography.X509Certificates;
 /// Input: serialNumber (string, required), reason (string, required, one of: Unspecified, KeyCompromise, CACompromise, AffiliationChanged, Superseded, CessationOfOperation, CertificateHold, RemoveFromCRL, PrivilegeWithdrawn, AACompromise)
 /// Output: Success/failure status with message
 ///
-/// Security (F-02): the caller must be authenticated and must hold the CA-admin role,
+/// The caller must be authenticated and must hold the CA-admin role,
 /// enforced via <see cref="IMcpAuthorization"/>. This mirrors the admin path of the HTTP
 /// <c>ca.server</c> revocation handler, so a co-located caller cannot revoke arbitrary
 /// certificates without authorization.
