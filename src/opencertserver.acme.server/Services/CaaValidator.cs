@@ -98,9 +98,7 @@ public sealed partial class CaaValidator : ICaaValidator
             return new AcmeError
             {
                 Type = "caa",
-                Detail = "CAA checks are enforced but no CAAIdentities are configured. " +
-                         "Set AcmeServer:CAAIdentities to the CA's domain name(s) or set " +
-                         "AcmeServer:DisableCaaChecks to true to explicitly opt out."
+                Detail = "Certificate issuance is not permitted by the CA's CAA policy."
             };
         }
 
