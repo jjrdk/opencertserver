@@ -65,6 +65,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
                 new OwnCertificateValidation(_config.Profiles, NullLogger<OwnCertificateValidation>.Instance),
                 new DistinguishedNameValidation(NullLogger<DistinguishedNameValidation>.Instance),
                 new KeyCrlSignatureValidation(_config.Profiles, NullLogger<KeyCrlSignatureValidation>.Instance),
+                new AuthenticatedSubjectValidation(NullLogger<AuthenticatedSubjectValidation>.Instance),
             ];
     }
 
@@ -698,4 +699,64 @@ public sealed partial class DistinguishedNameValidation : IValidateCertificateRe
 
     [LoggerMessage(LogLevel.Error, "{DistinguishedName} name does not contain a Common Name (CN) attribute")]
     partial void LogDistinguishedNameNameDoesNotContainACommonNameCnAttribute(string distinguishedName);
+}
+
+/// <summary>
+/// Validates that the CSR subject CN matches the authenticated requestor's identity.
+/// A client that is authenticated but has no name claim (e.g. a JWT with only role claims) is allowed through;
+/// subject binding only applies when the identity carries a name claim.
+/// </summary>
+public sealed partial class AuthenticatedSubjectValidation : IValidateCertificateRequests
+{
+    private readonly ILogger _logger;
+
+    public AuthenticatedSubjectValidation(ILogger<AuthenticatedSubjectValidation> logger)
+    {
+        _logger = logger;
+    }
+
+    public Task<string?> Validate(
+        CertificateRequest request,
+        string? profile,
+        ClaimsIdentity? requestor,
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestor == null)
+        {
+            // Anonymous enrollment is controlled by the authorization policy; nothing to bind here.
+            return Task.FromResult<string?>(null);
+        }
+
+        var nameClaim = requestor.FindFirst(ClaimTypes.Name)?.Value;
+        if (nameClaim == null)
+        {
+            // No name claim (e.g., a JWT with only role claims) — cannot enforce subject binding.
+            return Task.FromResult<string?>(null);
+        }
+
+        var csrCn = request.SubjectName
+            .EnumerateRelativeDistinguishedNames()
+            .Where(rdn => rdn.GetSingleElementType().Value == Oids.CommonName)
+            .Select(rdn => rdn.GetSingleElementValue())
+            .FirstOrDefault();
+
+        if (csrCn == null)
+        {
+            // DistinguishedNameValidation will reject a missing CN; nothing to bind here.
+            return Task.FromResult<string?>(null);
+        }
+
+        if (string.Equals(csrCn, nameClaim, StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        LogSubjectMismatch(csrCn, nameClaim);
+        return Task.FromResult<string?>(
+            $"CSR subject CN '{csrCn}' does not match authenticated identity '{nameClaim}'");
+    }
+
+    [LoggerMessage(LogLevel.Warning, "CSR subject CN '{CsrCn}' does not match authenticated identity '{Identity}'")]
+    partial void LogSubjectMismatch(string csrCn, string identity);
 }
