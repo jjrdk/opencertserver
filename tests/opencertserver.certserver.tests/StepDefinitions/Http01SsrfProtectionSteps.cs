@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
-using CertesSlim.Acme;
 using CertesSlim.Acme.Resource;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
@@ -22,8 +21,6 @@ using AcmeOrder = OpenCertServer.Acme.Abstractions.Model.Order;
 [Binding]
 public sealed class Http01SsrfProtectionSteps
 {
-    private readonly ScenarioContext _ctx;
-
     private AcmeAccount _account = null!;
     private AcmeChallenge _challenge = null!;
     private IDnsResolver _dnsResolver = null!;
@@ -32,13 +29,7 @@ public sealed class Http01SsrfProtectionSteps
     private bool _useProductionHandler;
     private (bool IsValid, AcmeError? Error) _result;
 
-    public Http01SsrfProtectionSteps(ScenarioContext ctx)
-    {
-        _ctx = ctx;
-    }
-
-    [BeforeScenario("http01-ssrf")]
-    public void ResetState()
+    public Http01SsrfProtectionSteps()
     {
         _dnsResolver = Substitute.For<IDnsResolver>();
         _caaValidator = Substitute.For<ICaaValidator>();
