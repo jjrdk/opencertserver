@@ -719,13 +719,68 @@ public sealed partial class DistinguishedNameValidation : IValidateCertificateRe
 /// A client that is authenticated but has no name claim (e.g. a JWT with only role claims) is allowed through;
 /// subject binding only applies when the identity carries a name claim.
 /// </summary>
+public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertificateRequestValueConverter
+{
+    public IReadOnlyCollection<string> GetValues(
+        CertificateRequest request,
+        string? profile = null,
+        ClaimsIdentity? requestor = null)
+    {
+        var values = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var csrCn = request.SubjectName
+            .EnumerateRelativeDistinguishedNames()
+            .Where(rdn => rdn.GetSingleElementType().Value == Oids.CommonName)
+            .Select(rdn => rdn.GetSingleElementValue())
+            .FirstOrDefault();
+        if (!string.IsNullOrEmpty(csrCn))
+        {
+            values.Add(csrCn);
+        }
+
+        var san = request.CertificateExtensions.OfType<X509SubjectAlternativeNameExtension>().FirstOrDefault();
+        if (san != null)
+        {
+            foreach (var dns in san.EnumerateDnsNames())
+            {
+                if (!string.IsNullOrWhiteSpace(dns))
+                {
+                    values.Add(dns);
+                }
+            }
+
+            foreach (var email in san.EnumerateRfc822Names())
+            {
+                if (!string.IsNullOrWhiteSpace(email))
+                {
+                    values.Add(email);
+                }
+            }
+
+            foreach (var uri in san.EnumerateUris())
+            {
+                if (!string.IsNullOrWhiteSpace(uri))
+                {
+                    values.Add(uri);
+                }
+            }
+        }
+
+        return values;
+    }
+}
+
 public sealed partial class AuthenticatedSubjectValidation : IValidateCertificateRequests
 {
     private readonly ILogger _logger;
+    private readonly ICertificateRequestValueConverter _requestValueConverter;
 
-    public AuthenticatedSubjectValidation(ILogger<AuthenticatedSubjectValidation> logger)
+    public AuthenticatedSubjectValidation(
+        ILogger<AuthenticatedSubjectValidation> logger,
+        ICertificateRequestValueConverter? requestValueConverter = null)
     {
         _logger = logger;
+        _requestValueConverter = requestValueConverter ?? new AuthenticatedSubjectRequestValueConverter();
     }
 
     public Task<string?> Validate(
@@ -748,28 +803,24 @@ public sealed partial class AuthenticatedSubjectValidation : IValidateCertificat
             return Task.FromResult<string?>(null);
         }
 
-        var csrCn = request.SubjectName
-            .EnumerateRelativeDistinguishedNames()
-            .Where(rdn => rdn.GetSingleElementType().Value == Oids.CommonName)
-            .Select(rdn => rdn.GetSingleElementValue())
-            .FirstOrDefault();
-
-        if (csrCn == null)
-        {
-            // DistinguishedNameValidation will reject a missing CN; nothing to bind here.
-            return Task.FromResult<string?>(null);
-        }
-
-        if (string.Equals(csrCn, nameClaim, StringComparison.OrdinalIgnoreCase))
+        var csrValues = _requestValueConverter.GetValues(request, profile, requestor);
+        if (csrValues.Count == 0)
         {
             return Task.FromResult<string?>(null);
         }
 
-        LogSubjectMismatch(csrCn, nameClaim);
+        var matches = csrValues.Any(value => string.Equals(value, nameClaim, StringComparison.OrdinalIgnoreCase));
+        if (matches)
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        var csrValue = string.Join(", ", csrValues.OrderBy(v => v, StringComparer.OrdinalIgnoreCase));
+        LogSubjectMismatch(csrValue, nameClaim);
         return Task.FromResult<string?>(
-            $"CSR subject CN '{csrCn}' does not match authenticated identity '{nameClaim}'");
+            $"CSR values '{csrValue}' do not match authenticated identity '{nameClaim}'");
     }
 
-    [LoggerMessage(LogLevel.Warning, "CSR subject CN '{CsrCn}' does not match authenticated identity '{Identity}'")]
-    partial void LogSubjectMismatch(string csrCn, string identity);
+    [LoggerMessage(LogLevel.Warning, "CSR values '{CsrValues}' do not match authenticated identity '{Identity}'")]
+    partial void LogSubjectMismatch(string csrValues, string identity);
 }
