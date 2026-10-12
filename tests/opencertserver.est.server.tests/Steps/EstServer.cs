@@ -545,6 +545,30 @@ public class EstServer
         _context["enrolledCertificate"] = cert;
     }
 
+    [When("""^a client authenticated as "(.+?)" requests a (.+?) certificate for the subject "(.+?)"$""")]
+    public async Task WhenAClientAuthenticatedAsRequestsACertificateForTheSubject(
+        string clientSubject,
+        string profile,
+        string requestedSubject)
+    {
+        AsymmetricAlgorithm key = profile.ToLowerInvariant() == "rsa" ? RSA.Create() : ECDsa.Create();
+        var clientCertificate = await GetCertificate(key).ConfigureAwait(false);
+        Assert.Equal(clientSubject, clientCertificate.Subject);
+
+        var request = key switch
+        {
+            RSA rsa => new CertificateRequest(requestedSubject, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss),
+            ECDsa ecDsa => new CertificateRequest(requestedSubject, ecDsa, HashAlgorithmName.SHA256),
+            _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, null)
+        };
+        request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
+
+        var (error, cert) = await SubmitSimpleEnrollAsync(request, profile.ToLowerInvariant(), clientCertificate)
+            .ConfigureAwait(false);
+        _context["errorMessage"] = error;
+        _context["enrolledCertificate"] = cert;
+    }
+
     [Then("the server should return an error message indicating the reason for the failure")]
     public void ThenTheServerShouldReturnAnErrorMessageIndicatingTheReasonForTheFailure()
     {
