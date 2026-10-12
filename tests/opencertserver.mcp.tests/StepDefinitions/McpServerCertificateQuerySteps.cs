@@ -10,10 +10,13 @@ using Xunit;
 public sealed class McpServerCertificateQuerySteps
 {
     private readonly McpServerFixture _fixture;
+    private readonly McpScenarioContext _context;
 
-    public McpServerCertificateQuerySteps(McpServerFixture fixture)
+    public McpServerCertificateQuerySteps(McpServerFixture fixture,
+            McpScenarioContext context)
     {
         _fixture = fixture;
+        _context = context;
     }
 
     [Given("a certificate is issued with CN (.+)")]
@@ -28,18 +31,18 @@ public sealed class McpServerCertificateQuerySteps
         var csr = Convert.ToBase64String(request.CreateSigningRequest());
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate failed: {result.ErrorMessage}");
-        TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
+        _context.SignedCert = (McpCertificateItem)result.Content!;
     }
 
     [When("the MCP server invokes \"list_certificates\" with page (.+) and pageSize (.+)")]
     public async Task WhenListWithPageAndPageSize(int page, int pageSize)
     {
         var result = await _fixture.InvokeMcpToolAsync("list_certificates", new { page, pageSize }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
 
         if (result.IsSuccess)
         {
-            TestSharedState.SearchResult = (McpCertificateSearchResult)result.Content!;
+            _context.SearchResult = (McpCertificateSearchResult)result.Content!;
         }
     }
 
@@ -47,26 +50,26 @@ public sealed class McpServerCertificateQuerySteps
     public async Task WhenSearchWithNoFilters()
     {
         var result = await _fixture.InvokeMcpToolAsync("search_certificates", new { }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
         if (result.IsSuccess)
         {
-            TestSharedState.SearchResult = (McpCertificateSearchResult)result.Content!;
+            _context.SearchResult = (McpCertificateSearchResult)result.Content!;
         }
     }
 
     [When("the MCP server invokes {string} with serialNumber matching the issued cert")]
     public async Task WhenSearchWithSerialNumber(string toolName)
     {
-        if (TestSharedState.SignedCert == null)
+        if (_context.SignedCert == null)
         {
             throw new Exception("No cert in shared state — run the Background step first");
         }
 
-        var result = await _fixture.InvokeMcpToolAsync(toolName, new { serialNumber = TestSharedState.SignedCert.SerialNumber }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        var result = await _fixture.InvokeMcpToolAsync(toolName, new { serialNumber = _context.SignedCert.SerialNumber }).ConfigureAwait(false);
+        _context.ToolResult = result;
         if (result.IsSuccess)
         {
-            TestSharedState.SearchResult = (McpCertificateSearchResult)result.Content!;
+            _context.SearchResult = (McpCertificateSearchResult)result.Content!;
         }
     }
 
@@ -74,17 +77,17 @@ public sealed class McpServerCertificateQuerySteps
     public async Task WhenGetBySerial()
     {
         // The serial is in shared state
-        if (TestSharedState.SignedCert == null)
+        if (_context.SignedCert == null)
         {
             throw new Exception("No signed cert available — run 'Given a certificate is issued' first");
         }
 
-        var serial = TestSharedState.SignedCert.SerialNumber;
+        var serial = _context.SignedCert.SerialNumber;
         var result = await _fixture.InvokeMcpToolAsync("get_certificate", new { serialNumber = serial }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
         if (result.IsSuccess)
         {
-            TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
+            _context.SignedCert = (McpCertificateItem)result.Content!;
         }
     }
 
@@ -92,10 +95,10 @@ public sealed class McpServerCertificateQuerySteps
     public async Task WhenGetBySpecificSerial(string serial)
     {
         var result = await _fixture.InvokeMcpToolAsync("get_certificate", new { serialNumber = serial }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
         if (result.IsSuccess)
         {
-            TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
+            _context.SignedCert = (McpCertificateItem)result.Content!;
         }
     }
 
@@ -103,8 +106,8 @@ public sealed class McpServerCertificateQuerySteps
     public async Task WhenGetWithoutSerial()
     {
         var result = await _fixture.InvokeMcpToolAsync("get_certificate", new { }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
-        TestSharedState.SignedCert = result.IsSuccess
+        _context.ToolResult = result;
+        _context.SignedCert = result.IsSuccess
             ? (McpCertificateItem)result.Content!
             : null;
     }
@@ -113,16 +116,16 @@ public sealed class McpServerCertificateQuerySteps
     public async Task WhenGetCaCertsNoChain()
     {
         var result = await _fixture.InvokeMcpToolAsync("get_ca_certificates", new { includeFullChain = false }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
-        TestSharedState.CaCertsResult = (McpCaCertificatesResult)result.Content!;
+        _context.ToolResult = result;
+        _context.CaCertsResult = (McpCaCertificatesResult)result.Content!;
     }
 
     [When("the MCP server invokes \"get_ca_certificates\" with includeFullChain true")]
     public async Task WhenGetCaCertsWithChain()
     {
         var result = await _fixture.InvokeMcpToolAsync("get_ca_certificates", new { includeFullChain = true }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
-        TestSharedState.CaCertsResult = (McpCaCertificatesResult)result.Content!;
+        _context.ToolResult = result;
+        _context.CaCertsResult = (McpCaCertificatesResult)result.Content!;
     }
 
     [When("the MCP server invokes \"get_ca_certificates\" with profileName \"(.+)\"")]
@@ -130,8 +133,8 @@ public sealed class McpServerCertificateQuerySteps
     {
         var result =
             await _fixture.InvokeMcpToolAsync("get_ca_certificates", new { profileName, includeFullChain = false }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
-        TestSharedState.CaCertsResult = (McpCaCertificatesResult)result.Content!;
+        _context.ToolResult = result;
+        _context.CaCertsResult = (McpCaCertificatesResult)result.Content!;
     }
 
     // ---- Then steps (none overlap with CommonToolsSteps) ----
@@ -139,36 +142,36 @@ public sealed class McpServerCertificateQuerySteps
     [Then("the items list MUST be empty")]
     public void ThenItemsListMustBeEmpty()
     {
-        Assert.NotNull(TestSharedState.SearchResult);
-        Assert.Empty(TestSharedState.SearchResult.Items);
+        Assert.NotNull(_context.SearchResult);
+        Assert.Empty(_context.SearchResult.Items);
     }
 
     [Then("the items list MUST contain exactly (.+) certificate")]
     public void ThenItemsMustContainExactly(int count)
     {
-        Assert.NotNull(TestSharedState.SearchResult);
-        Assert.Equal(count, TestSharedState.SearchResult.Items.Count);
+        Assert.NotNull(_context.SearchResult);
+        Assert.Equal(count, _context.SearchResult.Items.Count);
     }
 
     [Then("the items list MUST contain at most (.+) certificate")]
     public void ThenItemsMustContainAtMost(int count)
     {
-        Assert.NotNull(TestSharedState.SearchResult);
-        Assert.True(TestSharedState.SearchResult.Items.Count <= count);
+        Assert.NotNull(_context.SearchResult);
+        Assert.True(_context.SearchResult.Items.Count <= count);
     }
 
     [Then("the items list MUST contain at least (.+) certificate")]
     public void ThenItemsMustContainAtLeast(int count)
     {
-        Assert.NotNull(TestSharedState.SearchResult);
-        Assert.True(TestSharedState.SearchResult.Items.Count >= count);
+        Assert.NotNull(_context.SearchResult);
+        Assert.True(_context.SearchResult.Items.Count >= count);
     }
 
     [Then("each returned certificate MUST have a non-empty serial number")]
     public void ThenEachItemMustHaveSerial()
     {
-        Assert.NotNull(TestSharedState.SearchResult);
-        foreach (var item in TestSharedState.SearchResult.Items)
+        Assert.NotNull(_context.SearchResult);
+        foreach (var item in _context.SearchResult.Items)
         {
             Assert.NotNull(item.SerialNumber);
             Assert.NotEmpty(item.SerialNumber);
@@ -178,8 +181,8 @@ public sealed class McpServerCertificateQuerySteps
     [Then("each returned certificate MUST have a non-empty subject")]
     public void ThenEachItemMustHaveSubject()
     {
-        Assert.NotNull(TestSharedState.SearchResult);
-        foreach (var item in TestSharedState.SearchResult.Items)
+        Assert.NotNull(_context.SearchResult);
+        foreach (var item in _context.SearchResult.Items)
         {
             Assert.NotNull(item.Subject);
             Assert.NotEmpty(item.Subject);
@@ -189,8 +192,8 @@ public sealed class McpServerCertificateQuerySteps
     [Then("each returned certificate MUST have a non-empty issuer")]
     public void ThenEachItemMustHaveIssuer()
     {
-        Assert.NotNull(TestSharedState.SearchResult);
-        foreach (var item in TestSharedState.SearchResult.Items)
+        Assert.NotNull(_context.SearchResult);
+        foreach (var item in _context.SearchResult.Items)
         {
             Assert.NotNull(item.Issuer);
             Assert.NotEmpty(item.Issuer);
@@ -200,8 +203,8 @@ public sealed class McpServerCertificateQuerySteps
     [Then("each returned certificate MUST have a non-empty thumbprint")]
     public void ThenEachItemMustHaveThumbprint()
     {
-        Assert.NotNull(TestSharedState.SearchResult);
-        foreach (var item in TestSharedState.SearchResult.Items)
+        Assert.NotNull(_context.SearchResult);
+        foreach (var item in _context.SearchResult.Items)
         {
             Assert.NotNull(item.Thumbprint);
             Assert.NotEmpty(item.Thumbprint);
@@ -220,8 +223,8 @@ public sealed class McpServerCertificateQuerySteps
     [Then("each returned certificate MUST have a valid NotBefore timestamp")]
     public void ThenMustHaveValidNotBefore()
     {
-        Assert.NotNull(TestSharedState.SearchResult);
-        foreach (var item in TestSharedState.SearchResult.Items)
+        Assert.NotNull(_context.SearchResult);
+        foreach (var item in _context.SearchResult.Items)
         {
             Assert.True(item.NotBefore != default, "NotBefore is default zero");
         }
@@ -230,8 +233,8 @@ public sealed class McpServerCertificateQuerySteps
     [Then("each returned certificate MUST have a valid NotAfter timestamp")]
     public void ThenMustHaveValidNotAfter()
     {
-        Assert.NotNull(TestSharedState.SearchResult);
-        foreach (var item in TestSharedState.SearchResult.Items)
+        Assert.NotNull(_context.SearchResult);
+        foreach (var item in _context.SearchResult.Items)
         {
             Assert.True(item.NotAfter != default, "NotAfter is default zero");
         }
@@ -240,8 +243,8 @@ public sealed class McpServerCertificateQuerySteps
     [Then("NotBefore must be before NotAfter")]
     public void ThenNotBeforeBeforeNotAfter()
     {
-        Assert.NotNull(TestSharedState.SearchResult);
-        foreach (var item in TestSharedState.SearchResult.Items)
+        Assert.NotNull(_context.SearchResult);
+        foreach (var item in _context.SearchResult.Items)
         {
             Assert.True(item.NotBefore < item.NotAfter);
         }
@@ -250,47 +253,47 @@ public sealed class McpServerCertificateQuerySteps
     [Then("hasNextPage indicates whether there are more pages")]
     public void ThenHasNextPageValid()
     {
-        Assert.NotNull(TestSharedState.SearchResult);
-        _ = TestSharedState.SearchResult.HasNextPage;
+        Assert.NotNull(_context.SearchResult);
+        _ = _context.SearchResult.HasNextPage;
     }
 
     [Then("the returned certificate MUST have a non-empty serial number")]
     public void ThenReturnedCertMustHaveSerial()
     {
-        Assert.NotNull(TestSharedState.SignedCert);
-        Assert.NotEmpty(TestSharedState.SignedCert.SerialNumber);
+        Assert.NotNull(_context.SignedCert);
+        Assert.NotEmpty(_context.SignedCert.SerialNumber);
     }
 
     [Then("the returned certificate subject MUST be present")]
     public void ThenSubjectMustBePresent()
     {
-        Assert.NotNull(TestSharedState.SignedCert);
-        Assert.NotEmpty(TestSharedState.SignedCert.Subject);
+        Assert.NotNull(_context.SignedCert);
+        Assert.NotEmpty(_context.SignedCert.Subject);
     }
 
     [Then("the returned certificate thumbprint MUST be present")]
     public void ThenThumbprintMustBePresent()
     {
-        Assert.NotNull(TestSharedState.SignedCert);
-        Assert.NotEmpty(TestSharedState.SignedCert.Thumbprint);
+        Assert.NotNull(_context.SignedCert);
+        Assert.NotEmpty(_context.SignedCert.Thumbprint);
     }
 
     [Then("the result MUST contain at least (.+) certificate")]
     public void ThenCaCertsMustContainAtLeast(int count)
     {
-        Assert.NotNull(TestSharedState.CaCertsResult);
-        Assert.True(TestSharedState.CaCertsResult.Certificates.Count >= count);
+        Assert.NotNull(_context.CaCertsResult);
+        Assert.True(_context.CaCertsResult.Certificates.Count >= count);
     }
 
     [Then("each CA certificate MUST have a subject, issuer, serial number, and thumbprint")]
     public void ThenEachCaCertMustHaveMetadata()
     {
-        if (TestSharedState.CaCertsResult == null)
+        if (_context.CaCertsResult == null)
         {
             return;
         }
 
-        foreach (var cert in TestSharedState.CaCertsResult.Certificates)
+        foreach (var cert in _context.CaCertsResult.Certificates)
         {
             Assert.NotNull(cert.Subject);
             Assert.NotEmpty(cert.Subject);
@@ -306,16 +309,16 @@ public sealed class McpServerCertificateQuerySteps
     [Then("the certificate count MUST be greater than or equal to 1")]
     public void ThenCertCountMustBeAtLeast1()
     {
-        if (TestSharedState.CaCertsResult != null)
+        if (_context.CaCertsResult != null)
         {
-            Assert.True(TestSharedState.CaCertsResult.Certificates.Count >= 1);
+            Assert.True(_context.CaCertsResult.Certificates.Count >= 1);
         }
     }
 
     [Then("the profiles list MUST include \"(.+)\"")]
     public void ThenProfilesMustIncludeProfile(string name)
     {
-        Assert.NotNull(TestSharedState.CaCertsResult);
-        Assert.Contains(name, TestSharedState.CaCertsResult.Profiles);
+        Assert.NotNull(_context.CaCertsResult);
+        Assert.Contains(name, _context.CaCertsResult.Profiles);
     }
 }

@@ -34,9 +34,9 @@ namespace OpenCertServer.Mcp.Tests.Features
                 "mcp-check-ocsp-status",
                 "mcp-get-revocation-status"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "MCP Revocation Check Tools", "    This feature covers the revocation checking tools: get_crl, check_ocsp_status" +
-                ",\n    and get_revocation_status. These tools allow clients to check the revocati" +
-                "on status\n    of certificates.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "MCP Revocation Check Tools", "This feature covers the revocation checking tools: get_crl, check_ocsp_status,\nan" +
+                "d get_revocation_status. These tools allow clients to check the revocation statu" +
+                "s\nof certificates.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
 #line 1 "McpServerRevocation.feature"
 #line hidden
@@ -155,7 +155,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CRL Retrieval", null, tagsOfRule);
 #line 13
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -165,22 +165,22 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 14
-            await testRunner.WhenAsync("the MCP server invokes \"get_crl\" with default parameters", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_crl\" with default parameters", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 15
-            await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 16
-            await testRunner.AndAsync("the response MUST include a CRL profile name", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include a CRL profile name", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 17
-            await testRunner.AndAsync("the response MUST include a LastUpdate timestamp", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include a LastUpdate timestamp", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 18
-            await testRunner.AndAsync("the response MUST include a NextUpdate timestamp that is after LastUpdate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include a NextUpdate timestamp that is after LastUpdate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 19
-            await testRunner.AndAsync("the CRL bytes MAY be present when includePem is false", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the CRL bytes MAY be present when includePem is false", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -198,7 +198,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CRL Retrieval", null, tagsOfRule);
 #line 21
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -208,13 +208,13 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 22
-            await testRunner.WhenAsync("the MCP server invokes \"get_crl\" with profileName \"rsa\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_crl\" with profileName \"rsa\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 23
-            await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 24
-            await testRunner.AndAsync("the response profile MUST be \"rsa\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response profile MUST be \"rsa\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -232,7 +232,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CRL Retrieval", null, tagsOfRule);
 #line 26
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -242,13 +242,13 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 27
-            await testRunner.WhenAsync("the MCP server invokes \"get_crl\" with includePem true", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_crl\" with includePem true", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 28
-            await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 29
-            await testRunner.AndAsync("the CRL bytes in the response MUST be base64-encoded", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the CRL bytes in the response MUST be base64-encoded", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -266,7 +266,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP Status Check (check_ocsp_status)", null, tagsOfRule);
 #line 33
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -276,23 +276,23 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 34
-            await testRunner.GivenAsync("a certificate is issued", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("a certificate is issued", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 35
-            await testRunner.WhenAsync("the MCP server invokes \"check_ocsp_status\" with the certificate\'s serial number, " +
+    await testRunner.WhenAsync("the MCP server invokes \"check_ocsp_status\" with the certificate\'s serial number, " +
                         "issuer name hash, and issuer key hash", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 36
-            await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 37
-            await testRunner.AndAsync("the status MUST be McpCertificateStatus.Good (1)", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the status MUST be McpCertificateStatus.Good (1)", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 38
-            await testRunner.AndAsync("the response MUST include a ThisUpdate and NextUpdate timestamp", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST include a ThisUpdate and NextUpdate timestamp", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 39
-            await testRunner.AndAsync("the NextUpdate MUST be after ThisUpdate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the NextUpdate MUST be after ThisUpdate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -310,7 +310,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP Status Check (check_ocsp_status)", null, tagsOfRule);
 #line 41
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -320,14 +320,14 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 42
-            await testRunner.WhenAsync("the MCP server invokes \"check_ocsp_status\" with serial number \"00000000\", issuer " +
+    await testRunner.WhenAsync("the MCP server invokes \"check_ocsp_status\" with serial number \"00000000\", issuer " +
                         "name hash \"4141\", and issuer key hash \"4242\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 43
-            await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 44
-            await testRunner.AndAsync("the status MUST be McpCertificateStatus.Unknown (3)", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the status MUST be McpCertificateStatus.Unknown (3)", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -345,7 +345,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP Status Check (check_ocsp_status)", null, tagsOfRule);
 #line 46
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -355,14 +355,14 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 47
-            await testRunner.WhenAsync("the MCP server invokes \"check_ocsp_status\" with serial number \"1234\" but no issue" +
+    await testRunner.WhenAsync("the MCP server invokes \"check_ocsp_status\" with serial number \"1234\" but no issue" +
                         "r hashes", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 48
-            await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 49
-            await testRunner.AndAsync("the error message MUST mention issuerNameHash or issuerKeyHash is required", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error message MUST mention issuerNameHash or issuerKeyHash is required", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -380,7 +380,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("OCSP Status Check (check_ocsp_status)", null, tagsOfRule);
 #line 51
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -390,14 +390,14 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 52
-            await testRunner.WhenAsync("the MCP server invokes \"check_ocsp_status\" with serial number \"1234\", issuer name" +
+    await testRunner.WhenAsync("the MCP server invokes \"check_ocsp_status\" with serial number \"1234\", issuer name" +
                         " hash \"INVALID\", and issuer key hash \"NOPE\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 53
-            await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 54
-            await testRunner.AndAsync("the error message MUST mention hex encoding", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error message MUST mention hex encoding", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -418,7 +418,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Bulk Revocation Status Check (get_revocation_status)", null, tagsOfRule);
 #line 58
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -428,29 +428,29 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 59
-            await testRunner.GivenAsync("a certificate is issued", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("a certificate is issued", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 60
-            await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with an array containing the certi" +
+    await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with an array containing the certi" +
                         "ficate\'s serial number", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 61
-            await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 62
-            await testRunner.AndAsync("the response MUST have a TotalChecks equal to 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response MUST have a TotalChecks equal to 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 63
-            await testRunner.AndAsync("the Checks array MUST contain one entry", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the Checks array MUST contain one entry", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 64
-            await testRunner.AndAsync("the first check result MUST have serial number matching the requested one", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the first check result MUST have serial number matching the requested one", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 65
-            await testRunner.AndAsync("the first check result MUST have status Good", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the first check result MUST have status Good", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 66
-            await testRunner.AndAsync("the first check result MUST have FoundInStore equal to true", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the first check result MUST have FoundInStore equal to true", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -468,7 +468,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Bulk Revocation Status Check (get_revocation_status)", null, tagsOfRule);
 #line 68
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -478,20 +478,20 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 69
-            await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with serial number \"00000000000000" +
+    await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with serial number \"00000000000000" +
                         "00000000000000000000000000\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 70
-            await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 71
-            await testRunner.AndAsync("the Checks array MUST contain one entry", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the Checks array MUST contain one entry", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 72
-            await testRunner.AndAsync("the status MUST be McpCertificateStatus.Unknown (3)", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the status MUST be McpCertificateStatus.Unknown (3)", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 73
-            await testRunner.AndAsync("FoundInStore MUST be false", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("FoundInStore MUST be false", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -509,7 +509,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Bulk Revocation Status Check (get_revocation_status)", null, tagsOfRule);
 #line 75
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -519,13 +519,13 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 76
-            await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with an empty serialNumbers array", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with an empty serialNumbers array", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 77
-            await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 78
-            await testRunner.AndAsync("the error message MUST mention serialNumbers array is required", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error message MUST mention serialNumbers array is required", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -543,7 +543,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Bulk Revocation Status Check (get_revocation_status)", null, tagsOfRule);
 #line 80
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -553,26 +553,26 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 81
-            await testRunner.GivenAsync("a certificate is issued", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("a certificate is issued", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 82
-            await testRunner.AndAsync("another certificate is issued and then revoked", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("another certificate is issued and then revoked", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 83
-            await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with both certificates\' serial num" +
+    await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with both certificates\' serial num" +
                         "bers", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 84
-            await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 85
-            await testRunner.AndAsync("the Checks array MUST contain at least 2 entries", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the Checks array MUST contain at least 2 entries", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 86
-            await testRunner.AndAsync("at least one result MUST have status Good", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("at least one result MUST have status Good", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 87
-            await testRunner.AndAsync("at least one result MUST have status Revoked (2)", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("at least one result MUST have status Revoked (2)", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -590,7 +590,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Bulk Revocation Status Check (get_revocation_status)", null, tagsOfRule);
 #line 89
-        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -600,17 +600,17 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 90
-            await testRunner.GivenAsync("a certificate is issued", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("a certificate is issued", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 91
-            await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with serial numbers and profileNam" +
+    await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with serial numbers and profileNam" +
                         "e \"rsa\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 92
-            await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 93
-            await testRunner.AndAsync("the response profile MUST be \"rsa\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the response profile MUST be \"rsa\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
