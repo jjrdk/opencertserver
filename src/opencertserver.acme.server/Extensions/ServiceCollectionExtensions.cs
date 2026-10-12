@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace OpenCertServer.Acme.Server.Extensions;
 
 using Abstractions.RequestServices;
@@ -50,9 +52,17 @@ public static class ServiceCollectionExtensions
             else
             {
                 services.AddTransient<IValidateHttp01Challenges>(sp =>
-                    new ValidateHttp01Challenges(
-                        ConfigureUrlRetrievalClient(httpClient(sp), acmeServerOptions.UrlRetrievalTimeout),
-                        sp.GetRequiredService<ICaaValidator>()));
+                {
+                    var dnsResolver = sp.GetRequiredService<IDnsResolver>();
+                    return new ValidateHttp01Challenges(
+                        ConfigureUrlRetrievalClient(httpClient(sp),
+                            acmeServerOptions.UrlRetrievalTimeout),
+                        new CaaValidator(
+                            NullLogger<CaaValidator>.Instance,
+                            dnsResolver,
+                            sp.GetRequiredService<IOptions<AcmeServerOptions>>()),
+                        dnsResolver);
+                });
             }
 
             static HttpClient ConfigureUrlRetrievalClient(HttpClient client, TimeSpan timeout)
