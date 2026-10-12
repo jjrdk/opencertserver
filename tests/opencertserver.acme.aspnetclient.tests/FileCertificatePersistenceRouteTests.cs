@@ -21,7 +21,7 @@ public sealed class FileCertificatePersistenceRouteTests : IDisposable
 
     public FileCertificatePersistenceRouteTests()
     {
-        _strategy = new FileCertificatePersistenceStrategy(_root);
+        _strategy = new FileCertificatePersistenceStrategy(_root, "test-password-123!");
     }
 
     public void Dispose()

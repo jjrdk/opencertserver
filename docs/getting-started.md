@@ -256,7 +256,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpClient();   // the ACME client factory needs an HttpClient
 
 builder.Services.AddAcmeClient(options)
-      .AddAcmeFileCertificatePersistence("acme-certificates")   // survives restarts
+      .AddAcmeFileCertificatePersistence("acme-certificates")   // password resolved from AccountPassword
       .AddAcmeFileChallengePersistence("acme-challenges");
 
 var app = builder.Build();
@@ -291,7 +291,7 @@ var options = new LetsEncryptOptions
 };
 
 builder.Services.AddAcmeClient(options, myDnsProviderFactory)   // Cloudflare / Route53 / Azure DNS / your own
-        .AddAcmeFileCertificatePersistence("acme-certificates");
+        .AddAcmeFileCertificatePersistence("acme-certificates");  // password resolved from AccountPassword
 ```
 
 The provider implements `IDnsChallengeProvider` (`PlaceChallengesAsync` writes the TXT records
@@ -305,6 +305,17 @@ Persistence strategies are pluggable: `AddAcmeFileCertificatePersistence` /
 `AddAcmeChallengePersistence(...)` with your own delegates. `AddAcmeCertificateStorePersistence`
 stores the leaf **with** its private key in the OS X.509 store.
 
+> **Security note (file persistence):** `AddAcmeFileCertificatePersistence` encrypts all private-key
+> material on disk using AES-256-CBC via PBKDF2-SHA256 (600 000 iterations). It derives the
+> encryption key from `AcmeOptions.AccountPassword`, which must be a non-empty secret. If you
+> supply an empty password the service will refuse to start. To supply the password explicitly
+> (without relying on `AccountPassword`) use the overload:
+> ```csharp
+> .AddAcmeFileCertificatePersistence(password: myVaultSecret, "acme-certificates")
+> ```
+> If you upgrade from an older build that stored keys in cleartext, delete the persisted certificate
+> directory and let the renewal service re-issue on next startup.
+
 ### ACME client per YARP route
 
 `opencertserver.acme.yarp` provisions one ACME certificate per YARP `RouteConfig` on a single HTTPS
@@ -314,7 +325,7 @@ listener, with SNI selecting the right leaf and each route renewed independently
 
 ```csharp
 builder.Services.AddAcmeClient(options)
-      .AddAcmeFileCertificatePersistence("acme-certificates")
+      .AddAcmeFileCertificatePersistence("acme-certificates")   // password resolved from AccountPassword
       .AddAcmeFileChallengePersistence("acme-challenges");
 
 builder.Services.AddAcmeProxy()

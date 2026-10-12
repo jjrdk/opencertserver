@@ -18,7 +18,7 @@ public sealed class FileCertificatePersistence : IDisposable
     public FileCertificatePersistence()
     {
         _testFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Strategy = new FileCertificatePersistenceStrategy(_testFolder);
+        Strategy = new FileCertificatePersistenceStrategy(_testFolder, "test-password-123!");
     }
 
     public void Dispose()
