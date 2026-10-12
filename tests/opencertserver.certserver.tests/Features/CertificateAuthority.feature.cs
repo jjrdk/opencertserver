@@ -117,7 +117,7 @@ namespace OpenCertServer.CertServer.Tests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CertificateAuthority.feature.ndjson", 7);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CertificateAuthority.feature.ndjson", 11);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -334,6 +334,53 @@ namespace OpenCertServer.CertServer.Tests.Features
 #line hidden
 #line 33
         await testRunner.ThenAsync("the certificate should be in the CRL", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.TheoryAttribute(DisplayName="A profile signs requests of either key algorithm")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Certificate lifecycle management")]
+        [global::Xunit.TraitAttribute("Description", "A profile signs requests of either key algorithm")]
+        [global::Xunit.InlineDataAttribute("RSA", "rsa", "sha256WithRSAEncryption", "5", new string[0])]
+        [global::Xunit.InlineDataAttribute("RSA", "ecdsa", "ecdsa-with-SHA256", "6", new string[0])]
+        [global::Xunit.InlineDataAttribute("ECDSA", "rsa", "sha256WithRSAEncryption", "7", new string[0])]
+        [global::Xunit.InlineDataAttribute("ECDSA", "ecdsa", "ecdsa-with-SHA256", "8", new string[0])]
+        public async global::System.Threading.Tasks.Task AProfileSignsRequestsOfEitherKeyAlgorithm(string requestKey, string profile, string signature, string @__pickleIndex, string[] exampleTags)
+        {
+            string[] tagsOfScenario = exampleTags;
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            argumentsOfScenario.Add("request key", requestKey);
+            argumentsOfScenario.Add("profile", profile);
+            argumentsOfScenario.Add("signature", signature);
+            string pickleIndex = @__pickleIndex;
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("A profile signs requests of either key algorithm", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 35
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 3
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 36
+        await testRunner.WhenAsync(string.Format("the CA signs a {0} certificate request with the \"{1}\" profile", requestKey, profile), ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 37
+        await testRunner.ThenAsync("the issued certificate carries the key of the request", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 38
+        await testRunner.AndAsync(string.Format("the issued certificate is signed with the {0} algorithm", signature), ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 39
+        await testRunner.AndAsync(string.Format("the issued certificate chains to the \"{0}\" CA", profile), ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

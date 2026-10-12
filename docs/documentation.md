@@ -38,6 +38,12 @@ the profile's `CertificateValidity`. The same applies to the CA's own self-signe
 does not depend on the server's local time zone
 ([CertificateValidity.feature](../tests/opencertserver.certserver.tests/Features/CertificateValidity.feature)).
 
+**Key algorithms.** A profile signs requests of either key algorithm: an ECDSA profile issues for an
+RSA key and the reverse. The issued certificate keeps the request's key and carries the signature
+algorithm of the profile's CA key
+([CertificateAuthority.feature](../tests/opencertserver.certserver.tests/Features/CertificateAuthority.feature),
+"A profile signs requests of either key algorithm").
+
 ### GET /ca/crl
 
 - Description: Retrieve the current Certificate Revocation List for the CA (or a profile).
