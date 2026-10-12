@@ -20,7 +20,7 @@ public sealed class FileCertificatePersistenceRouteScopedTests : IDisposable
     public FileCertificatePersistenceRouteScopedTests()
     {
         _root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        _strategy = new FileCertificatePersistenceStrategy(_root);
+        _strategy = new FileCertificatePersistenceStrategy(_root, "test-password-123!");
     }
 
     public void Dispose()
