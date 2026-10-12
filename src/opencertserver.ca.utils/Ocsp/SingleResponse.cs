@@ -70,13 +70,19 @@ public class SingleResponse : IAsnValue
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
         {
-            NextUpdate = sequenceReader.ReadGeneralizedTime(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            // nextUpdate [0] EXPLICIT GeneralizedTime
+            var nextUpdateReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            NextUpdate = nextUpdateReader.ReadGeneralizedTime();
+            nextUpdateReader.ThrowIfNotEmpty();
         }
 
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
         {
-            var extReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true));
+            // singleExtensions [1] EXPLICIT Extensions
+            var explicitReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true));
+            var extReader = explicitReader.ReadSequence();
+            explicitReader.ThrowIfNotEmpty();
             SingleExtensions = [];
             while (extReader.HasData)
             {
@@ -140,12 +146,16 @@ public class SingleResponse : IAsnValue
         writer.WriteGeneralizedTime(ThisUpdate);
         if (NextUpdate.HasValue)
         {
-            writer.WriteGeneralizedTime(NextUpdate.Value, false, new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+            {
+                writer.WriteGeneralizedTime(NextUpdate.Value);
+            }
         }
 
         if (SingleExtensions is { Count: > 0 })
         {
             using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
+            using (writer.PushSequence())
             {
                 foreach (var ext in SingleExtensions)
                 {

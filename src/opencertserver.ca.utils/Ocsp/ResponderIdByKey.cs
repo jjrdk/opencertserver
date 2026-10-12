@@ -25,6 +25,10 @@ public class ResponderIdByKey : IResponderId
     /// </summary>
     public void Encode(AsnWriter writer, Asn1Tag? tag = null)
     {
-        writer.WriteOctetString(KeyHash, new Asn1Tag(TagClass.ContextSpecific, 2));
+        // byKey [2] EXPLICIT KeyHash (RFC 6960 4.2.1, EXPLICIT TAGS module)
+        using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 2)))
+        {
+            writer.WriteOctetString(KeyHash);
+        }
     }
 }

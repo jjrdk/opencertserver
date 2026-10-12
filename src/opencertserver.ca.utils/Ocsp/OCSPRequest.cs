@@ -34,7 +34,10 @@ public class OcspRequest : IAsnValue
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(tag))
         {
-            Signature = new Signature(sequenceReader, tag);
+            // optionalSignature [0] EXPLICIT Signature (RFC 6960 4.1.1, EXPLICIT TAGS module)
+            var explicitReader = sequenceReader.ReadSequence(tag);
+            Signature = new Signature(explicitReader);
+            explicitReader.ThrowIfNotEmpty();
         }
 
         sequenceReader.ThrowIfNotEmpty();
@@ -57,7 +60,13 @@ public class OcspRequest : IAsnValue
     {
         writer.PushSequence(tag);
         TbsRequest.Encode(writer);
-        Signature?.Encode(writer, new Asn1Tag(TagClass.ContextSpecific, 0));
+        if (Signature != null)
+        {
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0)))
+            {
+                Signature.Encode(writer);
+            }
+        }
         writer.PopSequence(tag);
     }
 }

@@ -120,7 +120,7 @@ They are intentionally written before adding step implementations so they can dr
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/OcspConformance.feature.ndjson", 40);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/OcspConformance.feature.ndjson", 42);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -1560,6 +1560,89 @@ They are intentionally written before adding step implementations so they can dr
 #line hidden
 #line 198
             await testRunner.ThenAsync("the OCSP responder MAY return the OCSP response status \"unauthorized\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="OpenSSL reads and verifies the OCSP response to its own request")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
+        [global::Xunit.TraitAttribute("Description", "OpenSSL reads and verifies the OCSP response to its own request")]
+        public async global::System.Threading.Tasks.Task OpenSSLReadsAndVerifiesTheOCSPResponseToItsOwnRequest()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "38";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("OpenSSL reads and verifies the OCSP response to its own request", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Interoperability with an independent OCSP client", "", tagsOfRule);
+#line 205
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 206
+            await testRunner.WhenAsync("OpenSSL sends an OCSP request with a nonce for an issued certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 207
+            await testRunner.ThenAsync("OpenSSL verifies the response signature against the CA certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 208
+            await testRunner.AndAsync("OpenSSL reports the certificate as good", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 209
+            await testRunner.AndAsync("OpenSSL finds its nonce in the response", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="OpenSSL reads a revoked status and its reason")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "OCSP conformance")]
+        [global::Xunit.TraitAttribute("Description", "OpenSSL reads a revoked status and its reason")]
+        public async global::System.Threading.Tasks.Task OpenSSLReadsARevokedStatusAndItsReason()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "39";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("OpenSSL reads a revoked status and its reason", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Interoperability with an independent OCSP client", "", tagsOfRule);
+#line 211
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 212
+            await testRunner.WhenAsync("the requested certificate has been revoked", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 213
+            await testRunner.AndAsync("OpenSSL sends an OCSP request with a nonce for an issued certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 214
+            await testRunner.ThenAsync("OpenSSL verifies the response signature against the CA certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 215
+            await testRunner.AndAsync("OpenSSL reports the certificate as revoked for key compromise", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 216
+            await testRunner.AndAsync("OpenSSL finds its nonce in the response", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
