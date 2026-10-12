@@ -215,13 +215,35 @@ For challenge types, CAA enforcement, and the `device-attest-01` validator, see
 
 `device-attest-01` is an ACME challenge type that replaces domain control with hardware identity.
 The device submits an Attestation Identity Key (AIK) certificate and a TPM/SE proof inside
-`challenge.extraData`; the validator (1) verifies the AIK chains to a configured root, (2) verifies
-the proof magic/type/nonce-bind match the challenge, and (3) rejects a replayed nonce with
-`replay_nonce`.
+`challenge.extraData`.
 
-- Advertise it on the ACME directory; enable it with `UseAcmeServer()`.
-- Supply real trust roots by replacing the `IAttestationTrustProvider` singleton with one that
-   returns your manufacturer root CAs (Apple Attestation CA, Intel ME, AMD PSP, …).
+**Security model (fail-closed).** The validator and the authorization factory are both gated on the
+trust provider:
+
+- With an **empty** `IAttestationTrustProvider` (the default after `AddAcmeServer`):
+  - `DefaultAuthorizationFactory` **does not create** a `device-attest-01` challenge for any order,
+    so the challenge type is never advertised to ACME clients.
+  - If a client somehow submits a `device-attest-01` response, `DeviceAttestChallengeValidator`
+    rejects it immediately with `invalid_attestation` — system trust is **never** used as a fallback.
+- With a **non-empty** provider (manufacturer root CAs injected):
+  - `device-attest-01` appears in orders and is validated against the injected roots only.
+  - AIK revocation is checked online (`X509RevocationMode.Online`); explicitly revoked certs are
+    rejected. Unknown status (e.g. no CDP/AIA in the manufacturer cert) is tolerated.
+
+**Three validation checks** (mirrored by `device-attest-validation.feature`):
+1. **Chain verification** — AIK must chain to an injected root under `CustomRootTrust` mode.
+2. **Proof verification** — TPM magic, attestation type, and nonce-bind must match the challenge.
+3. **Anti-replay** — consumed nonce rejected on second use with `replay_nonce`.
+
+To enable device attestation, replace the `IAttestationTrustProvider` singleton registered by
+`AddAcmeServer`:
+
+```csharp
+services.AddSingleton<OpenCertServer.Acme.Abstractions.Services.IAttestationTrustProvider>(
+    _ => new OpenCertServer.Acme.Server.Services.StaticAttestationTrustProvider(
+        new X509Certificate2Collection { /* Apple Attestation CA, Intel ME, AMD PSP, … */ }));
+```
+
 - Backends and the `IAttestationProvider` / `IAttestationTrustProvider` contract:
    [opencertserver.attestation/README.md](../src/opencertserver.attestation/README.md).
 

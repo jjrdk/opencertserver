@@ -26,8 +26,8 @@ namespace OpenCertServer.Mcp.Tests.Features
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "MCP Server Parameter Handling", "    As an MCP client\n    I want to pass parameters in various formats\n    So that" +
-                " the server handles them correctly regardless of JSON serialization", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "MCP Server Parameter Handling", "As an MCP client\nI want to pass parameters in various formats\nSo that the server " +
+                "handles them correctly regardless of JSON serialization", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
 #line 1 "McpServerParameterHandling.feature"
 #line hidden
@@ -107,9 +107,9 @@ namespace OpenCertServer.Mcp.Tests.Features
         public virtual async global::System.Threading.Tasks.Task FeatureBackgroundAsync()
         {
 #line 6
-    #line hidden
+#line hidden
 #line 7
-        await testRunner.GivenAsync("the MCP server is initialized with a test CA", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("the MCP server is initialized with a test CA", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
         }
         
@@ -155,7 +155,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 9
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -165,7 +165,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 6
-    await this.FeatureBackgroundAsync();
+await this.FeatureBackgroundAsync();
 #line hidden
                 global::Reqnroll.Table table1 = new global::Reqnroll.Table(new string[] {
                             "Key",
@@ -177,10 +177,10 @@ namespace OpenCertServer.Mcp.Tests.Features
                             "pageSize",
                             "10"});
 #line 10
-        await testRunner.WhenAsync("the MCP server invokes \"list_certificates\" with parameters:", ((string)(null)), table1, "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"list_certificates\" with parameters:", ((string)(null)), table1, "When ");
 #line hidden
 #line 14
-        await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -198,7 +198,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 16
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -208,10 +208,10 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 6
-    await this.FeatureBackgroundAsync();
+await this.FeatureBackgroundAsync();
 #line hidden
 #line 17
-        await testRunner.GivenAsync("a certificate has been issued", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("a certificate has been issued", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
                 global::Reqnroll.Table table2 = new global::Reqnroll.Table(new string[] {
                             "Key",
@@ -223,10 +223,10 @@ namespace OpenCertServer.Mcp.Tests.Features
                             "includePem",
                             "true"});
 #line 18
-        await testRunner.WhenAsync("the MCP server invokes \"get_certificate\" with parameters:", ((string)(null)), table2, "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_certificate\" with parameters:", ((string)(null)), table2, "When ");
 #line hidden
 #line 22
-        await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -244,7 +244,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 24
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -254,10 +254,10 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 6
-    await this.FeatureBackgroundAsync();
+await this.FeatureBackgroundAsync();
 #line hidden
 #line 25
-        await testRunner.GivenAsync("a certificate has been issued", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("a certificate has been issued", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
                 global::Reqnroll.Table table3 = new global::Reqnroll.Table(new string[] {
                             "Key",
@@ -266,10 +266,10 @@ namespace OpenCertServer.Mcp.Tests.Features
                             "serialNumbers",
                             "[{issued_serial}]"});
 #line 26
-        await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with parameters:", ((string)(null)), table3, "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with parameters:", ((string)(null)), table3, "When ");
 #line hidden
 #line 29
-        await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -287,7 +287,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 31
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -297,7 +297,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 6
-    await this.FeatureBackgroundAsync();
+await this.FeatureBackgroundAsync();
 #line hidden
                 global::Reqnroll.Table table4 = new global::Reqnroll.Table(new string[] {
                             "Key",
@@ -306,13 +306,13 @@ namespace OpenCertServer.Mcp.Tests.Features
                             "serialNumber",
                             "ZZZZ"});
 #line 32
-        await testRunner.WhenAsync("the MCP server invokes \"get_certificate\" with parameters:", ((string)(null)), table4, "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_certificate\" with parameters:", ((string)(null)), table4, "When ");
 #line hidden
 #line 35
-        await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 36
-        await testRunner.AndAsync("the error message MUST mention \"hex\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error message MUST mention \"hex\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -330,7 +330,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 38
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -340,7 +340,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 6
-    await this.FeatureBackgroundAsync();
+await this.FeatureBackgroundAsync();
 #line hidden
                 global::Reqnroll.Table table5 = new global::Reqnroll.Table(new string[] {
                             "Key",
@@ -349,13 +349,13 @@ namespace OpenCertServer.Mcp.Tests.Features
                             "serialNumbers",
                             "[\"INVALID\"]"});
 #line 39
-        await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with parameters:", ((string)(null)), table5, "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"get_revocation_status\" with parameters:", ((string)(null)), table5, "When ");
 #line hidden
 #line 42
-        await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 43
-        await testRunner.AndAsync("the error message MUST mention \"hex\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error message MUST mention \"hex\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -373,7 +373,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 45
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -383,7 +383,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 6
-    await this.FeatureBackgroundAsync();
+await this.FeatureBackgroundAsync();
 #line hidden
                 global::Reqnroll.Table table6 = new global::Reqnroll.Table(new string[] {
                             "Key",
@@ -398,13 +398,13 @@ namespace OpenCertServer.Mcp.Tests.Features
                             "issuerKeyHash",
                             "0000000000000000000000000000000000000000000000000000000000000000"});
 #line 46
-        await testRunner.WhenAsync("the MCP server invokes \"check_ocsp_status\" with parameters:", ((string)(null)), table6, "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"check_ocsp_status\" with parameters:", ((string)(null)), table6, "When ");
 #line hidden
 #line 51
-        await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST indicate failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 52
-        await testRunner.AndAsync("the error message MUST mention \"hex\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("the error message MUST mention \"hex\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -422,7 +422,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 54
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -432,13 +432,13 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 6
-    await this.FeatureBackgroundAsync();
+await this.FeatureBackgroundAsync();
 #line hidden
 #line 55
-        await testRunner.WhenAsync("the MCP server invokes \"sign_certificate\" with a PEM CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"sign_certificate\" with a PEM CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 56
-        await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -456,7 +456,7 @@ namespace OpenCertServer.Mcp.Tests.Features
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 58
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -466,13 +466,13 @@ namespace OpenCertServer.Mcp.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 6
-    await this.FeatureBackgroundAsync();
+await this.FeatureBackgroundAsync();
 #line hidden
 #line 59
-        await testRunner.WhenAsync("the MCP server invokes \"sign_certificate\" with ISO 8601 dates", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("the MCP server invokes \"sign_certificate\" with ISO 8601 dates", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 60
-        await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the result MUST succeed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

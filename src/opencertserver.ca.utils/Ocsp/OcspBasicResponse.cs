@@ -52,7 +52,10 @@ public class OcspBasicResponse : IAsnValue
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
         {
-            var certsReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            // certs [0] EXPLICIT SEQUENCE OF Certificate
+            var explicitReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            var certsReader = explicitReader.ReadSequence();
+            explicitReader.ThrowIfNotEmpty();
             var certs = new List<X509Certificate2>();
             while (certsReader.HasData)
             {
@@ -108,13 +111,14 @@ public class OcspBasicResponse : IAsnValue
         writer.WriteBitString(Signature);
         if (Certs is { Count: > 0 })
         {
-            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
-            foreach (var cert in Certs)
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+            using (writer.PushSequence())
             {
-                writer.WriteEncodedValue(cert.RawData);
+                foreach (var cert in Certs)
+                {
+                    writer.WriteEncodedValue(cert.RawData);
+                }
             }
-
-            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
         }
 
         writer.PopSequence(tag);

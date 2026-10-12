@@ -9,10 +9,13 @@ using Xunit;
 public sealed class McpServerCertificateOperationsSteps
 {
     private readonly McpServerFixture _fixture;
+    private readonly McpScenarioContext _context;
 
-    public McpServerCertificateOperationsSteps(McpServerFixture fixture)
+    public McpServerCertificateOperationsSteps(McpServerFixture fixture,
+            McpScenarioContext context)
     {
         _fixture = fixture;
+        _context = context;
     }
 
     [Given("a valid CSR is available")]
@@ -34,7 +37,7 @@ public sealed class McpServerCertificateOperationsSteps
         var csr = McpServerFixture.CreateBase64DerCsr();
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate failed: {result.ErrorMessage}");
-        TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
+        _context.SignedCert = (McpCertificateItem)result.Content!;
     }
 
     [When("the MCP server invokes \"sign_certificate\" with that CSR")]
@@ -43,7 +46,7 @@ public sealed class McpServerCertificateOperationsSteps
         var csr = McpServerFixture.CreateBase64DerCsr();
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate failed: {result.ErrorMessage}");
-        TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
+        _context.SignedCert = (McpCertificateItem)result.Content!;
     }
 
     [When("the MCP server invokes \"sign_certificate\" with that CSR and includePem true")]
@@ -52,7 +55,7 @@ public sealed class McpServerCertificateOperationsSteps
         var csr = McpServerFixture.CreateBase64DerCsr();
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr, includePem = true }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate with PEM failed: {result.ErrorMessage}");
-        TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
+        _context.SignedCert = (McpCertificateItem)result.Content!;
     }
 
     [When(
@@ -64,15 +67,15 @@ public sealed class McpServerCertificateOperationsSteps
         var na = DateTimeOffset.Parse(notAfterStr);
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr, notBefore = nb, notAfter = na }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"sign_certificate with dates failed: {result.ErrorMessage}");
-        TestSharedState.SignedCert = (McpCertificateItem)result.Content!;
+        _context.SignedCert = (McpCertificateItem)result.Content!;
     }
 
     [When("the MCP server invokes \"sign_certificate\" with an invalid CSR body")]
     public async Task WhenSignCertificateInvalid()
     {
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr = "not-a-valid-csr" }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
-        TestSharedState.SignedCert = result.IsSuccess
+        _context.ToolResult = result;
+        _context.SignedCert = result.IsSuccess
             ? (McpCertificateItem)result.Content!
             : null;
     }
@@ -81,8 +84,8 @@ public sealed class McpServerCertificateOperationsSteps
     public async Task WhenSignCertificateNoCsr()
     {
         var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
-        TestSharedState.SignedCert = result.IsSuccess
+        _context.ToolResult = result;
+        _context.SignedCert = result.IsSuccess
             ? (McpCertificateItem)result.Content!
             : null;
     }
@@ -91,42 +94,42 @@ public sealed class McpServerCertificateOperationsSteps
         "the MCP server invokes \"revoke_certificate\" with that certificate's serial number and reason \"(.+)\"")]
     public async Task WhenRevokeWithReason(string reason)
     {
-        if (TestSharedState.SignedCert == null)
+        if (_context.SignedCert == null)
         {
             throw new Exception("No signed cert available — run 'Given a certificate is issued' first");
         }
 
-        var serial = TestSharedState.SignedCert.SerialNumber;
+        var serial = _context.SignedCert.SerialNumber;
         var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { serialNumber = serial, reason }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
     }
 
     [When(
         "the MCP server invokes \"revoke_certificate\" with that certificate's serial number, reason \"(.+)\", reason (.+), and description \"(.+)\"")]
     public async Task WhenRevokeWithFullFields(string reason, int reasonCode, string description)
     {
-        if (TestSharedState.SignedCert == null)
+        if (_context.SignedCert == null)
         {
             throw new Exception("No signed cert available — run 'Given a certificate is issued' first");
         }
 
-        var serial = TestSharedState.SignedCert.SerialNumber;
+        var serial = _context.SignedCert.SerialNumber;
         var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { serialNumber = serial, reason }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
     }
 
     [When("the MCP server invokes \"revoke_certificate\" with serial number \"(.+)\"")]
     public async Task WhenRevokeWithSerial(string serialNumber)
     {
         var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { serialNumber }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
     }
 
     [When("the MCP server invokes \"revoke_certificate\" without a serial number")]
     public async Task WhenRevokeWithoutSerial()
     {
         var result = await _fixture.InvokeMcpToolAsync("revoke_certificate", new { reason = "KeyCompromise" }).ConfigureAwait(false);
-        TestSharedState.ToolResult = result;
+        _context.ToolResult = result;
     }
 
     // ---- Then steps ----
@@ -134,62 +137,62 @@ public sealed class McpServerCertificateOperationsSteps
     [Then("the returned certificate serial number MUST be non-empty")]
     public void ThenSerialMustBeNonEmpty()
     {
-        Assert.NotNull(TestSharedState.SignedCert);
-        Assert.NotEmpty(TestSharedState.SignedCert.SerialNumber);
+        Assert.NotNull(_context.SignedCert);
+        Assert.NotEmpty(_context.SignedCert.SerialNumber);
     }
 
     [Then("the returned certificate subject MUST match the CSR subject")]
     public void ThenSubjectMustMatch()
     {
-        Assert.NotNull(TestSharedState.SignedCert);
-        Assert.Contains("test", TestSharedState.SignedCert.Subject, StringComparison.OrdinalIgnoreCase);
+        Assert.NotNull(_context.SignedCert);
+        Assert.Contains("test", _context.SignedCert.Subject, StringComparison.OrdinalIgnoreCase);
     }
 
     [Then("the returned certificate issuer MUST match the CA's subject")]
     public void ThenIssuerMustMatch()
     {
-        Assert.NotNull(TestSharedState.SignedCert);
-        Assert.Contains("MCP Test CA", TestSharedState.SignedCert.Issuer);
+        Assert.NotNull(_context.SignedCert);
+        Assert.Contains("MCP Test CA", _context.SignedCert.Issuer);
     }
 
     [Then("the returned certificate must have a valid NotBefore and NotAfter")]
     public void ThenDatesMustBeValid()
     {
-        Assert.NotNull(TestSharedState.SignedCert);
-        Assert.True(TestSharedState.SignedCert.NotBefore != default);
-        Assert.True(TestSharedState.SignedCert.NotAfter != default);
-        Assert.True(TestSharedState.SignedCert.NotBefore < TestSharedState.SignedCert.NotAfter);
+        Assert.NotNull(_context.SignedCert);
+        Assert.True(_context.SignedCert.NotBefore != default);
+        Assert.True(_context.SignedCert.NotAfter != default);
+        Assert.True(_context.SignedCert.NotBefore < _context.SignedCert.NotAfter);
     }
 
     [Then("the returned certificate must have a PublicKeyAlgorithm and PublicKeySize greater than zero")]
     public void ThenKeyInfoMustBeValid()
     {
-        Assert.NotNull(TestSharedState.SignedCert);
-        Assert.NotEmpty(TestSharedState.SignedCert.PublicKeyAlgorithm);
-        Assert.True(TestSharedState.SignedCert.PublicKeySize > 0);
+        Assert.NotNull(_context.SignedCert);
+        Assert.NotEmpty(_context.SignedCert.PublicKeyAlgorithm);
+        Assert.True(_context.SignedCert.PublicKeySize > 0);
     }
 
     [Then("the returned certificate MUST have a Pem field containing {string}")]
     public void ThenMustHavePem(string expected)
     {
-        Assert.NotNull(TestSharedState.SignedCert);
-        Assert.NotNull(TestSharedState.SignedCert.Pem);
-        Assert.Contains(expected, TestSharedState.SignedCert.Pem);
+        Assert.NotNull(_context.SignedCert);
+        Assert.NotNull(_context.SignedCert.Pem);
+        Assert.Contains(expected, _context.SignedCert.Pem);
     }
 
     [Then("the returned certificate MUST have a PemChain field containing {string}")]
     public void ThenMustHavePemChain(string expected)
     {
-        Assert.NotNull(TestSharedState.SignedCert);
-        Assert.NotNull(TestSharedState.SignedCert.PemChain);
-        Assert.Contains(expected, TestSharedState.SignedCert.PemChain);
+        Assert.NotNull(_context.SignedCert);
+        Assert.NotNull(_context.SignedCert.PemChain);
+        Assert.Contains(expected, _context.SignedCert.PemChain);
     }
 
     [Then("the PemChain MUST contain at least {int} certificates \\(intermediate + root\\)")]
     public void ThenPemChainMustHaveMultipleCerts(int minCount)
     {
-        Assert.NotNull(TestSharedState.SignedCert);
-        var pemChain = TestSharedState.SignedCert.PemChain ?? string.Empty;
+        Assert.NotNull(_context.SignedCert);
+        var pemChain = _context.SignedCert.PemChain ?? string.Empty;
         var count = pemChain.Split("-----BEGIN CERTIFICATE-----").Length - 1;
         Assert.True(count >= minCount, $"PemChain contains {count} certificates, expected at least {minCount}");
     }
@@ -197,30 +200,30 @@ public sealed class McpServerCertificateOperationsSteps
     [Then("the returned certificate NotBefore MUST be on or before \"(.+)\"")]
     public void ThenNotBeforeOnOrBefore(string expected)
     {
-        Assert.NotNull(TestSharedState.SignedCert);
+        Assert.NotNull(_context.SignedCert);
         var notBeforeDate = DateTimeOffset.Parse(expected);
-        Assert.True(TestSharedState.SignedCert.NotBefore <= notBeforeDate);
+        Assert.True(_context.SignedCert.NotBefore <= notBeforeDate);
     }
 
     [Then("the returned certificate NotAfter MUST match \"(.+)\"")]
     public void ThenNotAfterMustMatch(string expected)
     {
-        Assert.NotNull(TestSharedState.SignedCert);
+        Assert.NotNull(_context.SignedCert);
         var notAfterDate = DateTimeOffset.Parse(expected);
-        Assert.Equal(notAfterDate, TestSharedState.SignedCert.NotAfter);
+        Assert.Equal(notAfterDate, _context.SignedCert.NotAfter);
     }
 
     [Then("the error code MUST be McpErrorCode.CertificateSigningFailed")]
     public void ThenErrorCodeMustBeSigningFailed()
     {
-        Assert.True(TestSharedState.SignedCert == null, "Expected a failure result");
+        Assert.True(_context.SignedCert == null, "Expected a failure result");
     }
 
     [Then("the error message MUST mention that the CSR could not be parsed")]
     public void ThenErrorMustMentionCsrParsing()
     {
-        Assert.NotNull(TestSharedState.ToolResult);
-        var msg = TestSharedState.ToolResult!.ErrorMessage ?? "";
+        Assert.NotNull(_context.ToolResult);
+        var msg = _context.ToolResult!.ErrorMessage ?? "";
         Assert.True(msg.Contains("CSR", StringComparison.OrdinalIgnoreCase) ||
             msg.Contains("parse", StringComparison.OrdinalIgnoreCase));
     }

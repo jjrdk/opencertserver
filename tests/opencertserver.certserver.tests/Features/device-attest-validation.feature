@@ -66,6 +66,13 @@ Feature: Device Attest Challenge Validation
     Then the second result is not valid
     And the second error type contains "replay_nonce"
 
+  Scenario: Challenge validator rejects attestation when trust provider has no configured roots
+    Given a device-attest-01 challenge with token "dmFsaWROb25jZQ"
+    And the challenge has extra data with matching nonce "dmFsaWROb25jZQ", a trusted CA-signed AIK certificate, and a valid TPM proof signed by the AIK key
+    When the server validates the challenge with no trusted roots configured
+    Then the result is not valid
+    And the error type contains "invalid_attestation"
+
   # ─── Existing nonce / missing data scenarios ─────────────────────────────────
 
   Scenario: Nonce mismatch causes validation failure

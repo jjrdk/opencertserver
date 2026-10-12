@@ -94,6 +94,7 @@ ACME behaviour is driven by the `AcmeServer` section of `appsettings.json`:
 {
   "AcmeServer": {
     "WebsiteUrl": "https://pki.example.com",
+    "UrlRetrievalTimeout": "00:01:40",
     "TOS": {
       "RequireAgreement": false,
       "Url": "https://pki.example.com/tos",
@@ -256,7 +257,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpClient();   // the ACME client factory needs an HttpClient
 
 builder.Services.AddAcmeClient(options)
-      .AddAcmeFileCertificatePersistence("acme-certificates")   // survives restarts
+      .AddAcmeFileCertificatePersistence("acme-certificates")   // password resolved from AccountPassword
       .AddAcmeFileChallengePersistence("acme-challenges");
 
 var app = builder.Build();
@@ -291,7 +292,7 @@ var options = new LetsEncryptOptions
 };
 
 builder.Services.AddAcmeClient(options, myDnsProviderFactory)   // Cloudflare / Route53 / Azure DNS / your own
-        .AddAcmeFileCertificatePersistence("acme-certificates");
+        .AddAcmeFileCertificatePersistence("acme-certificates");  // password resolved from AccountPassword
 ```
 
 The provider implements `IDnsChallengeProvider` (`PlaceChallengesAsync` writes the TXT records
@@ -305,6 +306,17 @@ Persistence strategies are pluggable: `AddAcmeFileCertificatePersistence` /
 `AddAcmeChallengePersistence(...)` with your own delegates. `AddAcmeCertificateStorePersistence`
 stores the leaf **with** its private key in the OS X.509 store.
 
+> **Security note (file persistence):** `AddAcmeFileCertificatePersistence` encrypts all private-key
+> material on disk using AES-256-CBC via PBKDF2-SHA256 (600 000 iterations). It derives the
+> encryption key from `AcmeOptions.AccountPassword`, which must be a non-empty secret. If you
+> supply an empty password the service will refuse to start. To supply the password explicitly
+> (without relying on `AccountPassword`) use the overload:
+> ```csharp
+> .AddAcmeFileCertificatePersistence(password: myVaultSecret, "acme-certificates")
+> ```
+> If you upgrade from an older build that stored keys in cleartext, delete the persisted certificate
+> directory and let the renewal service re-issue on next startup.
+
 ### ACME client per YARP route
 
 `opencertserver.acme.yarp` provisions one ACME certificate per YARP `RouteConfig` on a single HTTPS
@@ -314,7 +326,7 @@ listener, with SNI selecting the right leaf and each route renewed independently
 
 ```csharp
 builder.Services.AddAcmeClient(options)
-      .AddAcmeFileCertificatePersistence("acme-certificates")
+      .AddAcmeFileCertificatePersistence("acme-certificates")   // password resolved from AccountPassword
       .AddAcmeFileChallengePersistence("acme-challenges");
 
 builder.Services.AddAcmeProxy()
@@ -415,26 +427,30 @@ See the [Documentation index](documentation.md) for request/response detail and
 
 OpenCertServer adds a `device-attest-01` ACME challenge type (see
 [`ChallengeTypes`](../src/CertesSlim/Acme/Resource/ChallengeTypes.cs)) so a certificate can be
-issued to a hardware-backed device rather than a domain. Enablement is two service registrations:
+issued to a hardware-backed device rather than a domain.
+
+**Default behaviour (fail-closed).** `AddAcmeServer(...)` registers an empty
+`StaticAttestationTrustProvider`. With an empty trust provider, `DefaultAuthorizationFactory` does
+**not** create `device-attest-01` challenges for any order — the challenge type is not advertised
+to clients. If a client submits attestation evidence regardless, `DeviceAttestChallengeValidator`
+rejects it immediately. System trust is never used as a fallback.
+
+To enable device attestation, replace the singleton with one that contains your manufacturer root CAs:
 
 ```csharp
-// The ACME server already registers an empty trust provider and the device-attest validator:
-//   services.AddSingleton<IAttestationTrustProvider>(new StaticAttestationTrustProvider([]));
-//   services.AddScoped<IValidateDeviceAttestChallenges, DeviceAttestChallengeValidator>();
-
 // Supply your manufacturer trust roots (e.g. Apple Attestation CA, Intel ME, AMD PSP):
 services.AddSingleton<OpenCertServer.Acme.Abstractions.Services.IAttestationTrustProvider>(
     _ => new OpenCertServer.Acme.Server.Services.StaticAttestationTrustProvider(
         new X509Certificate2Collection { /* manufacturer root CAs */ }));
 ```
 
-The validator performs three checks (mirrored by
+Once a non-empty trust provider is registered, `device-attest-01` challenges are advertised on orders
+and validated with three checks (mirrored by
 `tests/opencertserver.certserver.tests/Features/device-attest-validation.feature`): **chain
 verification** (the submitted AIK certificate must chain to an injected trusted root — a self-signed
-AIK is rejected), **proof verification** (a TPM proof with the correct magic value/attestation type
-matching the challenge nonce — garbage or wrong-magic fails), and **anti-replay** (a consumed nonce is
-rejected on second use with `replay_nonce`). The directory advertises the type under
-`meta.challengeTypesWithAdditionalContent`.
+AIK is rejected; AIK revocation is checked online), **proof verification** (a TPM proof with the
+correct magic value/attestation type matching the challenge nonce — garbage or wrong-magic fails), and
+**anti-replay** (a consumed nonce is rejected on second use with `replay_nonce`).
 
 For the hardware attestation providers themselves (AMD SEV-SNP, Intel SGX, Apple Secure Element),
 see [Implemented standards → Device attestation](standards.md#device-attestation-device-attest-01).

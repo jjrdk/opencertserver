@@ -37,7 +37,10 @@ public class Signature : IAsnValue
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
         {
-            var certsReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
+            // certs [0] EXPLICIT SEQUENCE OF Certificate
+            var explicitReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
+            var certsReader = explicitReader.ReadSequence();
+            explicitReader.ThrowIfNotEmpty();
             var certs = new List<X509Certificate2>();
             while (certsReader.HasData)
             {
@@ -76,13 +79,14 @@ public class Signature : IAsnValue
         writer.WriteBitString(SignatureBytes);
         if (Certs != null)
         {
-            writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
-            foreach (var cert in Certs)
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0)))
+            using (writer.PushSequence())
             {
-                writer.WriteEncodedValue(cert.RawData);
+                foreach (var cert in Certs)
+                {
+                    writer.WriteEncodedValue(cert.RawData);
+                }
             }
-
-            writer.PopSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
         }
 
         writer.PopSequence(tag);

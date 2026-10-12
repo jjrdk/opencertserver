@@ -107,7 +107,7 @@ namespace OpenCertServer.CertServer.Tests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/device-attest-core.feature.ndjson", 4);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/device-attest-core.feature.ndjson", 5);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -172,15 +172,15 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="Client receives a device-attest-01 challenge for CA-provisioned orders")]
+        [global::Xunit.FactAttribute(DisplayName="Client receives a device-attest-01 challenge when trust roots are configured")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Device Attestation ACME Challenge Types")]
-        [global::Xunit.TraitAttribute("Description", "Client receives a device-attest-01 challenge for CA-provisioned orders")]
-        public async global::System.Threading.Tasks.Task ClientReceivesADevice_Attest_01ChallengeForCA_ProvisionedOrders()
+        [global::Xunit.TraitAttribute("Description", "Client receives a device-attest-01 challenge when trust roots are configured")]
+        public async global::System.Threading.Tasks.Task ClientReceivesADevice_Attest_01ChallengeWhenTrustRootsAreConfigured()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "1";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Client receives a device-attest-01 challenge for CA-provisioned orders", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Client receives a device-attest-01 challenge when trust roots are configured", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 12
@@ -197,10 +197,54 @@ this.ScenarioInitialize(scenarioInfo, ruleInfo);
     await testRunner.GivenAsync("an ACME client has registered with the server and created a new order", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 14
-    await testRunner.WhenAsync("the order is authorized for certificate issuance", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.AndAsync("the authorization factory is configured with a non-empty attestation trust provid" +
+                        "er", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 15
+    await testRunner.WhenAsync("the order is authorized for certificate issuance", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 16
     await testRunner.ThenAsync("the authorization must include at least one challenge of type \"device-attest-01\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="Client does not receive a device-attest-01 challenge when no trust roots are conf" +
+            "igured")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Device Attestation ACME Challenge Types")]
+        [global::Xunit.TraitAttribute("Description", "Client does not receive a device-attest-01 challenge when no trust roots are conf" +
+            "igured")]
+        public async global::System.Threading.Tasks.Task ClientDoesNotReceiveADevice_Attest_01ChallengeWhenNoTrustRootsAreConfigured()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "2";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Client does not receive a device-attest-01 challenge when no trust roots are conf" +
+                    "igured", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 18
+this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 19
+    await testRunner.GivenAsync("an ACME client has registered with the server and created a new order", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 20
+    await testRunner.AndAsync("the authorization factory is configured with an empty attestation trust provider", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 21
+    await testRunner.WhenAsync("the order is authorized for certificate issuance", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 22
+    await testRunner.ThenAsync("the authorization must not include any challenge of type \"device-attest-01\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

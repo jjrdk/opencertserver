@@ -44,17 +44,25 @@ public class ResponseData : IAsnValue
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
         {
-            Version = (TypeVersion)(int)sequenceReader.ReadInteger(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            // version [0] EXPLICIT Version DEFAULT v1
+            var versionReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            Version = (TypeVersion)(int)versionReader.ReadInteger();
+            versionReader.ThrowIfNotEmpty();
         }
         else
         {
             Version = TypeVersion.V1;
         }
 
-        var responserIdTag = sequenceReader.PeekTag();
-        ResponderId = responserIdTag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1))
-            ? new ResponderIdByName(new X509Name(sequenceReader))
-            : new ResponderIdByKey(sequenceReader.ReadOctetString(new Asn1Tag(TagClass.ContextSpecific, 2)));
+        // ResponderID ::= CHOICE { byName [1] Name, byKey [2] KeyHash } - both EXPLICIT.
+        var responderIdTag = sequenceReader.PeekTag();
+        var responderIdReader = sequenceReader.ReadSequence(responderIdTag);
+        ResponderId = responderIdTag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1))
+            ? new ResponderIdByName(new X509Name(responderIdReader))
+            : responderIdTag.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 2))
+                ? new ResponderIdByKey(responderIdReader.ReadOctetString())
+                : throw new AsnContentException("Unexpected ResponderID tag " + responderIdTag);
+        responderIdReader.ThrowIfNotEmpty();
         ProducedAt = sequenceReader.ReadGeneralizedTime();
         var responsesReader = sequenceReader.ReadSequence();
         var responses = new List<SingleResponse>();
@@ -68,7 +76,10 @@ public class ResponseData : IAsnValue
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
         {
-            var extReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true));
+            // responseExtensions [1] EXPLICIT Extensions
+            var explicitReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true));
+            var extReader = explicitReader.ReadSequence();
+            explicitReader.ThrowIfNotEmpty();
             ResponseExtensions = [];
             while (extReader.HasData)
             {
@@ -110,7 +121,10 @@ public class ResponseData : IAsnValue
         writer.PushSequence(tag);
         if (Version != TypeVersion.V1)
         {
-            writer.WriteInteger((int)Version, new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+            {
+                writer.WriteInteger((int)Version);
+            }
         }
 
         ResponderId.Encode(writer);
@@ -126,6 +140,7 @@ public class ResponseData : IAsnValue
         if (ResponseExtensions is { Count: > 0 })
         {
             using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1, true)))
+            using (writer.PushSequence())
             {
                 foreach (var ext in ResponseExtensions)
                 {

@@ -92,10 +92,46 @@ public static class RegistrationExtensions
             return services.AddAcmePersistenceService().AddSingleton(certificatePersistenceStrategyFactory);
         }
 
+        /// <summary>
+        /// Registers the file-backed certificate persistence strategy. Private keys are encrypted
+        /// at rest using <paramref name="password"/> (AES-256-CBC via PBKDF2-SHA256).
+        /// </summary>
+        /// <param name="password">
+        /// Non-empty password used to protect private-key material stored on disk. Must be the
+        /// same value on every restart; changing it requires deleting the persisted files and
+        /// triggering a new ACME renewal.
+        /// </param>
+        /// <param name="relativeFilePath">Root directory for persisted files.</param>
+        public IServiceCollection AddAcmeFileCertificatePersistence(
+            string password,
+            string relativeFilePath = "OpenCertServerAcmeCertificate")
+        {
+            return services.AddAcmeCertificatePersistence(
+                new FileCertificatePersistenceStrategy(relativeFilePath, password));
+        }
+
+        /// <summary>
+        /// Registers the file-backed certificate persistence strategy, deriving the encryption
+        /// password from <see cref="AcmeOptions.AccountPassword"/>. Throws at service resolution
+        /// time if <c>AccountPassword</c> is null or empty.
+        /// </summary>
+        /// <param name="relativeFilePath">Root directory for persisted files.</param>
         public IServiceCollection AddAcmeFileCertificatePersistence(
             string relativeFilePath = "OpenCertServerAcmeCertificate")
         {
-            return services.AddAcmeCertificatePersistence(new FileCertificatePersistenceStrategy(relativeFilePath));
+            return services.AddAcmeCertificatePersistence(sp =>
+            {
+                var options = sp.GetRequiredService<AcmeOptions>();
+                if (string.IsNullOrEmpty(options.AccountPassword))
+                {
+                    throw new InvalidOperationException(
+                        "AddAcmeFileCertificatePersistence requires a non-empty AccountPassword to protect " +
+                        "private keys at rest. Set AcmeOptions.AccountPassword to a secure password or use " +
+                        "AddAcmeInMemoryCertificatesPersistence for testing.");
+                }
+
+                return new FileCertificatePersistenceStrategy(relativeFilePath, options.AccountPassword);
+            });
         }
 
         /// <summary>

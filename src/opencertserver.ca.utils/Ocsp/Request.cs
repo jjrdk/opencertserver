@@ -34,7 +34,10 @@ public class Request : IAsnValue
         if (sequenceReader.HasData &&
             sequenceReader.PeekTag().HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
         {
-            var extReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
+            // singleRequestExtensions [0] EXPLICIT Extensions
+            var explicitReader = sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
+            var extReader = explicitReader.ReadSequence();
+            explicitReader.ThrowIfNotEmpty();
             SingleRequestExtensions = [];
             while (extReader.HasData)
             {
@@ -68,6 +71,7 @@ public class Request : IAsnValue
         if (SingleRequestExtensions != null)
         {
             using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0)))
+            using (writer.PushSequence())
             {
                 foreach (var ext in SingleRequestExtensions)
                 {

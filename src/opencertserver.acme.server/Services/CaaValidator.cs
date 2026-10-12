@@ -84,10 +84,22 @@ public sealed partial class CaaValidator : ICaaValidator
     {
         ArgumentNullException.ThrowIfNull(identifier);
 
-        var caaIdentities = _options.Value.CAAIdentities;
-        if (caaIdentities == null || caaIdentities.Length == 0)
+        var options = _options.Value;
+
+        if (options.DisableCaaChecks)
         {
             return null;
+        }
+
+        var caaIdentities = options.CAAIdentities;
+        if (caaIdentities == null || caaIdentities.Length == 0)
+        {
+            LogCaaNotConfigured();
+            return new AcmeError
+            {
+                Type = "caa",
+                Detail = "Certificate issuance is not permitted by the CA's CAA policy."
+            };
         }
 
         var fqdn = identifier.Value.Replace("*.", "", StringComparison.OrdinalIgnoreCase);
@@ -421,6 +433,9 @@ public sealed partial class CaaValidator : ICaaValidator
 
         public bool ValidationMethodsSpecified { get; set; }
     }
+
+    [LoggerMessage(LogLevel.Warning, "CAA checks are enforced but CAAIdentities is not configured. Rejecting issuance to prevent fail-open.")]
+    partial void LogCaaNotConfigured();
 
     [LoggerMessage(LogLevel.Debug, "Querying CAA records for {domain}")]
     partial void LogQueryingCaa(string domain);

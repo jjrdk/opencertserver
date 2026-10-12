@@ -9,11 +9,14 @@ using Xunit;
 public sealed class McpServerMetadataSteps
 {
     private readonly McpServerFixture _fixture;
+    private readonly McpScenarioContext _context;
     private McpServerMetadata? _metadata;
 
-    public McpServerMetadataSteps(McpServerFixture fixture)
+    public McpServerMetadataSteps(McpServerFixture fixture,
+            McpScenarioContext context)
     {
         _fixture = fixture;
+        _context = context;
         _metadata = null!;
     }
 
@@ -24,8 +27,8 @@ public sealed class McpServerMetadataSteps
         var result = await _fixture.InvokeMcpToolAsync("get_server_metadata", new { }).ConfigureAwait(false);
         Assert.True(result.IsSuccess, $"get_server_metadata failed: {result.ErrorMessage}");
         _metadata = (McpServerMetadata)result.Content!;
-        TestSharedState.ServerMetadata = _metadata;
-        TestSharedState.ToolResult = result;
+        _context.ServerMetadata = _metadata;
+        _context.ToolResult = result;
     }
 
     [Then("the response MUST include a server name")]
