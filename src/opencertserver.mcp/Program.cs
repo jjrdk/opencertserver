@@ -29,33 +29,56 @@ public static class Program
         });
 
         builder.Configuration.AddEnvironmentVariables("MCP_");
-        services.Configure<McpServerOptions>(builder.Configuration.GetSection("McpServer"));
 
-        // Register CA services required by MCP tools
+        // Read the resolved MCP options up-front so the CA surface can be gated before the
+        // server starts. This binds the *same* configuration that the running server uses.
+        var mcpSection = builder.Configuration.GetSection("McpServer");
+        var mcpOptions = new McpServerOptions();
+        mcpSection.Bind(mcpOptions);
+        services.Configure<McpServerOptions>(mcpSection);
+
+        // Register CA services required by MCP tools. The in-memory store is intentionally the
+        // only store available here; it is reserved for tests/development (see F-10).
         services.AddInMemoryCertificateStore();
 
-        // Configure CA based on environment or use self-signed for testing
-        var dn = builder.Configuration.GetValue<string>("CA_DN") ?? "CN=MCP Test CA";
-        services.AddSelfSignedCertificateAuthority(
-            new X500DistinguishedName(dn.StartsWith("CN=") ? dn : $"CN={dn}"),
-            Array.Empty<string>(), // OCSP URLs
-            Array.Empty<string>(), // CRL URLs
-            Array.Empty<string>(), // CA Issuer URLs
-            TimeSpan.FromDays(90));
-
-        services
-            .AddMcpServer()
+        // Read-only tools are always available.
+        var mcpBuilder = services.AddMcpServer()
             .WithStdioServerTransport()
             .WithTools<GetServerMetadataTool>()
             .WithTools<ListCertificatesTool>()
             .WithTools<SearchCertificatesTool>()
             .WithTools<GetCertificateTool>()
             .WithTools<GetCaCertificatesTool>()
-            .WithTools<SignCertificateTool>()
-            .WithTools<RevokeCertificateTool>()
             .WithTools<GetRevocationStatusTool>()
             .WithTools<CheckOcspStatusTool>()
             .WithTools<GetCrlTool>();
+
+        // F-02: the CA-mutating tools (sign_certificate, revoke_certificate) are opt-in and
+        // fail closed. When CA operations are enabled we validate the security preconditions
+        // (an authenticated caller and a real, access-controlled CA key) before starting, and
+        // refuse to start otherwise so a bare invocation can never forge or revoke certificates.
+        if (McpServerConfiguration.ShouldRegisterCaOperations(mcpOptions))
+        {
+            McpServerConfiguration.EnsureConfigured(mcpOptions);
+
+            var caller = McpServerConfiguration.BuildAuthenticatedCaller(mcpOptions);
+            services.AddSingleton(caller);
+            services.AddSingleton<IMcpAuthorization>(new DefaultMcpAuthorization(mcpOptions));
+
+            // The self-signed "MCP Test CA" is dev/test only; EnsureConfigured above has
+            // already verified AllowSelfSignedTestCa is explicitly set for the in-memory store.
+            var dn = builder.Configuration.GetValue<string>("CA_DN") ?? "CN=MCP Test CA";
+            services.AddSelfSignedCertificateAuthority(
+                new X500DistinguishedName(dn.StartsWith("CN=") ? dn : $"CN={dn}"),
+                Array.Empty<string>(), // OCSP URLs
+                Array.Empty<string>(), // CRL URLs
+                Array.Empty<string>(), // CA Issuer URLs
+                TimeSpan.FromDays(90));
+
+            mcpBuilder
+                .WithTools<SignCertificateTool>()
+                .WithTools<RevokeCertificateTool>();
+        }
 
         await builder.Build().RunAsync().ConfigureAwait(false);
     }
