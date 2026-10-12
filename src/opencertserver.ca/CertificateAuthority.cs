@@ -139,11 +139,6 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         CancellationToken cancellationToken = default)
     {
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
-        if (request.PublicKey.Oid.Value != profile.CertificateChain[0].PublicKey.Oid.Value)
-        {
-            return new SignCertificateResponse.Error("Public key algorithm does not match CA certificate");
-        }
-
         var results = await Task.WhenAll(_validators.Select(v =>
             // ReSharper disable once AccessToModifiedClosure
             v.Validate(request, profileName, requestor, reenrollingFrom, cancellationToken))).ConfigureAwait(false);
