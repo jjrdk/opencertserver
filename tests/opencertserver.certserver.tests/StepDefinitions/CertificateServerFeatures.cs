@@ -1,10 +1,7 @@
-using Microsoft.Extensions.Logging;
-
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
-using System.Text.Json;
 using CertesSlim.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
