@@ -1452,6 +1452,25 @@ public partial class CertificateServerFeatures
         Assert.NotNull(ecdsa);
         Assert.True(CertificateRevocationList.VerifyCrlSignature(CrlState.LastCrlBytes!, ecdsa));
     }
+
+    [When(@"(\d+) certificates have been issued and revoked")]
+    public async Task WhenNCertificatesHaveBeenIssuedAndRevoked(int count)
+    {
+        GivenAnEstClient();
+        for (var i = 0; i < count; i++)
+        {
+            await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
+            await WhenIRevokeTheCertificate().ConfigureAwait(false);
+        }
+        CrlState.LastCrlBytes = await FetchCrlBytesAsync().ConfigureAwait(false);
+    }
+
+    [Then(@"the CRL MUST contain exactly (\d+) revoked certificate entries")]
+    public void ThenTheCrlMustContainExactlyNEntries(int expectedCount)
+    {
+        var crl = CertificateRevocationList.Load(CrlState.LastCrlBytes!);
+        Assert.Equal(expectedCount, crl.RevokedCertificates.Count);
+    }
 }
 
 internal sealed class CrlConformanceState

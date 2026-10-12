@@ -120,7 +120,7 @@ They are intentionally written before adding step implementations so they can dr
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CrlConformance.feature.ndjson", 39);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CrlConformance.feature.ndjson", 40);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -1612,6 +1612,40 @@ They are intentionally written before adding step implementations so they can dr
 #line hidden
 #line 211
             await testRunner.AndAsync("the returned CRL MUST be signed by the default CA certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="The CRL contains all revoked certificates when more than 100 have been revoked")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "CRL conformance")]
+        [global::Xunit.TraitAttribute("Description", "The CRL contains all revoked certificates when more than 100 have been revoked")]
+        public async global::System.Threading.Tasks.Task TheCRLContainsAllRevokedCertificatesWhenMoreThan100HaveBeenRevoked()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "37";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("The CRL contains all revoked certificates when more than 100 have been revoked", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("CRL completeness when revocation list exceeds one page", null, tagsOfRule);
+#line 215
+        this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 216
+            await testRunner.WhenAsync("105 certificates have been issued and revoked", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 217
+            await testRunner.ThenAsync("the CRL MUST contain exactly 105 revoked certificate entries", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

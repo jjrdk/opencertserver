@@ -210,3 +210,9 @@ They are intentionally written before adding step implementations so they can dr
             Then the HTTP response status MUST be 200
             And the returned CRL MUST be signed by the default CA certificate
 
+    Rule: CRL completeness when revocation list exceeds one page
+
+        Scenario: The CRL contains all revoked certificates when more than 100 have been revoked
+            When 105 certificates have been issued and revoked
+            Then the CRL MUST contain exactly 105 revoked certificate entries
+

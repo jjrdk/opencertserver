@@ -350,25 +350,38 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         CancellationToken cancellationToken = default)
     {
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
-        var list = _certificateStore.GetRevocationList(cancellationToken: cancellationToken);
-        var revoked = await list
-            .Select(c =>
-            {
-                if (!c.RevocationReason.HasValue || c.RevocationReason.Value == X509RevocationReason.Unspecified)
-                {
-                    return new RevokedCertificate(Convert.FromHexString(c.SerialNumber), c.RevocationDate!.Value);
-                }
 
-                var ext = new CertificateExtension(
-                    new Oid("2.5.29.21"),
-                    c.RevocationReason.Value,
-                    null,
-                    null,
-                    false);
-                return new RevokedCertificate(Convert.FromHexString(c.SerialNumber), c.RevocationDate!.Value, ext);
-            })
-            .ToArrayAsync(cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        // Read all pages so the CRL is never silently truncated at the store's default page size.
+        const int pageSize = 100;
+        var revoked = new List<RevokedCertificate>();
+        int page = 0;
+        int batchCount;
+        do
+        {
+            var batch = await _certificateStore
+                .GetRevocationList(page, pageSize, cancellationToken)
+                .Select(c =>
+                {
+                    if (!c.RevocationReason.HasValue || c.RevocationReason.Value == X509RevocationReason.Unspecified)
+                    {
+                        return new RevokedCertificate(Convert.FromHexString(c.SerialNumber), c.RevocationDate!.Value);
+                    }
+
+                    var ext = new CertificateExtension(
+                        new Oid("2.5.29.21"),
+                        c.RevocationReason.Value,
+                        null,
+                        null,
+                        false);
+                    return new RevokedCertificate(Convert.FromHexString(c.SerialNumber), c.RevocationDate!.Value, ext);
+                })
+                .ToListAsync(cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            revoked.AddRange(batch);
+            batchCount = batch.Count;
+            page++;
+        }
+        while (batchCount == pageSize);
         var nextCrlNumber = profile.GetNextCrlNumber();
         var crl = new CertificateRevocationList(
             TypeVersion.V2,
