@@ -392,10 +392,30 @@ services.AddCertificateAuthorityAuthorization();
 ```csharp
 app.UseHttpsRedirection()
     .UseForwardedHeaders()
+    .UseCertificateForwarding()
+    .UseRouting()
+    .UseAuthentication()      // must run before any UseEndpoints-based Use…Server()
+    .UseAuthorization()
     .UseAcmeServer()          // maps ACME endpoints
-    .UseEstServer()           // maps EST endpoints + auth/authorization middleware
+    .UseEstServer()           // maps EST endpoints
     .UseCertificateAuthorityServer(); // maps /ca/* (CSR, OCSP, CRL, revocation, inventory)
 ```
+
+> **Pipeline ordering (important).** In a `WebApplication` all `Use…Server()` calls share a single
+> endpoint data source, and each one ends in `UseEndpoints`. The *first* `UseEndpoints` in the
+> pipeline therefore executes **every** mapped endpoint, including EST and `/ca/*` endpoints that
+> carry authorization metadata. If `UseAuthentication()`/`UseAuthorization()` have not run by then,
+> requests fail with `InvalidOperationException: Endpoint … contains authorization metadata, but a
+> middleware was not found that supports authorization` (HTTP 500). Always place
+> `UseRouting()`, `UseAuthentication()` and `UseAuthorization()` (plus `UseCertificateForwarding()`
+> for mTLS) **before** the first `Use…Server()` call, and never put endpoint-executing middleware
+> ahead of them. When composing your own pipeline, you can alternatively call
+> `MapEstServer()` / `MapCertificateAuthorityServer()` inside a single `app.UseEndpoints(...)` placed
+> after `UseAuthorization()`.
+>
+> ACME endpoints are explicitly `AllowAnonymous()`: ACME clients authenticate with RFC 8555 JWS
+> signatures, not ASP.NET credentials, so they remain reachable even if you configure a
+> `FallbackPolicy` requiring authenticated users.
 
 **Endpoint summary**
 

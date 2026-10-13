@@ -79,8 +79,6 @@ public static class EstServerExtensions
         {
             return app.UseCertificateForwarding()
                 .UseRouting()
-                .UseAuthentication()
-                .UseAuthorization()
                 .UseEndpoints(e =>
                 {
                     e.MapEstServer(enrollPolicy, reEnrollPolicy, csrAttrsPolicy, serverKeyGenPolicy);

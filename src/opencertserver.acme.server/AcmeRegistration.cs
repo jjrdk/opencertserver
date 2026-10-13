@@ -16,7 +16,8 @@ public static class AcmeRegistration
 
     public static IEndpointRouteBuilder RegisterAcmeEndpoints(this IEndpointRouteBuilder app, string pathBase = "")
     {
-        _ = app.MapGroup(pathBase).AddEndpointFilter<AcmeProtocolResponseFilter>()
+        // ACME authenticates requests via JWS, not ASP.NET authentication; stay reachable under any fallback policy.
+        _ = app.MapGroup(pathBase).AllowAnonymous().AddEndpointFilter<AcmeProtocolResponseFilter>()
             .AddEndpointFilter<AcmeIndexLinkFilter>()
             .AddEndpointFilter<ValidateAcmeRequestFilter>()
             .MapDirectoryEndpoints().MapNonceEndpoints().MapAccountEndpoints().MapOrderEndpoints().MapRevocationEndpoints();
