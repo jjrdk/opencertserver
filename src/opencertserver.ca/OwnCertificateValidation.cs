@@ -1,7 +1,9 @@
+using System.Formats.Asn1;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
+using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Ocsp;
 
@@ -58,47 +60,231 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
     }
 
     /// <summary>
-    /// Whether <paramref name="certificate"/> chains to the profile's CA certificates, i.e. was
-    /// signed by one of their keys. Comparing the issuer name is not enough: any self-signed
-    /// certificate can carry the CA's name (#96).
+    /// Whether <paramref name="certificate"/> was signed by one of the profile's CA certificates.
+    /// Comparing the issuer name is not enough: any self-signed certificate can carry the CA's
+    /// name (#96). Verifying the signature directly also works when the profile contains only
+    /// an intermediate and the platform chain builder cannot build a complete path to a root.
+    /// Expiration and revocation are handled separately from this issuer check.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// A profile may hold only its issuing intermediate, without the root. A chain then ends at
-    /// that intermediate as a partial chain, and <see cref="X509Chain.Build"/> fails even though
-    /// the certificate is genuine. In that case what counts is the certificate's own link: it
-    /// must have been linked to one of the profile's certificates and carry no error of its own -
-    /// a signature that does not verify against that certificate is reported on the certificate.
-    /// </para>
-    /// <para>
-    /// Validity of the certificate being renewed is not checked here - this validator accepted an
-    /// expired certificate before and still does (RFC 7030 §4.2.2 leaves renewal of an expired
-    /// certificate to the CA's policy); callers that need more (EST via TLS, SCEP) check it
-    /// themselves. Revocation is checked by the caller of this method against the store.
-    /// </para>
-    /// </remarks>
     private static bool IsIssuedBy(X509Certificate2 certificate, X509Certificate2Collection caCertificates)
     {
-        using var chain = new X509Chain();
-        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-        chain.ChainPolicy.CustomTrustStore.AddRange(caCertificates);
-        chain.ChainPolicy.ExtraStore.AddRange(caCertificates);
-        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-        chain.ChainPolicy.VerificationFlags = X509VerificationFlags.IgnoreNotTimeValid;
-        if (chain.Build(certificate))
+        foreach (var issuer in caCertificates)
         {
-            return true;
+            if (string.Equals(certificate.IssuerName.Name, issuer.SubjectName.Name,
+                    StringComparison.OrdinalIgnoreCase)
+             && HasValidSignature(certificate, issuer))
+            {
+                return true;
+            }
         }
 
-        if (chain.ChainElements.Count < 2)
+        return false;
+    }
+
+    private static bool HasValidSignature(X509Certificate2 certificate, X509Certificate2 issuer)
+    {
+        var certificateReader = new AsnReader(certificate.RawData, AsnEncodingRules.DER);
+        var certificateSequence = certificateReader.ReadSequence();
+        var tbsCertificate = certificateSequence.ReadEncodedValue();
+        var signatureAlgorithm = certificateSequence.ReadEncodedValue();
+        var signature = certificateSequence.ReadBitString(out var unusedBitCount);
+        certificateSequence.ThrowIfNotEmpty();
+        certificateReader.ThrowIfNotEmpty();
+        if (unusedBitCount != 0)
         {
             return false;
         }
 
-        var issuer = chain.ChainElements[1].Certificate;
-        return caCertificates.Any(ca => ca.RawData.AsSpan().SequenceEqual(issuer.RawData))
-            && chain.ChainElements[0].ChainElementStatus
-                .All(s => s.Status is X509ChainStatusFlags.NoError or X509ChainStatusFlags.NotTimeValid);
+        var tbsReader = new AsnReader(tbsCertificate, AsnEncodingRules.DER);
+        var tbsSequence = tbsReader.ReadSequence();
+        if (tbsSequence.PeekTag().TagClass == TagClass.ContextSpecific
+         && tbsSequence.PeekTag().TagValue == 0)
+        {
+            tbsSequence.ReadEncodedValue();
+        }
+
+        tbsSequence.ReadIntegerBytes();
+        var tbsSignatureAlgorithm = tbsSequence.ReadEncodedValue();
+        if (!tbsSignatureAlgorithm.Span.SequenceEqual(signatureAlgorithm.Span))
+        {
+            return false;
+        }
+
+        var signatureAlgorithmOid = certificate.SignatureAlgorithm.Value;
+        if (signatureAlgorithmOid is not (
+            Oids.RsaPss or Oids.RsaPkcs1Sha256 or Oids.RsaPkcs1Sha384 or Oids.RsaPkcs1Sha512
+         or "1.2.840.113549.1.1.5"
+         or Oids.ECDsaWithSha256 or "1.2.840.10045.4.3.3" or "1.2.840.10045.4.3.4"
+         or "1.2.840.10045.4.1"))
+        {
+            return false;
+        }
+
+        var isRsaPss = signatureAlgorithmOid == Oids.RsaPss;
+        HashAlgorithmName hashAlgorithm;
+        try
+        {
+            hashAlgorithm = isRsaPss
+                ? GetRsaPssHashAlgorithm(signatureAlgorithm)
+                : signatureAlgorithmOid.GetHashAlgorithmNameFromOid();
+        }
+        catch (Exception exception) when (exception is AsnContentException or CryptographicException)
+        {
+            return false;
+        }
+
+        if (issuer.GetRSAPublicKey() is { } rsa)
+        {
+            using (rsa)
+            {
+                var padding = signatureAlgorithmOid switch
+                {
+                    Oids.RsaPss => RSASignaturePadding.Pss,
+                    Oids.RsaPkcs1Sha256 or Oids.RsaPkcs1Sha384 or Oids.RsaPkcs1Sha512
+                     or "1.2.840.113549.1.1.5" => RSASignaturePadding.Pkcs1,
+                    _ => null
+                };
+                return padding != null
+                 && rsa.VerifyData(tbsCertificate.Span, signature, hashAlgorithm, padding);
+            }
+        }
+
+        if (issuer.GetECDsaPublicKey() is { } ecdsa)
+        {
+            using (ecdsa)
+            {
+                return signatureAlgorithmOid is Oids.ECDsaWithSha256 or "1.2.840.10045.4.3.3"
+                     or "1.2.840.10045.4.3.4" or "1.2.840.10045.4.1"
+                 && ecdsa.VerifyData(
+                        tbsCertificate.Span,
+                        signature,
+                        hashAlgorithm,
+                        DSASignatureFormat.Rfc3279DerSequence);
+            }
+        }
+
+        return false;
+    }
+
+    private static HashAlgorithmName GetRsaPssHashAlgorithm(ReadOnlyMemory<byte> encodedAlgorithm)
+    {
+        var reader = new AsnReader(encodedAlgorithm, AsnEncodingRules.DER);
+        var algorithm = reader.ReadSequence();
+        if (algorithm.ReadObjectIdentifier() != Oids.RsaPss)
+        {
+            throw new CryptographicException("Invalid RSASSA-PSS algorithm identifier.");
+        }
+
+        var hashAlgorithm = HashAlgorithmName.SHA1;
+        var maskHashAlgorithm = HashAlgorithmName.SHA1;
+        var saltLength = 20;
+        var trailerField = 1;
+        if (algorithm.HasData)
+        {
+            var parameters = algorithm.ReadSequence();
+            var previousTagValue = -1;
+            while (parameters.HasData)
+            {
+                var tag = parameters.PeekTag();
+                if (tag.TagClass != TagClass.ContextSpecific || tag.TagValue <= previousTagValue)
+                {
+                    throw new CryptographicException("Invalid RSASSA-PSS parameters.");
+                }
+
+                previousTagValue = tag.TagValue;
+                switch (tag.TagValue)
+                {
+                    case 0:
+                        hashAlgorithm = ReadHashAlgorithm(parameters.ReadSequence(
+                            new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true)));
+                        break;
+                    case 1:
+                        maskHashAlgorithm = ReadMaskGenerationHashAlgorithm(parameters.ReadSequence(
+                            new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true)));
+                        break;
+                    case 2:
+                        saltLength = ReadExplicitInteger(parameters, 2);
+                        break;
+                    case 3:
+                        trailerField = ReadExplicitInteger(parameters, 3);
+                        break;
+                    default:
+                        throw new CryptographicException("Unsupported RSASSA-PSS parameter.");
+                }
+            }
+        }
+
+        algorithm.ThrowIfNotEmpty();
+        reader.ThrowIfNotEmpty();
+        var expectedSaltLength = hashAlgorithm == HashAlgorithmName.SHA1 ? 20
+            : hashAlgorithm == HashAlgorithmName.SHA256 ? 32
+            : hashAlgorithm == HashAlgorithmName.SHA384 ? 48
+            : hashAlgorithm == HashAlgorithmName.SHA512 ? 64
+            : -1;
+        if (maskHashAlgorithm != hashAlgorithm || saltLength != expectedSaltLength || trailerField != 1)
+        {
+            throw new CryptographicException("Unsupported RSASSA-PSS parameters.");
+        }
+
+        return hashAlgorithm;
+    }
+
+    private static HashAlgorithmName ReadHashAlgorithm(AsnReader algorithm)
+    {
+        var hashAlgorithm = ReadHashAlgorithmIdentifier(algorithm);
+        algorithm.ThrowIfNotEmpty();
+        return hashAlgorithm;
+    }
+
+    private static HashAlgorithmName ReadMaskGenerationHashAlgorithm(AsnReader algorithm)
+    {
+        var maskGenerationAlgorithm = algorithm.ReadSequence();
+        if (maskGenerationAlgorithm.ReadObjectIdentifier() != "1.2.840.113549.1.1.8"
+         || !maskGenerationAlgorithm.HasData)
+        {
+            throw new CryptographicException("Unsupported RSASSA-PSS mask generation algorithm.");
+        }
+
+        var hashAlgorithmReader = new AsnReader(maskGenerationAlgorithm.ReadEncodedValue(), AsnEncodingRules.DER);
+        var hashAlgorithm = ReadHashAlgorithmIdentifier(hashAlgorithmReader);
+        hashAlgorithmReader.ThrowIfNotEmpty();
+        maskGenerationAlgorithm.ThrowIfNotEmpty();
+        algorithm.ThrowIfNotEmpty();
+        return hashAlgorithm;
+    }
+
+    private static HashAlgorithmName ReadHashAlgorithmIdentifier(AsnReader reader)
+    {
+        var algorithm = reader.ReadSequence();
+        var hashAlgorithm = algorithm.ReadObjectIdentifier() switch
+        {
+            "1.3.14.3.2.26" => HashAlgorithmName.SHA1,
+            "2.16.840.1.101.3.4.2.1" => HashAlgorithmName.SHA256,
+            "2.16.840.1.101.3.4.2.2" => HashAlgorithmName.SHA384,
+            "2.16.840.1.101.3.4.2.3" => HashAlgorithmName.SHA512,
+            _ => throw new CryptographicException("Unsupported RSASSA-PSS hash algorithm.")
+        };
+        if (algorithm.HasData)
+        {
+            algorithm.ReadNull();
+        }
+
+        algorithm.ThrowIfNotEmpty();
+        return hashAlgorithm;
+    }
+
+    private static int ReadExplicitInteger(AsnReader reader, int tagValue)
+    {
+        var explicitValue = reader.ReadSequence(
+            new Asn1Tag(TagClass.ContextSpecific, tagValue, isConstructed: true));
+        var value = explicitValue.ReadInteger();
+        explicitValue.ThrowIfNotEmpty();
+        if (value < 0 || value > int.MaxValue)
+        {
+            throw new CryptographicException("Invalid RSASSA-PSS integer parameter.");
+        }
+
+        return (int)value;
     }
 
     [LoggerMessage(LogLevel.Error, "Could not validate re-enrollment from {ReenrollingFrom}")]
