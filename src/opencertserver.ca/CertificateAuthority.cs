@@ -64,7 +64,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             :
             [
                 new CaExtensionValidation(_config.Profiles, NullLogger<CaExtensionValidation>.Instance),
-                new OwnCertificateValidation(_config.Profiles, NullLogger<OwnCertificateValidation>.Instance),
+                new OwnCertificateValidation(_config.Profiles, _certificateStore, NullLogger<OwnCertificateValidation>.Instance),
                 new DistinguishedNameValidation(NullLogger<DistinguishedNameValidation>.Instance),
                 new KeyCrlSignatureValidation(_config.Profiles, NullLogger<KeyCrlSignatureValidation>.Instance),
                 new AuthenticatedSubjectValidation(NullLogger<AuthenticatedSubjectValidation>.Instance),

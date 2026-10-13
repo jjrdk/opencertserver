@@ -56,6 +56,19 @@ Feature: Certificate server compliance with EST (RFC 7030)
           | RSA     |
           | ECDsa   |
 
+    Scenario Outline: Re-enrollment with a revoked certificate is refused
+        Given a certificate server that complies with EST (RFC 7030)
+        When a client submits a valid <profile> certificate signing request (CSR) using the "<profile>" certificate profile
+        And the server returns a signed certificate
+        And the issued certificate is revoked
+        And the <profile> client uses the previously issued certificate for re-enrollment
+        Then the server should return an error message indicating the reason for the failure
+
+        Examples:
+          | profile |
+          | RSA     |
+          | ECDsa   |
+
     Scenario Outline: Failed enrollment of a new certificate
         Given a certificate server that complies with EST (RFC 7030)
         When an unauthenticated client submits a valid <profile> certificate signing request (CSR)

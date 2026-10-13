@@ -54,19 +54,20 @@ public sealed class CertificateAuthorityTests : IDisposable
                 PrivateKey = ecdsa
             }
         );
+        var store = new InMemoryCertificateStore();
         _authority = new CertificateAuthority(
             new CaConfiguration(
                 caProfileSet,
                 ["test"],
                 [],
                 []),
-            new InMemoryCertificateStore(),
+            store,
             new ValidateAll(),
             new RandomNumberCertificateIdGenerator(),
             new NullLogger<CertificateAuthority>(),
             new CaExtensionValidation(caProfileSet, NullLogger<CaExtensionValidation>.Instance),
             new DistinguishedNameValidation(NullLogger<DistinguishedNameValidation>.Instance),
-            new OwnCertificateValidation(caProfileSet, NullLogger<OwnCertificateValidation>.Instance),
+            new OwnCertificateValidation(caProfileSet, store, NullLogger<OwnCertificateValidation>.Instance),
             new KeyCrlSignatureValidation(caProfileSet, NullLogger<KeyCrlSignatureValidation>.Instance)
         );
     }
@@ -467,6 +468,163 @@ public sealed class CertificateAuthorityTests : IDisposable
         Assert.Equal(X509KeyUsageFlags.CrlSign, ku.KeyUsages);
     }
 
+    // #96: OwnCertificateValidation accepted reenrollingFrom when only the issuer *name* matched
+    // one of the profile's certificates. Any self-signed certificate can carry that name.
+    [Fact]
+    public async Task ReenrollmentWithCertificateFromThisCaIsAccepted()
+    {
+        using var rsa = RSA.Create(2048);
+        var previous = await _authority.SignCertificateRequest(
+            CreateCertificateRequest(rsa),
+            cancellationToken: TestContext.Current.CancellationToken) as SignCertificateResponse.Success;
+        Assert.NotNull(previous);
+
+        using var next = RSA.Create(2048);
+        var renewed = await _authority.SignCertificateRequest(
+            CreateCertificateRequest(next),
+            reenrollingFrom: previous.Certificate,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.IsType<SignCertificateResponse.Success>(renewed);
+    }
+
+    [Fact]
+    public async Task ReenrollmentWithCertificateFromLookAlikeCaIsRejected()
+    {
+        // Same name as the "rsa" profile's CA, different key.
+        using var lookAlikeKey = RSA.Create(2048);
+        var lookAlikeReq = new CertificateRequest(
+            "CN=Test Server",
+            lookAlikeKey,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pss);
+        lookAlikeReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+        using var lookAlikeCa = lookAlikeReq.CreateSelfSigned(
+            DateTimeOffset.UtcNow.Date.AddDays(-1),
+            DateTimeOffset.UtcNow.Date.AddYears(1));
+        using var leafKey = RSA.Create(2048);
+        using var previous = CreateCertificateRequest(leafKey).Create(
+            lookAlikeCa,
+            DateTimeOffset.UtcNow.Date.AddDays(-1),
+            DateTimeOffset.UtcNow.Date.AddDays(30),
+            RandomNumberGenerator.GetBytes(16));
+        Assert.Equal("CN=Test Server", previous.IssuerName.Name);
+
+        using var next = RSA.Create(2048);
+        var renewed = await _authority.SignCertificateRequest(
+            CreateCertificateRequest(next),
+            reenrollingFrom: previous,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var error = Assert.IsType<SignCertificateResponse.Error>(renewed);
+        Assert.Contains("Re-enrollment certificate is not issued by this CA", error.Errors);
+    }
+
+    // A profile may hold only its issuing intermediate, without the root. Its own certificates
+    // must still pass ...
+    [Fact]
+    public async Task ReenrollmentWorksWhenTheProfileChainHoldsOnlyAnIntermediate()
+    {
+        var (authority, _) = CreateIntermediateOnlyAuthority();
+        using var _ = authority;
+
+        using var rsa = RSA.Create(2048);
+        var previous = await authority.SignCertificateRequest(
+            CreateCertificateRequest(rsa),
+            cancellationToken: TestContext.Current.CancellationToken) as SignCertificateResponse.Success;
+        Assert.NotNull(previous);
+
+        using var next = RSA.Create(2048);
+        var renewed = await authority.SignCertificateRequest(
+            CreateCertificateRequest(next),
+            reenrollingFrom: previous.Certificate,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.IsType<SignCertificateResponse.Success>(renewed);
+    }
+
+    // ... and a look-alike must not, even when it copies both the name and the key identifier of
+    // the intermediate, so that the leaf's authority key identifier points at the real one.
+    [Fact]
+    public async Task ReenrollmentWithLookAlikeOfAnIntermediateOnlyProfileIsRejected()
+    {
+        var (authority, issuer) = CreateIntermediateOnlyAuthority();
+        using var _ = authority;
+
+        using var lookAlikeKey = RSA.Create(2048);
+        var lookAlikeReq = new CertificateRequest(
+            issuer.SubjectName,
+            lookAlikeKey,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pss);
+        lookAlikeReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+        lookAlikeReq.CertificateExtensions.Add(issuer.Extensions.OfType<X509SubjectKeyIdentifierExtension>().Single());
+        using var lookAlike = lookAlikeReq.CreateSelfSigned(
+            DateTimeOffset.UtcNow.Date.AddDays(-1),
+            DateTimeOffset.UtcNow.Date.AddYears(1));
+        using var leafKey = RSA.Create(2048);
+        var leafReq = CreateCertificateRequest(leafKey);
+        leafReq.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromCertificate(lookAlike, true, false));
+        using var previous = leafReq.Create(
+            lookAlike,
+            DateTimeOffset.UtcNow.Date.AddDays(-1),
+            DateTimeOffset.UtcNow.Date.AddDays(30),
+            RandomNumberGenerator.GetBytes(16));
+
+        using var next = RSA.Create(2048);
+        var renewed = await authority.SignCertificateRequest(
+            CreateCertificateRequest(next),
+            reenrollingFrom: previous,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var error = Assert.IsType<SignCertificateResponse.Error>(renewed);
+        Assert.Contains("Re-enrollment certificate is not issued by this CA", error.Errors);
+    }
+
+    private static (CertificateAuthority Authority, X509Certificate2 Issuer) CreateIntermediateOnlyAuthority()
+    {
+        using var rootKey = RSA.Create(2048);
+        var rootReq = new CertificateRequest("CN=Root", rootKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        rootReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+        using var root = rootReq.CreateSelfSigned(
+            DateTimeOffset.UtcNow.Date.AddDays(-1),
+            DateTimeOffset.UtcNow.Date.AddYears(2));
+        var issuerKey = RSA.Create(2048);
+        var issuerReq = new CertificateRequest(
+            "CN=Issuing CA",
+            issuerKey,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pss);
+        issuerReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+        issuerReq.CertificateExtensions.Add(new X509KeyUsageExtension(
+            X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
+        issuerReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(issuerReq.PublicKey, false));
+        using var issued = issuerReq.Create(
+            root,
+            DateTimeOffset.UtcNow.Date.AddDays(-1),
+            DateTimeOffset.UtcNow.Date.AddYears(1),
+            RandomNumberGenerator.GetBytes(16));
+        var issuer = X509Certificate2.CreateFromPem(issued.ExportCertificatePem());
+        var caProfileSet = new CaProfileSet(
+            "rsa",
+            new CaProfile
+            {
+                Name = "rsa",
+                PrivateKey = issuerKey,
+                CertificateChain = [issuer],
+                CertificateValidity = TimeSpan.FromDays(90)
+            });
+        var store = new InMemoryCertificateStore();
+        var authority = new CertificateAuthority(
+            new CaConfiguration(caProfileSet, [], [], []),
+            store,
+            new ValidateAll(),
+            new RandomNumberCertificateIdGenerator(),
+            new NullLogger<CertificateAuthority>(),
+            new OwnCertificateValidation(caProfileSet, store, NullLogger<OwnCertificateValidation>.Instance));
+        return (authority, issuer);
+    }
+
     private static CertificateAuthority CreateCaEnabledAuthority(RSA issuerRsa)
     {
         var issuerReq = new CertificateRequest(
@@ -489,15 +647,16 @@ public sealed class CertificateAuthorityTests : IDisposable
             });
 
         // The same validators RegisterCaDependencies registers.
+        var store = new InMemoryCertificateStore();
         return new CertificateAuthority(
             new CaConfiguration(caProfileSet, [], [], []),
-            new InMemoryCertificateStore(),
+            store,
             new ValidateAll(),
             new RandomNumberCertificateIdGenerator(),
             new NullLogger<CertificateAuthority>(),
             new CaExtensionValidation(caProfileSet, NullLogger<CaExtensionValidation>.Instance),
             new DistinguishedNameValidation(NullLogger<DistinguishedNameValidation>.Instance),
-            new OwnCertificateValidation(caProfileSet, NullLogger<OwnCertificateValidation>.Instance),
+            new OwnCertificateValidation(caProfileSet, store, NullLogger<OwnCertificateValidation>.Instance),
             new KeyCrlSignatureValidation(caProfileSet, NullLogger<KeyCrlSignatureValidation>.Instance));
     }
 

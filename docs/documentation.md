@@ -141,6 +141,11 @@ chain is retrievable without authentication.
 
 - Description: Re-enroll using an existing certificate or the server-key-generated key.
 - Authentication: the existing client certificate (mTLS) or a JWT.
+- The certificate being renewed must have been signed by one of the profile's CA certificates
+   (`OwnCertificateValidation` builds the chain; a matching issuer name alone is not enough), and
+   must not have been revoked by this CA (the store is asked by serial number). An expired
+   certificate may still renew - RFC 7030 §4.2.2 leaves that to the CA's policy.
+   A profile that holds only its issuing intermediate, without the root, works.
 - Response: as `simpleenroll`.
 
 ### POST /.well-known/est/serverkeygen
