@@ -105,7 +105,7 @@ namespace OpenCertServer.Est.Tests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/EstServer.feature.ndjson", 28);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/EstServer.feature.ndjson", 30);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -475,15 +475,22 @@ namespace OpenCertServer.Est.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="Failed enrollment due to invalid CSR")]
+        [global::Xunit.TheoryAttribute(DisplayName="Enrollment refuses a subject alternative name the authenticated client does not c" +
+            "arry")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
-        [global::Xunit.TraitAttribute("Description", "Failed enrollment due to invalid CSR")]
-        public async global::System.Threading.Tasks.Task FailedEnrollmentDueToInvalidCSR()
+        [global::Xunit.TraitAttribute("Description", "Enrollment refuses a subject alternative name the authenticated client does not c" +
+            "arry")]
+        [global::Xunit.InlineDataAttribute("rsa", "rfc822Name", "19", new string[0])]
+        [global::Xunit.InlineDataAttribute("ecdsa", "user principal name", "20", new string[0])]
+        public async global::System.Threading.Tasks.Task EnrollmentRefusesASubjectAlternativeNameTheAuthenticatedClientDoesNotCarry(string profile, string san, string @__pickleIndex, string[] exampleTags)
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = exampleTags;
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "19";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Failed enrollment due to invalid CSR", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            argumentsOfScenario.Add("profile", profile);
+            argumentsOfScenario.Add("san", san);
+            string pickleIndex = @__pickleIndex;
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Enrollment refuses a subject alternative name the authenticated client does not c" +
+                    "arry", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 89
@@ -500,7 +507,8 @@ namespace OpenCertServer.Est.Tests.Features
         await testRunner.GivenAsync("a certificate server that complies with EST (RFC 7030)", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 91
-        await testRunner.WhenAsync("a client submits an invalid CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+        await testRunner.WhenAsync(string.Format("a client authenticated as \"CN=test\" requests a {0} certificate for the subject \"C" +
+                            "N=test\" with the {1} \"someone.else@example.org\"", profile, san), ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 92
         await testRunner.ThenAsync("the server should return an error message indicating the reason for the failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
@@ -509,21 +517,18 @@ namespace OpenCertServer.Est.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.TheoryAttribute(DisplayName="Successful retrieval of CA certificates for the profile")]
+        [global::Xunit.FactAttribute(DisplayName="Failed enrollment due to invalid CSR")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
-        [global::Xunit.TraitAttribute("Description", "Successful retrieval of CA certificates for the profile")]
-        [global::Xunit.InlineDataAttribute("rsa", "20", new string[0])]
-        [global::Xunit.InlineDataAttribute("ecdsa", "21", new string[0])]
-        public async global::System.Threading.Tasks.Task SuccessfulRetrievalOfCACertificatesForTheProfile(string profile, string @__pickleIndex, string[] exampleTags)
+        [global::Xunit.TraitAttribute("Description", "Failed enrollment due to invalid CSR")]
+        public async global::System.Threading.Tasks.Task FailedEnrollmentDueToInvalidCSR()
         {
-            string[] tagsOfScenario = exampleTags;
+            string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            argumentsOfScenario.Add("profile", profile);
-            string pickleIndex = @__pickleIndex;
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Successful retrieval of CA certificates for the profile", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string pickleIndex = "21";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Failed enrollment due to invalid CSR", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 94
+#line 99
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -533,31 +538,31 @@ namespace OpenCertServer.Est.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 95
+#line 100
         await testRunner.GivenAsync("a certificate server that complies with EST (RFC 7030)", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 96
-        await testRunner.WhenAsync(string.Format("a client requests the CA certificates for the \"{0}\" certificate profile", profile), ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line 101
+        await testRunner.WhenAsync("a client submits an invalid CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 97
-        await testRunner.ThenAsync("the server should return the CA certificates in the correct format", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line 102
+        await testRunner.ThenAsync("the server should return an error message indicating the reason for the failure", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.TheoryAttribute(DisplayName="Successful retrieval of server attributes for the profile")]
+        [global::Xunit.TheoryAttribute(DisplayName="Successful retrieval of CA certificates for the profile")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
-        [global::Xunit.TraitAttribute("Description", "Successful retrieval of server attributes for the profile")]
+        [global::Xunit.TraitAttribute("Description", "Successful retrieval of CA certificates for the profile")]
         [global::Xunit.InlineDataAttribute("rsa", "22", new string[0])]
         [global::Xunit.InlineDataAttribute("ecdsa", "23", new string[0])]
-        public async global::System.Threading.Tasks.Task SuccessfulRetrievalOfServerAttributesForTheProfile(string profile, string @__pickleIndex, string[] exampleTags)
+        public async global::System.Threading.Tasks.Task SuccessfulRetrievalOfCACertificatesForTheProfile(string profile, string @__pickleIndex, string[] exampleTags)
         {
             string[] tagsOfScenario = exampleTags;
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             argumentsOfScenario.Add("profile", profile);
             string pickleIndex = @__pickleIndex;
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Successful retrieval of server attributes for the profile", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Successful retrieval of CA certificates for the profile", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 104
@@ -574,29 +579,27 @@ namespace OpenCertServer.Est.Tests.Features
         await testRunner.GivenAsync("a certificate server that complies with EST (RFC 7030)", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 106
-        await testRunner.WhenAsync(string.Format("an authenticated client requests the server attributes for the {0} certificate pr" +
-                            "ofile", profile), ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+        await testRunner.WhenAsync(string.Format("a client requests the CA certificates for the \"{0}\" certificate profile", profile), ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 107
-        await testRunner.ThenAsync("the server should return the server attributes in the correct format", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+        await testRunner.ThenAsync("the server should return the CA certificates in the correct format", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.TheoryAttribute(DisplayName="Server-side key generation treats the CSR like any enroll CSR")]
+        [global::Xunit.TheoryAttribute(DisplayName="Successful retrieval of server attributes for the profile")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
-        [global::Xunit.TraitAttribute("Description", "Server-side key generation treats the CSR like any enroll CSR")]
-        [global::Xunit.InlineDataAttribute("rsa", "3072", "24", new string[0])]
-        [global::Xunit.InlineDataAttribute("ecdsa", "384", "25", new string[0])]
-        public async global::System.Threading.Tasks.Task Server_SideKeyGenerationTreatsTheCSRLikeAnyEnrollCSR(string profile, string size, string @__pickleIndex, string[] exampleTags)
+        [global::Xunit.TraitAttribute("Description", "Successful retrieval of server attributes for the profile")]
+        [global::Xunit.InlineDataAttribute("rsa", "24", new string[0])]
+        [global::Xunit.InlineDataAttribute("ecdsa", "25", new string[0])]
+        public async global::System.Threading.Tasks.Task SuccessfulRetrievalOfServerAttributesForTheProfile(string profile, string @__pickleIndex, string[] exampleTags)
         {
             string[] tagsOfScenario = exampleTags;
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             argumentsOfScenario.Add("profile", profile);
-            argumentsOfScenario.Add("size", size);
             string pickleIndex = @__pickleIndex;
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Server-side key generation treats the CSR like any enroll CSR", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Successful retrieval of server attributes for the profile", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 114
@@ -613,23 +616,62 @@ namespace OpenCertServer.Est.Tests.Features
         await testRunner.GivenAsync("a certificate server that complies with EST (RFC 7030)", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 116
+        await testRunner.WhenAsync(string.Format("an authenticated client requests the server attributes for the {0} certificate pr" +
+                            "ofile", profile), ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 117
+        await testRunner.ThenAsync("the server should return the server attributes in the correct format", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.TheoryAttribute(DisplayName="Server-side key generation treats the CSR like any enroll CSR")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Certificate server compliance with EST (RFC 7030)")]
+        [global::Xunit.TraitAttribute("Description", "Server-side key generation treats the CSR like any enroll CSR")]
+        [global::Xunit.InlineDataAttribute("rsa", "3072", "26", new string[0])]
+        [global::Xunit.InlineDataAttribute("ecdsa", "384", "27", new string[0])]
+        public async global::System.Threading.Tasks.Task Server_SideKeyGenerationTreatsTheCSRLikeAnyEnrollCSR(string profile, string size, string @__pickleIndex, string[] exampleTags)
+        {
+            string[] tagsOfScenario = exampleTags;
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            argumentsOfScenario.Add("profile", profile);
+            argumentsOfScenario.Add("size", size);
+            string pickleIndex = @__pickleIndex;
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Server-side key generation treats the CSR like any enroll CSR", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 124
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 125
+        await testRunner.GivenAsync("a certificate server that complies with EST (RFC 7030)", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 126
         await testRunner.WhenAsync(string.Format("a client requests server-side key generation with a {0} CSR for a {1} key contain" +
                             "ing a SAN URI and key usage", profile, size), ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 117
+#line 127
         await testRunner.ThenAsync(string.Format("the server-generated key is a {0} key of size {1}", profile, size), ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 118
+#line 128
         await testRunner.AndAsync("the certificate part is a certs-only response containing only the issued certific" +
                         "ate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 119
+#line 129
         await testRunner.AndAsync("the issued certificate belongs to the server-generated key", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 120
+#line 130
         await testRunner.AndAsync("the issued certificate contains the SAN URI requested in the CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 121
+#line 131
         await testRunner.AndAsync("the issued certificate contains the key usage extension requested in the CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }

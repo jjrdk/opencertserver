@@ -545,7 +545,7 @@ public class EstServer
         _context["enrolledCertificate"] = cert;
     }
 
-    [When("""^a client authenticated as "(.+?)" requests a (.+?) certificate for the subject "(.+?)"$""")]
+    [When("""^a client authenticated as "([^"]+)" requests a ([a-z]+) certificate for the subject "([^"]+)"$""")]
     public async Task WhenAClientAuthenticatedAsRequestsACertificateForTheSubject(
         string clientSubject,
         string profile,
@@ -561,6 +561,43 @@ public class EstServer
             ECDsa ecDsa => new CertificateRequest(requestedSubject, ecDsa, HashAlgorithmName.SHA256),
             _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, null)
         };
+        request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
+
+        var (error, cert) = await SubmitSimpleEnrollAsync(request, profile.ToLowerInvariant(), clientCertificate)
+            .ConfigureAwait(false);
+        _context["errorMessage"] = error;
+        _context["enrolledCertificate"] = cert;
+    }
+
+    [When("""^a client authenticated as "([^"]+)" requests a ([a-z]+) certificate for the subject "([^"]+)" with the (rfc822Name|user principal name) "([^"]+)"$""")]
+    public async Task WhenAClientAuthenticatedAsRequestsACertificateWithTheSan(
+        string clientSubject,
+        string profile,
+        string requestedSubject,
+        string sanKind,
+        string sanValue)
+    {
+        AsymmetricAlgorithm key = profile.ToLowerInvariant() == "rsa" ? RSA.Create() : ECDsa.Create();
+        var clientCertificate = await GetCertificate(key).ConfigureAwait(false);
+        Assert.Equal(clientSubject, clientCertificate.Subject);
+
+        var request = key switch
+        {
+            RSA rsa => new CertificateRequest(requestedSubject, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss),
+            ECDsa ecDsa => new CertificateRequest(requestedSubject, ecDsa, HashAlgorithmName.SHA256),
+            _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, null)
+        };
+        var san = new SubjectAlternativeNameBuilder();
+        if (sanKind == "rfc822Name")
+        {
+            san.AddEmailAddress(sanValue);
+        }
+        else
+        {
+            san.AddUserPrincipalName(sanValue);
+        }
+
+        request.CertificateExtensions.Add(san.Build());
         request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
 
         var (error, cert) = await SubmitSimpleEnrollAsync(request, profile.ToLowerInvariant(), clientCertificate)

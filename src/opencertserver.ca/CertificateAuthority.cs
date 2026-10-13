@@ -750,10 +750,15 @@ public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertifi
             var names = new GeneralNames(extension.RawData).Names;
             foreach (var name in names)
             {
-                var sanValue = name.Value switch
+                // Only the names that identify someone are bound: rfc822Name, dNSName and the user
+                // principal name. A URI or an IP address says nothing about the requestor; the profile's
+                // extension rules govern those.
+                var sanValue = name switch
                 {
-                    AsnString asnString => asnString.Value,
-                    OtherName otherName => otherName.StringValue,
+                    { Type: GeneralName.GeneralNameType.Rfc822Name or GeneralName.GeneralNameType.DnsName, Value: AsnString asnString }
+                        => asnString.Value,
+                    { Type: GeneralName.GeneralNameType.OtherName, Value: OtherName { TypeId: Oids.UserPrincipalName } otherName }
+                        => otherName.StringValue,
                     _ => null
                 };
                 if (!string.IsNullOrWhiteSpace(sanValue))
@@ -793,8 +798,11 @@ public sealed partial class AuthenticatedSubjectValidation : IValidateCertificat
             return Task.FromResult<string?>(null);
         }
 
-        var nameClaim = requestor.FindFirst(ClaimTypes.Name)?.Value;
-        if (nameClaim == null)
+        var identityNames = requestor.Claims
+            .Where(c => IdentityClaimTypes.Contains(c.Type) && !string.IsNullOrWhiteSpace(c.Value))
+            .Select(c => c.Value.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (identityNames.Count == 0)
         {
             // No name claim (e.g., a JWT with only role claims) — cannot enforce subject binding.
             return Task.FromResult<string?>(null);
@@ -806,17 +814,36 @@ public sealed partial class AuthenticatedSubjectValidation : IValidateCertificat
             return Task.FromResult<string?>(null);
         }
 
-        var matches = csrValues.Any(value => string.Equals(value, nameClaim, StringComparison.OrdinalIgnoreCase));
-        if (matches)
+        // Every name the request asserts must be one of the identity's names: a request that carries the
+        // requestor's own CN next to someone else's e-mail address or UPN is not the requestor's.
+        var foreign = csrValues
+            .Where(value => !identityNames.Contains(value))
+            .OrderBy(v => v, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (foreign.Length == 0)
         {
             return Task.FromResult<string?>(null);
         }
 
-        var csrValue = string.Join(", ", csrValues.OrderBy(v => v, StringComparer.OrdinalIgnoreCase));
-        LogSubjectMismatch(csrValue, nameClaim);
+        var csrValue = string.Join(", ", foreign);
+        var identity = string.Join(", ", identityNames.OrderBy(v => v, StringComparer.OrdinalIgnoreCase));
+        LogSubjectMismatch(csrValue, identity);
         return Task.FromResult<string?>(
-            $"CSR values '{csrValue}' do not match authenticated identity '{nameClaim}'");
+            $"CSR values '{csrValue}' do not match authenticated identity '{identity}'");
     }
+
+    /// <summary>
+    /// The claim types that name an identity: <see cref="ClaimTypes.Name"/>, e-mail and UPN as the
+    /// certificate and JWT handlers map them, and the raw JWT names for a host that does not map
+    /// inbound claims.
+    /// </summary>
+    private static readonly HashSet<string> IdentityClaimTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ClaimTypes.Name, "name",
+        ClaimTypes.Email, "email",
+        ClaimTypes.Upn, "upn",
+        "preferred_username"
+    };
 
     [LoggerMessage(LogLevel.Warning, "CSR values '{CsrValues}' do not match authenticated identity '{Identity}'")]
     partial void LogSubjectMismatch(string csrValues, string identity);

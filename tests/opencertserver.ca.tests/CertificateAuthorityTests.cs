@@ -263,8 +263,9 @@ public sealed class CertificateAuthorityTests : IDisposable
         // Regression test: otherName (UPN) SAN entries, as issued by Intune/AD CS,
         // previously threw AsnContentException while parsing the SAN list and
         // surfaced as a generic CSR parse failure rather than being validated.
+        // The CN is the identity's name as well: every name the request asserts is bound.
         using var rsa = RSA.Create(2048);
-        var req = new CertificateRequest("CN=Test Leaf", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var req = new CertificateRequest("CN=alice@example.com", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
         var sanBuilder = new SubjectAlternativeNameBuilder();
         sanBuilder.AddUserPrincipalName("alice@example.com");
         req.CertificateExtensions.Add(sanBuilder.Build());
@@ -310,13 +311,14 @@ public sealed class CertificateAuthorityTests : IDisposable
     }
 
     [Fact]
-    public async Task AuthenticatedSubjectValidationAcceptsCsrWithForeignRfc822NameAndMatchingUserPrincipalNameSan()
+    public async Task AuthenticatedSubjectValidationRejectsCsrWithForeignRfc822NameNextToMatchingUserPrincipalNameSan()
     {
-        // Mixed SAN: a foreign rfc822Name (not matching the identity) alongside a
-        // matching UPN otherName should still validate successfully as long as one
-        // SAN entry matches the authenticated identity.
+        // Mixed SAN: a foreign rfc822Name next to a matching UPN otherName is refused. A relying
+        // party that authenticates by e-mail address (S/MIME, an EAP identity) would accept the
+        // certificate as that address, whatever the UPN next to it says - so every name the
+        // request asserts has to be the requestor's, not just one of them.
         using var rsa = RSA.Create(2048);
-        var req = new CertificateRequest("CN=Test Leaf", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var req = new CertificateRequest("CN=alice@example.com", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
         var sanBuilder = new SubjectAlternativeNameBuilder();
         sanBuilder.AddEmailAddress("no-reply@other-domain.example");
         sanBuilder.AddUserPrincipalName("alice@example.com");
@@ -334,7 +336,8 @@ public sealed class CertificateAuthorityTests : IDisposable
             ], "test"),
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Null(result);
+        Assert.NotNull(result);
+        Assert.Contains("no-reply@other-domain.example", result!, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
