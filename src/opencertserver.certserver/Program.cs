@@ -15,6 +15,7 @@ using Acme.Abstractions.IssuanceServices;
 using Est.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Acme.Server;
@@ -182,6 +183,11 @@ internal static class Program
                     httpsOptions.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
                     // Kestrel presents an X.509 server certificate that is expected to conform to RFC5280.
                     // Leave TLS session resumption enabled (the default) because RFC 7030 recommends session resumption support.
+                    // Ask the client for a certificate: EST re-enrollment and self-service revocation
+                    // authenticate with one. Kestrel only transports it; the certificate authentication
+                    // handler validates it against the CA's own certificates.
+                    httpsOptions.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
+                    httpsOptions.AllowAnyClientCertificate();
                 });
             })
             .UseUrls($"https://*:{port}");

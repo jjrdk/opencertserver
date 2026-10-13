@@ -28,9 +28,11 @@ you don't have to read handler source. The reasoning and the RFC citations for e
 ## Certificate Authority (CA) endpoints
 
 The CA endpoints are mounted by the `ca.server` handlers under `/ca` in the `certserver` host. They
-are secured by TLS client-certificate authentication (`certserver` runs `UseHttps` with
-`UseHttpsClientCertificate` and
-`CertificateAuthenticationDefaults.AuthenticationScheme` = `"Certificate"`).
+are secured by TLS client-certificate authentication: Kestrel accepts a client certificate
+(`ClientCertificateMode.AllowCertificate`, any certificate at the TLS layer) and the certificate
+authentication handler (`CertificateAuthenticationDefaults.AuthenticationScheme` = `"Certificate"`)
+validates it against the CA's own certificates. Behind a reverse proxy the certificate arrives in
+the `X-Client-Cert` header instead (`UseCertificateForwarding`).
 
 **Validity window.** When the caller does not request a `notBefore` - EST never does, ACME only when
 the order carries one - an issued certificate is valid from midnight UTC of the day it is issued, for
