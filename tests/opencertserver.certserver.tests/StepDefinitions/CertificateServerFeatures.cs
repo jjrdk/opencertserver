@@ -58,7 +58,13 @@ public partial class CertificateServerFeatures
         return;
 
         void ConfigureApp(IApplicationBuilder app) =>
-            app.UseCertificateForwarding().UseAcmeServer().UseEstServer().UseEndpoints(e =>
+            app.UseCertificateForwarding()
+                .UseRouting()
+                .UseAuthentication()
+                .UseAuthorization()
+                .UseAcmeServer()
+                .UseEstServer()
+                .UseEndpoints(e =>
             {
                 e.MapCertificateAuthorityServer();
             });

@@ -190,6 +190,10 @@ internal static class Program
             .UseCors("TrustedClients")
             .UseForwardedHeaders(forwardedHeadersOptions)
             .UseHealthChecks("/health")
+            .UseCertificateForwarding()
+            .UseRouting()
+            .UseAuthentication()
+            .UseAuthorization()
             .UseAcmeServer()
             .UseEstServer()
             .UseCertificateAuthorityServer();
