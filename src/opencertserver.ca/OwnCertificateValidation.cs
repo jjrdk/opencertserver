@@ -120,7 +120,19 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
             return false;
         }
 
-        var hashAlgorithm = signatureAlgorithmOid.GetHashAlgorithmNameFromOid();
+        var isRsaPss = signatureAlgorithmOid == Oids.RsaPss;
+        HashAlgorithmName hashAlgorithm;
+        try
+        {
+            hashAlgorithm = isRsaPss
+                ? GetRsaPssHashAlgorithm(signatureAlgorithm)
+                : signatureAlgorithmOid.GetHashAlgorithmNameFromOid();
+        }
+        catch (Exception exception) when (exception is AsnContentException or CryptographicException)
+        {
+            return false;
+        }
+
         if (issuer.GetRSAPublicKey() is { } rsa)
         {
             using (rsa)
@@ -152,6 +164,127 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
         }
 
         return false;
+    }
+
+    private static HashAlgorithmName GetRsaPssHashAlgorithm(ReadOnlyMemory<byte> encodedAlgorithm)
+    {
+        var reader = new AsnReader(encodedAlgorithm, AsnEncodingRules.DER);
+        var algorithm = reader.ReadSequence();
+        if (algorithm.ReadObjectIdentifier() != Oids.RsaPss)
+        {
+            throw new CryptographicException("Invalid RSASSA-PSS algorithm identifier.");
+        }
+
+        var hashAlgorithm = HashAlgorithmName.SHA1;
+        var maskHashAlgorithm = HashAlgorithmName.SHA1;
+        var saltLength = 20;
+        var trailerField = 1;
+        if (algorithm.HasData)
+        {
+            var parameters = algorithm.ReadSequence();
+            var previousTagValue = -1;
+            while (parameters.HasData)
+            {
+                var tag = parameters.PeekTag();
+                if (tag.TagClass != TagClass.ContextSpecific || tag.TagValue <= previousTagValue)
+                {
+                    throw new CryptographicException("Invalid RSASSA-PSS parameters.");
+                }
+
+                previousTagValue = tag.TagValue;
+                switch (tag.TagValue)
+                {
+                    case 0:
+                        hashAlgorithm = ReadHashAlgorithm(parameters.ReadSequence(
+                            new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true)));
+                        break;
+                    case 1:
+                        maskHashAlgorithm = ReadMaskGenerationHashAlgorithm(parameters.ReadSequence(
+                            new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true)));
+                        break;
+                    case 2:
+                        saltLength = ReadExplicitInteger(parameters, 2);
+                        break;
+                    case 3:
+                        trailerField = ReadExplicitInteger(parameters, 3);
+                        break;
+                    default:
+                        throw new CryptographicException("Unsupported RSASSA-PSS parameter.");
+                }
+            }
+        }
+
+        algorithm.ThrowIfNotEmpty();
+        reader.ThrowIfNotEmpty();
+        var expectedSaltLength = hashAlgorithm == HashAlgorithmName.SHA1 ? 20
+            : hashAlgorithm == HashAlgorithmName.SHA256 ? 32
+            : hashAlgorithm == HashAlgorithmName.SHA384 ? 48
+            : hashAlgorithm == HashAlgorithmName.SHA512 ? 64
+            : -1;
+        if (maskHashAlgorithm != hashAlgorithm || saltLength != expectedSaltLength || trailerField != 1)
+        {
+            throw new CryptographicException("Unsupported RSASSA-PSS parameters.");
+        }
+
+        return hashAlgorithm;
+    }
+
+    private static HashAlgorithmName ReadHashAlgorithm(AsnReader algorithm)
+    {
+        var hashAlgorithm = ReadHashAlgorithmIdentifier(algorithm);
+        algorithm.ThrowIfNotEmpty();
+        return hashAlgorithm;
+    }
+
+    private static HashAlgorithmName ReadMaskGenerationHashAlgorithm(AsnReader algorithm)
+    {
+        var maskGenerationAlgorithm = algorithm.ReadSequence();
+        if (maskGenerationAlgorithm.ReadObjectIdentifier() != "1.2.840.113549.1.1.8"
+         || !maskGenerationAlgorithm.HasData)
+        {
+            throw new CryptographicException("Unsupported RSASSA-PSS mask generation algorithm.");
+        }
+
+        var hashAlgorithmReader = new AsnReader(maskGenerationAlgorithm.ReadEncodedValue(), AsnEncodingRules.DER);
+        var hashAlgorithm = ReadHashAlgorithmIdentifier(hashAlgorithmReader);
+        hashAlgorithmReader.ThrowIfNotEmpty();
+        maskGenerationAlgorithm.ThrowIfNotEmpty();
+        algorithm.ThrowIfNotEmpty();
+        return hashAlgorithm;
+    }
+
+    private static HashAlgorithmName ReadHashAlgorithmIdentifier(AsnReader reader)
+    {
+        var algorithm = reader.ReadSequence();
+        var hashAlgorithm = algorithm.ReadObjectIdentifier() switch
+        {
+            "1.3.14.3.2.26" => HashAlgorithmName.SHA1,
+            "2.16.840.1.101.3.4.2.1" => HashAlgorithmName.SHA256,
+            "2.16.840.1.101.3.4.2.2" => HashAlgorithmName.SHA384,
+            "2.16.840.1.101.3.4.2.3" => HashAlgorithmName.SHA512,
+            _ => throw new CryptographicException("Unsupported RSASSA-PSS hash algorithm.")
+        };
+        if (algorithm.HasData)
+        {
+            algorithm.ReadNull();
+        }
+
+        algorithm.ThrowIfNotEmpty();
+        return hashAlgorithm;
+    }
+
+    private static int ReadExplicitInteger(AsnReader reader, int tagValue)
+    {
+        var explicitValue = reader.ReadSequence(
+            new Asn1Tag(TagClass.ContextSpecific, tagValue, isConstructed: true));
+        var value = explicitValue.ReadInteger();
+        explicitValue.ThrowIfNotEmpty();
+        if (value < 0 || value > int.MaxValue)
+        {
+            throw new CryptographicException("Invalid RSASSA-PSS integer parameter.");
+        }
+
+        return (int)value;
     }
 
     [LoggerMessage(LogLevel.Error, "Could not validate re-enrollment from {ReenrollingFrom}")]

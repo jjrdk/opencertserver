@@ -488,6 +488,66 @@ public sealed class CertificateAuthorityTests : IDisposable
         Assert.IsType<SignCertificateResponse.Success>(renewed);
     }
 
+    [Theory]
+    [InlineData("SHA384")]
+    [InlineData("SHA512")]
+    public async Task ReenrollmentWithRsaPssSha384OrSha512SignatureIsAccepted(string hashName)
+    {
+        var hashAlgorithm = hashName switch
+        {
+            "SHA384" => HashAlgorithmName.SHA384,
+            "SHA512" => HashAlgorithmName.SHA512,
+            _ => throw new ArgumentOutOfRangeException(nameof(hashName))
+        };
+        using var issuerKey = RSA.Create(2048);
+        var issuerRequest = new CertificateRequest(
+            "CN=Issuer",
+            issuerKey,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pss);
+        using var issuerCertificate = issuerRequest.CreateSelfSigned(
+            DateTimeOffset.UtcNow.AddDays(-1),
+            DateTimeOffset.UtcNow.AddYears(1));
+        var caCertificate = X509Certificate2.CreateFromPem(issuerCertificate.ExportCertificatePem());
+        var profiles = new CaProfileSet(
+            "rsa",
+            new CaProfile
+            {
+                Name = "rsa",
+                PrivateKey = issuerKey,
+                CertificateChain = [caCertificate],
+                CertificateValidity = TimeSpan.FromDays(90)
+            });
+        var store = new InMemoryCertificateStore();
+        var validator = new OwnCertificateValidation(
+            profiles,
+            store,
+            NullLogger<OwnCertificateValidation>.Instance);
+
+        using var leafKey = RSA.Create(2048);
+        var leafRequest = new CertificateRequest(
+            "CN=Previous",
+            leafKey,
+            hashAlgorithm,
+            RSASignaturePadding.Pss);
+        using var previous = leafRequest.Create(
+            issuerCertificate.SubjectName,
+            X509SignatureGenerator.CreateForRSA(issuerKey, RSASignaturePadding.Pss),
+            DateTimeOffset.UtcNow.AddDays(-1),
+            DateTimeOffset.UtcNow.AddDays(30),
+            RandomNumberGenerator.GetBytes(16));
+        using var nextKey = RSA.Create(2048);
+        var nextRequest = CreateCertificateRequest(nextKey);
+
+        var error = await validator.Validate(
+            nextRequest,
+            "rsa",
+            reenrollingFrom: previous,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Null(error);
+    }
+
     [Fact]
     public async Task ReenrollmentWithCertificateFromLookAlikeCaIsRejected()
     {
