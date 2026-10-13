@@ -34,14 +34,13 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
           | profile | challenge |
           | rsa     | geheim    |
 
-    # Windows creates RSA keys for SCEP. The CA core issues only when the request key
-    # matches the CA key algorithm (CertificateAuthority.SignCertificateRequest), so an
-    # ECDSA profile cannot serve SCEP clients today. This scenario pins that behaviour.
-    Scenario: An RSA request against an ECDSA profile is refused by the CA
+    # Windows creates RSA keys for SCEP. Since #111 the CA signs a request whose key
+    # algorithm differs from its own, so an ECDSA profile can serve SCEP clients.
+    Scenario: An RSA request against an ECDSA profile is issued by the CA
         Given a certificate server that complies with SCEP (RFC 8894)
         When a client enrolls with the challenge password "geheim" using the "ecdsa" profile
-        Then the server answers FAILURE with failInfo badRequest
-        And no certificate is returned
+        Then the server answers SUCCESS
+        And the issued certificate is issued by the "ecdsa" CA
 
     Scenario: Enrollment through GET
         Given a certificate server that complies with SCEP (RFC 8894)
