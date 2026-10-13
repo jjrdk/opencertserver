@@ -197,6 +197,10 @@ public static class Extensions
         {
             policy.RequireAuthenticatedUser();
         });
+        groupBuilder.MapPost("/{profileName}/csr", CsrHandler.HandleProfile).RequireAuthorization(policy =>
+        {
+            policy.RequireAuthenticatedUser();
+        });
         groupBuilder
             .MapDelete("/revoke", RevocationHandler.Handle)
             .RequireAuthorization(RevocationAuthorizationConstants.RevocationPolicyName);

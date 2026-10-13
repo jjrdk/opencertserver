@@ -32,6 +32,17 @@ Feature: Certificate lifecycle management
         And an admin revokes the certificate with a different key
         Then the certificate should be in the CRL
 
+    # /ca/csr threw before the handler ran: it asked for a route parameter the route does
+    # not define. Nothing called the endpoint in the suite, so the 500 went unnoticed.
+    Scenario Outline: A PEM request is signed over the CA endpoint
+        When I post a PEM certificate request to "<path>" with a valid JWT
+        Then the response is a PEM chain issued by the "<profile>" profile
+
+        Examples:
+          | path         | profile |
+          | ca/csr       | rsa     |
+          | ca/ecdsa/csr | ecdsa   |
+
     Scenario Outline: A profile signs requests of either key algorithm
         When the CA signs a <request key> certificate request with the "<profile>" profile
         Then the issued certificate carries the key of the request

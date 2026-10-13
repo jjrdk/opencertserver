@@ -12,7 +12,24 @@ using Utils.X509Extensions;
 
 public static class CsrHandler
 {
-    public static async Task<IResult> Handle(
+    /// <summary>
+    /// <c>POST /ca/csr</c>: signs with the default profile. The route has no profile parameter, so
+    /// this overload must not ask for one - a <c>[FromRoute]</c> parameter that the route does not
+    /// define makes the generated request delegate throw before the handler runs.
+    /// </summary>
+    public static Task<IResult> Handle(
+        ClaimsPrincipal user,
+        ICertificateAuthority ca,
+        [FromBody] Stream body,
+        CancellationToken cancellationToken)
+    {
+        return HandleProfile(null, user, ca, body, cancellationToken);
+    }
+
+    /// <summary>
+    /// <c>POST /ca/{profileName}/csr</c>: signs with the named profile.
+    /// </summary>
+    public static async Task<IResult> HandleProfile(
         [FromRoute] string? profileName,
         ClaimsPrincipal user,
         ICertificateAuthority ca,
