@@ -127,6 +127,12 @@ chain is retrievable without authentication.
 - Request body: a PKCS#10 CSR in PEM or DER (`Content-Type: application/pkcs10` or
    `application/x-pkcs10`).
 - Authentication: a client certificate or a JWT bearer token.
+- Identity binding: when the authenticated identity carries a name (`name`, `email`, `upn` or
+   `preferred_username` claim - the certificate handler maps CN and E to the first two), every
+   name the CSR asserts must be one of them: the common name, and every rfc822Name, dNSName and
+   user principal name in the subject alternative names. A URI or IP address in the SAN is not an
+   identity and is left to the profile's extension rules. The check is `AuthenticatedSubjectValidation`;
+   `ICertificateRequestValueConverter` decides which CSR values are compared.
 - Response: the issued leaf+chain, with the format negotiated from the `Accept` header —
    `application/pkix-cert` (leaf+chain DER), `application/pem-certificate-chain` (PEM), or
    `application/pkcs7-mime` (wrapped).

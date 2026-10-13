@@ -79,6 +79,36 @@ Feature: Certificate server compliance with EST (RFC 7030)
           | rsa     |
           | ecdsa   |
 
+    Scenario Outline: Enrollment issues a certificate for the authenticated client's own name
+        Given a certificate server that complies with EST (RFC 7030)
+        When a client authenticated as "CN=test" requests a <profile> certificate for the subject "CN=test"
+        Then the server returns a signed certificate
+
+        Examples:
+          | profile |
+          | rsa     |
+          | ecdsa   |
+
+    Scenario Outline: Enrollment refuses a certificate for a name other than the authenticated client's
+        Given a certificate server that complies with EST (RFC 7030)
+        When a client authenticated as "CN=test" requests a <profile> certificate for the subject "CN=someone else"
+        Then the server should return an error message indicating the reason for the failure
+
+        Examples:
+          | profile |
+          | rsa     |
+          | ecdsa   |
+
+    Scenario Outline: Enrollment refuses a subject alternative name the authenticated client does not carry
+        Given a certificate server that complies with EST (RFC 7030)
+        When a client authenticated as "CN=test" requests a <profile> certificate for the subject "CN=test" with the <san> "someone.else@example.org"
+        Then the server should return an error message indicating the reason for the failure
+
+        Examples:
+          | profile | san                 |
+          | rsa     | rfc822Name          |
+          | ecdsa   | user principal name |
+
     Scenario: Failed enrollment due to invalid CSR
         Given a certificate server that complies with EST (RFC 7030)
         When a client submits an invalid CSR

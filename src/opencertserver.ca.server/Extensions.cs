@@ -146,6 +146,8 @@ public static class Extensions
             services.AddSingleton<IValidateCertificateRequests, OwnCertificateValidation>();
             services.AddSingleton<IValidateCertificateRequests, DistinguishedNameValidation>();
             services.AddSingleton<IValidateCertificateRequests, KeyCrlSignatureValidation>();
+            services.AddSingleton<IValidateCertificateRequests, AuthenticatedSubjectValidation>();
+            services.AddSingleton<ICertificateRequestValueConverter, AuthenticatedSubjectRequestValueConverter>();
             return services;
         }
 

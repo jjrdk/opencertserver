@@ -3,6 +3,7 @@ namespace OpenCertServer.Ca.Tests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -230,6 +231,138 @@ public sealed class CertificateAuthorityTests : IDisposable
         Assert.NotNull(issued.Extensions["2.5.29.37"]);
         // Certificate policies (2.5.29.32) is not in the allowed list — should be absent
         Assert.Null(issued.Extensions["2.5.29.32"]);
+    }
+
+    [Fact]
+    public async Task AuthenticatedSubjectValidationRejectsCsrWhenSanDoesNotMatchIdentity()
+    {
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("CN=Test Leaf", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var sanBuilder = new SubjectAlternativeNameBuilder();
+        sanBuilder.AddDnsName("www.example.com");
+        req.CertificateExtensions.Add(sanBuilder.Build());
+
+        var validator = new AuthenticatedSubjectValidation(
+            NullLogger<AuthenticatedSubjectValidation>.Instance,
+            new AuthenticatedSubjectRequestValueConverter());
+
+        var result = await validator.Validate(
+            req,
+            profile: null,
+            requestor: new ClaimsIdentity([
+                new Claim(ClaimTypes.Name, "alice@example.com")
+            ], "test"),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(result);
+        Assert.Contains("www.example.com", result!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AuthenticatedSubjectValidationAcceptsCsrWhenUserPrincipalNameSanMatchesIdentity()
+    {
+        // Regression test: otherName (UPN) SAN entries, as issued by Intune/AD CS,
+        // previously threw AsnContentException while parsing the SAN list and
+        // surfaced as a generic CSR parse failure rather than being validated.
+        // The CN is the identity's name as well: every name the request asserts is bound.
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("CN=alice@example.com", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var sanBuilder = new SubjectAlternativeNameBuilder();
+        sanBuilder.AddUserPrincipalName("alice@example.com");
+        req.CertificateExtensions.Add(sanBuilder.Build());
+
+        var validator = new AuthenticatedSubjectValidation(
+            NullLogger<AuthenticatedSubjectValidation>.Instance,
+            new AuthenticatedSubjectRequestValueConverter());
+
+        var result = await validator.Validate(
+            req,
+            profile: null,
+            requestor: new ClaimsIdentity([
+                new Claim(ClaimTypes.Name, "alice@example.com")
+            ], "test"),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task AuthenticatedSubjectValidationRejectsCsrWhenUserPrincipalNameSanDoesNotMatchIdentity()
+    {
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("CN=Test Leaf", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var sanBuilder = new SubjectAlternativeNameBuilder();
+        sanBuilder.AddUserPrincipalName("bob@example.com");
+        req.CertificateExtensions.Add(sanBuilder.Build());
+
+        var validator = new AuthenticatedSubjectValidation(
+            NullLogger<AuthenticatedSubjectValidation>.Instance,
+            new AuthenticatedSubjectRequestValueConverter());
+
+        var result = await validator.Validate(
+            req,
+            profile: null,
+            requestor: new ClaimsIdentity([
+                new Claim(ClaimTypes.Name, "alice@example.com")
+            ], "test"),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(result);
+        Assert.Contains("bob@example.com", result!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AuthenticatedSubjectValidationRejectsCsrWithForeignRfc822NameNextToMatchingUserPrincipalNameSan()
+    {
+        // Mixed SAN: a foreign rfc822Name next to a matching UPN otherName is refused. A relying
+        // party that authenticates by e-mail address (S/MIME, an EAP identity) would accept the
+        // certificate as that address, whatever the UPN next to it says - so every name the
+        // request asserts has to be the requestor's, not just one of them.
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("CN=alice@example.com", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var sanBuilder = new SubjectAlternativeNameBuilder();
+        sanBuilder.AddEmailAddress("no-reply@other-domain.example");
+        sanBuilder.AddUserPrincipalName("alice@example.com");
+        req.CertificateExtensions.Add(sanBuilder.Build());
+
+        var validator = new AuthenticatedSubjectValidation(
+            NullLogger<AuthenticatedSubjectValidation>.Instance,
+            new AuthenticatedSubjectRequestValueConverter());
+
+        var result = await validator.Validate(
+            req,
+            profile: null,
+            requestor: new ClaimsIdentity([
+                new Claim(ClaimTypes.Name, "alice@example.com")
+            ], "test"),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(result);
+        Assert.Contains("no-reply@other-domain.example", result!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AuthenticatedSubjectValidationIsNoOpWhenRequestorHasNoNameClaimAndSanHasUserPrincipalName()
+    {
+        // An authenticated identity with no ClaimTypes.Name claim means subject
+        // binding is not enforced, regardless of SAN content (including otherName).
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest("CN=Test Leaf", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var sanBuilder = new SubjectAlternativeNameBuilder();
+        sanBuilder.AddUserPrincipalName("alice@example.com");
+        req.CertificateExtensions.Add(sanBuilder.Build());
+
+        var validator = new AuthenticatedSubjectValidation(
+            NullLogger<AuthenticatedSubjectValidation>.Instance,
+            new AuthenticatedSubjectRequestValueConverter());
+
+        var result = await validator.Validate(
+            req,
+            profile: null,
+            requestor: new ClaimsIdentity([], "test"),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Null(result);
     }
 
     [Fact]

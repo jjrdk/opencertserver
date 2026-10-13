@@ -132,15 +132,36 @@ public class McpServerFixture : IDisposable
         return (await CreateAndSignCertificate(cn).ConfigureAwait(false)).cert;
     }
 
-    public static string CreateBase64DerCsr()
+    public static string CreateBase64DerCsr(string cn = "test")
     {
         using var rsa = RSA.Create();
         var request = new CertificateRequest(
-            new X500DistinguishedName("CN=test"),
+            new X500DistinguishedName($"CN={cn}"),
             rsa,
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pss);
         return Convert.ToBase64String(request.CreateSigningRequest());
+    }
+
+    /// <summary>
+    /// The <see cref="ClaimTypes.Name"/> of the currently active caller, or <c>null</c> when
+    /// unauthenticated. Tests that build their own CSR (rather than using
+    /// <see cref="CreateBase64DerCsrForCurrentCaller"/>) can use this to pick a CN that
+    /// <c>AuthenticatedSubjectValidation</c> will accept for the current caller.
+    /// </summary>
+    public string? CurrentCallerName => _currentCaller.FindFirst(ClaimTypes.Name)?.Value;
+
+    /// <summary>
+    /// Builds a CSR whose subject CN matches the currently active caller's authenticated
+    /// identity (<see cref="ClaimTypes.Name"/>), so that <c>AuthenticatedSubjectValidation</c>
+    /// accepts it. Falls back to the default "test" CN when no name claim is present (e.g. the
+    /// unauthenticated-caller scenarios, which are rejected by authorization before the CSR is
+    /// ever validated against the CA).
+    /// </summary>
+    public string CreateBase64DerCsrForCurrentCaller()
+    {
+        var name = CurrentCallerName;
+        return string.IsNullOrWhiteSpace(name) ? CreateBase64DerCsr() : CreateBase64DerCsr(name);
     }
 
     public async Task<McpToolResult> InvokeMcpToolAsync(string toolName, object parameters)

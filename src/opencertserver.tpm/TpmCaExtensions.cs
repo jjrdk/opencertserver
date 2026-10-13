@@ -60,6 +60,8 @@ public static class TpmCaExtensions
         services.AddSingleton<IValidateCertificateRequests, OwnCertificateValidation>();
         services.AddSingleton<IValidateCertificateRequests, DistinguishedNameValidation>();
         services.AddSingleton<IValidateCertificateRequests, KeyCrlSignatureValidation>();
+        services.AddSingleton<IValidateCertificateRequests, AuthenticatedSubjectValidation>();
+        services.AddSingleton<ICertificateRequestValueConverter, AuthenticatedSubjectRequestValueConverter>();
         services.AddSingleton<ICertificateAuthority>(sp =>
             new CertificateAuthority(
                 sp.GetRequiredService<CaConfiguration>(),

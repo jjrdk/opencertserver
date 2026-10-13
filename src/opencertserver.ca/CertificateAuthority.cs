@@ -1,4 +1,6 @@
-﻿namespace OpenCertServer.Ca;
+﻿using OpenCertServer.Ca.Utils.X509;
+
+namespace OpenCertServer.Ca;
 
 using System;
 using System.Linq;
@@ -65,6 +67,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
                 new OwnCertificateValidation(_config.Profiles, _certificateStore, NullLogger<OwnCertificateValidation>.Instance),
                 new DistinguishedNameValidation(NullLogger<DistinguishedNameValidation>.Instance),
                 new KeyCrlSignatureValidation(_config.Profiles, NullLogger<KeyCrlSignatureValidation>.Instance),
+                new AuthenticatedSubjectValidation(NullLogger<AuthenticatedSubjectValidation>.Instance),
             ];
     }
 
@@ -711,4 +714,137 @@ public sealed partial class DistinguishedNameValidation : IValidateCertificateRe
 
     [LoggerMessage(LogLevel.Error, "{DistinguishedName} name does not contain a Common Name (CN) attribute")]
     partial void LogDistinguishedNameNameDoesNotContainACommonNameCnAttribute(string distinguishedName);
+}
+
+/// <summary>
+/// Validates that the CSR subject CN matches the authenticated requestor's identity.
+/// A client that is authenticated but has no name claim (e.g. a JWT with only role claims) is allowed through;
+/// subject binding only applies when the identity carries a name claim.
+/// </summary>
+public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertificateRequestValueConverter
+{
+    public IReadOnlyCollection<string> GetValues(
+        CertificateRequest request,
+        string? profile = null,
+        ClaimsIdentity? requestor = null)
+    {
+        var values = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var csrCn = request.SubjectName
+            .EnumerateRelativeDistinguishedNames()
+            .Where(rdn => rdn.GetSingleElementType().Value == Oids.CommonName)
+            .Select(rdn => rdn.GetSingleElementValue())
+            .FirstOrDefault();
+        if (!string.IsNullOrEmpty(csrCn))
+        {
+            values.Add(csrCn);
+        }
+
+        foreach (var extension in request.CertificateExtensions.OfType<X509Extension>())
+        {
+            if (!string.Equals(extension.Oid?.Value, Oids.SubjectAltName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var names = new GeneralNames(extension.RawData).Names;
+            foreach (var name in names)
+            {
+                // Only the names that identify someone are bound: rfc822Name, dNSName and the user
+                // principal name. A URI or an IP address says nothing about the requestor; the profile's
+                // extension rules govern those.
+                var sanValue = name switch
+                {
+                    { Type: GeneralName.GeneralNameType.Rfc822Name or GeneralName.GeneralNameType.DnsName, Value: AsnString asnString }
+                        => asnString.Value,
+                    { Type: GeneralName.GeneralNameType.OtherName, Value: OtherName { TypeId: Oids.UserPrincipalName } otherName }
+                        => otherName.StringValue,
+                    _ => null
+                };
+                if (!string.IsNullOrWhiteSpace(sanValue))
+                {
+                    values.Add(sanValue);
+                }
+            }
+        }
+
+        return values;
+    }
+}
+
+public sealed partial class AuthenticatedSubjectValidation : IValidateCertificateRequests
+{
+    private readonly ILogger _logger;
+    private readonly ICertificateRequestValueConverter _requestValueConverter;
+
+    public AuthenticatedSubjectValidation(
+        ILogger<AuthenticatedSubjectValidation> logger,
+        ICertificateRequestValueConverter? requestValueConverter = null)
+    {
+        _logger = logger;
+        _requestValueConverter = requestValueConverter ?? new AuthenticatedSubjectRequestValueConverter();
+    }
+
+    public Task<string?> Validate(
+        CertificateRequest request,
+        string? profile,
+        ClaimsIdentity? requestor,
+        X509Certificate2? reenrollingFrom = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestor == null)
+        {
+            // Anonymous enrollment is controlled by the authorization policy; nothing to bind here.
+            return Task.FromResult<string?>(null);
+        }
+
+        var identityNames = requestor.Claims
+            .Where(c => IdentityClaimTypes.Contains(c.Type) && !string.IsNullOrWhiteSpace(c.Value))
+            .Select(c => c.Value.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (identityNames.Count == 0)
+        {
+            // No name claim (e.g., a JWT with only role claims) — cannot enforce subject binding.
+            return Task.FromResult<string?>(null);
+        }
+
+        var csrValues = _requestValueConverter.GetValues(request, profile, requestor);
+        if (csrValues.Count == 0)
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        // Every name the request asserts must be one of the identity's names: a request that carries the
+        // requestor's own CN next to someone else's e-mail address or UPN is not the requestor's.
+        var foreign = csrValues
+            .Where(value => !identityNames.Contains(value))
+            .OrderBy(v => v, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (foreign.Length == 0)
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        var csrValue = string.Join(", ", foreign);
+        var identity = string.Join(", ", identityNames.OrderBy(v => v, StringComparer.OrdinalIgnoreCase));
+        LogSubjectMismatch(csrValue, identity);
+        return Task.FromResult<string?>(
+            $"CSR values '{csrValue}' do not match authenticated identity '{identity}'");
+    }
+
+    /// <summary>
+    /// The claim types that name an identity: <see cref="ClaimTypes.Name"/>, e-mail and UPN as the
+    /// certificate and JWT handlers map them, and the raw JWT names for a host that does not map
+    /// inbound claims.
+    /// </summary>
+    private static readonly HashSet<string> IdentityClaimTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ClaimTypes.Name, "name",
+        ClaimTypes.Email, "email",
+        ClaimTypes.Upn, "upn",
+        "preferred_username"
+    };
+
+    [LoggerMessage(LogLevel.Warning, "CSR values '{CsrValues}' do not match authenticated identity '{Identity}'")]
+    partial void LogSubjectMismatch(string csrValues, string identity);
 }
