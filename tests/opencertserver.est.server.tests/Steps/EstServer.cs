@@ -507,6 +507,15 @@ public class EstServer
         Assert.Contains(requestedSanUri.ToString(), sanUris);
     }
 
+    [When("the issued certificate is revoked")]
+    public async Task WhenTheIssuedCertificateIsRevoked()
+    {
+        var issued = ((X509Certificate2Collection)_context["enrolledCertificate"]!)[0];
+        var ca = _server.Services.GetRequiredService<ICertificateAuthority>();
+        Assert.True(await ca.RevokeCertificate(issued.SerialNumber, X509RevocationReason.KeyCompromise)
+            .ConfigureAwait(false));
+    }
+
     [When("^the (.+) client uses the previously issued certificate for re-enrollment$")]
     public async Task WhenTheClientUsesThePreviouslyIssuedCertificateForReEnrollment(string keytype)
     {
@@ -525,7 +534,8 @@ public class EstServer
                     using var rsa = RSA.Create();
                     rsa.ImportSubjectPublicKeyInfo(publicKey, out _);
                     rsa.ImportRSAPrivateKey(privateKey, out _);
-                    var (_, c) = await client.ReEnroll(rsa, cert[0]).ConfigureAwait(false);
+                    var (error, c) = await client.ReEnroll(rsa, cert[0]).ConfigureAwait(false);
+                    _context["errorMessage"] = error;
                     cert = c;
                     break;
                 }
@@ -534,7 +544,8 @@ public class EstServer
                     using var ecdsa = ECDsa.Create();
                     ecdsa.ImportSubjectPublicKeyInfo(publicKey, out _);
                     ecdsa.ImportECPrivateKey(privateKey, out _);
-                    var (_, c) = await client.ReEnroll(ecdsa, cert[0]).ConfigureAwait(false);
+                    var (error, c) = await client.ReEnroll(ecdsa, cert[0]).ConfigureAwait(false);
+                    _context["errorMessage"] = error;
                     cert = c;
                     break;
                 }

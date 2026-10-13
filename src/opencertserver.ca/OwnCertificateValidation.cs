@@ -1,18 +1,25 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Ca.Utils.Ocsp;
 
 namespace OpenCertServer.Ca;
 
 public sealed partial class OwnCertificateValidation : IValidateCertificateRequests
 {
     private readonly IStoreCaProfiles _caProfiles;
+    private readonly IStoreCertificates _certificateStore;
     private readonly ILogger _logger;
 
-    public OwnCertificateValidation(IStoreCaProfiles caProfiles, ILogger<OwnCertificateValidation> logger)
+    public OwnCertificateValidation(
+        IStoreCaProfiles caProfiles,
+        IStoreCertificates certificateStore,
+        ILogger<OwnCertificateValidation> logger)
     {
         _caProfiles = caProfiles;
+        _certificateStore = certificateStore;
         _logger = logger;
     }
 
@@ -29,13 +36,25 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
         }
 
         var caProfile = await _caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
-        if (IsIssuedBy(reenrollingFrom, caProfile.CertificateChain))
+        if (!IsIssuedBy(reenrollingFrom, caProfile.CertificateChain))
         {
-            return null;
+            LogCouldNotValidateReEnrollmentFromReEnrollingFrom(reenrollingFrom.IssuerName.Name);
+            return "Re-enrollment certificate is not issued by this CA";
         }
 
-        LogCouldNotValidateReEnrollmentFromReEnrollingFrom(reenrollingFrom.IssuerName.Name);
-        return "Re-enrollment certificate is not issued by this CA";
+        // A certificate this CA has revoked does not renew itself. The store answers by serial number;
+        // a certificate it does not know (issued before a restart of an in-memory store) is not
+        // treated as revoked - the chain check above already says it is ours.
+        var (_, status, _) = await _certificateStore
+            .GetCertificateStatus(CertId.Create(reenrollingFrom, HashAlgorithmName.SHA256), cancellationToken)
+            .ConfigureAwait(false);
+        if (status == CertificateStatus.Revoked)
+        {
+            LogReEnrollmentFromRevokedCertificate(reenrollingFrom.GetSerialNumberString());
+            return "Re-enrollment certificate is revoked";
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -52,9 +71,10 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
     /// a signature that does not verify against that certificate is reported on the certificate.
     /// </para>
     /// <para>
-    /// Validity and revocation of the certificate being renewed are not checked here - this
-    /// validator accepted an expired certificate before and still does; callers that need more
-    /// (EST via TLS, SCEP) check it themselves.
+    /// Validity of the certificate being renewed is not checked here - this validator accepted an
+    /// expired certificate before and still does (RFC 7030 §4.2.2 leaves renewal of an expired
+    /// certificate to the CA's policy); callers that need more (EST via TLS, SCEP) check it
+    /// themselves. Revocation is checked by the caller of this method against the store.
     /// </para>
     /// </remarks>
     private static bool IsIssuedBy(X509Certificate2 certificate, X509Certificate2Collection caCertificates)
@@ -83,4 +103,7 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
 
     [LoggerMessage(LogLevel.Error, "Could not validate re-enrollment from {ReenrollingFrom}")]
     partial void LogCouldNotValidateReEnrollmentFromReEnrollingFrom(string reenrollingFrom);
+
+    [LoggerMessage(LogLevel.Warning, "Re-enrollment refused: certificate {SerialNumber} is revoked")]
+    partial void LogReEnrollmentFromRevokedCertificate(string serialNumber);
 }
