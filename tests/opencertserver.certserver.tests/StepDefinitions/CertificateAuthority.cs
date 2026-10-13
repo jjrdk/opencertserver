@@ -5,6 +5,8 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
+using OpenCertServer.Ca.Utils.Ca;
 using Reqnroll;
 using Xunit;
 
@@ -38,6 +40,39 @@ public partial class CertificateServerFeatures
         var entries = (System.Collections.ICollection?)revokedEntries?.GetValue(builder);
         Assert.NotNull(entries);
         Assert.Empty(entries);
+    }
+
+    [When("""^I post a PEM certificate request to "([^"]+)" with a valid JWT$""")]
+    public async Task WhenIPostAPemCertificateRequestWithAValidJwt(string path)
+    {
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest("CN=test", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        var pem = new string(PemEncoding.Write("CERTIFICATE REQUEST", request.CreateSigningRequest()));
+        using var client = _server.CreateClient();
+        using var message = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = new StringContent(pem, Encoding.UTF8, "application/x-pem-file")
+        };
+        message.Headers.Add("Authorization", "Bearer valid-jwt");
+        var response = await client.SendAsync(message).ConfigureAwait(false);
+        _scenarioContext["csrStatus"] = response.StatusCode;
+        _scenarioContext["csrBody"] = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+    }
+
+    [Then("""^the response is a PEM chain issued by the "([^"]+)" profile$""")]
+    public async Task ThenTheResponseIsAPemChainIssuedByTheProfile(string profileName)
+    {
+        var body = (string)_scenarioContext["csrBody"];
+        Assert.True(
+            (HttpStatusCode)_scenarioContext["csrStatus"] == HttpStatusCode.OK,
+            $"{_scenarioContext["csrStatus"]}: {body}");
+        var chain = new X509Certificate2Collection();
+        chain.ImportFromPem(body);
+        Assert.NotEmpty(chain);
+        var profiles = _server.Services.GetRequiredService<IStoreCaProfiles>();
+        var profile = await profiles.GetProfile(profileName).ConfigureAwait(false);
+        Assert.Equal(profile.CertificateChain[0].Subject, chain[0].Issuer);
+        Assert.Equal("CN=test", chain[0].Subject);
     }
 
     [When("I revoke the certificate")]

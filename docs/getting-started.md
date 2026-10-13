@@ -435,7 +435,7 @@ app.UseHttpsRedirection()
 | ACME | `/new-order` | POST | JWS |
 | ACME | `/order/{id}/finalize` | POST | JWS |
 | ACME | `/order/{id}/certificate` | POST | JWS |
-| CA | `/ca/csr` | POST | Yes |
+| CA | `/ca/csr`, `/ca/{profile}/csr` | POST | Yes |
 | CA | `/ca/revoke` | DELETE | Yes (mTLS + signature; self-service or `ca_admin` role) |
 | CA | `/ca/crl`, `/ca/{profile}/crl` | GET | No |
 | CA | `/ca/ocsp`, `/ca/ocsp/{requestEncoded}` | POST/GET | No |
