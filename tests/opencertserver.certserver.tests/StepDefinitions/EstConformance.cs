@@ -390,7 +390,11 @@ public partial class CertificateServerFeatures
     [When("the client submits a different SubjectPublicKeyInfo than the current certificate")]
     public async Task WhenTheClientSubmitsADifferentSubjectPublicKeyInfoThanTheCurrentCertificate()
     {
-        var cert = await EnsureIssuedCertificateAsync().ConfigureAwait(false);
+        // After a renewal the previous certificate is superseded - the CA revokes it - so the
+        // current certificate is the renewed one.
+        var cert = ConformanceState.ReenrolledCertificates is { Count: > 0 } renewedBefore
+            ? renewedBefore[0]
+            : await EnsureIssuedCertificateAsync().ConfigureAwait(false);
         using var replacement = RSA.Create();
         var (_, renewed) = await _estClient.ReEnroll(replacement, cert).ConfigureAwait(false);
         ConformanceState.CurrentCertificate = cert;

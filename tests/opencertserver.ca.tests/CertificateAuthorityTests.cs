@@ -53,19 +53,20 @@ public sealed class CertificateAuthorityTests : IDisposable
                 PrivateKey = ecdsa
             }
         );
+        var store = new InMemoryCertificateStore();
         _authority = new CertificateAuthority(
             new CaConfiguration(
                 caProfileSet,
                 ["test"],
                 [],
                 []),
-            new InMemoryCertificateStore(),
+            store,
             new ValidateAll(),
             new RandomNumberCertificateIdGenerator(),
             new NullLogger<CertificateAuthority>(),
             new CaExtensionValidation(caProfileSet, NullLogger<CaExtensionValidation>.Instance),
             new DistinguishedNameValidation(NullLogger<DistinguishedNameValidation>.Instance),
-            new OwnCertificateValidation(caProfileSet, NullLogger<OwnCertificateValidation>.Instance),
+            new OwnCertificateValidation(caProfileSet, store, NullLogger<OwnCertificateValidation>.Instance),
             new KeyCrlSignatureValidation(caProfileSet, NullLogger<KeyCrlSignatureValidation>.Instance)
         );
     }
@@ -480,13 +481,14 @@ public sealed class CertificateAuthorityTests : IDisposable
                 CertificateChain = [issuer],
                 CertificateValidity = TimeSpan.FromDays(90)
             });
+        var store = new InMemoryCertificateStore();
         var authority = new CertificateAuthority(
             new CaConfiguration(caProfileSet, [], [], []),
-            new InMemoryCertificateStore(),
+            store,
             new ValidateAll(),
             new RandomNumberCertificateIdGenerator(),
             new NullLogger<CertificateAuthority>(),
-            new OwnCertificateValidation(caProfileSet, NullLogger<OwnCertificateValidation>.Instance));
+            new OwnCertificateValidation(caProfileSet, store, NullLogger<OwnCertificateValidation>.Instance));
         return (authority, issuer);
     }
 
@@ -512,15 +514,16 @@ public sealed class CertificateAuthorityTests : IDisposable
             });
 
         // The same validators RegisterCaDependencies registers.
+        var store = new InMemoryCertificateStore();
         return new CertificateAuthority(
             new CaConfiguration(caProfileSet, [], [], []),
-            new InMemoryCertificateStore(),
+            store,
             new ValidateAll(),
             new RandomNumberCertificateIdGenerator(),
             new NullLogger<CertificateAuthority>(),
             new CaExtensionValidation(caProfileSet, NullLogger<CaExtensionValidation>.Instance),
             new DistinguishedNameValidation(NullLogger<DistinguishedNameValidation>.Instance),
-            new OwnCertificateValidation(caProfileSet, NullLogger<OwnCertificateValidation>.Instance),
+            new OwnCertificateValidation(caProfileSet, store, NullLogger<OwnCertificateValidation>.Instance),
             new KeyCrlSignatureValidation(caProfileSet, NullLogger<KeyCrlSignatureValidation>.Instance));
     }
 
