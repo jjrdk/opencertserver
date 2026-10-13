@@ -26,6 +26,7 @@ namespace opencertserver.cli
             CreateEstEnrollCommand(rootCommand);
             CreateEstReEnrollCommand(rootCommand);
             CreateEstServerCertificatesCommand(rootCommand);
+            CreateHashPasswordCommand(rootCommand);
 
             // Add more commands as needed
 

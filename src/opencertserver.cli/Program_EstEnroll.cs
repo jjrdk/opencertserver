@@ -40,6 +40,10 @@ internal static partial class Program
         {
             Description = "Authentication header value (e.g. 'Bearer <token>')"
         };
+        var userOption = new Option<string>("--user")
+        {
+            Description = "User name and password for HTTP Basic authentication, as 'name:password' (RFC 7030 section 3.2.3)"
+        };
         var estCaOptions = new Option<IList<string>>("--est-ca")
         {
             Description =
@@ -77,6 +81,7 @@ internal static partial class Program
             outOption,
             clientCertOption,
             authOption,
+            userOption,
             taModeOption,
             estCaOptions,
             csrOptions.Country,
@@ -127,7 +132,8 @@ internal static partial class Program
             var taMode = parse.GetValue(taModeOption);
             var estCaPaths = parse.GetValue(estCaOptions) ?? [];
             var clientCertPath = parse.GetValue(clientCertOption);
-            var authHeader = ParseAuthenticationHeader(parse.GetValue(authOption));
+            var authHeader = ParseAuthenticationHeader(parse.GetValue(authOption))
+             ?? BasicAuthenticationHeader(parse.GetValue(userOption));
             X509Certificate2? clientCert = null;
 
             try

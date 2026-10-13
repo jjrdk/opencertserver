@@ -13,6 +13,10 @@ using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using Acme.Abstractions.IssuanceServices;
 using Est.Server;
+using Est.Server.BasicAuthentication;
+using Microsoft.AspNetCore.Authentication.Certificate;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
@@ -165,6 +169,9 @@ internal static class Program
         _ = services.AddAuthentication()
             .AddJwtBearer()
             .AddCertificate()
+            // User name and password for EST (RFC 7030 §3.2.3): off until Est:BasicAuth:Users or
+            // Est:BasicAuth:UsersFile is set. Hashes only - `opencert hash-password` makes them.
+            .AddEstBasicAuthentication(options => ReadBasicAuthentication(builder.Configuration, options))
             .AddCertificateCache(options =>
             {
                 options.CacheSize = 1024;
@@ -208,9 +215,45 @@ internal static class Program
             .UseAuthentication()
             .UseAuthorization()
             .UseAcmeServer()
-            .UseEstServer()
+            .UseEstServer(
+                enrollPolicy: EstPolicy(),
+                reEnrollPolicy: EstPolicy(),
+                serverKeyGenPolicy: EstPolicy())
             .UseCertificateAuthorityServer();
         await app.RunAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Est:BasicAuth from configuration, read by hand - the project is built for AOT, and binding a
+    /// typed object needs code generated at run time.
+    /// </summary>
+    private static void ReadBasicAuthentication(IConfiguration configuration, EstBasicAuthenticationOptions options)
+    {
+        var section = configuration.GetSection("Est:BasicAuth");
+        options.UsersFile = section["UsersFile"];
+        options.Realm = section["Realm"] ?? options.Realm;
+        foreach (var user in section.GetSection("Users").GetChildren())
+        {
+            if (!string.IsNullOrWhiteSpace(user.Value))
+            {
+                options.Users[user.Key] = user.Value;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Who may enroll: a token, a client certificate, or - where users are configured - a user name and
+    /// password. The Basic scheme is always registered, so listing it costs nothing when it is off.
+    /// </summary>
+    private static AuthorizationPolicy EstPolicy()
+    {
+        return new AuthorizationPolicyBuilder()
+            .AddAuthenticationSchemes(
+                JwtBearerDefaults.AuthenticationScheme,
+                CertificateAuthenticationDefaults.AuthenticationScheme,
+                EstBasicAuthenticationDefaults.AuthenticationScheme)
+            .RequireAuthenticatedUser()
+            .Build();
     }
 
     private static ForwardedHeadersOptions CreateForwardedHeaderOptions()

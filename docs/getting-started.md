@@ -123,6 +123,7 @@ The server registers a background `HostedValidationService` that processes pendi
 The `opencert` tool covers key generation, CSR creation, local signing, and EST enrollment. It is
 built as an executable named `opencert` (project `opencertserver.cli`), with sub-commands
 `generate-keys`, `create-csr`, `create-csr-from-keys`, `sign-csr`, `est-enroll`, `est-reenroll`,
+`hash-password` (for `Est:BasicAuth:Users`, password from standard input),
 `est-server-certificates`, and `print-cert`.
 
 ```sh
@@ -148,7 +149,8 @@ opencert sign-csr --csr request.csr.pem --ca-cert ca.crt --ca-key ca.key --out i
 
 # Enroll a certificate via EST (JWT bearer auth).
 # est-enroll takes the same subject / SAN options as create-csr-from-keys,
-# plus --client-cert / --auth / --est-ca / --ta-mode for EST-side configuration.
+# plus --client-cert / --auth / --user / --est-ca / --ta-mode for EST-side configuration
+# (--user name:password sends HTTP Basic, RFC 7030 section 3.2.3).
 opencert est-enroll \
     --url https://pki.example.com \
     --private-key private.pem \

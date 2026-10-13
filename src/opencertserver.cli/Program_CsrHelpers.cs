@@ -395,6 +395,24 @@ internal static partial class Program
             : RSASignaturePadding.Pss;
     }
 
+    /// <summary>The Basic header for 'name:password', or null when nothing was given.</summary>
+    internal static AuthenticationHeaderValue? BasicAuthenticationHeader(string? userAndPassword)
+    {
+        if (string.IsNullOrWhiteSpace(userAndPassword))
+        {
+            return null;
+        }
+
+        if (!userAndPassword.Contains(':'))
+        {
+            throw new ArgumentException("--user takes 'name:password'.");
+        }
+
+        return new AuthenticationHeaderValue(
+            "Basic",
+            Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(userAndPassword)));
+    }
+
     internal static AuthenticationHeaderValue? ParseAuthenticationHeader(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
