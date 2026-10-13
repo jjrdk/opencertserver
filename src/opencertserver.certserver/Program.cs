@@ -239,8 +239,41 @@ internal static class Program
                 .ConfigureAwait(false),
             CertificateValidity = TimeSpan.FromDays(90),
             CrlNumber = BigInteger.Zero,
-            PrivateKey = privateKey
+            PrivateKey = privateKey,
+            CertificatePolicies = ReadList(configuration, $"{profileName}:CertificatePolicies") ?? [],
+            KeyUsage = ReadKeyUsage(configuration[$"{profileName}:KeyUsage"]),
+            ExtendedKeyUsages = ReadList(configuration, $"{profileName}:ExtendedKeyUsages")
         };
+    }
+
+    /// <summary>
+    /// Reads a list from configuration, either as an array section (<c>rsa:CertificatePolicies:0</c>,
+    /// <c>rsa__CertificatePolicies__0</c> in the environment) or as one value with the entries
+    /// separated by commas, semicolons or whitespace. Null when the key is absent, so a profile
+    /// property that distinguishes "not set" from "empty" keeps that distinction.
+    /// </summary>
+    private static IReadOnlyList<string>? ReadList(IConfiguration configuration, string key)
+    {
+        var section = configuration.GetSection(key);
+        var children = section.GetChildren().Select(c => c.Value).OfType<string>().ToArray();
+        if (children.Length > 0)
+        {
+            return children;
+        }
+
+        return section.Value is { } value
+            ? value.Split([',', ';', ' ', '\t', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : null;
+    }
+
+    /// <summary>
+    /// Reads key usage flags by name, several separated by commas (<c>DigitalSignature, KeyEncipherment</c>).
+    /// </summary>
+    private static X509KeyUsageFlags? ReadKeyUsage(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : Enum.Parse<X509KeyUsageFlags>(value, ignoreCase: true);
     }
 
     private static string? GetArgumentValue(string[] args, string argumentName)

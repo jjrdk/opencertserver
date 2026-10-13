@@ -223,6 +223,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             Oids.AuthorityInformationAccess,   // 1.3.6.1.5.5.7.1.1 — added from config (OCSP/CA issuers)
             Oids.CrlDistributionPoints,        // 2.5.29.31 — added from config (CRL URLs)
             Oids.AuthorityKeyIdentifier,       // 2.5.29.35 — added from issuer certificate
+            Oids.CertPolicies,                 // 2.5.29.32 — the CA's assertion, from the profile; never from the CSR
         };
         var serverManaged = request.CertificateExtensions
             .Where(ext => ext.Oid?.Value is not null && serverManagedOids.Contains(ext.Oid.Value))
@@ -240,6 +241,41 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         foreach (var ext in toRemove)
         {
             request.CertificateExtensions.Remove(ext);
+        }
+
+        // What the profile fixes replaces what the CSR asked for.
+        if (profile.KeyUsage is { } keyUsage)
+        {
+            foreach (var ext in request.CertificateExtensions.OfType<X509KeyUsageExtension>().ToArray())
+            {
+                request.CertificateExtensions.Remove(ext);
+            }
+
+            request.CertificateExtensions.Add(new X509KeyUsageExtension(keyUsage, true));
+        }
+
+        if (profile.ExtendedKeyUsages is { } extendedKeyUsages)
+        {
+            foreach (var ext in request.CertificateExtensions.OfType<X509EnhancedKeyUsageExtension>().ToArray())
+            {
+                request.CertificateExtensions.Remove(ext);
+            }
+
+            if (extendedKeyUsages.Count > 0)
+            {
+                var oids = new OidCollection();
+                foreach (var oid in extendedKeyUsages)
+                {
+                    oids.Add(new Oid(oid));
+                }
+
+                request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(oids, false));
+            }
+        }
+
+        if (profile.CertificatePolicies.Count > 0)
+        {
+            request.CertificateExtensions.Add(new X509CertificatePoliciesExtension(profile.CertificatePolicies));
         }
 
         // Always add a fresh SKI derived from the CSR public key.

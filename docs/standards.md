@@ -324,13 +324,49 @@ rejected unless `2.5.29.19` is in the list, and keyCertSign in keyUsage is rejec
 tied to CA:TRUE — a CSR asserting keyCertSign without CA:TRUE is rejected (RFC 5280 §4.2.1.3).
 cRLSign without keyCertSign is freely allowed on CA-enabled profiles (indirect CRL issuers).
 
-**Server-managed extensions.** SKI (2.5.29.14), AKI (2.5.29.35), AIA (1.3.6.1.5.5.7.1.1), and
-CRLDP (2.5.29.31) are always regenerated from the CA's own state and are stripped from the CSR
-unconditionally — listing them in `AllowedCsrExtensions` has no effect.
+**Server-managed extensions.** SKI (2.5.29.14), AKI (2.5.29.35), AIA (1.3.6.1.5.5.7.1.1),
+CRLDP (2.5.29.31) and certificatePolicies (2.5.29.32) are always regenerated from the CA's own
+state and are stripped from the CSR unconditionally — listing them in `AllowedCsrExtensions` has
+no effect.
 
 **Where it lives.** `src/opencertserver.ca.utils/Ca/CaProfile.cs` (`AllowedCsrExtensions`),
 enforced by `CaExtensionValidation`, `KeyCrlSignatureValidation`, and `CleanCsrExtensions` in
 `src/opencertserver.ca/CertificateAuthority.cs`.
+
+### Certificate content fixed by the profile (`CertificatePolicies`, `KeyUsage`, `ExtendedKeyUsages`)
+
+**What it is.** Three per-profile settings on `CaProfile` for what every certificate issued from
+the profile says, regardless of the CSR:
+
+* `CertificatePolicies` — the policy identifiers the CA asserts
+  ([RFC 5280 §4.2.1.4](https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.4)), written as a
+  certificatePolicies extension (2.5.29.32, identifiers only, no qualifiers). Empty by default: no
+  extension. A policy is the CA's assertion and never the requester's, so a policy in a CSR is
+  dropped even when the profile lists 2.5.29.32 as allowed. A relying party that requires a policy
+  (strongSwan's `cert_policy`, Windows application policies) needs the CA to assert it. A profile
+  that issues intermediate CA certificates typically asserts anyPolicy (2.5.29.32.0) so the leaf
+  policies below it validate.
+* `KeyUsage` — when set, the key usage of every certificate
+  ([§4.2.1.3](https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.3)), marked critical, replacing
+  what the CSR asked for. Not set by default.
+* `ExtendedKeyUsages` — when set, the extended key usages
+  ([§4.2.1.12](https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.12)), replacing what the CSR
+  asked for; an empty list means no extendedKeyUsage extension at all. Not set by default.
+
+The CSR validators still see the request as submitted: a CSR that asks for keyCertSign is refused
+on a profile that does not issue CA certificates, whatever the profile would have fixed.
+
+**Where it lives.** `CaProfile.cs` (the three properties), `CleanCsrExtensions` in
+`CertificateAuthority.cs` (applies them after the allow-list), and
+`src/opencertserver.ca.utils/X509Extensions/X509CertificatePoliciesExtension.cs` (encodes and
+decodes 2.5.29.32). In `certserver` they come from configuration, see
+[Documentation → Profile configuration](documentation.md#profile-configuration-certserver).
+
+**Tests that prove it.**
+[CaProfilePolicies.feature](../tests/opencertserver.est.server.tests/Features/CaProfilePolicies.feature) —
+no policies by default; the profile's policies in every certificate; a CSR policy never taken over
+even when its OID is allowed; fixed key usage and fixed extended key usages replacing the CSR's; an
+intermediate CA certificate asserting anyPolicy.
 
 ---
 
