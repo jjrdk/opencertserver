@@ -33,7 +33,7 @@ using Reqnroll;
 using Xunit;
 
 [Binding]
-public class EstServer
+public partial class EstServer
 {
     private readonly ScenarioContext _context;
     private TestServer _server = null!;
@@ -86,15 +86,20 @@ public class EstServer
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
 
-        var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaCert).Build();
+        var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaCert, ProfileSettings).Build();
         await host.StartAsync().ConfigureAwait(false);
         _server = host.GetTestServer();
     }
 
+    /// <summary>What a scenario fixes on the "rsa" profile before the server starts; null for the defaults.</summary>
+    private ProfileSettings? ProfileSettings =>
+        _context.TryGetValue(nameof(ProfileSettings), out var value) ? value as ProfileSettings : null;
+
     private static IHostBuilder CreateHostBuilder(
         X509Certificate2 rsaPrivate,
         X509Certificate2 ecdsaPrivate,
-        X509Certificate2 webCert)
+        X509Certificate2 webCert,
+        ProfileSettings? rsaSettings = null)
     {
         var caProfiles = new CaProfileSet(
             "rsa",
@@ -106,7 +111,11 @@ public class EstServer
                 CertificateValidity = TimeSpan.FromDays(90),
                 CrlNumber = BigInteger.Zero,
                 PrivateKey = rsaPrivate.GetRSAPrivateKey()!,
-                AllowedCsrExtensions = [Oids.SubjectAltName, Oids.EnhancedKeyUsage, Oids.KeyUsage]
+                AllowedCsrExtensions = rsaSettings?.AllowedCsrExtensions
+                 ?? [Oids.SubjectAltName, Oids.EnhancedKeyUsage, Oids.KeyUsage],
+                CertificatePolicies = rsaSettings?.CertificatePolicies ?? [],
+                KeyUsage = rsaSettings?.KeyUsage,
+                ExtendedKeyUsages = rsaSettings?.ExtendedKeyUsages
             },
             new CaProfile
             {

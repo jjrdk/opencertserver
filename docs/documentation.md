@@ -38,6 +38,22 @@ the profile's `CertificateValidity`. The same applies to the CA's own self-signe
 does not depend on the server's local time zone
 ([CertificateValidity.feature](../tests/opencertserver.certserver.tests/Features/CertificateValidity.feature)).
 
+### Profile configuration (certserver)
+
+`certserver` builds one profile per key file pair (`--rsa`/`--rsa-key`, `--ec`/`--ec-key`) and
+reads the rest of the profile from configuration under the profile's name (`rsa:…`, `ecdsa:…`;
+as environment variables `rsa__…`):
+
+| Key | Meaning |
+|---|---|
+| `PublishedPem` | Path of the PEM bundle published as the profile's CA chain (also `--rsa-published` / `--ec-published`). |
+| `CertificatePolicies` | Policy OIDs the CA asserts in every certificate from this profile; an array section (`rsa__CertificatePolicies__0=…`) or one value with the OIDs separated by commas. Default: none. |
+| `KeyUsage` | Key usage flags fixed for every certificate, by name, several separated by commas (`DigitalSignature, KeyEncipherment`). Default: the CSR's. |
+| `ExtendedKeyUsages` | Extended key usage OIDs fixed for every certificate, array section or comma-separated. Default: the CSR's. |
+
+What the profile fixes replaces what the CSR asked for; see
+[Implemented standards → Certificate content fixed by the profile](standards.md#certificate-content-fixed-by-the-profile-certificatepolicies-keyusage-extendedkeyusages).
+
 **Key algorithms.** A profile signs requests of either key algorithm: an ECDSA profile issues for an
 RSA key and the reverse. The issued certificate keeps the request's key and carries the signature
 algorithm of the profile's CA key
