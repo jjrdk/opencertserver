@@ -626,6 +626,47 @@ public partial class EstServer
         _context["enrolledCertificate"] = cert;
     }
 
+    [When("the client re-enrolls the issued certificate with the same subject and subject alternative name")]
+    public async Task WhenTheClientReEnrollsTheIssuedCertificateWithTheSameSubjectAndSan()
+    {
+        var current = ((X509Certificate2Collection)_context["enrolledCertificate"]!)[0];
+        // A new key (rekeying), the same subject and the same SAN - RFC 7030 §4.2.2.
+        var profile = current.GetRSAPublicKey() is not null ? "rsa" : "ecdsa";
+        AsymmetricAlgorithm key = profile == "rsa" ? RSA.Create() : ECDsa.Create();
+        var request = key switch
+        {
+            RSA rsa => new CertificateRequest(current.SubjectName, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss),
+            ECDsa ecDsa => new CertificateRequest(current.SubjectName, ecDsa, HashAlgorithmName.SHA256),
+            _ => throw new InvalidOperationException()
+        };
+        foreach (var extension in current.Extensions.Where(e => e.Oid?.Value == Oids.SubjectAltName))
+        {
+            request.CertificateExtensions.Add(new X509Extension(extension.Oid!, extension.RawData, extension.Critical));
+        }
+
+        using var handler = new TestMessageHandler(_server, current);
+        using var httpClient = new HttpClient(handler);
+        var message = new HttpRequestMessage
+        {
+            Method = HttpMethod.Post,
+            RequestUri = new Uri($"https://localhost/.well-known/est/{profile}/simplereenroll"),
+            Content = new StringContent(request.ToPkcs10Base64(), Encoding.UTF8, "application/pkcs10")
+        };
+        var response = await httpClient.SendAsync(message).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            _context["errorMessage"] = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            _context["enrolledCertificate"] = null;
+            return;
+        }
+
+        var bytes = (await response.Content.ReadAsStringAsync().ConfigureAwait(false)).Base64DecodeBytes();
+        var contentInfo = new CmsContentInfo(new AsnReader(bytes, AsnEncodingRules.DER));
+        var signedData = new SignedData(new AsnReader(contentInfo.EncodedContent, AsnEncodingRules.DER));
+        _context["errorMessage"] = null;
+        _context["enrolledCertificate"] = new X509Certificate2Collection(signedData.Certificates ?? []);
+    }
+
     [Then("the server should return an error message indicating the reason for the failure")]
     public void ThenTheServerShouldReturnAnErrorMessageIndicatingTheReasonForTheFailure()
     {

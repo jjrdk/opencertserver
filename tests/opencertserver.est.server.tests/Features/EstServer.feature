@@ -69,6 +69,18 @@ Feature: Certificate server compliance with EST (RFC 7030)
           | RSA     |
           | ECDsa   |
 
+    Scenario Outline: Successful re-enrollment of a certificate that carries a subject alternative name
+        Given a certificate server that complies with EST (RFC 7030)
+        When a client submits a valid <profile> certificate signing request (CSR) containing a SAN URI using the "<profile>" certificate profile
+        And the client re-enrolls the issued certificate with the same subject and subject alternative name
+        Then the server returns a signed certificate
+        And the issued certificate contains the SAN URI requested in the CSR
+
+        Examples:
+          | profile |
+          | rsa     |
+          | ecdsa   |
+
     Scenario Outline: Failed enrollment of a new certificate
         Given a certificate server that complies with EST (RFC 7030)
         When an unauthenticated client submits a valid <profile> certificate signing request (CSR)
