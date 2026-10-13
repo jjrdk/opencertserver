@@ -22,6 +22,16 @@ namespace opencertserver.cli.tests.StepDefinitions
         private string? _tempPrivateKeyOutPath;
         private string? _tempPublicKeyOutPath;
 
+        private string? _standardInput;
+
+        /// <summary>For commands that read from standard input - a password, never a command line argument.</summary>
+        [When("I run the CLI with \"(.*)\" and \"(.*)\" on standard input")]
+        public async Task WhenIRunTheCliWithAndOnStandardInput(string arguments, string standardInput)
+        {
+            _standardInput = standardInput;
+            await WhenIRunTheCliWith(arguments).ConfigureAwait(false);
+        }
+
         [When("I run the CLI with \"(.*)\"")]
         public async Task WhenIRunTheCliWith(string arguments)
         {
@@ -89,16 +99,24 @@ namespace opencertserver.cli.tests.StepDefinitions
                 var swErr = new StringWriter();
                 var origOut = Console.Out;
                 var origErr = Console.Error;
+                var origIn = Console.In;
                 try
                 {
                     Console.SetOut(swOut);
                     Console.SetError(swErr);
+                    if (_standardInput is not null)
+                    {
+                        Console.SetIn(new StringReader(_standardInput));
+                    }
+
                     await Program.Main(args).ConfigureAwait(false);
                 }
                 finally
                 {
                     Console.SetOut(origOut);
                     Console.SetError(origErr);
+                    Console.SetIn(origIn);
+                    _standardInput = null;
                 }
 
                 _output = $"{swOut}{swErr}";
@@ -188,6 +206,15 @@ namespace opencertserver.cli.tests.StepDefinitions
             }
 
             return outArgs.ToArray();
+        }
+
+        [Then("the output should be a password hash that verifies \"(.*)\" and refuses \"(.*)\"")]
+        public void ThenTheOutputShouldBeAPasswordHashThatVerifies(string password, string other)
+        {
+            var hash = (_output ?? string.Empty).Trim();
+            Assert.StartsWith("pbkdf2-sha256$", hash, StringComparison.Ordinal);
+            Assert.True(OpenCertServer.Ca.Utils.PasswordHash.Verify(password, hash));
+            Assert.False(OpenCertServer.Ca.Utils.PasswordHash.Verify(other, hash));
         }
 
         [Then("the output should contain \"(.*)\"")]

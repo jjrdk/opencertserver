@@ -144,7 +144,8 @@ chain is retrievable without authentication.
 - Description: Enroll a new certificate.
 - Request body: a PKCS#10 CSR in PEM or DER (`Content-Type: application/pkcs10` or
    `application/x-pkcs10`).
-- Authentication: a client certificate or a JWT bearer token.
+- Authentication: a client certificate, a JWT bearer token, or - where users are configured - a
+   user name and password (HTTP Basic, RFC 7030 §3.2.3; see [EST Basic authentication](#est-basic-authentication)).
 - Identity binding: when the authenticated identity carries a name (`name`, `email`, `upn` or
    `preferred_username` claim - the certificate handler maps CN and E to the first two), every
    name the CSR asserts must be one of them: the common name, and every rfc822Name, dNSName and
@@ -181,6 +182,27 @@ as multiple logical CAs. For runnable client code (including `ServerKeyGeneratio
 > RFC 9908 behaviour and the `EstConformance.feature` scenarios.
 
 ---
+
+### EST Basic authentication
+
+`certserver` accepts a user name and password for `simpleenroll`, `simplereenroll` and
+`serverkeygen` once users are configured; without users the scheme is off and no challenge is
+offered. The identity is the user name (`name` and `sub` claims) - with subject binding, a user
+enrolls for its own name only. Passwords are stored as hashes; `opencert hash-password` makes them
+(the password is read from standard input, never from the command line).
+
+| Key | Meaning |
+|---|---|
+| `Est:BasicAuth:Users:<name>` | The user's password hash (`pbkdf2-sha256$…`). In the environment: `Est__BasicAuth__Users__<name>=…`. |
+| `Est:BasicAuth:UsersFile` | A file with one `name:hash` per line (`#` starts a comment), read again whenever it changes - for a secret that should not sit in an environment variable. |
+| `Est:BasicAuth:Realm` | The realm in the challenge. Default `EST`. |
+
+A host that embeds the EST server registers the scheme with `AddEstBasicAuthentication(...)` and
+lists `EstBasicAuthenticationDefaults.AuthenticationScheme` in the policies it passes to
+`UseEstServer`; the default policies know certificates and tokens only.
+
+Clients: `opencert est-enroll --user name:password …`, or any EST client that sends
+`Authorization: Basic` - strongSwan's `pki --est --userpass name:password`, for example.
 
 ## ACME endpoints
 

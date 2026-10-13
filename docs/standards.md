@@ -44,6 +44,7 @@ the one OpenCertServer's `est-enroll` CLI and `EstClient` wrap.
 | `GET /.well-known/est/cacerts` | §4.1 | CA chain in `application/pkcs7-certificates-path`; cached 30 days. |
 | `GET /.well-known/est/csrattrs` | §4.5 (with [RFC 9908](#rst-9908--csr-attribute-templates)) | A `CsrAttributesResponse` in `application/csrattrs` telling the client which template to use. |
 | `POST /.well-known/est/simpleenroll` | §4.2 | Accepts PEM/DER PKCS#10; returns leaf+chain in `application/pkix-cert` or `application/pem-certificate-chain` via `Accept`. |
+| HTTP Basic authentication | §3.2.3 | Opt-in (`AddEstBasicAuthentication`): a user name and password over TLS, next to certificates and tokens. Off until users are configured; the identity is the user name; passwords are held as PBKDF2-SHA256 hashes. Tested in [EstBasicAuthentication.feature](../tests/opencertserver.est.server.tests/Features/EstBasicAuthentication.feature). |
 | `POST /.well-known/est/simplereenroll` | §4.2.3 | Re-enrolls using the current cert (mTLS) or a JWT. |
 | `POST /.well-known/est/serverkeygen` | §4.4 | Server generates the key on the client's behalf; returns a `multipart/mixed` bundle with the private key, optionally encrypted (see below). |
 | `/{profile}/…` | §3.2.2 | Per-profile variants of the above let one server act as multiple logical CAs. |

@@ -10,6 +10,8 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using OpenCertServer.Est.Server.BasicAuthentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -86,7 +88,7 @@ public partial class EstServer
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
 
-        var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaCert, ProfileSettings).Build();
+        var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaCert, ProfileSettings, BasicUsers).Build();
         await host.StartAsync().ConfigureAwait(false);
         _server = host.GetTestServer();
     }
@@ -95,11 +97,16 @@ public partial class EstServer
     private ProfileSettings? ProfileSettings =>
         _context.TryGetValue(nameof(ProfileSettings), out var value) ? value as ProfileSettings : null;
 
+    /// <summary>The Basic users a scenario configured before the server starts; null for none.</summary>
+    private Dictionary<string, string>? BasicUsers =>
+        _context.TryGetValue(nameof(BasicUsers), out var value) ? value as Dictionary<string, string> : null;
+
     private static IHostBuilder CreateHostBuilder(
         X509Certificate2 rsaPrivate,
         X509Certificate2 ecdsaPrivate,
         X509Certificate2 webCert,
-        ProfileSettings? rsaSettings = null)
+        ProfileSettings? rsaSettings = null,
+        Dictionary<string, string>? basicUsers = null)
     {
         var caProfiles = new CaProfileSet(
             "rsa",
@@ -145,7 +152,14 @@ public partial class EstServer
                     sc.AddAuthorization();
                     sc.AddAuthentication(CertificateAuthenticationDefaults.AuthenticationScheme)
                         .AddCertificate()
-                        .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme);
+                        .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme)
+                        .AddEstBasicAuthentication(o =>
+                        {
+                            foreach (var (name, hash) in basicUsers ?? [])
+                            {
+                                o.Users[name] = hash;
+                            }
+                        });
                     sc.AddInMemoryCertificateStore()
                         .AddCertificateAuthority(
                             new CaConfiguration(
@@ -158,7 +172,10 @@ public partial class EstServer
                         .ConfigureOptions<ConfigureOauthOptions>();
                 })
                 .Configure(app =>
-                    app.UseCors("AllowAll").UseEstServer())
+                    app.UseCors("AllowAll").UseEstServer(
+                        enrollPolicy: EstPolicy(),
+                        reEnrollPolicy: EstPolicy(),
+                        serverKeyGenPolicy: EstPolicy()))
                 .ConfigureKestrel(k =>
                 {
                     k.AddServerHeader = false;
@@ -176,6 +193,16 @@ public partial class EstServer
 
         return webBuilder;
     }
+
+    /// <summary>Token, certificate or - where users are configured - user name and password, as certserver wires it.</summary>
+    private static AuthorizationPolicy EstPolicy() =>
+        new AuthorizationPolicyBuilder()
+            .AddAuthenticationSchemes(
+                JwtBearerDefaults.AuthenticationScheme,
+                CertificateAuthenticationDefaults.AuthenticationScheme,
+                EstBasicAuthenticationDefaults.AuthenticationScheme)
+            .RequireAuthenticatedUser()
+            .Build();
 
     [When(
         """^a client submits a valid (.+?) certificate signing request \(CSR\) using the "(.+?)" certificate profile$""")]
