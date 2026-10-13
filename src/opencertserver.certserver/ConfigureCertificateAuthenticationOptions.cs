@@ -41,7 +41,8 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
                     .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                     .Select(x => (x[..x.IndexOf('=')], x[(x.IndexOf('=') + 1)..]))
                     .Where(x => KnownPrefixes.ContainsKey(x.Item1))
-                    .Select(x => new Claim(x.Item1, x.Item2));
+                    .Select(x => new Claim(x.Item1, x.Item2))
+                    .Append(new Claim("sub", context.ClientCertificate.Thumbprint));
                 context.Principal =
                     new ClaimsPrincipal(new ClaimsIdentity(claims,
                         CertificateAuthenticationDefaults.AuthenticationScheme));
