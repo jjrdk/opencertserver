@@ -120,7 +120,7 @@ They are intentionally written before adding step implementations so they can dr
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/OcspConformance.feature.ndjson", 43);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/OcspConformance.feature.ndjson", 42);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -1606,11 +1606,11 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "39";
+            string pickleIndex = "38";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("OpenSSL reads and verifies the OCSP response to its own request", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Interoperability with an independent OCSP client", "", tagsOfRule);
-#line 213
+#line 205
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1623,16 +1623,16 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 214
+#line 206
             await testRunner.WhenAsync("OpenSSL sends an OCSP request with a nonce for an issued certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 215
+#line 207
             await testRunner.ThenAsync("OpenSSL verifies the response signature against the CA certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 216
+#line 208
             await testRunner.AndAsync("OpenSSL reports the certificate as good", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 217
+#line 209
             await testRunner.AndAsync("OpenSSL finds its nonce in the response", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -1646,11 +1646,11 @@ They are intentionally written before adding step implementations so they can dr
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "40";
+            string pickleIndex = "39";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("OpenSSL reads a revoked status and its reason", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Interoperability with an independent OCSP client", "", tagsOfRule);
-#line 219
+#line 211
         this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -1663,19 +1663,19 @@ They are intentionally written before adding step implementations so they can dr
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 220
+#line 212
             await testRunner.WhenAsync("the requested certificate has been revoked", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 221
+#line 213
             await testRunner.AndAsync("OpenSSL sends an OCSP request with a nonce for an issued certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 222
+#line 214
             await testRunner.ThenAsync("OpenSSL verifies the response signature against the CA certificate", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 223
+#line 215
             await testRunner.AndAsync("OpenSSL reports the certificate as revoked for key compromise", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 224
+#line 216
             await testRunner.AndAsync("OpenSSL finds its nonce in the response", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
