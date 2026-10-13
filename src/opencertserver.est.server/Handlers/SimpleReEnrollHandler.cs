@@ -105,12 +105,14 @@ internal static class SimpleReEnrollHandler
                     Constants.TextPlainMimeType, Encoding.UTF8, (int)HttpStatusCode.BadRequest);
             }
 
+            // Compared by content: a HashSet<byte[]> compares references, and no two parsed extensions
+            // share one - every certificate with a SAN was refused here as "must match".
             var currentSans = cert.Extensions.Where(x => x.Oid?.Value == Oids.SubjectAltName)
-                .Select(x => x.RawData)
-                .ToHashSet();
+                .Select(x => Convert.ToHexString(x.RawData))
+                .ToHashSet(StringComparer.Ordinal);
             var requestedSans = request.CertificateExtensions.Where(x => x.Oid?.Value == Oids.SubjectAltName)
-                .Select(x => x.RawData)
-                .ToHashSet();
+                .Select(x => Convert.ToHexString(x.RawData))
+                .ToHashSet(StringComparer.Ordinal);
             if (!currentSans.SetEquals(requestedSans))
             {
                 return Results.Text(
