@@ -57,7 +57,7 @@ internal static class Program
             ? p
             : 5001; //portIndex >= 0 ? int.Parse(args[portIndex + 1]) : 5001;
         var index = 0;
-        List<string> ocspUrls = ["http://localhost:6001/ocsp"];
+        List<string> ocspUrls = [];
         List<string> caIssuerUrls = [];
         List<string> crlUrls = [];
         while (index >= 0)
@@ -70,6 +70,13 @@ internal static class Program
 
             ocspUrls.Add(args[index + 1]);
             index++;
+        }
+
+        if (ocspUrls.Count == 0)
+        {
+            // The development default. It used to be the first entry whatever --ocsp said, so every
+            // issued certificate pointed relying parties at localhost:6001 before the real responder.
+            ocspUrls.Add("http://localhost:6001/ocsp");
         }
 
         index = 0;
