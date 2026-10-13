@@ -1,5 +1,16 @@
 # OpenCertServer
 
+> **Deployment and certificate-policy notice:** The cert server provided by this repository is not a hardened,
+> production-ready CA deployment. Before deploying it, operators must configure and validate it to meet their own
+> certificate policy, threat model, and operational requirements, including any organization-specific registration
+> rules.
+>
+> We are committed to developing OpenCertServer as a safe and standards-compliant project, and invite users and
+> contributors to hold us accountable to that standard and help us uphold it. All contributions toward this shared
+> commitment are appreciated.
+> However, the project cannot account for every adopting user's custom use case or registration requirements;
+> responsibility for adapting and validating a deployment rests with its operator.
+
 OpenCertServer is a modular, ASP.NET Core **certificate authority** platform. It combines a full
 certificate authority (issue, enroll, revoke) with the HTTP-based enrollment protocols that let
 machines and applications obtain X.509 certificates without human intervention, plus the status and
