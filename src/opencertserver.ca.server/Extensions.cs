@@ -5,7 +5,6 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using OpenCertServer.Ca.Utils.Ca;
 using Utils.Ocsp;
-using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
@@ -40,16 +39,16 @@ public static class Extensions
             IValidateX509Chains? chainValidation = null,
             IGenerateCertificateId? certificateIdGenerator = null)
         {
-            services.AddSingleton(configuration);
-            services.AddSingleton(configuration.Profiles);
-            services.RegisterCaDependencies();
-            return services.AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
-                configuration,
-                sp.GetRequiredService<IStoreCertificates>(),
-                chainValidation ?? new ValidateAll(),
-                certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
-                sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                [.. sp.GetServices<IValidateCertificateRequests>()]));
+            return services.AddSingleton(configuration)
+                .AddSingleton(configuration.Profiles)
+                .RegisterCaDependencies()
+                .AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
+                    configuration,
+                    sp.GetRequiredService<IStoreCertificates>(),
+                    chainValidation ?? new ValidateAll(),
+                    certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
+                    sp.GetRequiredService<ILogger<CertificateAuthority>>(),
+                    [.. sp.GetServices<IValidateCertificateRequests>()]));
         }
 
         /// <summary>
@@ -65,16 +64,16 @@ public static class Extensions
             IValidateX509Chains? chainValidation = null,
             IGenerateCertificateId? certificateIdGenerator = null)
         {
-            services.AddSingleton(configurationFactory);
-            services.AddTransient(sp => sp.GetRequiredService<CaConfiguration>().Profiles);
-            services.RegisterCaDependencies();
-            return services.AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
-                sp.GetRequiredService<CaConfiguration>(),
-                sp.GetRequiredService<IStoreCertificates>(),
-                chainValidation ?? new ValidateAll(),
-                certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
-                sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                [.. sp.GetServices<IValidateCertificateRequests>()]));
+            return services.AddSingleton(configurationFactory)
+                .AddTransient(sp => sp.GetRequiredService<CaConfiguration>().Profiles)
+                .RegisterCaDependencies()
+                .AddSingleton<ICertificateAuthority>(sp => new CertificateAuthority(
+                    sp.GetRequiredService<CaConfiguration>(),
+                    sp.GetRequiredService<IStoreCertificates>(),
+                    chainValidation ?? new ValidateAll(),
+                    certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
+                    sp.GetRequiredService<ILogger<CertificateAuthority>>(),
+                    [.. sp.GetServices<IValidateCertificateRequests>()]));
         }
 
         /// <summary>
@@ -122,21 +121,21 @@ public static class Extensions
                 crlUrls ?? [],
                 caIssuersUrls ?? [],
                 strictOcspHttpBinding);
-            services.AddSingleton(config);
-            services.AddSingleton(config.Profiles);
-            services.RegisterCaDependencies();
-            return services.AddSingleton<ICertificateAuthority>(sp =>
-            {
-                var logger = sp.GetRequiredService<ILogger<CertificateAuthority>>();
-                var certificateAuthority = new CertificateAuthority(
-                    config,
-                    sp.GetRequiredService<IStoreCertificates>(),
-                    chainValidation ?? new ValidateAll(),
-                    certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
-                    logger,
-                    validators: [.. sp.GetServices<IValidateCertificateRequests>()]);
-                return certificateAuthority;
-            });
+            return services.AddSingleton(config)
+                .AddSingleton(config.Profiles)
+                .RegisterCaDependencies()
+                .AddSingleton<ICertificateAuthority>(sp =>
+                {
+                    var logger = sp.GetRequiredService<ILogger<CertificateAuthority>>();
+                    var certificateAuthority = new CertificateAuthority(
+                        config,
+                        sp.GetRequiredService<IStoreCertificates>(),
+                        chainValidation ?? new ValidateAll(),
+                        certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
+                        logger,
+                        validators: [.. sp.GetServices<IValidateCertificateRequests>()]);
+                    return certificateAuthority;
+                });
         }
 
         private IServiceCollection RegisterCaDependencies()
@@ -213,12 +212,4 @@ public static class Extensions
 
         return endpoints;
     }
-}
-
-[JsonSerializable(typeof(CertificateItem))]
-[JsonSerializable(typeof(CertificateItem[]))]
-[JsonSerializable(typeof(CertificateItemInfo))]
-[JsonSerializable(typeof(CertificateItemInfo[]))]
-internal partial class CaServerSerializerContext : JsonSerializerContext
-{
 }
