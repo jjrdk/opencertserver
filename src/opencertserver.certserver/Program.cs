@@ -37,6 +37,7 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Contrib.Intune;
 using Scep.Server;
 
 internal static class Program
@@ -221,7 +222,14 @@ internal static class Program
             .AddSingleton<IIssueCertificates, DefaultIssuer>()
             .ConfigureOptions<ConfigureJwtBearerOptions>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
-            .AddAuthorization()
+            .AddAuthorization(options => options.AddPolicy(
+                ContribIntuneExtensions.SyncPolicyName,
+                policy => policy
+                    .AddAuthenticationSchemes(
+                        JwtBearerDefaults.AuthenticationScheme,
+                        CertificateAuthenticationDefaults.AuthenticationScheme)
+                    .RequireAuthenticatedUser()
+                    .RequireRole(RevocationAuthorizationConstants.CaAdminRole)))
             .AddCertificateAuthorityAuthorization(policy => policy.AddAuthenticationSchemes(
                 JwtBearerDefaults.AuthenticationScheme,
                 CertificateAuthenticationDefaults.AuthenticationScheme))
@@ -336,6 +344,11 @@ internal static class Program
                 serverKeyGenPolicy: EstPolicy())
             .UseCertificateAuthorityServer();
         app.MapScepServer();
+        if (builder.Configuration.GetSection(IntuneOptions.SectionName).Exists())
+        {
+            app.MapIntuneSync();
+        }
+
         await app.RunAsync().ConfigureAwait(false);
     }
 
@@ -563,6 +576,14 @@ internal static class Program
             RaCertificate = raCertificate,
             DefaultProfile = configuration["Scep:DefaultProfile"]
         };
+        // Intune takes precedence over a shared secret: with <c>Scep:Intune</c> configured,
+        // every request is validated by Intune's SCEP validation service, and the revocation
+        // sync is mapped (see opencertserver.contrib.intune).
+        if (configuration.GetSection(IntuneOptions.SectionName).Exists())
+        {
+            return services.AddIntune(configuration).AddScepServer(options);
+        }
+
         var challenge = configuration["Scep:Challenge"];
         return string.IsNullOrEmpty(challenge)
             ? services.AddScepServer(options)

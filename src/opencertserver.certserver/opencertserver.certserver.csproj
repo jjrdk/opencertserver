@@ -21,6 +21,7 @@
         <ProjectReference Include="..\opencertserver.ca.server\opencertserver.ca.server.csproj"/>
         <ProjectReference Include="..\opencertserver.est.server\opencertserver.est.server.csproj"/>
         <ProjectReference Include="..\opencertserver.scep.server\opencertserver.scep.server.csproj"/>
+        <ProjectReference Include="..\opencertserver.contrib.intune\opencertserver.contrib.intune.csproj"/>
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens"/>
