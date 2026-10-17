@@ -23,6 +23,11 @@ Feature: EST enrollment with a user name and password (RFC 7030 §3.2.3)
         When the client "vpn.example.org" with the password "a long passphrase" submits a rsa CSR for "CN=vpn.example.org"
         Then the server answers 401 without a Basic challenge
 
+    Scenario: A users file that cannot be read turns the password way off instead of failing every request
+        Given a certificate server whose Basic users file cannot be read
+        When the client "vpn.example.org" with the password "a long passphrase" submits a rsa CSR for "CN=vpn.example.org"
+        Then the server answers 401 without a Basic challenge
+
     Scenario: A password hash verifies its password and no other
         When the password "a long passphrase" is hashed
         Then the hash verifies "a long passphrase" and refuses "a long passphrasE"

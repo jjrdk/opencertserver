@@ -139,6 +139,7 @@ public sealed partial class EstBasicAuthenticationHandler : AuthenticationHandle
     {
         private readonly Lock _lock = new();
         private DateTime _readAt = DateTime.MinValue;
+        private bool _unreadable;
         private Dictionary<string, string> _users = new(StringComparer.Ordinal);
 
         public IReadOnlyDictionary<string, string> Read(ILogger logger)
@@ -155,6 +156,7 @@ public sealed partial class EstBasicAuthenticationHandler : AuthenticationHandle
 
                     _users = new Dictionary<string, string>(StringComparer.Ordinal);
                     _readAt = DateTime.UtcNow;
+                    _unreadable = false;
                     return _users;
                 }
 
@@ -163,8 +165,31 @@ public sealed partial class EstBasicAuthenticationHandler : AuthenticationHandle
                     return _users;
                 }
 
+                // A file that exists but cannot be read (wrong owner or mode, or a directory in its
+                // place) must not take the handler down: without this, every request ended in a
+                // 401 with a stack trace in the log and no line naming the file. It is said once,
+                // and the password way is off until the file changes.
+                string[] lines;
+                try
+                {
+                    lines = File.ReadAllLines(path);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    if (!_unreadable)
+                    {
+                        logger.LogError("The Basic users file {Path} cannot be read: {Reason}", path, e.Message);
+                    }
+
+                    _unreadable = true;
+                    _users = new Dictionary<string, string>(StringComparer.Ordinal);
+                    _readAt = info.LastWriteTimeUtc;
+                    return _users;
+                }
+
+                _unreadable = false;
                 var users = new Dictionary<string, string>(StringComparer.Ordinal);
-                foreach (var line in File.ReadLines(path))
+                foreach (var line in lines)
                 {
                     var trimmed = line.Trim();
                     if (trimmed.Length == 0 || trimmed[0] == '#')

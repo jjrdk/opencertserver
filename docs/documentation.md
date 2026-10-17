@@ -194,7 +194,7 @@ enrolls for its own name only. Passwords are stored as hashes; `opencert hash-pa
 | Key | Meaning |
 |---|---|
 | `Est:BasicAuth:Users:<name>` | The user's password hash (`pbkdf2-sha256$…`). In the environment: `Est__BasicAuth__Users__<name>=…`. |
-| `Est:BasicAuth:UsersFile` | A file with one `name:hash` per line (`#` starts a comment), read again whenever it changes - for a secret that should not sit in an environment variable. |
+| `Est:BasicAuth:UsersFile` | A file with one `name:hash` per line (`#` starts a comment), read again whenever it changes - for a secret that should not sit in an environment variable. A file that exists but cannot be read (owner, mode) is logged once as an error and counts as empty until it changes. |
 | `Est:BasicAuth:Realm` | The realm in the challenge. Default `EST`. |
 
 A host that embeds the EST server registers the scheme with `AddEstBasicAuthentication(...)` and
