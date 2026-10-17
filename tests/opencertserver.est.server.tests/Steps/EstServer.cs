@@ -88,7 +88,7 @@ public partial class EstServer
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
 
-        var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaCert, ProfileSettings, BasicUsers).Build();
+        var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaCert, ProfileSettings, BasicUsers, BasicUsersFile).Build();
         await host.StartAsync().ConfigureAwait(false);
         _server = host.GetTestServer();
     }
@@ -101,12 +101,17 @@ public partial class EstServer
     private Dictionary<string, string>? BasicUsers =>
         _context.TryGetValue(nameof(BasicUsers), out var value) ? value as Dictionary<string, string> : null;
 
+    /// <summary>The Basic users file a scenario pointed the server at; null for none.</summary>
+    private string? BasicUsersFile =>
+        _context.TryGetValue(nameof(BasicUsersFile), out var value) ? value as string : null;
+
     private static IHostBuilder CreateHostBuilder(
         X509Certificate2 rsaPrivate,
         X509Certificate2 ecdsaPrivate,
         X509Certificate2 webCert,
         ProfileSettings? rsaSettings = null,
-        Dictionary<string, string>? basicUsers = null)
+        Dictionary<string, string>? basicUsers = null,
+        string? basicUsersFile = null)
     {
         var caProfiles = new CaProfileSet(
             "rsa",
@@ -159,6 +164,8 @@ public partial class EstServer
                             {
                                 o.Users[name] = hash;
                             }
+
+                            o.UsersFile = basicUsersFile;
                         });
                     sc.AddInMemoryCertificateStore()
                         .AddCertificateAuthority(

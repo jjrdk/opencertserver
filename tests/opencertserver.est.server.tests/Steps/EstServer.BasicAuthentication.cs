@@ -23,6 +23,31 @@ public partial class EstServer
         await GivenACertificateServerThatCompliesWithEstRfc().ConfigureAwait(false);
     }
 
+    [Given("a certificate server whose Basic users file cannot be read")]
+    public async Task GivenACertificateServerWhoseBasicUsersFileCannotBeRead()
+    {
+        // The file exists and the process may not read it - the case of a wrong owner or mode on
+        // a server. A directory in its place would not do: FileInfo.Exists is false for one. Only
+        // a Unix mode can express it, and root reads anything, so elsewhere the scenario is skipped.
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("An unreadable file needs a Unix file mode.");
+            return;
+        }
+
+        if (Environment.IsPrivilegedProcess)
+        {
+            Assert.Skip("root can read a file with mode 000 - run the tests as an ordinary user.");
+            return;
+        }
+
+        var path = Path.Combine(Directory.CreateTempSubdirectory("est-users-").FullName, "users");
+        await File.WriteAllTextAsync(path, "vpn.example.org:pbkdf2-sha256$1$AA$AA\n").ConfigureAwait(false);
+        File.SetUnixFileMode(path, UnixFileMode.None);
+        _context[nameof(BasicUsersFile)] = path;
+        await GivenACertificateServerThatCompliesWithEstRfc().ConfigureAwait(false);
+    }
+
     [When("""^the client "([^"]+)" with the password "([^"]+)" submits a rsa CSR for "([^"]+)"$""")]
     public async Task WhenTheClientWithThePasswordSubmitsACsr(string userName, string password, string subject)
     {

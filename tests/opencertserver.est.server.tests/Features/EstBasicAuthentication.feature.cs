@@ -108,7 +108,7 @@ namespace OpenCertServer.Est.Tests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/EstBasicAuthentication.feature.ndjson", 7);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/EstBasicAuthentication.feature.ndjson", 8);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -279,15 +279,18 @@ namespace OpenCertServer.Est.Tests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.FactAttribute(DisplayName="A password hash verifies its password and no other")]
+        [global::Xunit.FactAttribute(DisplayName="A users file that cannot be read turns the password way off instead of failing ev" +
+            "ery request")]
         [global::Xunit.TraitAttribute("FeatureTitle", "EST enrollment with a user name and password (RFC 7030 §3.2.3)")]
-        [global::Xunit.TraitAttribute("Description", "A password hash verifies its password and no other")]
-        public async global::System.Threading.Tasks.Task APasswordHashVerifiesItsPasswordAndNoOther()
+        [global::Xunit.TraitAttribute("Description", "A users file that cannot be read turns the password way off instead of failing ev" +
+            "ery request")]
+        public async global::System.Threading.Tasks.Task AUsersFileThatCannotBeReadTurnsThePasswordWayOffInsteadOfFailingEveryRequest()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "4";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("A password hash verifies its password and no other", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("A users file that cannot be read turns the password way off instead of failing ev" +
+                    "ery request", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 26
@@ -301,12 +304,47 @@ namespace OpenCertServer.Est.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 27
-        await testRunner.WhenAsync("the password \"a long passphrase\" is hashed", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+        await testRunner.GivenAsync("a certificate server whose Basic users file cannot be read", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 28
-        await testRunner.ThenAsync("the hash verifies \"a long passphrase\" and refuses \"a long passphrasE\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+        await testRunner.WhenAsync("the client \"vpn.example.org\" with the password \"a long passphrase\" submits a rsa " +
+                        "CSR for \"CN=vpn.example.org\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 29
+        await testRunner.ThenAsync("the server answers 401 without a Basic challenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="A password hash verifies its password and no other")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "EST enrollment with a user name and password (RFC 7030 §3.2.3)")]
+        [global::Xunit.TraitAttribute("Description", "A password hash verifies its password and no other")]
+        public async global::System.Threading.Tasks.Task APasswordHashVerifiesItsPasswordAndNoOther()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "5";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("A password hash verifies its password and no other", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 31
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 32
+        await testRunner.WhenAsync("the password \"a long passphrase\" is hashed", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 33
+        await testRunner.ThenAsync("the hash verifies \"a long passphrase\" and refuses \"a long passphrasE\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 34
         await testRunner.AndAsync("the hash starts with \"pbkdf2-sha256$\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
