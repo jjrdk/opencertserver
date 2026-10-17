@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using OpenCertServer.Est.Server.BasicAuthentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.TestHost;
@@ -88,7 +89,18 @@ public partial class EstServer
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
         var rsaCert = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.Date, DateTimeOffset.UtcNow.Date.AddYears(1));
 
-        var host = CreateHostBuilder(rsaCert, ecdsaCert, rsaCert, ProfileSettings, BasicUsers, BasicUsersFile).Build();
+        var trustAnchors = _context.TryGetValue("estTrustAnchors", out var configuredAnchors)
+            ? configuredAnchors as X509Certificate2Collection
+            : null;
+        var host = CreateHostBuilder(
+                rsaCert,
+                ecdsaCert,
+                rsaCert,
+                ProfileSettings,
+                BasicUsers,
+                BasicUsersFile,
+                trustAnchors)
+            .Build();
         await host.StartAsync().ConfigureAwait(false);
         _server = host.GetTestServer();
     }
@@ -111,7 +123,8 @@ public partial class EstServer
         X509Certificate2 webCert,
         ProfileSettings? rsaSettings = null,
         Dictionary<string, string>? basicUsers = null,
-        string? basicUsersFile = null)
+        string? basicUsersFile = null,
+        X509Certificate2Collection? estTrustAnchors = null)
     {
         var caProfiles = new CaProfileSet(
             "rsa",
@@ -175,14 +188,27 @@ public partial class EstServer
                                 [],
                                 []))
                         .AddEstServer<TestCsrAttributesLoader>()
-                        .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
+                                .AddEstTrustAnchors(estTrustAnchors ?? new X509Certificate2Collection())
+                                .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
                         .ConfigureOptions<ConfigureOauthOptions>();
                 })
                 .Configure(app =>
                     app.UseCors("AllowAll").UseEstServer(
                         enrollPolicy: EstPolicy(),
                         reEnrollPolicy: EstPolicy(),
-                        serverKeyGenPolicy: EstPolicy()))
+                        serverKeyGenPolicy: EstPolicy())
+                    .Use(async (context, next) =>
+                    {
+                        if (context.Request.Path == "/non-est-probe")
+                        {
+                            await context.Response.WriteAsync(
+                                context.User.Identity?.IsAuthenticated == true ? "authenticated" : "unauthenticated")
+                                .ConfigureAwait(false);
+                            return;
+                        }
+
+                        await next().ConfigureAwait(false);
+                    }))
                 .ConfigureKestrel(k =>
                 {
                     k.AddServerHeader = false;

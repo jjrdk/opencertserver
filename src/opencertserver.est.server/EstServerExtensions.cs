@@ -1,4 +1,6 @@
 using System.Runtime.CompilerServices;
+using OpenCertServer.Est.Server.TrustAnchor;
+
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 namespace OpenCertServer.Est.Server;
 
@@ -14,6 +16,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 /// <summary>
 /// Defines the certificate server extension methods.
@@ -37,7 +40,42 @@ public static class EstServerExtensions
             where TCsrTemplateLoader : class, ICsrTemplateLoader
         {
             return services
-                .InnerAddEstServer<TCsrTemplateLoader>();
+                .InnerAddEstServer<TCsrTemplateLoader>()
+                .AddDefaultEstTrustAnchors();
+        }
+
+        /// <summary>
+        /// Registers explicit trust anchors used to authenticate EST client certificates.
+        /// </summary>
+        /// <param name="configure">Configures trust anchors and additional chain certificates.</param>
+        /// <returns>The configured service collection.</returns>
+        public IServiceCollection AddEstTrustAnchors(Action<EstTrustAnchorOptions> configure)
+        {
+            ArgumentNullException.ThrowIfNull(configure);
+            var options = new EstTrustAnchorOptions();
+            configure(options);
+            var provider = new EstTrustAnchorProvider(options);
+            return services.Replace(ServiceDescriptor.Singleton<IEstTrustAnchorProvider>(provider));
+        }
+
+        /// <summary>
+        /// Registers explicit trust anchors used to authenticate EST client certificates.
+        /// </summary>
+        /// <param name="trustAnchors">The certificates that terminate trusted client chains.</param>
+        /// <returns>The configured service collection.</returns>
+        public IServiceCollection AddEstTrustAnchors(X509Certificate2Collection trustAnchors)
+        {
+            ArgumentNullException.ThrowIfNull(trustAnchors);
+            var options = new EstTrustAnchorOptions();
+            options.TrustAnchors.AddRange(trustAnchors);
+            return services.Replace(ServiceDescriptor.Singleton<IEstTrustAnchorProvider>(
+                new EstTrustAnchorProvider(options)));
+        }
+
+        private IServiceCollection AddDefaultEstTrustAnchors()
+        {
+            services.TryAddSingleton<IEstTrustAnchorProvider>(EmptyEstTrustAnchorProvider.Instance);
+            return services;
         }
 
         private IServiceCollection InnerAddEstServer<

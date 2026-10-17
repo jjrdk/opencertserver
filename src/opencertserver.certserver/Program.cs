@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using OpenCertServer.Est.Server.TrustAnchor;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
@@ -154,6 +155,8 @@ internal static class Program
                 .AddEstServer<CsrTemplateLoader>();
         }
 
+        services = services.AddEstTrustAnchors(options => ReadEstTrustAnchors(builder.Configuration, options));
+
         var a = Array.IndexOf(args, "--authority");
         var authority = a >= 0
             ? args[a + 1]
@@ -169,14 +172,11 @@ internal static class Program
         _ = services.AddAuthentication()
             .AddJwtBearer()
             .AddCertificate()
+            // Certificate-authentication results are route-independent; do not cache them because
+            // EST trust anchors must not authorize the same certificate on CA endpoints.
             // User name and password for EST (RFC 7030 §3.2.3): off until Est:BasicAuth:Users or
             // Est:BasicAuth:UsersFile is set. Hashes only - `opencert hash-password` makes them.
             .AddEstBasicAuthentication(options => ReadBasicAuthentication(builder.Configuration, options))
-            .AddCertificateCache(options =>
-            {
-                options.CacheSize = 1024;
-                options.CacheEntryExpiration = TimeSpan.FromMinutes(5);
-            })
             .Services
             .AddAcmeServer(builder.Configuration)
             .AddAcmeInMemoryStore()
@@ -198,8 +198,8 @@ internal static class Program
                     // Kestrel presents an X.509 server certificate that is expected to conform to RFC5280.
                     // Leave TLS session resumption enabled (the default) because RFC 7030 recommends session resumption support.
                     // Ask the client for a certificate: EST re-enrollment and self-service revocation
-                    // authenticate with one. Kestrel only transports it; the certificate authentication
-                    // handler validates it against the CA's own certificates.
+                    // authenticate with one. Kestrel only transports it; the authentication handler
+                    // validates it against the CA chain and, for EST routes only, configured client anchors.
                     httpsOptions.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
                     httpsOptions.AllowAnyClientCertificate();
                 });
@@ -237,6 +237,53 @@ internal static class Program
             if (!string.IsNullOrWhiteSpace(user.Value))
             {
                 options.Users[user.Key] = user.Value;
+            }
+        }
+    }
+
+    private static void ReadEstTrustAnchors(IConfiguration configuration, EstTrustAnchorOptions options)
+    {
+        var configuredPaths = new[]
+            {
+                configuration.GetSection("Est:ExplicitTrustAnchors"),
+                configuration.GetSection("Est:TrustedClientCerts")
+            }
+            .SelectMany(section =>
+            {
+                var values = section.GetChildren().Select(child => child.Value).OfType<string>().ToArray();
+                return values.Length == 0 && section.Value is { } value ? [value] : values;
+            })
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        foreach (var path in configuredPaths)
+        {
+            var certificates = new X509Certificate2Collection();
+            certificates.ImportFromPem(File.ReadAllText(path));
+            if (certificates.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"EST client trust-anchor file '{path}' contains no PEM certificates.");
+            }
+
+            try
+            {
+                for (var index = 0; index < certificates.Count - 1; index++)
+                {
+                    options.AdditionalChainCertificates.Add(
+                        X509CertificateLoader.LoadCertificate(certificates[index].RawData));
+                }
+
+                options.TrustAnchors.Add(
+                    X509CertificateLoader.LoadCertificate(certificates[^1].RawData));
+            }
+            finally
+            {
+                foreach (var certificate in certificates)
+                {
+                    certificate.Dispose();
+                }
             }
         }
     }
