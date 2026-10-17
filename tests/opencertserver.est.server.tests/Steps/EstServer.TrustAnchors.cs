@@ -50,6 +50,7 @@ public partial class EstServer
             DateTimeOffset.UtcNow.AddDays(30),
             CreateSerialNumber()).CopyWithPrivateKey(clientKey);
 
+        _context["externalClientCertificate"] = X509CertificateLoader.LoadCertificate(clientCertificate.RawData);
         var (error, certificates) = await SubmitSimpleEnrollAsync(request, "rsa", clientCertificate)
             .ConfigureAwait(false);
         _context["errorMessage"] = error;
@@ -59,7 +60,7 @@ public partial class EstServer
     [When("the external client certificate accesses a non-EST route")]
     public async Task WhenTheExternalClientCertificateAccessesANonEstRoute()
     {
-        var certificate = Assert.IsType<X509Certificate2>(_context["externalClientTrustAnchor"]);
+        var certificate = Assert.IsType<X509Certificate2>(_context["externalClientCertificate"]);
         var responseContext = await _server.SendAsync(context =>
         {
             context.Request.Method = HttpMethod.Get.Method;
