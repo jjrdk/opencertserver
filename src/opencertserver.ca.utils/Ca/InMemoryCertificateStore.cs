@@ -104,8 +104,10 @@ public class InMemoryCertificateStore : IStoreCertificates
     {
         var thumbprintSet = new HashSet<string>(thumbprint.Select(t => t.ToString()),
             StringComparer.OrdinalIgnoreCase);
+        // The dictionary is keyed by serial number (AddCertificate); the thumbprint lives in the
+        // item. Comparing against the key found nothing, ever.
         return _certificates
-            .Where(x => thumbprintSet.Contains(x.Key))
+            .Where(x => thumbprintSet.Contains(x.Value.Thumbprint))
             .OrderBy(x => x.Key)
             .Select(x => X509Certificate2.CreateFromPem(x.Value.PublicKeyPem))
             .ToAsyncEnumerable();
