@@ -128,6 +128,35 @@ EST endpoints are mounted under `/.well-known/est` by `UseEstServer()`. The serv
 request by either mutually-authenticated TLS (client certificate) or a JWT bearer token; the CA
 chain is retrievable without authentication.
 
+### EST client-certificate trust anchors
+
+The `certserver` host validates EST client certificates against its configured CA chain and may also
+trust external client CAs explicitly. Configure one or more PEM file paths under
+`Est:ExplicitTrustAnchors`; `Est:TrustedClientCerts` is accepted as an alias. A setting may be a
+single path or an array. If a PEM file contains a certificate chain, list intermediate certificates
+first and the CA trust-anchor certificate last. Trust anchors and additional chain certificates
+must declare `Basic Constraints: CA:TRUE`; a present key-usage extension must permit certificate
+signing. Missing files, malformed PEM, files without certificates, or invalid CA certificates fail
+host startup rather than silently disabling the configured trust.
+
+```json
+{
+  "Est": {
+    "ExplicitTrustAnchors": [
+      "/etc/opencertserver/est-client-root.pem"
+    ]
+  }
+}
+```
+
+In environment-based configuration, use `Est__ExplicitTrustAnchors__0` for the first path.
+External anchors apply only to requests under `/.well-known/est`; CA and other endpoints continue
+to validate client certificates against the CA's own chain. The server still checks the client
+certificate's validity period and client-auth EKU, rejects CA certificates as client identities,
+and applies the configured certificate revocation mode. `certserver` does not cache certificate
+authentication results because trust is route-scoped; embedded hosts must not use a route-independent
+certificate-authentication cache with EST trust anchors.
+
 ### GET /.well-known/est/cacerts
 
 - Description: Retrieve the CA certificate chain.

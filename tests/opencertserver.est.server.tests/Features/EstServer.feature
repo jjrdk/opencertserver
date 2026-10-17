@@ -159,3 +159,20 @@ Feature: Certificate server compliance with EST (RFC 7030)
           | profile | size |
           | rsa     | 3072 |
           | ecdsa   | 384  |
+
+    Scenario: A client certificate issued by an explicitly configured trust anchor can enroll
+        Given an EST server configured with an external client trust anchor
+        When a client certificate from the external CA enrolls
+        Then the server returns a signed certificate
+
+    Scenario: A client certificate issued by an unconfigured trust anchor cannot enroll
+        Given an EST server without the external client trust anchor
+        When a client certificate from the external CA enrolls
+        Then the enrollment is refused
+
+    Scenario: An EST trust anchor does not authenticate a client on a non-EST route
+        Given an EST server configured with an external client trust anchor
+        When a client certificate from the external CA enrolls
+        And the external client certificate accesses a non-EST route
+        Then the server returns a signed certificate
+        And the client is not authenticated on the non-EST route

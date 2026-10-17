@@ -20,18 +20,3 @@ public interface IManualAuthorizationStrategy
         out TimeSpan retryAfter,
         out string? message);
 }
-
-internal sealed class DefaultManualAuthorizationStrategy : IManualAuthorizationStrategy
-{
-    public bool TryGetPendingAuthorization(
-        HttpRequest request,
-        ClaimsPrincipal? user,
-        CertificateRequest requestContent,
-        out TimeSpan retryAfter,
-        out string? message)
-    {
-        retryAfter = TimeSpan.Zero;
-        message = null;
-        return false;
-    }
-}
