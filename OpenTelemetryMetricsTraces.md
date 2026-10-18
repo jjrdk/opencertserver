@@ -136,15 +136,10 @@ This document lists relevant OpenTelemetry metrics and traces for OpenCertServer
 - `opencertserver.ca.revoke.successes`: Counter for successful revocations.
 - `opencertserver.ca.revoke.failures`: Counter for revocation failures.
 - `opencertserver.ca.revoke.duration`: Histogram for revocation duration.
-- `opencertserver.ca.inventory.requests`: Counter for /ca/inventory GET requests.
-- `opencertserver.ca.inventory.successes`: Counter for successful inventory responses.
-- `opencertserver.ca.inventory.failures`: Counter for inventory failures.
-- `opencertserver.ca.inventory.duration`: Histogram for inventory duration.
 
 ### Traces
 - `opencertserver.ca.csr`: Span for CSR signing, sub-spans for validation, signing.
 - `opencertserver.ca.revoke`: Span for revocation, sub-spans for proof verification.
-- `opencertserver.ca.inventory`: Span for inventory retrieval.
 
 **Collection Location**: In `src/opencertserver.ca.server/`, relevant handlers.
 

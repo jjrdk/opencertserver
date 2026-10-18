@@ -88,19 +88,6 @@ algorithm of the profile's CA key
 - Response: `200` on success, `404` if the serial number is unknown, `401` if authentication
   fails, `403` if authorization fails.
 
-### GET /ca/inventory
-
-- Description: Retrieve the inventory of issued certificates.
-- Response: a JSON array of issued certificates and their details.
-
-### GET /ca/certificate
-
-- Description: Retrieve a specific issued certificate, or the CA certificate(s).
-- Query parameters:
-   - `id` (hex string, optional, multiple allowed): the serial numbers to retrieve.
-   - `thumbprint` (string, optional, multiple allowed): the thumbprints to retrieve.
-- Response: the requested certificate(s) in PEM.
-
 ### POST /ca/ocsp  and  GET /ca/ocsp/{base64url}
 
 - Description: a signing OCSP responder ([RFC 6960](https://www.rfc-editor.org/rfc/rfc6960)).
@@ -384,8 +371,7 @@ custom persistence:
    `AddAcmeFileStore(configuration)` (persist accounts/orders/nonces to disk). Custom stores
    implement `IStoreAccounts`, `IStoreOrders`, and `INonceStore`.
 - **CA** — certificates and CRLs are produced by the issuing profile's `ICaService`; the
-   "inventory" is the in-memory issuance store used by `GET /ca/inventory`,
-   `GET /ca/certificate`, and the OCSP/CRL responders.
+   "inventory" is the in-memory issuance store used by the OCSP/CRL responders.
 - **Device attestation trust** — trust roots are supplied by `IAttestationTrustProvider`; the
    default `StaticAttestationTrustProvider` starts empty and is filled with manufacturer roots at
    startup.
