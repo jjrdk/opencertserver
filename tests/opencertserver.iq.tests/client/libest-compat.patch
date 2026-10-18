@@ -1,0 +1,56 @@
+--- a/src/est/est.h
++++ b/src/est/est.h
+@@ -339,1 +339,1 @@
+-#define MAX_AUTH_TOKEN_LEN (512)
++#define MAX_AUTH_TOKEN_LEN (2048)
+--- a/src/est/est_client.c
++++ b/src/est/est_client.c
+@@ -387,3 +387,6 @@
+     in = BIO_new_mem_buf(cacerts, *cacerts_len);
++    if (!memchr(cacerts, '\n', *cacerts_len)) {
++        BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
++    }
+     if (in == NULL) {
+         EST_LOG_ERR("Unable to access the CA cert buffer");
+@@ -1067,1 +1070,0 @@
+-    char token_b64[MAX_AUTH_TOKEN_LEN*2];
+@@ -1071,1 +1073,0 @@
+-    int token_len = 0;
+@@ -1214,14 +1215,3 @@
+-        /*
+-         * base64 encode the combined string and build the HTTP auth header
+-         */
+-        memzero_s(token_b64, MAX_AUTH_TOKEN_LEN*2);
+-        token_len = strnlen_s(token, MAX_AUTH_TOKEN_LEN);
+-        enc_len = est_base64_encode((const char *) token, token_len, token_b64, MAX_AUTH_TOKEN_LEN * 2, 0);
+-
+-        if (enc_len <= 0) {
+-            EST_LOG_ERR("Unable to encode bearer token auth value");
+-        }
+-
+         snprintf(hdr + hdr_len, EST_HTTP_REQ_TOTAL_LEN-hdr_len,
+-                 "Authorization: Bearer %s\r\n", token_b64);
++                 "Authorization: Bearer %s\r\n", token);
+ 
+--- a/src/est/est_client_http.c
++++ b/src/est/est_client_http.c
+@@ -1269,4 +1269,10 @@
+     for (i = 0; i < hdr_cnt; i++) {
+         if (!strncmp(hdrs[i].name, EST_HTTP_HDR_AUTH, 16)) {
++            /* Skip Bearer when only Basic credentials were supplied. */
++            if (!strncmp(hdrs[i].value, "Bearer", 6) &&
++                !ctx->auth_credentials_cb && ctx->userid[0]) {
++                continue;
++            }
++
+ 
+             auth_found = 1;
+--- a/src/est/est_ossl_util.c
++++ b/src/est/est_ossl_util.c
+@@ -373,3 +373,6 @@
+     in = BIO_new_mem_buf(certs_p7, certs_len);
++    if (!memchr(certs_p7, '\n', certs_len)) {
++        BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
++    }
+     if (!in) {
+ 	EST_LOG_ERR("BIO_new failed");

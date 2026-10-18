@@ -1,14 +1,18 @@
 namespace OpenCertServer.Acme.Server.Endpoints;
 
 using System.Diagnostics;
+using ChallengeStatus = CertesSlim.Acme.Resource.ChallengeStatus;
+using ChallengeTypes = CertesSlim.Acme.Resource.ChallengeTypes;
 using CertesSlim.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Abstractions.Exceptions;
 using Abstractions.HttpModel.Requests;
 using Abstractions.Model;
+using Abstractions.Storage;
 using OpenCertServer.Acme.Abstractions.Services;
 using Configuration;
 using Extensions;
@@ -159,30 +163,37 @@ public static class OrderEndpoints
             string challengeId,
             JwsPayload payload,
             IOrderService orderService,
+            IStoreOrders orderStore,
             IAccountService accountService,
             LinkGenerator links,
             CancellationToken cancellationToken) =>
         {
             var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken)
                 .ConfigureAwait(false);
+            var order = await orderService.GetOrderAsync(account, orderId, cancellationToken).ConfigureAwait(false);
+            var currentChallenge = order?.GetAuthorization(authId)?.GetChallenge(challengeId);
+            if (order == null || currentChallenge == null)
+            {
+                return Results.NotFound();
+            }
+
             if (IsPostAsGet(payload))
             {
-                var order = await orderService.GetOrderAsync(account, orderId, cancellationToken).ConfigureAwait(false);
-                if (order == null)
-                {
-                    return Results.NotFound();
-                }
-
-                var authorization = order.GetAuthorization(authId);
-                var currentChallenge = authorization?.GetChallenge(challengeId);
-                if (currentChallenge == null)
-                {
-                    return Results.NotFound();
-                }
-
                 return Results.Ok(new OpenCertServer.Acme.Abstractions.HttpModel.Challenge(
                     currentChallenge,
                     GetChallengeUrl(context, links, currentChallenge)));
+            }
+
+            if (currentChallenge.Type == ChallengeTypes.DeviceAttest01)
+            {
+                if (currentChallenge.Status != ChallengeStatus.Pending && currentChallenge.ExtraData != null)
+                {
+                    throw new AttestationReplayException();
+                }
+
+                // Persist the signed evidence before queuing validation; the worker may use a different store scope.
+                currentChallenge.ExtraData = Base64UrlEncoder.Decode(payload.Payload);
+                await orderStore.SaveOrder(order, cancellationToken).ConfigureAwait(false);
             }
 
             var processedChallenge =

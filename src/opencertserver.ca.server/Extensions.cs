@@ -210,6 +210,14 @@ public static class Extensions
         groupBuilder.MapPost("/ocsp", OcspHandler.Handle).WithName("ocsp").AllowAnonymous();
         groupBuilder.MapGet("/ocsp/{requestEncoded}", OcspHandler.HandleGet).WithName("ocspGet").AllowAnonymous();
 
+        // --- Inventory: a public, CRL-style listing of every certificate the CA has issued. ---
+        // The response is paginated metadata (serial, subject, validity, revocation state) drawn from the
+        // certificate store. It is the analogue of /ca/crl for "who have I issued and are they revoked?".
+        groupBuilder.MapGet("/inventory", CaInventoryHandler.Handle).AllowAnonymous();
+        // --- Certificate retrieval by serial number: returns the issued certificate in PEM form. ---
+        groupBuilder.MapGet("/certificate/{serialNumber}", CaCertificateHandler.Handle).AllowAnonymous();
+        groupBuilder.MapPost("/certificate/{serialNumber}", CaCertificateHandler.Handle).AllowAnonymous();
+
         return endpoints;
     }
 }

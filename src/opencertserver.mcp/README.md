@@ -29,6 +29,15 @@ Read-only tools require no configuration and are always available. See
 `docs/standards.md → MCP server` for the full authorization model and the
 `McpServerAuthorization.feature` regression tests.
 
+For stdio, the configured token authenticates the process's caller, not a bearer token in
+each tool request. After startup validation, the host attaches that caller to incoming
+MCP message contexts so the SDK binds the same authenticated identity to signing and
+revocation. The Linux subprocess qualification scenarios in
+[`McpServer.feature`](../../tests/opencertserver.iq.tests/Features/McpServer.feature)
+exercise the actual handshake, tool discovery, fail-closed startup and certificate issuance.
+CA-backed read operations such as `get_crl` need a configured CA; the standalone host
+currently creates one only with CA operations enabled and the explicit test-CA opt-in.
+
 ## Dependencies
 - `ModelContextProtocol` package for the MCP server runtime
 - `opencertserver.ca` for certificate authority logic

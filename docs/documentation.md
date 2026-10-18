@@ -72,7 +72,9 @@ algorithm of the profile's CA key
 
 - Description: Revoke a certificate.
 - Query parameters:
-   - `sn` (base64 string, required): the serial number of the certificate to revoke.
+   - `sn` (hexadecimal string, required): the serial number of the certificate to revoke, in
+     .NET `GetSerialNumberString()` form. Preserve any leading `00` ASN.1 INTEGER sign byte
+     (OpenSSL's `x509 -serial` display omits it).
    - `reason` (string, required): the revocation reason (e.g. `keyCompromise`,
      `cessationOfOperation`).
    - `signature` (base64 string, required): a SHA-256 signature of `serialNumber + reason` produced
@@ -85,6 +87,11 @@ algorithm of the profile's CA key
    - **Administrative** — the caller's identity carries the claim `role = ca_admin`
      (see `RevocationAuthorizationConstants.CaAdminRole`). Admins may revoke any certificate.
    - Any other combination returns `403 Forbidden`.
+- The standalone host explicitly authenticates this policy with its certificate and JWT bearer
+  schemes. Self-service can use mTLS alone; administrators can present a signed JWT from the
+  configured `--authority` with the configured `--audience` and `role = ca_admin`, alongside
+  the client certificate and proof-of-possession signature. JWT authority settings are applied
+  before the framework initializes OIDC discovery and signing-key retrieval.
 - Response: `200` on success, `404` if the serial number is unknown, `401` if authentication
   fails, `403` if authorization fails.
 
@@ -147,13 +154,23 @@ certificate-authentication cache with EST trust anchors.
 ### GET /.well-known/est/cacerts
 
 - Description: Retrieve the CA certificate chain.
-- Response: `application/pkcs7-certificates-path` (cached 30 days). No authentication required.
+- Response: `application/pkcs7-mime; smime-type=certs-only`, containing base64-encoded DER
+  PKCS#7 certificates (cached 30 days). No authentication required.
 
 ### GET /.well-known/est/csrattrs
 
 - Description: Return a `CsrAttributesResponse` ([RFC 9908](https://www.rfc-editor.org/rfc/rfc9908))
    that tells the client the CSR template, key usage, and subject to fill in.
 - Response: `application/csrattrs`.
+
+The standalone `certserver` host publishes an optional file configured by
+`Est:CsrAttributesFile` (`Est__CsrAttributesFile=/certs/csrattrs.der` in the environment).
+The file contains a **nonempty DER CsrAttrs sequence**, which may include RFC 9908
+`CertificationRequestInfoTemplate` values or legacy OID/attribute requirements. The same
+response is used for all profiles and is base64-encoded on the wire. With no file configured,
+the host returns HTTP 204 as before. The file is read on each request; unreadable, malformed
+or empty configured content fails the request and is logged by the host, rather than silently
+returning no requirements. Embedded hosts can still supply their own `ICsrTemplateLoader`.
 
 ### POST /.well-known/est/simpleenroll
 
@@ -287,15 +304,19 @@ For challenge types, CAA enforcement, and the `device-attest-01` validator, see
 ## Device attestation (device-attest-01) challenge
 
 `device-attest-01` is an ACME challenge type that replaces domain control with hardware identity.
-The device submits an Attestation Identity Key (AIK) certificate and a TPM/SE proof inside
-`challenge.extraData`.
+The device submits an Attestation Identity Key (AIK) certificate and a TPM proof as the JSON
+payload of its signed POST to the challenge URL. Fields are `nonce` (the challenge token),
+`proof` (base64url TPM2B_ATTEST bytes), `signature` (base64url RSA-PKCS1v15/SHA-256 signature over
+those bytes), and `aikCertificate` (base64url DER certificate). The server stores this evidence
+in `challenge.ExtraData` before asynchronous validation; clients do not send an `extraData` wrapper.
 
 **Security model (fail-closed).** The validator and the authorization factory are both gated on the
 trust provider:
 
 - With an **empty** `IAttestationTrustProvider` (the default after `AddAcmeServer`):
   - `DefaultAuthorizationFactory` **does not create** a `device-attest-01` challenge for any order,
-    so the challenge type is never advertised to ACME clients.
+    so it is not offered in authorizations. The directory still advertises support in
+    `meta.challengeTypesWithAdditionalContent`.
   - If a client somehow submits a `device-attest-01` response, `DeviceAttestChallengeValidator`
     rejects it immediately with `invalid_attestation` — system trust is **never** used as a fallback.
 - With a **non-empty** provider (manufacturer root CAs injected):
@@ -307,6 +328,17 @@ trust provider:
 1. **Chain verification** — AIK must chain to an injected root under `CustomRootTrust` mode.
 2. **Proof verification** — TPM magic, attestation type, and nonce-bind must match the challenge.
 3. **Anti-replay** — consumed nonce rejected on second use with `replay_nonce`.
+
+An additional evidence submission to an already processed device challenge returns HTTP 400
+`application/problem+json`, type `urn:ietf:params:acme:error:replay_nonce`, even when the outer
+ACME JWS nonce is fresh. Empty-payload POST-as-GET reads remain available and do not change the
+original result. This device-specific behavior does not change `http-01` or `dns-01` submissions.
+
+The standalone host loads manufacturer PEM bundles from `Attestation:TrustAnchors` (for example,
+`Attestation__TrustAnchors__0=/certs/manufacturer.pem`). Without that setting it retains empty trust.
+The Linux black-box [DeviceAttestation IQ feature](../tests/opencertserver.iq.tests/Features/DeviceAttestation.feature)
+qualifies advertisement, offer gating, invalid proofs and replay rejection using disposable software
+fixtures; it does not qualify hardware provenance.
 
 To enable device attestation, replace the `IAttestationTrustProvider` singleton registered by
 `AddAcmeServer`:

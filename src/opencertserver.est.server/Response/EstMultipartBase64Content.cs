@@ -15,7 +15,7 @@ internal sealed class EstMultipartBase64Content : StringContent
         Headers.ContentType = new MediaTypeHeaderValue(mediaType);
         if (!string.IsNullOrWhiteSpace(smimeType))
         {
-            Headers.ContentType.Parameters.Add(new NameValueHeaderValue("smime-type", $"\"{smimeType}\""));
+            Headers.ContentType.Parameters.Add(new NameValueHeaderValue("smime-type", smimeType));
         }
 
         if (includeBase64TransferEncoding)
