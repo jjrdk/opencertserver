@@ -27,6 +27,7 @@ internal class CertificateSigningRequestTemplateResult : IResult
         attributes.Encode(writer);
         var encoded = writer.Encode().Base64Encode();
         ctx.Response.ContentType = "application/csrattrs";
+        ctx.Response.ContentLength = encoded.Length;
         ctx.Response.StatusCode = (int)_response.StatusCode;
         await ctx.Response.WriteAsync(encoded).ConfigureAwait(false);
         await ctx.Response.CompleteAsync().ConfigureAwait(false);

@@ -41,7 +41,7 @@ the one OpenCertServer's `est-enroll` CLI and `EstClient` wrap.
 
 | Endpoint | RFC section | Notes |
 |---|---|---|
-| `GET /.well-known/est/cacerts` | §4.1 | CA chain in `application/pkcs7-certificates-path`; cached 30 days. |
+| `GET /.well-known/est/cacerts` | §4.1 | Base64 DER PKCS#7 CA chain in `application/pkcs7-mime; smime-type=certs-only`; cached 30 days. |
 | `GET /.well-known/est/csrattrs` | §4.5 (with [RFC 9908](#rst-9908--csr-attribute-templates)) | A `CsrAttributesResponse` in `application/csrattrs` telling the client which template to use. |
 | `POST /.well-known/est/simpleenroll` | §4.2 | Accepts PEM/DER PKCS#10; returns leaf+chain in `application/pkix-cert` or `application/pem-certificate-chain` via `Accept`. |
 | HTTP Basic authentication | §3.2.3 | Opt-in (`AddEstBasicAuthentication`): a user name and password over TLS, next to certificates and tokens. Off until users are configured; the identity is the user name; passwords are held as PBKDF2-SHA256 hashes. Tested in [EstBasicAuthentication.feature](../tests/opencertserver.est.server.tests/Features/EstBasicAuthentication.feature). |
@@ -83,6 +83,13 @@ client-side enrollment against a live EST server (drives `EstClient.Enroll`).
 * [EstServer.feature](../tests/opencertserver.est.server.tests/Features/EstServer.feature) —
 endpoint-level server tests, including acceptance of a configured external client CA and refusal
 when that CA is not configured.
+* [IQ EstEnrollment.feature](../tests/opencertserver.iq.tests/Features/EstEnrollment.feature) —
+all six Cisco `estclient` scenarios against the deployed container: published CA verification,
+signed-JWT enrollment, same-key mTLS re-enrollment, retrieval and independent inspection of a
+configured RFC 9908 template, PKCS#8 server-key delivery with certificate/key verification, and Basic
+enrollment with client-side PEM conversion. The [IQ README](../tests/opencertserver.iq.tests/README.md#est-enrollment-scenarios)
+documents the source-build compatibility patches and the client's lack of encrypted CMS key delivery;
+encrypted delivery and server-side PEM negotiation remain covered by `EstConformance.feature`.
 
 ### RFC 8951 — EST clarifications
 
@@ -104,6 +111,8 @@ PKCS#10 is constrained before it leaves the device. OpenCertServer returns this 
 
 **Where it lives.** `src/opencertserver.est.server/Response/CsrAttributesResponse.cs`,
 `CertificateSigningRequestTemplateResult.cs`.
+The standalone host can publish DER CsrAttrs using `Est:CsrAttributesFile`; without it,
+`/csrattrs` returns HTTP 204. See the [configuration reference](documentation.md#get-well-knownestcsrattrs).
 
 ### ACME — [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555)
 
@@ -246,14 +255,22 @@ and Apple Secure Element so the ACME server can talk to any of them behind `IAtt
    2. **Proof verification** — a TPM `quote`-style proof whose magic value, attestation type, and
       nonce-bind match the challenge. Garbage bytes or wrong magic ⇒ `invalid_attestation`.
    3. **Anti-replay** — a consumed nonce is rejected on second use with error type `replay_nonce`.
+      Over HTTP, another evidence submission to a processed device challenge returns HTTP 400
+      `urn:ietf:params:acme:error:replay_nonce`; POST-as-GET still returns the original outcome.
 * **Factory gating.** `DefaultAuthorizationFactory` only creates a `device-attest-01` challenge
    when `IAttestationTrustProvider.GetTrustedRoots()` returns a non-empty collection. With the
    default empty `StaticAttestationTrustProvider` registered by `AddAcmeServer`, only `http-01` and
    `dns-01` are offered.
 * **Factory routing.** `IChallengeValidatorFactory.GetValidator("device-attest-01")` returns the
    device validator; unknown types throw `InvalidOperationException("Unknown Challenge Type")`.
-* **Model.** `DeviceAttestChallengeAnswer` (Nonce, Proof, AikCertificate, DeviceId) is the JSON contract the client submits inside a
-   `challenge.extraData` field.
+* **Model.** `DeviceAttestChallengeAnswer` (Nonce, Proof, Signature, AikCertificate, DeviceId) is the
+   JSON contract submitted as the signed challenge request payload. The HTTP endpoint preserves it
+   in the server-side `Challenge.ExtraData` field for the asynchronous validator.
+* **Installation qualification.** The Linux-client
+   [DeviceAttestation IQ feature](../tests/opencertserver.iq.tests/Features/DeviceAttestation.feature)
+   checks advertisement, empty-root offer gating, both empty and malformed proofs, and acceptance
+   followed by replay rejection through the deployed HTTPS endpoint. Its disposable manufacturer
+   PKI and independently signed software quotes do not establish real hardware provenance.
 
 **Where it lives.**
 * Model: `src/opencertserver.acme.abstractions/Model/DeviceAttestChallengeAnswer.cs`,
@@ -460,6 +477,10 @@ fetch it by CA or by profile.
    CRL generation, caching (`Expire(12h)`), per-profile paths, and revocation flows.
 * [CertificateAuthority.feature](../tests/opencertserver.certserver.tests/Features/CertificateAuthority.feature) —
    the CA's inventory + lifecycle.
+* [CrlRevocation.feature](../tests/opencertserver.iq.tests/Features/CrlRevocation.feature) —
+   Linux black-box qualification against the deployed container: default and RSA/ECDSA profile
+   CRLs, OpenSSL decoding/signature verification, mTLS self-service, signed-JWT administrative
+   revocation, rejection of non-admin cross-certificate revocation, and a dereferenceable CDP.
 * [McpServerRevocation.feature](../tests/opencertserver.mcp.tests/Features/McpServerRevocation.feature) —
    the MCP `get_crl` and `get_revocation_status` tools.
 
@@ -668,3 +689,38 @@ The `opencertserver.cli` project ships an executable named `opencert` (see
    the command line or behind a tool interface for AI agents.
 * **Every claim on this page is locked in by a test** — see the bullet points under each standard
    for the exact `.feature` file.
+
+## Server hardening (IQ installation profile)
+
+The IQ scenarios assert a *hardened* installation. All of the following are already in
+`opencertserver.certserver`'s `Program.cs` (the live server is hardened, not a test-only instance) and
+are enabled by shipping `ASPNETCORE_ENVIRONMENT=Hardened` (the profile in
+`src/opencertserver.certserver/appsettings.Hardened.json`, shipped as appsettings in the release image):
+
+| Concern | Config surface | Effect when configured | Effect when absent |
+|---|---|---|---|
+| External account binding (RFC 8555 §7.3.4) | `AcmeServer:ExternalAccountKey:{keyId}` → `{MacKey,MacAlgorithm}` | The static `IStoreExternalAccountKeys` is populated and new-account requests may carry `externalAccountBinding`. | The ACME default in-memory store is empty: every new-account request carrying an EAB binding is rejected. |
+| Device attestation (FIDO / `device-attest-01`) | `Attestation:TrustAnchors:[]` → list of PEM files | Roots are loaded into `IAttestationTrustProvider`; the device-attestation challenge succeeds for a chain that trusts one anchor. | No `IAttestationTrustProvider` is registered → `device-attest-01` fails closed. |
+| OpenTelemetry / OTLP | `Telemetry:Enabled=true`, `Telemetry:OtlpEndpoint=http://collector:4317` | Meters `opencertserver.acme`, `opencertserver.est`, `opencertserver.ca` and their activity sources export over OTLP. | No metrics or tracing are exported. |
+| CDP / AIA / OCSP responder URLs (RFC 5280 / RFC 6960) | `CaServer:CrlDistributionPoints:[]`, `CaServer:OCSP:[]`, `CaServer:CaIssuers:[]` | Every issued certificate carries CRLDP, AIA OCSP + caIssuers extensions pointing at the configured responders. | Only the localhost loopback fallback is embedded on every issued certificate. |
+
+The attestation trust roots are intentionally **not baked in** — the default (absent) posture fails
+closed and offers no `device-attest-01` challenge; operators supply the roots per deployment via
+`Attestation__TrustAnchors__0=<PEM>` (and `__1`, `__2`, …). The `AcmeServer:ExternalAccountKey`
+`MacKey` shipped in the profile is an **example** and must be rotated before real use.
+
+### OpenTelemetry metrics emitted
+
+| Meter | Counter | When |
+|---|---|---|
+| `opencertserver.acme` | `opencertserver.acme.newaccount.{successes,failures}` | a new-account request via ACME or EST. |
+| `opencertserver.acme` | `opencertserver.acme.order.success` | an authorized order reaches `ready` for issuance. |
+| `opencertserver.ca` | `opencertserver.ca.issued` | an enrollment completes and returns a chain. |
+| `opencertserver.ocsp` | `opencertserver.ocsp.{good,server-error,bad}` | an OCSP request is answered (see `OcspHandler`). |
+
+### Authority information a Linux client observes
+
+Issued certificates carry the RFC 5280 extensions below, which the `openssl x509 -text` inspector in
+`tests/opencertserver.iq.tests/client/assert.sh` checks: CRL Distribution Point, Authority Information
+Access (OCSP responder + `caIssuers`), and OCSP responder signature verification. These are asserted by
+`tests/opencertserver.iq.tests/Features/AuthorityInformation.feature`.

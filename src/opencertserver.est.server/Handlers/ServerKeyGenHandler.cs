@@ -199,8 +199,9 @@ internal static class ServerKeyGenHandler
                     mpr.Add(new EstMultipartBase64Content(CreateCertsOnlyResponse(success.Certificate),
                         Constants.PemMimeType,
                         smimeType: "certs-only"));
-                    return Results.Stream(
-                        await mpr.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false), mpr.Headers.ContentType!.ToString());
+                    return Results.Bytes(
+                        await mpr.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false),
+                        mpr.Headers.ContentType!.ToString());
                 }
 
                 var error = (SignCertificateResponse.Error)newCert;

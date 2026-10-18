@@ -601,12 +601,9 @@ public sealed class EstClient : IDisposable
             Content =
                 new StringContent(request.ToPkcs10Base64(), Encoding.UTF8, "application/pkcs10"),
             Method = HttpMethod.Post,
-            RequestUri = requestUriBuilder.Uri,
-            Headers =
-            {
-                TransferEncoding = { new TransferCodingHeaderValue("base64") }
-            }
+            RequestUri = requestUriBuilder.Uri
         };
+        requestMessage.Content.Headers.Add("Content-Transfer-Encoding", "base64");
         if (authenticationHeader != null)
         {
             requestMessage.Headers.Authorization = authenticationHeader;

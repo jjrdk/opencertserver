@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <RootNamespace>OpenCertServer.Iq.Tests</RootNamespace>
+        <OutputType>exe</OutputType>
+        <!-- Installation-qualification scenarios are orchestration + black-box HTTP/TLS
+             clients (a Linux container); they are not AOT/trim targets. -->
+        <IsTrimmable>false</IsTrimmable>
+        <IsAotCompatible>false</IsAotCompatible>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- BDD runner, identical to the other Reqnroll/xunit.v3 test projects. -->
+        <PackageReference Include="Reqnroll.xUnit.v3"/>
+        <PackageReference Include="xunit.v3.mtp-v2"/>
+        <!-- TestContainers is the substrate for the black-box execution: the
+             scenarios drive a running hardened OpenCertServer that TestContainers
+             starts as (a) a server image and (b) a Linux client image that runs the
+             standard apt tools (see Support/IqAcmeEnvironment.cs). -->
+        <PackageReference Include="Testcontainers"/>
+    </ItemGroup>
+
+</Project>

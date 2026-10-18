@@ -25,5 +25,9 @@
         <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens"/>
         <PackageReference Include="Microsoft.IdentityModel.Protocols"/>
         <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect"/>
+        <PackageReference Include="OpenTelemetry"/>
+        <PackageReference Include="OpenTelemetry.Api.ProviderBuilderExtensions"/>
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol"/>
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting"/>
     </ItemGroup>
 </Project>

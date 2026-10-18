@@ -7,7 +7,6 @@ namespace OpenCertServer.CertServer;
 
 using System.Security.Cryptography;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Est.Server.Handlers;
 using System.Linq;
 using System.Numerics;
 using System.Security.Authentication;
@@ -25,8 +24,17 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Acme.Server;
 using Acme.Server.Extensions;
+using Acme.Server.Services;
+using Acme.Abstractions.Storage;
+using Acme.Abstractions.Model;
+using Acme.Abstractions.Services;
 using Ca;
 using Ca.Server;
+using CertServer.Stores;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 internal static class Program
 {
@@ -66,6 +74,19 @@ internal static class Program
         List<string> ocspUrls = [];
         List<string> caIssuerUrls = [];
         List<string> crlUrls = [];
+
+        // Seed the authority information access (AIA) and CRL distribution point (CDP) defaults from
+        // configuration so that, in a hardened deployment, every issued certificate names the responder
+        // URLs of this server (OCSP, AIA caIssuers, CRL distribution point). Command-line values still
+        // append, and the localhost development default still applies when neither source supplies OCSP.
+        caIssuerUrls.AddRange(ListConfigValues(builder.Configuration.GetSection("CaServer:CaIssuers")));
+        crlUrls.AddRange(ListConfigValues(builder.Configuration.GetSection("CaServer:CrlDistributionPoints")));
+        var configuredOcsp = ListConfigValues(builder.Configuration.GetSection("CaServer:OCSP"));
+        if (configuredOcsp.Count > 0)
+        {
+            ocspUrls = configuredOcsp;
+        }
+
         while (index >= 0)
         {
             index = Array.IndexOf(args, "--ocsp", index);
@@ -125,7 +146,7 @@ internal static class Program
                     crlUrls.ToArray(),
                     caIssuerUrls.ToArray(),
                     TimeSpan.FromDays(90))
-                .AddEstServer<CsrTemplateLoader>();
+                .AddEstServer<ConfiguredCsrTemplateLoader>();
         }
         else
         {
@@ -152,7 +173,7 @@ internal static class Program
                         ocspUrls.ToArray(),
                         crlUrls.ToArray(),
                         caIssuerUrls.ToArray()))
-                .AddEstServer<CsrTemplateLoader>();
+                .AddEstServer<ConfiguredCsrTemplateLoader>();
         }
 
         services = services.AddEstTrustAnchors(options => ReadEstTrustAnchors(builder.Configuration, options));
@@ -186,8 +207,27 @@ internal static class Program
             .ConfigureOptions<ConfigureJwtBearerOptions>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
             .AddAuthorization()
-            .AddCertificateAuthorityAuthorization()
+            .AddCertificateAuthorityAuthorization(policy => policy.AddAuthenticationSchemes(
+                JwtBearerDefaults.AuthenticationScheme,
+                CertificateAuthenticationDefaults.AuthenticationScheme))
             .AddHealthChecks();
+
+        // --- Hardened-deployment registrations, each config-gated and fail-closed when unset ---
+
+        // External account keys (RFC 8555 §7.3.4): when provisioned in configuration the read-only
+        // static store that carries them overrides the empty in-memory store registered above, so a
+        // hardened deployment can bind EAB-authenticated accounts without writing a key to disk.
+        RegisterExternalAccountKeys(services, builder.Configuration);
+
+        // Attestation trust roots for the device-attest-01 challenge: when configured the static trust
+        // provider overrides the ACME server's empty default (which rejects every proof), enabling device
+        // identity without broadening the default.
+        RegisterAttestationTrustAnchors(services, builder.Configuration);
+
+        // OpenTelemetry metrics and traces: exported over OTLP when enabled, so a deployment's
+        // instrumentation (the opencertserver.acme / .est / .ca meters and activity sources) is scrapeable.
+        RegisterTelemetry(builder.Services, builder.Configuration);
+
         builder.WebHost.UseKestrel(options =>
             {
                 options.AddServerHeader = false;
@@ -301,6 +341,124 @@ internal static class Program
                 EstBasicAuthenticationDefaults.AuthenticationScheme)
             .RequireAuthenticatedUser()
             .Build();
+    }
+
+    /// <summary>
+    /// External account keys configured under <c>AcmeServer:ExternalAccountKey:{keyId}</c>, each with a
+    /// <c>MacKey</c> (a base64url HMAC key) and an optional <c>MacAlgorithm</c> (default HS256). When none
+    /// are configured nothing is registered and the empty in-memory store that <c>AddAcmeInMemoryStore</c>
+    /// registered is retained, so EAB simply cannot bind.
+    /// </summary>
+    private static IServiceCollection RegisterExternalAccountKeys(IServiceCollection services, IConfiguration configuration)
+    {
+        var keys = configuration
+            .GetSection("AcmeServer:ExternalAccountKey")
+            .GetChildren()
+            .Select(child => new ExternalAccountKey(
+                child.Key,
+                child["MacKey"] ?? throw new InvalidOperationException(
+                    $"'AcmeServer:ExternalAccountKey:{child.Key}' is missing its 'MacKey'."),
+                child["MacAlgorithm"] ?? "HS256"))
+            .ToArray();
+        if (keys.Length == 0)
+        {
+            return services;
+        }
+
+        // Registered after AddAcmeInMemoryStore so the static store wins resolution.
+        return services.AddSingleton<IStoreExternalAccountKeys>(new StaticExternalAccountKeyStore(keys));
+    }
+
+    /// <summary>
+    /// Attestation trust roots configured as PEM bundles under <c>Attestation:TrustAnchors</c> (paths).
+    /// When none are configured the ACME server's empty trust provider is retained, which rejects every
+    /// device-attest-01 proof - the fail-closed default for a hardened deployment.
+    /// </summary>
+    private static IServiceCollection RegisterAttestationTrustAnchors(IServiceCollection services, IConfiguration configuration)
+    {
+        var paths = ListConfigValues(configuration.GetSection("Attestation:TrustAnchors"));
+        if (paths.Count == 0)
+        {
+            return services;
+        }
+
+        var roots = new X509Certificate2Collection();
+        foreach (var path in paths)
+        {
+            roots.ImportFromPem(File.ReadAllText(path));
+        }
+        if (roots.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "The configured attestation trust anchors contain no PEM certificates; the device-attest-01 " +
+                "challenge cannot authenticate any device.");
+        }
+
+        // Registered after AddAcmeServer so the static provider overrides the server's empty default.
+        return services.AddSingleton<IAttestationTrustProvider>(new StaticAttestationTrustProvider(roots));
+    }
+
+    /// <summary>
+    /// OpenTelemetry export over OTLP, enabled only when <c>Telemetry:Enabled</c> is set. The
+    /// <c>opencertserver.acme</c>, <c>opencertserver.est</c> and <c>opencertserver.ca</c> meters and
+    /// activity sources feed a single metric and a single trace provider, both exported to the endpoint
+    /// in <c>Telemetry:OtlpEndpoint</c> (default http://localhost:4317). When disabled nothing is
+    /// registered, so the in-process behaviour and the in-process metrics tests are unchanged.
+    /// </summary>
+    private static IServiceCollection RegisterTelemetry(IServiceCollection services, IConfiguration configuration)
+    {
+        var telemetry = configuration.GetSection("Telemetry");
+        if (string.Equals(telemetry["Enabled"], "true", StringComparison.OrdinalIgnoreCase) != true)
+        {
+            return services;
+        }
+
+        var otlpEndpoint = telemetry["OtlpEndpoint"] ?? "http://localhost:4317";
+        var endpoint = new Uri(otlpEndpoint, UriKind.Absolute);
+        var serviceName = telemetry["ServiceName"] ?? "opencertserver";
+
+        services
+            .AddOpenTelemetry()
+            .ConfigureResource(builder => builder
+                .AddService(serviceName: serviceName)
+                .AddTelemetrySdk())
+            .WithMetrics(meter =>
+            {
+                meter
+                    .AddMeter("opencertserver.acme")
+                    .AddMeter("opencertserver.est")
+                    .AddMeter("opencertserver.ca")
+                    .AddOtlpExporter(options => options.Endpoint = endpoint);
+            })
+            .WithTracing(tracer =>
+            {
+                tracer
+                    .AddSource("opencertserver.acme")
+                    .AddSource("opencertserver.est")
+                    .AddSource("opencertserver.ca")
+                    .AddOtlpExporter(options => options.Endpoint = endpoint);
+            });
+
+        return services;
+    }
+
+    /// <summary>
+    /// Reads a configuration section as a list of values: either an array sub-section (<c>0</c>, <c>1</c>,
+    /// ...) or a single value whose entries are separated by commas, semicolons or whitespace.
+    /// </summary>
+    private static List<string> ListConfigValues(IConfigurationSection section)
+    {
+        var values = section.GetChildren()
+            .Select(child => child.Value)
+            .OfType<string>()
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToList();
+        if (values.Count == 0 && section.Value is { } lone)
+        {
+            values.AddRange(lone.Split([',', ';', ' ', '\t', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        }
+
+        return values;
     }
 
     private static ForwardedHeadersOptions CreateForwardedHeaderOptions()

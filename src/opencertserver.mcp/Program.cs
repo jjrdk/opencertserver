@@ -63,6 +63,13 @@ public static class Program
 
             var caller = McpServerConfiguration.BuildAuthenticatedCaller(mcpOptions);
             services.AddSingleton(caller);
+            services.Configure<ModelContextProtocol.Server.McpServerOptions>(options =>
+                options.Filters.Message.IncomingFilters.Add(next => (context, cancellationToken) =>
+                {
+                    // The SDK binds ClaimsPrincipal from the message, not the DI container.
+                    context.User = caller;
+                    return next(context, cancellationToken);
+                }));
             services.AddSingleton<IMcpAuthorization>(new DefaultMcpAuthorization(mcpOptions));
 
             // The self-signed "MCP Test CA" is dev/test only; EnsureConfigured above has
