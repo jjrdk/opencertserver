@@ -27,7 +27,7 @@ When adding or changing features, update the relevant docs in the same PR.
 | `opencertserver.acme.aspnetclient` | ACME client for ASP.NET Core; auto-renewal, SNI, http-01 challenge middleware. |
 | `opencertserver.acme.yarp` | Per-route ACME issuance on a YARP reverse proxy (one cert per `RouteConfig`, SNI-selected). |
 | `opencertserver.ca` | Core CA logic: issuance, validation, revocation, OCSP, CRL. |
-| `opencertserver.ca.server` | CA HTTP endpoints: `/ca/csr`, `/ca/revoke`, `/ca/inventory`, `/ca/crl`, `/ca/ocsp`, `/ca/certificate`. |
+| `opencertserver.ca.server` | CA HTTP endpoints: `/ca/csr`, `/ca/revoke`, `/ca/crl`, `/ca/ocsp`. |
 | `opencertserver.ca.utils` | Shared X.509/PKI helpers, CSR templates, OCSP/CRL builders, print helpers. |
 | `opencertserver.est.server` | EST server: `cacerts`, `csrattrs` (RFC 9908), `simpleenroll`, `simplereenroll`, `serverkeygen`. |
 | `opencertserver.est.client` | EST client; enrollment, re-enrollment, and bootstrap trust negotiation. |

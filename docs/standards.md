@@ -130,7 +130,7 @@ in the loop. It's the protocol that backs Let's Encrypt. OpenCertServer is a ful
    `/order/{id}/auth/{authId}` and `/order/{id}/auth/{authId}/chall/{challengeId}`.
 * **Challenge validation** — `http-01` over HTTP (`/.well-known/acme-challenge/{token}`),
    `dns-01` via `DnsClientX`, and `device-attest-01` (see below). A hosted
-   `HostedValidationService` runs validations asynchronously; `HostedIssuanceService` is opt-in.
+   `HostedValidationService` runs validations asynchronously.
 * **JWS protection** — compact JWS with `alg`, `nonce`, `url`, and either `jwk` (first request) or
    `kid` (subsequent requests).
 * **Revocation** (`POST /revoke-cert`) — revoke via ACME or via the authenticated CA endpoint
@@ -453,7 +453,7 @@ fetch it by CA or by profile.
 * CRL Distribution Point URLs are embedded in issued certs when `--crl` is supplied at startup.
 
 **Where it lives.** `src/opencertserver.ca.server/Handlers/CrlHandler.cs`,
-`RevocationHandler.cs`, `CertificateRetrievalHandler.cs`. Metrics are in `CaInstruments.cs`.
+`RevocationHandler.cs`. Metrics are in `CaInstruments.cs`.
 
 **Tests that prove it.**
 * [CrlConformance.feature](../tests/opencertserver.certserver.tests/Features/CrlConformance.feature) —
