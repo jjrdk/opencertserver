@@ -713,10 +713,10 @@ closed and offers no `device-attest-01` challenge; operators supply the roots pe
 
 | Meter | Counter | When |
 |---|---|---|
-| `opencertserver.acme` | `opencertserver.acme.newaccount.{successes,failures}` | a new-account request via ACME or EST. |
-| `opencertserver.acme` | `opencertserver.acme.order.success` | an authorized order reaches `ready` for issuance. |
-| `opencertserver.ca` | `opencertserver.ca.issued` | an enrollment completes and returns a chain. |
-| `opencertserver.ocsp` | `opencertserver.ocsp.{good,server-error,bad}` | an OCSP request is answered (see `OcspHandler`). |
+| `opencertserver.acme` | `opencertserver.acme.newaccount.{successes,failures}` | an ACME new-account request completes. |
+| `opencertserver.acme` | `opencertserver.acme.orderfinalize.{successes,failures}` | an ACME order finalization completes. |
+| `opencertserver.est` | `opencertserver.est.simpleenroll.{successes,failures}` | an EST enrollment completes. |
+| `opencertserver.ca` | `opencertserver.ocsp.request.{requests,successes,failures}` | an OCSP request is handled. |
 
 ### Authority information a Linux client observes
 
