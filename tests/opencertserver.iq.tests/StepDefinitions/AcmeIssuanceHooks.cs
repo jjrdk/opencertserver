@@ -18,6 +18,7 @@ using Reqnroll;
 [Scope(Feature = OpenTelemetrySteps.FeatureTitle)]
 [Scope(Feature = ProfileIssuanceSteps.FeatureTitle)]
 [Scope(Feature = DeviceAttestationSteps.FeatureTitle)]
+[Scope(Feature = PenetrationSteps.FeatureTitle)]
 public sealed class AcmeIssuanceHooks
 {
     private readonly FeatureContext _featureContext;
@@ -64,7 +65,8 @@ public sealed class AcmeIssuanceHooks
 
         var environment = await IqAcmeEnvironment.StartAsync(
                 authorityConfiguration: authorityConfiguration, revocationConfiguration: revocationConfiguration,
-                enableHttp: featureContext.FeatureInfo.Title == LinuxServerDeploymentSteps.FeatureTitle,
+                enableHttp: featureContext.FeatureInfo.Title is LinuxServerDeploymentSteps.FeatureTitle
+                    or PenetrationSteps.FeatureTitle,
                 enableTelemetry: isTelemetry)
             .ConfigureAwait(false);
         featureContext.Set(environment);
