@@ -58,6 +58,7 @@ internal sealed class IqAuthorityConfiguration(
                 builder = builder
                     .WithEnvironment($"{profile}__KeyUsage", "KeyEncipherment,DataEncipherment")
                     .WithEnvironment($"{profile}__ExtendedKeyUsages__0", "1.3.6.1.5.5.7.3.1")
+                    .WithEnvironment($"{profile}__ExtendedKeyUsages__1", "1.3.6.1.5.5.7.3.3")
                     .WithEnvironment($"{profile}__CertificatePolicies__0", "1.3.6.1.4.1.999");
             }
         }
