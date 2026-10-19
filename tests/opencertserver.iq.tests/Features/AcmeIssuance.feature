@@ -1,14 +1,15 @@
 @iq @blackbox @linux-client
 Feature: RFC 8555 ACME issuance works for a Linux web-application client
   A web application that needs a TLS certificate obtains one automatically with a
-  standard ACME client - here `acme.sh`, the canonical Linux ACME client, driven from
-  the client container. These scenarios prove the full order lifecycle is usable from
+  standard ACME client - here `acme.sh` and `certbot`, the two canonical Linux ACME
+  clients, driven from the client container. These scenarios prove the full order lifecycle is usable from
   Linux end-to-end (a real issuance that yields a verifiable chain), not just that the
   endpoints exist in process.
 
   They complement RFC 8555 conformance; the new assertion is that the canonical ACME
-  client, run from Linux, completes issuance, revocation, and TOS-reagreement against
-  the running install.
+  clients, run from Linux, complete issuance, renewal, revocation, EAB binding and
+  TOS-reagreement against the running install. Running two independent ACME client
+  implementations guards against the server only interoperating with one of them.
 
   Rule: The ACME directory is reachable and complete
   Scenario: The Linux client reads the ACME directory
@@ -60,3 +61,39 @@ Feature: RFC 8555 ACME issuance works for a Linux web-application client
     When the Linux client POSTs a request missing a "nonce" to an ACME endpoint
     Then the response content-type is "application/problem+json"
     And the body contains an "type" and a "status"
+
+  Rule: certbot, the EFF ACME client, completes the same lifecycle
+  Scenario: certbot registers an ACME account
+    Given a hardened OpenCertServer is reachable
+    When the Linux client registers an ACME account via "certbot register"
+    Then certbot exits 0
+    And certbot stores the account location returned by the server
+
+  Scenario Outline: certbot issues a certificate via the <challenge> challenge
+    Given a hardened OpenCertServer is reachable
+    And a "certbot" ACME account exists on the server
+    When the Linux client runs "certbot" to issue "<domain>" via the "<challenge>" challenge
+    Then certbot exits 0
+    And the issued certificate chains to the published CA with "openssl verify"
+
+    Examples:
+      | challenge | domain                  |
+      | http-01   | certbot.example.com     |
+      | dns-01    | certbot-dns.example.com |
+
+  Scenario: certbot new-account succeeds with external account binding
+    Given EAB credentials "kid" and "hmac" are supplied to the Linux client
+    When the Linux client creates an ACME account with EAB via "certbot"
+    Then the account is created (HTTP 200/201) with a location
+
+  Scenario: certbot renews the certificate it obtained
+    Given a Linux client holds a valid certificate for "certbot-renew.example.com" issued via "certbot"
+    When the Linux client renews it via "certbot renew --force-renewal"
+    Then certbot exits 0
+    And the renewed certificate has a new serial and chains to the published CA
+
+  Scenario: certbot revokes the certificate it obtained
+    Given a Linux client holds a valid certificate for "certbot-revoke.example.com" issued via "certbot"
+    When the Linux client revokes it via "certbot revoke"
+    And the Linux client re-reads the server's CRL
+    Then the revoked serial appears in the CRL fetched with "openssl crl"

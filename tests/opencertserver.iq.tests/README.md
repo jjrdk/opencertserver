@@ -15,7 +15,7 @@ harness the conformance and correctness suites use.
 |---|---|---|
 | `opencertserver.certserver.tests`, `opencertserver.<proto>.tests` | in-process `WebApplicationFactory`/`TestServer` | .NET `EstClient`, `AcmeContext`, direct handler calls |
 | `opencertserver.mcp.tests` | in-process MCP host | .NET tool invocations |
-| **`opencertserver.iq.tests` (this project)** | **a running OpenCertServer container over HTTP/TLS** | **a Linux container running `estclient`, `openssl`, `curl`, `acme.sh`, `jq`, and the `opencert` CLI** |
+| **`opencertserver.iq.tests` (this project)** | **a running OpenCertServer container over HTTP/TLS** | **a Linux container running `estclient`, `openssl`, `curl`, `acme.sh`, `certbot`, `jq`, and the `opencert` CLI** |
 | **MCP IQ feature** | **the published standalone MCP executable, launched in Linux** | **JSON-RPC over subprocess stdin/stdout, with independent OpenSSL checks** |
 
 The goal is **complementarity, not duplication**: the RFC-conformance and
@@ -40,9 +40,9 @@ Two TestContainers images are orchestrated by the step definitions:
 2. **Client image** — [`client/Dockerfile`](./client/Dockerfile): an Ubuntu
    26.04 image that installs the standard tools via `apt` plus Cisco libest's EST client,
    built from the Ubuntu package sources, the ACME client
-   `acme.sh` (fetched over curl, the canonical ACME client) and the project's own
-   `opencert` CLI. Every scenario's Given/When/Then is something this image can
-   execute: `estclient`, `curl`, `openssl`, `acme.sh`, `jq`, `opencert`.
+   `acme.sh` (fetched over curl, the canonical ACME client), EFF `certbot` (from `apt`)
+   and the project's own `opencert` CLI. Every scenario's Given/When/Then is something
+   this image can execute: `estclient`, `curl`, `openssl`, `acme.sh`, `certbot`, `jq`, `opencert`.
 
 A [`docker-compose.yml`](./docker-compose.yml) provides a manual equivalent of the
 same two-container topology for hands-on runs; TestContainers performs the same
@@ -57,7 +57,10 @@ publish infrastructure, but needs no HTTP server, DNS container or private netwo
 > ([`acme/dns_server.py`](./acme/dns_server.py)), the hardened server and the client with
 > TestContainers (random host ports, no compose), and
 > [`StepDefinitions/AcmeIssuanceSteps.cs`](./StepDefinitions/AcmeIssuanceSteps.cs) runs
-> `acme.sh`, curl, openssl and jq inside the client.
+> `acme.sh`, `certbot`, curl, openssl and jq inside the client. The certbot rule repeats the
+> account, http-01/dns-01 issuance, EAB, renewal and revocation lifecycle with a second ACME
+> client; each scenario uses its own `--config-dir`/`--work-dir`/`--logs-dir` under the
+> scenario work directory, and the EAB scenario uses its own single-use key (`iq-eab-certbot`).
 > [`AuthorityInformation.feature`](./Features/AuthorityInformation.feature) is also implemented
 > by [`StepDefinitions/AuthorityInformationSteps.cs`](./StepDefinitions/AuthorityInformationSteps.cs):
 > all five scenarios reuse the same topology and lifecycle hooks, with the file-backed issuing
@@ -579,7 +582,8 @@ issuer-signed OCSP responses, not a separately configured delegated responder.
 | `ca-certificates` | `apt` | TLS verification of the server chain |
 | `socat` | `apt` | `acme.sh --standalone` answers http-01 on port 80 |
 | `acme.sh` 3.1.1 | pinned GitHub release tarball | RFC 8555 ACME issuance, revocation, EAB |
-| `acme-raw.sh`, `dns_iq.sh` | [`client/scripts`](./client/scripts) (mounted by the harness) | raw RFC 8555 requests (TOS re-agreement, missing nonce); acme.sh dns-01 hook for the test DNS server |
+| `certbot` | `apt` (Ubuntu) | second RFC 8555 client: registration, EAB, `certonly --standalone` (http-01), `--manual` (dns-01), `renew`, `revoke` |
+| `acme-raw.sh`, `dns_iq.sh`, `certbot-dns-iq.sh` | [`client/scripts`](./client/scripts) (mounted by the harness) | raw RFC 8555 requests (TOS re-agreement, missing nonce); acme.sh and certbot dns-01 hooks for the test DNS server |
 | `jq` | `apt` | JSON response shaping (`/directory`, problem+json) |
 | `python3`, `mcp-stdio.py` | `apt` / mounted [`client/scripts`](./client/scripts) helper | real MCP subprocess lifecycle, stdio JSON-RPC handshake and requests |
 | `opencert` | repository CLI build | CLI sub-commands run *inside* the client as a native binary |
@@ -593,7 +597,7 @@ Linux-client black-box pass and tagged `@iq`:
 |---|---|
 | [`LinuxServerDeployment.feature`](./Features/LinuxServerDeployment.feature) | Deployment + hardening: health, TLS pinning, no `Server` header, HTTP→HTTPS |
 | [`EstEnrollment.feature`](./Features/EstEnrollment.feature) | RFC 7030 EST + RFC 9908 template retrieval + Basic auth, driven by `estclient` with independent `openssl` checks |
-| [`AcmeIssuance.feature`](./Features/AcmeIssuance.feature) | RFC 8555 ACME end-to-end, driven by `acme.sh` |
+| [`AcmeIssuance.feature`](./Features/AcmeIssuance.feature) | RFC 8555 ACME end-to-end, driven by `acme.sh` and `certbot` |
 | [`AuthorityInformation.feature`](./Features/AuthorityInformation.feature) | CDP, AIA OCSP/caIssuers, EST/ACME consistency, and profile-fixed EKUs/policies, inspected by `openssl` |
 | [`CaaEnforcement.feature`](./Features/CaaEnforcement.feature) | RFC 8659/8657 CAA, observed through the ACME path (fail-closed) |
 | [`DeviceAttestation.feature`](./Features/DeviceAttestation.feature) | `device-attest-01` advertisement + fail-closed |

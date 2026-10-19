@@ -32,6 +32,7 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
     public const string ClientAlias = "client";
     public const string DnsAlias = "dns";
     public const string EabKeyId = "iq-eab";
+    public const string CertbotEabKeyId = "iq-eab-certbot";
     public const string CaaIdentity = "iq.test";
 
     private const int DnsApiPort = 8080;
@@ -52,12 +53,19 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
     {
         Tls = tls;
         EabHmacKey = Base64Url(RandomNumberGenerator.GetBytes(32));
+        CertbotEabHmacKey = Base64Url(RandomNumberGenerator.GetBytes(32));
     }
 
     public TestTlsPki Tls { get; }
 
     /// <summary>The single-use EAB HMAC key (base64url) provisioned on the server for <see cref="EabKeyId"/>.</summary>
     public string EabHmacKey { get; }
+
+    /// <summary>
+    /// A second single-use EAB HMAC key (base64url) for <see cref="CertbotEabKeyId"/>: EAB keys are consumed on
+    /// first binding, so each ACME client in the feature binds its own.
+    /// </summary>
+    public string CertbotEabHmacKey { get; }
 
     public IContainer Client { get; private set; } = null!;
 
@@ -186,6 +194,10 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
                 "/root/.acme.sh/dnsapi/dns_iq.sh",
                 fileMode: Unix.FileMode755)
             .WithResourceMapping(
+                File.ReadAllBytes(Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "certbot-dns-iq.sh")),
+                "/usr/local/bin/certbot-dns-iq.sh",
+                fileMode: Unix.FileMode755)
+            .WithResourceMapping(
                 File.ReadAllBytes(Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "est-crypto.py")),
                 "/usr/local/bin/est-crypto.py",
                 fileMode: Unix.FileMode644)
@@ -206,8 +218,9 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
             throw new InvalidOperationException($"update-ca-certificates failed: {trust.Stderr}");
         }
 
-        // The http-01 scenarios answer challenges from the client container (acme.sh --standalone).
+        // The http-01 scenarios answer challenges from the client container (acme.sh / certbot --standalone).
         await AddDnsRecord("acme.example.com", "A", ClientIp, cancellationToken).ConfigureAwait(false);
+        await AddDnsRecord("certbot.example.com", "A", ClientIp, cancellationToken).ConfigureAwait(false);
     }
 
     private string DnsIp => $"{_prefix}.53";
@@ -327,6 +340,8 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
             .WithEnvironment("AcmeServer__DisableCaaChecks", _disableCaaChecks ? "true" : "false")
             .WithEnvironment($"AcmeServer__ExternalAccountKey__{EabKeyId}__MacKey", EabHmacKey)
             .WithEnvironment($"AcmeServer__ExternalAccountKey__{EabKeyId}__MacAlgorithm", "HS256")
+            .WithEnvironment($"AcmeServer__ExternalAccountKey__{CertbotEabKeyId}__MacKey", CertbotEabHmacKey)
+            .WithEnvironment($"AcmeServer__ExternalAccountKey__{CertbotEabKeyId}__MacAlgorithm", "HS256")
             .WithCommand(_authorityConfiguration?.ServerArguments ??
             [
                 "--authority", "https://iq.test",

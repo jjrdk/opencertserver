@@ -37,7 +37,7 @@ public sealed class AuthorityInformationSteps
         await _environment.AddDnsRecord(domain, "A", _environment.ClientIp).ConfigureAwait(false);
         await _acme.GivenAnAcmeAccountExistsOnTheServer().ConfigureAwait(false);
         await _acme.WhenTheLinuxClientRunsAcmeShToIssue(domain, "http-01").ConfigureAwait(false);
-        _acme.ThenAcmeShExits0();
+        await _acme.ThenAcmeShExits0().ConfigureAwait(false);
         await _acme.ThenTheIssuedCertificateChainsToThePublishedCa().ConfigureAwait(false);
         _certificatePath = $"{_state.WorkDir}/acme/{domain}_ecc/{domain}.cer";
     }

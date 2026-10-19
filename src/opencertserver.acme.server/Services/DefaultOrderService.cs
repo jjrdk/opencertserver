@@ -67,8 +67,11 @@ public sealed class DefaultOrderService : IOrderService
     {
         ValidateAccount(account);
         var order = await HandleLoadOrder(account, orderId, OrderStatus.Valid, cancellationToken).ConfigureAwait(false);
-        var chain = new CertificateChain(Encoding.UTF8.GetString(order.Certificate!)).Certificate.ExportCertificatePem();
-        return Encoding.UTF8.GetBytes(chain);
+        // RFC 8555 §7.4.2: the end-entity certificate followed by the CA certificates that certify it.
+        var stored = new CertificateChain(Encoding.UTF8.GetString(order.Certificate!));
+        var chain = string.Join('\n',
+            new[] { stored.Certificate }.Concat(stored.Issuers).Select(c => c.ExportCertificatePem()));
+        return Encoding.UTF8.GetBytes(chain + "\n");
     }
 
     public async Task<Order?> GetOrderAsync(Account account, string orderId, CancellationToken cancellationToken)

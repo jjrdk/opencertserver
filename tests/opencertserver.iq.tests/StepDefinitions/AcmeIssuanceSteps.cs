@@ -8,7 +8,7 @@ using Reqnroll;
 using Xunit;
 
 /// <summary>
-/// Drives <c>acme.sh</c>, curl, openssl and jq inside the Debian client container against the running
+/// Drives <c>acme.sh</c>, <c>certbot</c>, curl, openssl and jq inside the Debian client container against the running
 /// OpenCertServer container. Every assertion is made on what the client tools observe.
 /// </summary>
 [Binding]
@@ -36,6 +36,15 @@ public sealed partial class AcmeIssuanceSteps
     // acme.sh writes scratch files into --config-home before creating it, so the directory must exist.
     private string AcmeSh =>
         $"mkdir -p '{AcmeHome}' && acme.sh --server '{_environment.DirectoryUrl}' --config-home '{AcmeHome}'";
+
+    private string CertbotHome => $"{_state.WorkDir}/certbot";
+
+    // Per-scenario state and log directories keep certbot runs independent of each other and of /etc/letsencrypt.
+    private string CertbotArgs =>
+        $"--non-interactive --server '{_environment.DirectoryUrl}' --config-dir '{CertbotHome}/config'"
+        + $" --work-dir '{CertbotHome}/work' --logs-dir '{CertbotHome}/logs'";
+
+    private string CertbotNewAccountArgs => "--agree-tos --register-unsafely-without-email";
 
     [When("^the Linux client GETs \"(.*)\" with curl$")]
     public async Task WhenTheLinuxClientGetsWithCurl(string path)
@@ -76,20 +85,75 @@ public sealed partial class AcmeIssuanceSteps
         Assert.Matches(new Regex(@"ACCOUNT_URL='https://[^']+/account/[^']+'"), accountUrl.Stdout);
     }
 
-    [When("^the Linux client runs \"acme.sh\" to issue \"(.*)\" via the \"(http-01|dns-01)\" challenge$")]
-    public async Task WhenTheLinuxClientRunsAcmeShToIssue(string domain, string challenge)
+    [Given("^a \"certbot\" ACME account exists on the server$")]
+    public async Task GivenACertbotAccountExistsOnTheServer()
     {
-        _state.Domain = domain;
-        var mode = challenge == "http-01" ? "--standalone" : "--dns dns_iq --dnssleep 1";
-        _state.LastExec = await _environment.ExecClientAsync($"cd / && {AcmeSh} --issue -d '{domain}' {mode}")
+        await WhenTheLinuxClientRegistersAnAccountViaCertbot().ConfigureAwait(false);
+        await ThenTheClientExits0("certbot").ConfigureAwait(false);
+        await ThenCertbotStoresTheAccountLocation().ConfigureAwait(false);
+    }
+
+    [When("^the Linux client registers an ACME account via \"certbot register\"$")]
+    public async Task WhenTheLinuxClientRegistersAnAccountViaCertbot()
+    {
+        _state.LastExec = await _environment.ExecClientAsync(
+                $"certbot register {CertbotNewAccountArgs} {CertbotArgs}")
             .ConfigureAwait(false);
     }
 
-    [Then("^acme.sh exits 0$")]
-    public void ThenAcmeShExits0()
+    [Then("^certbot stores the account location returned by the server$")]
+    public async Task ThenCertbotStoresTheAccountLocation()
+    {
+        // certbot keeps the newAccount Location header as "uri" in the account's regr.json.
+        var uri = await Run($"find '{CertbotHome}/config/accounts' -name regr.json -exec jq -r .uri {{}} +")
+            .ConfigureAwait(false);
+        Assert.Matches(new Regex(@"^https://[^/\s]+/account/\S+$"), uri.Stdout.Trim());
+    }
+
+    [When("^the Linux client runs \"(acme.sh|certbot)\" to issue \"(.*)\" via the \"(http-01|dns-01)\" challenge$")]
+    public async Task WhenTheLinuxClientRunsAnAcmeClientToIssue(string client, string domain, string challenge)
+    {
+        _state.Domain = domain;
+        _state.AcmeClient = client;
+        string script;
+        if (client == "acme.sh")
+        {
+            var mode = challenge == "http-01" ? "--standalone" : "--dns dns_iq --dnssleep 1";
+            script = $"cd / && {AcmeSh} --issue -d '{domain}' {mode}";
+        }
+        else
+        {
+            var mode = challenge == "http-01"
+                ? "--standalone"
+                : "--manual --preferred-challenges dns"
+                  + " --manual-auth-hook '/usr/local/bin/certbot-dns-iq.sh auth'"
+                  + " --manual-cleanup-hook '/usr/local/bin/certbot-dns-iq.sh cleanup'";
+            script = $"cd / && certbot certonly {mode} -d '{domain}' {CertbotNewAccountArgs} {CertbotArgs}";
+        }
+
+        _state.LastExec = await _environment.ExecClientAsync(script).ConfigureAwait(false);
+    }
+
+    public Task WhenTheLinuxClientRunsAcmeShToIssue(string domain, string challenge) =>
+        WhenTheLinuxClientRunsAnAcmeClientToIssue("acme.sh", domain, challenge);
+
+    public Task ThenAcmeShExits0() => ThenTheClientExits0("acme.sh");
+
+    [Then("^(acme.sh|certbot) exits 0$")]
+    public async Task ThenTheClientExits0(string client)
     {
         var exec = _state.LastExec!.Value;
-        Assert.True(exec.ExitCode == 0, $"acme.sh exited {exec.ExitCode}:\n{exec.Stdout}\n{exec.Stderr}");
+        if (exec.ExitCode == 0)
+        {
+            return;
+        }
+
+        // certbot prints only a one-line summary; the protocol exchange and traceback are in its debug log.
+        var log = client == "certbot"
+            ? (await _environment.ExecClientAsync($"tail -n 150 '{CertbotHome}/logs/letsencrypt.log'")
+                .ConfigureAwait(false)).Stdout
+            : "";
+        Assert.Fail($"{client} exited {exec.ExitCode}:\n{exec.Stdout}\n{exec.Stderr}\n{log}");
     }
 
     [Then("^the issued certificate chains to the published CA(?: with \"openssl verify\")?$")]
@@ -114,21 +178,30 @@ public sealed partial class AcmeIssuanceSteps
         Assert.Equal(("kid", "hmac"), (kid, hmac));
     }
 
-    [When("^the Linux client creates an ACME account with EAB via \"acme.sh\"$")]
-    public async Task WhenTheLinuxClientCreatesAnAcmeAccountWithEab()
+    [When("^the Linux client creates an ACME account with EAB via \"(acme.sh|certbot)\"$")]
+    public async Task WhenTheLinuxClientCreatesAnAcmeAccountWithEab(string client)
     {
-        _state.LastExec = await _environment.ExecClientAsync(
-                $"cd / && {AcmeSh} --register-account --eab-kid '{IqAcmeEnvironment.EabKeyId}'"
-                + $" --eab-hmac-key '{_environment.EabHmacKey}' --debug 2")
+        _state.AcmeClient = client;
+        _state.LastExec = await _environment.ExecClientAsync(client == "acme.sh"
+                ? $"cd / && {AcmeSh} --register-account --eab-kid '{IqAcmeEnvironment.EabKeyId}'"
+                  + $" --eab-hmac-key '{_environment.EabHmacKey}' --debug 2"
+                : $"certbot register {CertbotNewAccountArgs} --eab-kid '{IqAcmeEnvironment.CertbotEabKeyId}'"
+                  + $" --eab-hmac-key '{_environment.CertbotEabHmacKey}' {CertbotArgs}")
             .ConfigureAwait(false);
     }
 
     [Then(@"^the account is created \(HTTP 200/201\) with a location$")]
-    public void ThenTheAccountIsCreatedWithALocation()
+    public async Task ThenTheAccountIsCreatedWithALocation()
     {
         var exec = _state.LastExec!.Value;
         var output = exec.Stdout + exec.Stderr;
-        Assert.True(exec.ExitCode == 0, $"acme.sh exited {exec.ExitCode}:\n{output}");
+        Assert.True(exec.ExitCode == 0, $"{_state.AcmeClient} exited {exec.ExitCode}:\n{output}");
+        if (_state.AcmeClient == "certbot")
+        {
+            await ThenCertbotAccountWasBoundWithEab().ConfigureAwait(false);
+            return;
+        }
+
         // acme.sh --debug 2 logs the newAccount payload, the HTTP status and the response headers.
         Assert.Matches(new Regex(@"payload='\{[^']*""externalAccountBinding"":\{""protected"""), output);
         Assert.Matches(new Regex("code='20[01]'"), output);
@@ -198,16 +271,52 @@ public sealed partial class AcmeIssuanceSteps
     }
 
     [Given("^a Linux client holds a valid certificate issued by the server$")]
-    public async Task GivenALinuxClientHoldsAValidCertificate()
+    public Task GivenALinuxClientHoldsAValidCertificate() =>
+        GivenALinuxClientHoldsAValidCertificateFor("revoke.example.com", "acme.sh");
+
+    [Given("^a Linux client holds a valid certificate for \"(.*)\" issued via \"(acme.sh|certbot)\"$")]
+    public async Task GivenALinuxClientHoldsAValidCertificateFor(string domain, string client)
     {
-        const string domain = "revoke.example.com";
         await _environment.AddDnsRecord(domain, "A", _environment.ClientIp).ConfigureAwait(false);
-        await GivenAnAcmeAccountExistsOnTheServer().ConfigureAwait(false);
-        await WhenTheLinuxClientRunsAcmeShToIssue(domain, "http-01").ConfigureAwait(false);
-        ThenAcmeShExits0();
+        if (client == "acme.sh")
+        {
+            await GivenAnAcmeAccountExistsOnTheServer().ConfigureAwait(false);
+        }
+        else
+        {
+            await GivenACertbotAccountExistsOnTheServer().ConfigureAwait(false);
+        }
+
+        await WhenTheLinuxClientRunsAnAcmeClientToIssue(client, domain, "http-01").ConfigureAwait(false);
+        await ThenTheClientExits0(client).ConfigureAwait(false);
         await ThenTheIssuedCertificateChainsToThePublishedCa().ConfigureAwait(false);
-        var serial = await Run($"openssl x509 -noout -serial -in '{CertificatePath()}'").ConfigureAwait(false);
-        _state.Serial = NormalizeSerial(serial.Stdout.Trim()["serial=".Length..]);
+        _state.Serial = await ReadSerial().ConfigureAwait(false);
+    }
+
+    [When("^the Linux client renews it via \"certbot renew --force-renewal\"$")]
+    public async Task WhenTheLinuxClientRenewsItViaCertbot()
+    {
+        _state.LastExec = await _environment.ExecClientAsync(
+                $"certbot renew --force-renewal --no-random-sleep-on-renew --cert-name '{_state.Domain}' {CertbotArgs}")
+            .ConfigureAwait(false);
+    }
+
+    [Then("^the renewed certificate has a new serial and chains to the published CA$")]
+    public async Task ThenTheRenewedCertificateHasANewSerialAndChains()
+    {
+        // certbot repoints live/<domain>/cert.pem at the new archive version on renewal.
+        var renewedSerial = await ReadSerial().ConfigureAwait(false);
+        Assert.NotEqual(_state.Serial, renewedSerial);
+        await ThenTheIssuedCertificateChainsToThePublishedCa().ConfigureAwait(false);
+    }
+
+    [When("^the Linux client revokes it via \"certbot revoke\"$")]
+    public async Task WhenTheLinuxClientRevokesItViaCertbot()
+    {
+        var revoke = await Run(
+                $"certbot revoke --cert-path '{CertificatePath()}' --no-delete-after-revoke {CertbotArgs}")
+            .ConfigureAwait(false);
+        Assert.Contains("successfully revoked", revoke.Stdout + revoke.Stderr, StringComparison.OrdinalIgnoreCase);
     }
 
     [When("^the Linux client revokes it via \"acme.sh --revoke\"$")]
@@ -240,7 +349,29 @@ public sealed partial class AcmeIssuanceSteps
     public Task ThenTheBodyContains(string first, string second) =>
         Run($"jq -e 'has(\"{first}\") and has(\"{second}\")' '{_state.BodyPath}'");
 
-    private string CertificatePath() => $"{_state.WorkDir}/acme/{_state.Domain}_ecc/{_state.Domain}.cer";
+    private string CertificatePath() => _state.AcmeClient == "certbot"
+        ? $"{CertbotHome}/config/live/{_state.Domain}/cert.pem"
+        : $"{_state.WorkDir}/acme/{_state.Domain}_ecc/{_state.Domain}.cer";
+
+    private async Task<string> ReadSerial()
+    {
+        var serial = await Run($"openssl x509 -noout -serial -in '{CertificatePath()}'").ConfigureAwait(false);
+        return NormalizeSerial(serial.Stdout.Trim()["serial=".Length..]);
+    }
+
+    /// <summary>
+    /// certbot's debug log (always written to --logs-dir) records each JWS payload and each response's
+    /// status line and headers, which is where the EAB binding and the account location are observable.
+    /// </summary>
+    private async Task ThenCertbotAccountWasBoundWithEab()
+    {
+        var log = (await Run($"cat '{CertbotHome}/logs/letsencrypt.log'").ConfigureAwait(false)).Stdout;
+        // The JWS payload is logged as a Python bytes literal, so its newlines appear as "\n" escapes.
+        Assert.Matches(new Regex(@"""externalAccountBinding"":\s*\{(?:\\n|\s)*""protected"""), log);
+        Assert.Matches(new Regex(@"(?m)^HTTP 20[01]\b"), log);
+        Assert.Matches(new Regex(@"(?im)^location:\s*https://\S+/account/\S+"), log);
+        await ThenCertbotStoresTheAccountLocation().ConfigureAwait(false);
+    }
 
     private async Task RawAcme(string command)
     {

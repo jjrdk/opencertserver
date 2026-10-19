@@ -1,4 +1,5 @@
-﻿using CertesSlim.Acme;
+﻿using System.Text.Json.Serialization;
+using CertesSlim.Acme;
 
 namespace OpenCertServer.Acme.Abstractions.HttpModel;
 
@@ -64,21 +65,25 @@ public sealed class Order
     /// <summary>
     /// Gets the expiration date/time of the order, if set.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Expires { get; }
 
     /// <summary>
     /// Gets the not-before date/time for the order, if set.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? NotBefore { get; }
 
     /// <summary>
     /// Gets the not-after date/time for the order, if set.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? NotAfter { get; }
 
     /// <summary>
     /// Gets the error object associated with the order, if any.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AcmeError? Error { get; }
 
     /// <summary>
@@ -89,10 +94,12 @@ public sealed class Order
     /// <summary>
     /// Gets the finalize URL for the order, if any.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Uri? Finalize { get; }
 
     /// <summary>
     /// Gets the certificate URL for the order, if any.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Uri? Certificate { get; }
 }

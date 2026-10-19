@@ -33,14 +33,15 @@ namespace OpenCertServer.Iq.Tests.Features
                 "linux-client"};
         
         private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "RFC 8555 ACME issuance works for a Linux web-application client", @"  A web application that needs a TLS certificate obtains one automatically with a
-  standard ACME client - here `acme.sh`, the canonical Linux ACME client, driven from
-  the client container. These scenarios prove the full order lifecycle is usable from
+  standard ACME client - here `acme.sh` and `certbot`, the two canonical Linux ACME
+  clients, driven from the client container. These scenarios prove the full order lifecycle is usable from
   Linux end-to-end (a real issuance that yields a verifiable chain), not just that the
   endpoints exist in process.
 
   They complement RFC 8555 conformance; the new assertion is that the canonical ACME
-  client, run from Linux, completes issuance, revocation, and TOS-reagreement against
-  the running install.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+  clients, run from Linux, complete issuance, renewal, revocation, EAB binding and
+  TOS-reagreement against the running install. Running two independent ACME client
+  implementations guards against the server only interoperating with one of them.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
 #line 1 "AcmeIssuance.feature"
 #line hidden
@@ -119,7 +120,7 @@ namespace OpenCertServer.Iq.Tests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/AcmeIssuance.feature.ndjson", 9);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/AcmeIssuance.feature.ndjson", 15);
         }
         
         async System.Threading.Tasks.ValueTask Xunit.IAsyncLifetime.InitializeAsync()
@@ -158,7 +159,7 @@ namespace OpenCertServer.Iq.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("The Linux client reads the ACME directory", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("The ACME directory is reachable and complete", null, tagsOfRule);
-#line 14
+#line 15
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -168,13 +169,13 @@ namespace OpenCertServer.Iq.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 15
+#line 16
     await testRunner.WhenAsync("the Linux client GETs \"/directory\" with curl", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 16
+#line 17
     await testRunner.ThenAsync("the response is HTTP 200", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 17
+#line 18
     await testRunner.AndAsync("the directory JSON, filtered with \"jq\", lists \"newNonce\", \"newAccount\", \"newOrder" +
                         "\", \"keyChange\" and \"revokeCert\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
@@ -193,7 +194,7 @@ namespace OpenCertServer.Iq.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("acme.sh issues a certificate via the http-01 challenge", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("A domain is validated and a certificate is issued (http-01)", null, tagsOfRule);
-#line 20
+#line 21
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -203,20 +204,20 @@ namespace OpenCertServer.Iq.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 21
+#line 22
     await testRunner.GivenAsync("a hardened OpenCertServer is reachable", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 22
+#line 23
     await testRunner.AndAsync("an ACME account exists on the server", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 23
+#line 24
     await testRunner.WhenAsync("the Linux client runs \"acme.sh\" to issue \"acme.example.com\" via the \"http-01\" cha" +
                         "llenge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 24
+#line 25
     await testRunner.ThenAsync("acme.sh exits 0", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 25
+#line 26
     await testRunner.AndAsync("the issued certificate chains to the published CA with \"openssl verify\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -234,7 +235,7 @@ namespace OpenCertServer.Iq.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("acme.sh issues a certificate via the dns-01 challenge", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("A domain is validated and a certificate is issued (dns-01)", null, tagsOfRule);
-#line 28
+#line 29
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -244,20 +245,20 @@ namespace OpenCertServer.Iq.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 29
+#line 30
     await testRunner.GivenAsync("a hardened OpenCertServer is reachable", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 30
+#line 31
     await testRunner.AndAsync("an ACME account exists on the server", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 31
+#line 32
     await testRunner.WhenAsync("the Linux client runs \"acme.sh\" to issue \"dns.example.com\" via the \"dns-01\" chall" +
                         "enge", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 32
+#line 33
     await testRunner.ThenAsync("acme.sh exits 0", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 33
+#line 34
     await testRunner.AndAsync("the issued certificate chains to the published CA", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -275,7 +276,7 @@ namespace OpenCertServer.Iq.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("new-account succeeds with external account binding", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("New accounts can be bound by EAB", null, tagsOfRule);
-#line 36
+#line 37
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -285,13 +286,13 @@ namespace OpenCertServer.Iq.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 37
+#line 38
     await testRunner.GivenAsync("EAB credentials \"kid\" and \"hmac\" are supplied to the Linux client", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 38
+#line 39
     await testRunner.WhenAsync("the Linux client creates an ACME account with EAB via \"acme.sh\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 39
+#line 40
     await testRunner.ThenAsync("the account is created (HTTP 200/201) with a location", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -309,7 +310,7 @@ namespace OpenCertServer.Iq.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("new-order after a TOS bump requires re-agreement", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("A changed term of service forces re-agreement", null, tagsOfRule);
-#line 42
+#line 43
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -319,26 +320,26 @@ namespace OpenCertServer.Iq.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 43
+#line 44
     await testRunner.GivenAsync("an ACME account exists whose agreed TOS predates the server\'s \"AcmeServer:TOS:Las" +
                         "tUpdate\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 44
+#line 45
     await testRunner.WhenAsync("the Linux client submits an order for a validated domain", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 45
+#line 46
     await testRunner.ThenAsync("the response is HTTP 403 \"userActionRequired\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 46
+#line 47
     await testRunner.ThenAsync("the response carries a \"Link\" header to the terms-of-service", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 47
+#line 48
     await testRunner.WhenAsync("the Linux client agrees to the TOS via an account update", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 48
+#line 49
     await testRunner.AndAsync("the Linux client submits the order again", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 49
+#line 50
     await testRunner.ThenAsync("the order is accepted", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -356,7 +357,7 @@ namespace OpenCertServer.Iq.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("revoking the certificate a Linux client obtained", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Certificates can be revoked", null, tagsOfRule);
-#line 52
+#line 53
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -366,16 +367,16 @@ namespace OpenCertServer.Iq.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 53
+#line 54
     await testRunner.GivenAsync("a Linux client holds a valid certificate issued by the server", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 54
+#line 55
     await testRunner.WhenAsync("the Linux client revokes it via \"acme.sh --revoke\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 55
+#line 56
     await testRunner.AndAsync("the Linux client re-reads the server\'s CRL", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 56
+#line 57
     await testRunner.ThenAsync("the revoked serial appears in the CRL fetched with \"openssl crl\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -393,7 +394,7 @@ namespace OpenCertServer.Iq.Tests.Features
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("A malformed ACME request returns RFC 7807 problem+json", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("Errors are problem+json", null, tagsOfRule);
-#line 59
+#line 60
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -403,14 +404,205 @@ namespace OpenCertServer.Iq.Tests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 60
+#line 61
     await testRunner.WhenAsync("the Linux client POSTs a request missing a \"nonce\" to an ACME endpoint", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 61
+#line 62
     await testRunner.ThenAsync("the response content-type is \"application/problem+json\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 62
+#line 63
     await testRunner.AndAsync("the body contains an \"type\" and a \"status\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="certbot registers an ACME account")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "RFC 8555 ACME issuance works for a Linux web-application client")]
+        [global::Xunit.TraitAttribute("Description", "certbot registers an ACME account")]
+        public async global::System.Threading.Tasks.Task CertbotRegistersAnACMEAccount()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "7";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("certbot registers an ACME account", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("certbot, the EFF ACME client, completes the same lifecycle", null, tagsOfRule);
+#line 66
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 67
+    await testRunner.GivenAsync("a hardened OpenCertServer is reachable", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 68
+    await testRunner.WhenAsync("the Linux client registers an ACME account via \"certbot register\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 69
+    await testRunner.ThenAsync("certbot exits 0", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 70
+    await testRunner.AndAsync("certbot stores the account location returned by the server", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.TheoryAttribute(DisplayName="certbot issues a certificate via the <challenge> challenge")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "RFC 8555 ACME issuance works for a Linux web-application client")]
+        [global::Xunit.TraitAttribute("Description", "certbot issues a certificate via the <challenge> challenge")]
+        [global::Xunit.InlineDataAttribute("http-01", "certbot.example.com", "8", new string[0])]
+        [global::Xunit.InlineDataAttribute("dns-01", "certbot-dns.example.com", "9", new string[0])]
+        public async global::System.Threading.Tasks.Task CertbotIssuesACertificateViaTheChallengeChallenge(string challenge, string domain, string @__pickleIndex, string[] exampleTags)
+        {
+            string[] tagsOfScenario = exampleTags;
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            argumentsOfScenario.Add("challenge", challenge);
+            argumentsOfScenario.Add("domain", domain);
+            string pickleIndex = @__pickleIndex;
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("certbot issues a certificate via the <challenge> challenge", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("certbot, the EFF ACME client, completes the same lifecycle", null, tagsOfRule);
+#line 72
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 73
+    await testRunner.GivenAsync("a hardened OpenCertServer is reachable", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 74
+    await testRunner.AndAsync("a \"certbot\" ACME account exists on the server", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 75
+    await testRunner.WhenAsync(string.Format("the Linux client runs \"certbot\" to issue \"{0}\" via the \"{1}\" challenge", domain, challenge), ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 76
+    await testRunner.ThenAsync("certbot exits 0", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 77
+    await testRunner.AndAsync("the issued certificate chains to the published CA with \"openssl verify\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="certbot new-account succeeds with external account binding")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "RFC 8555 ACME issuance works for a Linux web-application client")]
+        [global::Xunit.TraitAttribute("Description", "certbot new-account succeeds with external account binding")]
+        public async global::System.Threading.Tasks.Task CertbotNew_AccountSucceedsWithExternalAccountBinding()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "10";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("certbot new-account succeeds with external account binding", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("certbot, the EFF ACME client, completes the same lifecycle", null, tagsOfRule);
+#line 84
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 85
+    await testRunner.GivenAsync("EAB credentials \"kid\" and \"hmac\" are supplied to the Linux client", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 86
+    await testRunner.WhenAsync("the Linux client creates an ACME account with EAB via \"certbot\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 87
+    await testRunner.ThenAsync("the account is created (HTTP 200/201) with a location", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="certbot renews the certificate it obtained")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "RFC 8555 ACME issuance works for a Linux web-application client")]
+        [global::Xunit.TraitAttribute("Description", "certbot renews the certificate it obtained")]
+        public async global::System.Threading.Tasks.Task CertbotRenewsTheCertificateItObtained()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "11";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("certbot renews the certificate it obtained", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("certbot, the EFF ACME client, completes the same lifecycle", null, tagsOfRule);
+#line 89
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 90
+    await testRunner.GivenAsync("a Linux client holds a valid certificate for \"certbot-renew.example.com\" issued v" +
+                        "ia \"certbot\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 91
+    await testRunner.WhenAsync("the Linux client renews it via \"certbot renew --force-renewal\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 92
+    await testRunner.ThenAsync("certbot exits 0", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 93
+    await testRunner.AndAsync("the renewed certificate has a new serial and chains to the published CA", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.FactAttribute(DisplayName="certbot revokes the certificate it obtained")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "RFC 8555 ACME issuance works for a Linux web-application client")]
+        [global::Xunit.TraitAttribute("Description", "certbot revokes the certificate it obtained")]
+        public async global::System.Threading.Tasks.Task CertbotRevokesTheCertificateItObtained()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "12";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("certbot revokes the certificate it obtained", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = new global::Reqnroll.RuleInfo("certbot, the EFF ACME client, completes the same lifecycle", null, tagsOfRule);
+#line 95
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 96
+    await testRunner.GivenAsync("a Linux client holds a valid certificate for \"certbot-revoke.example.com\" issued " +
+                        "via \"certbot\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 97
+    await testRunner.WhenAsync("the Linux client revokes it via \"certbot revoke\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 98
+    await testRunner.AndAsync("the Linux client re-reads the server\'s CRL", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 99
+    await testRunner.ThenAsync("the revoked serial appears in the CRL fetched with \"openssl crl\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

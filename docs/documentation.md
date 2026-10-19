@@ -277,7 +277,7 @@ every error response is `application/problem+json` ([RFC 7807](https://www.rfc-e
 - Description: Trigger (and re-trigger) a challenge validation. `http-01` is approved by the
   challenge middleware answering the domain's `/.well-known/acme-challenge/{token}`; `dns-01` is
   approved by the hosted validation service; `device-attest-01` by the device attestation
-  validator.
+  validator. Responses include `Link: <authorization-url>;rel="up"`.
 
 
 ### POST /order/{orderId}/finalize
@@ -289,7 +289,8 @@ every error response is `application/problem+json` ([RFC 7807](https://www.rfc-e
 ### POST /order/{orderId}/certificate
 
 - Description: Retrieve the issued certificate for a completed order (POST-as-GET).
-- Response: `application/pem-certificate-chain` (or `application/pkix-cert`).
+- Response: `application/pem-certificate-chain` — the end-entity certificate followed by its issuer
+  certificates (RFC 8555 §7.4.2).
 
 ### POST /revoke-cert
 
