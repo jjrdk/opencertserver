@@ -25,6 +25,34 @@ you don't have to read handler source. The reasoning and the RFC citations for e
 
 ---
 
+## Host perimeter and deployment configuration
+
+The standalone `opencertserver.certserver` host applies these policies to every protocol,
+including health checks:
+
+| Policy | Behavior |
+|---|---|
+| TLS | TLS 1.2 and 1.3 only. On Linux/OpenSSL, an explicit allow-list permits TLS 1.3 AES-GCM/ChaCha20-Poly1305 and TLS 1.2 ECDHE-RSA/ECDHE-ECDSA AES-GCM/ChaCha20-Poly1305; CBC and static RSA key exchange are excluded. Other operating systems retain their cipher policy and emit a startup warning; the Linux container is the qualified deployment. |
+| HSTS | HTTPS responses publish `Strict-Transport-Security: max-age=15552000` (180 days), including localhost. Subdomains and preload are not enabled. HTTP requests redirect to HTTPS. |
+| Host filtering | Base and Hardened profiles default `AllowedHosts` to `localhost;127.0.0.1;[::1]`. Other hosts receive 400 before redirects or application endpoints. Configure the actual service names for deployment. |
+| Request framing | Conflicting Content-Length/Transfer-Encoding is rejected with 400 before redirects/authentication. The Kestrel normalization marker `X-Content-Length` is reserved and also rejected. HTTP/1.x connections close without processing an appended request. Duplicate conflicting Content-Length is rejected by Kestrel. |
+| Authentication | The default scheme selects JWT bearer when a Bearer header is present, otherwise certificate authentication. Default challenges use JWT bearer, so anonymous CA issuance receives 401 instead of an unconfigured-scheme 500. EST and revocation keep their explicit multi-scheme policies. |
+
+Set the semicolon-separated `AllowedHosts` environment variable to every accepted hostname
+without ports, for example `ca.example.com;opencertserver;localhost`. Include the Host used
+by health probes, or set probes to send an approved Host explicitly. Avoid the unrestricted
+`*` value, which disables host filtering. Standard configuration precedence applies:
+command-line values override environment variables, which override environment-specific
+JSON and then base JSON. The base file is not reapplied over deployment overrides.
+
+These are production-host policies, not pentest-only settings.
+[`CertificateServerSecurity.feature`](../tests/opencertserver.iq.tests/Features/CertificateServerSecurity.feature)
+qualifies them using OpenSSL, Nmap, curl and raw TLS probes in Linux against the real server
+container; the [IQ README](../tests/opencertserver.iq.tests/README.md#certificate-server-penetration-scenarios)
+contains execution instructions.
+
+---
+
 ## Certificate Authority (CA) endpoints
 
 The CA endpoints are mounted by the `ca.server` handlers under `/ca` in the `certserver` host. They

@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using OpenCertServer.Ca.Utils.Ca;
 using System.Linq;
 using System.Numerics;
+using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using Acme.Abstractions.IssuanceServices;
@@ -46,8 +47,7 @@ internal static class Program
         }
 
         var builder = WebApplication.CreateBuilder(args);
-        builder.Configuration.AddEnvironmentVariables().AddCommandLine(args)
-            .AddJsonFile("appsettings.json", true, true);
+        builder.Configuration.AddEnvironmentVariables().AddCommandLine(args);
         var services = builder.Services
             .AddCors(options =>
             {
@@ -189,8 +189,20 @@ internal static class Program
             : throw new Exception("No audience specified. Use --audience <url> to specify the audience URL.");
 
         var forwardedHeadersOptions = CreateForwardedHeaderOptions();
+        const string caAuthenticationScheme = "CaAuthentication";
 
-        _ = services.AddAuthentication()
+        _ = services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = caAuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddPolicyScheme(caAuthenticationScheme, null, options =>
+            {
+                options.ForwardDefaultSelector = context =>
+                    context.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                        ? JwtBearerDefaults.AuthenticationScheme
+                        : CertificateAuthenticationDefaults.AuthenticationScheme;
+            })
             .AddJwtBearer()
             .AddCertificate()
             // Certificate-authentication results are route-independent; do not cache them because
@@ -211,6 +223,19 @@ internal static class Program
                 JwtBearerDefaults.AuthenticationScheme,
                 CertificateAuthenticationDefaults.AuthenticationScheme))
             .AddHealthChecks();
+
+        services.AddHsts(options =>
+        {
+            options.MaxAge = TimeSpan.FromDays(180);
+            options.ExcludedHosts.Clear();
+        });
+        services.AddHostFiltering(options =>
+        {
+            options.AllowedHosts = (builder.Configuration["AllowedHosts"] ?? "localhost")
+                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            options.AllowEmptyHosts = false;
+            options.IncludeFailureMessage = false;
+        });
 
         // --- Hardened-deployment registrations, each config-gated and fail-closed when unset ---
 
@@ -235,6 +260,26 @@ internal static class Program
                 {
                     // RFC 7030 requires TLS 1.1 or later for EST; prefer TLS 1.2+ in practice.
                     httpsOptions.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                    if (OperatingSystem.IsLinux())
+                    {
+                        var cipherPolicy = new CipherSuitesPolicy(
+                        [
+                            TlsCipherSuite.TLS_AES_128_GCM_SHA256,
+                            TlsCipherSuite.TLS_AES_256_GCM_SHA384,
+                            TlsCipherSuite.TLS_CHACHA20_POLY1305_SHA256,
+                            TlsCipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+                            TlsCipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+                            TlsCipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+                            TlsCipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+                            TlsCipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+                            TlsCipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+                        ]);
+                        httpsOptions.OnAuthenticate = (_, authentication) =>
+                        {
+                            authentication.EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                            authentication.CipherSuitesPolicy = cipherPolicy;
+                        };
+                    }
                     // Kestrel presents an X.509 server certificate that is expected to conform to RFC5280.
                     // Leave TLS session resumption enabled (the default) because RFC 7030 recommends session resumption support.
                     // Ask the client for a certificate: EST re-enrollment and self-service revocation
@@ -246,7 +291,34 @@ internal static class Program
             })
             .UseUrls($"https://*:{port}");
         var app = builder.Build();
-        app.UseHttpsRedirection()
+        if (!OperatingSystem.IsLinux())
+        {
+            app.Logger.LogWarning("The TLS cipher allow-list requires Linux/OpenSSL; this host uses the operating system cipher policy.");
+        }
+
+        app.UseHsts()
+            .UseHostFiltering()
+            .Use(next => context =>
+            {
+                // Kestrel renames Content-Length to X-Content-Length when normalizing CL+TE.
+                if (context.Request.Headers.ContainsKey("X-Content-Length") ||
+                    (context.Request.Headers.ContainsKey("Content-Length") &&
+                     context.Request.Headers.ContainsKey("Transfer-Encoding")))
+                {
+                    app.Logger.LogWarning("Rejected ambiguous request framing on connection {ConnectionId}.",
+                        context.Connection.Id);
+                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                    if (context.Request.Protocol.StartsWith("HTTP/1.", StringComparison.Ordinal))
+                    {
+                        context.Response.Headers.Connection = "close";
+                    }
+
+                    return Task.CompletedTask;
+                }
+
+                return next(context);
+            })
+            .UseHttpsRedirection()
             .UseCors("TrustedClients")
             .UseForwardedHeaders(forwardedHeadersOptions)
             .UseHealthChecks("/health")

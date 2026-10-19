@@ -4,6 +4,13 @@ The containerized OpenCertServer provides both the EST and ACME endpoints. The c
 
 The containerized server is available on [Docker Hub](https://hub.docker.com/jjrdk/opencertserver).
 
+The Linux image enforces TLS 1.2/1.3 with AEAD-only ciphers, 180-day HSTS and
+strict request framing. **Set `AllowedHosts` to your service's hostnames**, separated
+by semicolons and without ports (for example `ca.example.com;opencertserver;localhost`).
+The default permits only localhost and loopback addresses. Health probes must send
+an allowed Host too; unexpected hosts are rejected before HTTP redirects.
+See the [host perimeter reference](docs/documentation.md#host-perimeter-and-deployment-configuration).
+
 ## Calling the EST endpoints
 
 To get the server certificate, use the following command:
@@ -50,6 +57,8 @@ spec:
           ports:
           - containerPort: 8084
           env:
+            - name: AllowedHosts
+              value: "ca.example.com;opencertserver;localhost"
             - name: ASPNETCORE_URLS
               value: "http://*:8084"
           volumeMounts:
@@ -67,12 +76,18 @@ spec:
             httpGet:
               path: /health
               port: 8084
+              httpHeaders:
+                - name: Host
+                  value: opencertserver
             initialDelaySeconds: 10
             timeoutSeconds: 30
           livenessProbe:
             httpGet:
               path: /health
               port: 8084
+              httpHeaders:
+                - name: Host
+                  value: opencertserver
             initialDelaySeconds: 10
             timeoutSeconds: 10
             periodSeconds: 600

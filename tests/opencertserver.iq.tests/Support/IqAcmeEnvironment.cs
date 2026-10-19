@@ -335,6 +335,7 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
             .WithResourceMapping(Encoding.ASCII.GetBytes(Tls.LeafKeyPem), "/certs/tls.key", fileMode: Unix.FileMode644)
             .WithEnvironment("Kestrel__Certificates__Default__Path", "/certs/tls.crt")
             .WithEnvironment("Kestrel__Certificates__Default__KeyPath", "/certs/tls.key")
+            .WithEnvironment("AllowedHosts", $"localhost;127.0.0.1;[::1];{ServerAlias};{TosServerAlias}")
             // Resolve through the container's resolver (Docker DNS -> the test DNS server), not public DoH.
             .WithEnvironment("AcmeServer__DnsEndpoint", "System")
             .WithEnvironment("AcmeServer__DisableCaaChecks", _disableCaaChecks ? "true" : "false")

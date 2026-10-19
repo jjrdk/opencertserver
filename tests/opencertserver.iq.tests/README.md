@@ -113,6 +113,89 @@ publish infrastructure, but needs no HTTP server, DNS container or private netwo
 > `IQ_SERVER_IMAGE` / `IQ_CLIENT_IMAGE` select prebuilt images; `IQ_DOCKER_ARCH` (`x64`/`arm64`)
 > overrides the detected Docker architecture.
 
+### Certificate-server penetration scenarios
+
+[`CertificateServerSecurity.feature`](./Features/CertificateServerSecurity.feature) implements
+16 strict perimeter probes, adapted from the sibling `opencertserver-server` solution's
+`tests/opencertserver.yarp.pentest.tests/Features/ProxySecurity.feature`.
+[`PenetrationSteps`](./StepDefinitions/PenetrationSteps.cs) reuses the YARP suite's
+OpenSSL peer-alert checks, Nmap XML cipher inventory, bounded tool execution and raw
+TLS/HTTP probe design. The raw Python helper is adapted from its `Scanner/raw_request.py`.
+
+The feature reuses `IqAcmeEnvironment`, `IqImages`, the generated TLS PKI, DNS, scenario
+state and `AcmeIssuanceHooks` rather than building another deployment harness. The
+**real `opencertserver.certserver` runs in the server container** with its production
+perimeter policies; this feature also enables the existing opt-in HTTP listener. **Every
+penetration tool runs in the Linux IQ client container**, including OpenSSL, curl,
+Nmap's `ssl-enum-ciphers` NSE script and Python's raw TLS socket probe. Nmap is installed
+by the shared client Dockerfile; no scanner tools are needed on the host. The existing
+Testcontainers server-readiness check still runs on the host, not as a penetration probe.
+Targets are fixed to the isolated server's Docker alias, not a public or configurable
+remote deployment.
+
+| Probe | Certificate-server requirement |
+|---|---|
+| TLS-01 / TLS-02 | Peer rejection of TLS 1.0 / 1.1; local crypto errors are inconclusive, not a pass |
+| TLS-03 / TLS-04 | TLS 1.2 / 1.3 negotiation with trusted chain and hostname |
+| TLS-05 | Rejection of the static RSA `AES128-SHA` CBC suite |
+| TLS-06 | Non-empty Nmap inventory without legacy protocols, static RSA, CBC, anonymous, NULL, export, RC4, DES or MD5 suites |
+| HTTP-01 | HTTP redirects preserve method, encoded path and query without trusting forged forwarding headers |
+| HTTP-02 | HSTS `max-age` of at least 15552000 on health, ACME, EST and missing resources |
+| HTTP-03 | No `Server` or `X-Powered-By` banners |
+| HTTP-04 | TRACE receives 405 without reflecting a witness header on CA, EST and ACME routes |
+| HTTP-05 | Missing/invalid credentials receive 401/403 on CA issuance/revocation and EST enrollment/re-enrollment/key generation |
+| HTTP-06 | Unrecognized Host values are rejected before either serving HTTPS or redirecting HTTP |
+| HTTP-07 | A valid but untrusted certificate supplied through identity headers cannot authorize those protected operations |
+| HTTP-08 | Conflicting Content-Length/Transfer-Encoding and duplicate Content-Length are rejected with connection close and no appended response; valid framing still reaches authentication |
+| HTTP-09 | Scanner paths, `.git/config` and `appsettings.json` receive 403/404 |
+| HTTP-10 | A 64 KiB header receives 400/431 |
+
+YARP-specific tenant-cache authorization becomes CA/EST authorization; proxy certificate
+stripping becomes denial of forged certificate identity; scanner-path checks assert no
+application/configuration disclosure rather than proxy upstream isolation. There is no
+echo upstream in this topology: framing evidence covers responses on one TLS connection,
+not proof of upstream request execution. Like the reference suite, HTTP-08 deliberately
+requires rejection of CL+TE even though RFC 9112 also permits normalization.
+
+Run from the repository root with Docker available. This invokes the native xUnit
+runner because the installed MTP runner can select zero tests with class/trait filters:
+
+```sh
+dotnet build tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj
+mkdir -p artifacts/iq
+dotnet run --project tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj --no-build -- \
+  -class "OpenCertServer.Iq.Tests.Features.CertificateServerPerimeterSecurityFromALinuxScannerFeature" \
+  -xml artifacts/iq/pentest-results.xml
+```
+
+Do not use an older `IQ_CLIENT_IMAGE` override unless it includes Nmap and the NSE scripts.
+By default the harness rebuilds the server and client images, including the new tool.
+Tools have an in-container deadline as well as host cancellation (90 seconds for Nmap,
+20 seconds for other tools); raw TLS sockets also have time and response-size bounds.
+Empty inventories, timeouts, missing tools and invalid TLS identity fail explicitly.
+There is no report-only mode, skipped finding, or test-only server-policy override.
+Scenario output and the XML report retain observations and failed-server diagnostics.
+
+**Verified local result (2026-10-19): all 16 pentests and all 69 other IQ scenarios pass
+together, with no skips.** The production host now restricts Linux/OpenSSL ciphers to
+AEAD suites, publishes 180-day HSTS, filters Host values before redirects, rejects
+ambiguous framing before authentication, and selects JWT/mTLS authentication with a
+defined challenge scheme. The shared environment supplies its exact Docker host aliases
+through `AllowedHosts`, including the secondary TOS/attestation server and localhost
+readiness checks; it does not override the production security policies.
+
+To repeat the complete regression run and preserve its per-scenario output:
+
+```sh
+dotnet build tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj
+mkdir -p artifacts/iq
+dotnet run --project tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj --no-build -- \
+  -xml artifacts/iq/all-iq-hardened-results.xml
+```
+
+See [the host perimeter reference](../../docs/documentation.md#host-perimeter-and-deployment-configuration)
+for deployment settings and the Linux-specific cipher policy.
+
 ### Device-attestation scenarios
 
 Run all four device-attestation scenarios (requires Docker):

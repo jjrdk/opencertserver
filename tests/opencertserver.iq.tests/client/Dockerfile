@@ -48,6 +48,7 @@ RUN apt-get update \
       curl \
       wget \
       openssl \
+      nmap \
       jq \
       python3 \
       python3-pip \
