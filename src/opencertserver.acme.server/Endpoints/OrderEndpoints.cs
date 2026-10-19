@@ -177,6 +177,7 @@ public static class OrderEndpoints
                 return Results.NotFound();
             }
 
+            AppendAuthorizationUpLink(context, links, currentChallenge);
             if (IsPostAsGet(payload))
             {
                 return Results.Ok(new OpenCertServer.Acme.Abstractions.HttpModel.Challenge(
@@ -321,6 +322,20 @@ public static class OrderEndpoints
             KeyValuePair.Create<string, string?>("challengeId", challenge.ChallengeId)
         ]);
         return links.GetUriByName(context, "AcceptChallenge", routeDic, scheme: Uri.UriSchemeHttps) ?? string.Empty;
+    }
+
+    // RFC 8555 §7.5.1: challenge responses link back to their authorization with rel="up".
+    private static void AppendAuthorizationUpLink(HttpContext context, LinkGenerator links, Challenge challenge)
+    {
+        var routeDic = new RouteValueDictionary([
+            KeyValuePair.Create<string, string?>("orderId", challenge.Authorization.Order.OrderId),
+            KeyValuePair.Create<string, string?>("authId", challenge.Authorization.AuthorizationId)
+        ]);
+        var authorizationUrl = links.GetUriByName(context, "GetAuthorization", routeDic, scheme: Uri.UriSchemeHttps);
+        if (authorizationUrl != null)
+        {
+            context.Response.Headers.Append("Link", $"<{authorizationUrl}>;rel=\"up\"");
+        }
     }
 
     private static bool IsPostAsGet(JwsPayload payload)

@@ -14,6 +14,7 @@ public class DirectoryMeta
     /// <value>
     /// The terms of service.
     /// </value>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("termsOfService")]
     public string? TermsOfService { get; }
 
@@ -23,6 +24,7 @@ public class DirectoryMeta
     /// <value>
     /// The website.
     /// </value>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("website")]
     public string? Website { get; }
 
@@ -41,6 +43,7 @@ public class DirectoryMeta
     /// <value>
     ///   <c>true</c> if external account required; otherwise, <c>false</c>.
     /// </value>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("externalAccountRequired")]
     public bool? ExternalAccountRequired { get; }
 
@@ -48,6 +51,7 @@ public class DirectoryMeta
     /// Gets or sets the list of challenge types that include additional content in their responses.
     /// Per RFC 8555 / ACME drafts, advertises which challenge types the server supports beyond standard.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<string>? ChallengeTypesWithAdditionalContent { get; set; }
 
     /// <summary>

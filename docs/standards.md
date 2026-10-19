@@ -137,6 +137,11 @@ in the loop. It's the protocol that backs Let's Encrypt. OpenCertServer is a ful
 * **Order lifecycle** — `/new-order`, `/order/{orderId}`, `/order/{orderId}/finalize`,
    `/order/{orderId}/certificate`, and the nested challenge authorization endpoints
    `/order/{id}/auth/{authId}` and `/order/{id}/auth/{authId}/chall/{challengeId}`.
+* **Interoperability with off-the-shelf clients** — responses omit absent optional fields instead
+   of sending `null`; challenge responses carry `Link: <authz>;rel="up"` (§7.5.1); the certificate
+   resource returns the end-entity certificate followed by its issuer certificates (§7.4.2); and
+   SAN-only CSRs with an empty subject are accepted, with subjectAltName marked critical in the issued
+   certificate (RFC 5280 §4.1.2.6).
 * **Challenge validation** — `http-01` over HTTP (`/.well-known/acme-challenge/{token}`),
    `dns-01` via `DnsClientX`, and `device-attest-01` (see below). A hosted
    `HostedValidationService` runs validations asynchronously.
@@ -175,6 +180,8 @@ in the loop. It's the protocol that backs Let's Encrypt. OpenCertServer is a ful
 * YARP coverage in `tests/opencertserver.acme.yarp.tests` (see
    [opencertserver.acme.yarp](#yarp-per-route-acme)) and
    `tests/opencertserver.acme.aspnetclient.tests` (challenge middleware + renewal).
+* [AcmeIssuance.feature](../tests/opencertserver.iq.tests/Features/AcmeIssuance.feature) — black-box
+   IQ run against a container, driven by `acme.sh` and `certbot` from a Linux client container.
 
 ### RST 8659 — CAA
 

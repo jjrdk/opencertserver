@@ -1,4 +1,5 @@
-﻿using CertesSlim.Acme.Resource;
+﻿using System.Text.Json.Serialization;
+using CertesSlim.Acme.Resource;
 
 namespace OpenCertServer.Acme.Abstractions.HttpModel;
 
@@ -50,11 +51,13 @@ public sealed class Authorization
     /// <summary>
     /// Gets the expiration date/time of the authorization, if set.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Expires { get; }
 
     /// <summary>
     /// Gets a value indicating whether the identifier is a wildcard.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? Wildcard { get; }
 
     /// <summary>

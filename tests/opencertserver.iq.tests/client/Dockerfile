@@ -56,7 +56,9 @@ RUN apt-get update \
       libicu78 \
       libssl3t64 \
       liburiparser1 \
- && rm -rf /var/lib/apt/lists/*
+      certbot \
+ && rm -rf /var/lib/apt/lists/* \
+ && certbot --version
 
 # 2. The real Cisco estclient; openssl independently checks its output.
 COPY --from=estclient-build /opt/libest /opt/libest
@@ -77,6 +79,11 @@ RUN curl -fsSL "https://github.com/acmesh-official/acme.sh/archive/refs/tags/${A
  && cd / && rm -rf "/tmp/acme.sh-${ACME_SH_VERSION}" \
  && ln -s /root/.acme.sh/acme.sh /usr/local/bin/acme.sh \
  && acme.sh --version >/dev/null
+
+#    certbot (apt, above) is the EFF ACME client and the second ACME implementation the
+#    ACME feature drives: it uses its own standalone http-01 server on :80 and, for
+#    dns-01, `--manual` with the mounted `certbot-dns-iq.sh` hook. Its Python `requests`
+#    stack trusts the system CA bundle, which holds the harness's test TLS root.
 
 # 4. The project's own CLI. The image is built with the `opencert` binary already
 #    present on the image; the IQ harness copies the freshly built Linux binary at

@@ -19,6 +19,9 @@ public sealed class AcmeScenarioState
 
     public string? Domain { get; set; }
 
+    /// <summary>The ACME client that obtained <see cref="Domain"/>'s certificate: <c>acme.sh</c> or <c>certbot</c>.</summary>
+    public string AcmeClient { get; set; } = "acme.sh";
+
     public string? Serial { get; set; }
 
     /// <summary>The directory URL the raw client talks to (the TOS scenario uses a dedicated server).</summary>

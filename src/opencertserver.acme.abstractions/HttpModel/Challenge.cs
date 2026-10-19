@@ -1,4 +1,5 @@
-﻿using CertesSlim.Acme;
+﻿using System.Text.Json.Serialization;
+using CertesSlim.Acme;
 
 namespace OpenCertServer.Acme.Abstractions.HttpModel;
 
@@ -48,11 +49,13 @@ public sealed class Challenge
     /// <summary>
     /// Gets the date/time when the challenge was validated, if set.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Validated { get; }
 
     /// <summary>
     /// Gets the error object associated with the challenge, if any.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AcmeError? Error { get; }
 
     /// <summary>

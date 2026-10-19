@@ -1,5 +1,6 @@
 ﻿namespace OpenCertServer.Acme.Abstractions.HttpModel;
 
+using System.Text.Json.Serialization;
 using System.Collections.Generic;
 
 /// <summary>
@@ -34,20 +35,24 @@ public sealed class Account
     /// <summary>
     /// Gets or sets the URL for the list of orders associated with the account.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Orders { get; set; }
 
     /// <summary>
     /// Gets or sets the contact URIs for the account.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? Contact { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether the terms of service have been agreed to.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? TermsOfServiceAgreed { get; set; }
 
     /// <summary>
     /// Gets or sets the external account binding object, if present.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public object? ExternalAccountBinding { get; set; }
 }

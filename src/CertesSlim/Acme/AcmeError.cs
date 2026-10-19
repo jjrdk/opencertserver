@@ -1,5 +1,6 @@
 ﻿namespace CertesSlim.Acme;
 
+using System.Text.Json.Serialization;
 using System.Net;
 using CertesSlim.Acme.Resource;
 
@@ -14,6 +15,7 @@ public class AcmeError
     /// <value>
     /// The error type URI.
     /// </value>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Type
     {
         get;
@@ -26,6 +28,7 @@ public class AcmeError
     /// <value>
     /// The detail message.
     /// </value>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Detail { get; set; }
 
     /// <summary>
@@ -34,6 +37,7 @@ public class AcmeError
     /// <value>
     /// The identifier for this error.
     /// </value>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Identifier? Identifier { get; set; }
 
     /// <summary>
@@ -42,6 +46,7 @@ public class AcmeError
     /// <value>
     /// The subproblems.
     /// </value>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IList<AcmeError>? Subproblems { get; set; }
 
     /// <summary>
@@ -50,5 +55,6 @@ public class AcmeError
     /// <value>
     /// The HTTP status.
     /// </value>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public HttpStatusCode? Status { get; set; }
 }

@@ -278,6 +278,17 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             request.CertificateExtensions.Add(new X509CertificatePoliciesExtension(profile.CertificatePolicies));
         }
 
+        // RFC 5280 §4.1.2.6: with an empty subject, subjectAltName MUST be critical.
+        if (!request.SubjectName.EnumerateRelativeDistinguishedNames().Any())
+        {
+            foreach (var san in request.CertificateExtensions
+                         .Where(ext => ext.Oid?.Value == Oids.SubjectAltName && !ext.Critical).ToArray())
+            {
+                request.CertificateExtensions.Remove(san);
+                request.CertificateExtensions.Add(new X509Extension(san.Oid!, san.RawData, true));
+            }
+        }
+
         // Always add a fresh SKI derived from the CSR public key.
         request.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
 
@@ -740,6 +751,14 @@ public sealed partial class DistinguishedNameValidation : IValidateCertificateRe
         if (request.SubjectName.Format(true)
             .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
             .Any(x => x.StartsWith("CN=")))
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        // RFC 5280 §4.1.2.6: the subject MAY be empty when the identity is carried in subjectAltName
+        // (ACME clients such as certbot send SAN-only CSRs).
+        if (request.SubjectName.EnumerateRelativeDistinguishedNames().Any() == false
+            && request.CertificateExtensions.Any(ext => ext.Oid?.Value == Oids.SubjectAltName))
         {
             return Task.FromResult<string?>(null);
         }

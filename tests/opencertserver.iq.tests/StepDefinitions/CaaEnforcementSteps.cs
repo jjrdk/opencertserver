@@ -84,7 +84,7 @@ public sealed partial class AcmeIssuanceSteps
     [Then("^the order succeeds and the issued certificate chains to the CA$")]
     public async Task AssertCaaIssuanceAndChain()
     {
-        ThenAcmeShExits0();
+        await ThenAcmeShExits0().ConfigureAwait(false);
         await ThenTheIssuedCertificateChainsToThePublishedCa().ConfigureAwait(false);
     }
 
