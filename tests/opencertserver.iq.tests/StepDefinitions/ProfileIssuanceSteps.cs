@@ -44,10 +44,10 @@ public sealed class ProfileIssuanceSteps
         return CheckHealth();
     }
 
-    [Given("^a profile that fixes extendedKeyUsage to \"(serverAuth)\"$")]
+    [Given("^a profile that fixes extendedKeyUsage to \"(serverAuth,codeSigning)\"$")]
     public Task GivenExtendedKeyUsage(string usage)
     {
-        Assert.Equal("serverAuth", usage);
+        Assert.Equal("serverAuth,codeSigning", usage);
         return CheckHealth();
     }
 
@@ -99,11 +99,11 @@ public sealed class ProfileIssuanceSteps
             Extension(_certificateText, "X509v3 Key Usage", critical: true));
     }
 
-    [Then("^the extendedKeyUsage is \"(serverAuth)\"$")]
+    [Then("^the extendedKeyUsage is \"(serverAuth,codeSigning)\"$")]
     public void AssertExtendedKeyUsage(string usage)
     {
-        Assert.Equal("serverAuth", usage);
-        Assert.Equal(["TLS Web Server Authentication"],
+        Assert.Equal("serverAuth,codeSigning", usage);
+        Assert.Equal(["TLS Web Server Authentication, Code Signing"],
             Extension(_certificateText, "X509v3 Extended Key Usage"));
     }
 

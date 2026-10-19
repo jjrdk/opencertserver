@@ -23,10 +23,10 @@ Feature: Profile-controlled certificate content is what the client receives
     Then the critical keyUsage is "keyEncipherment,dataEncipherment"
 
   Scenario: The profile's extendedKeyUsage replaces the CSR's
-    Given a profile that fixes extendedKeyUsage to "serverAuth"
+    Given a profile that fixes extendedKeyUsage to "serverAuth,codeSigning"
     When the Linux client enrolls from that profile asking for "clientAuth" in the CSR
     And inspects the issued certificate with "openssl x509 -text"
-    Then the extendedKeyUsage is "serverAuth"
+    Then the extendedKeyUsage is "serverAuth,codeSigning"
 
   Rule: Non-CA profiles reject requests for CA issuance
   Scenario: A basicConstraints:CA:TRUE request is rejected on a non-CA profile

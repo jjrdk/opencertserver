@@ -245,7 +245,7 @@ namespace OpenCertServer.Iq.Tests.Features
             {
                 await this.ScenarioStartAsync();
 #line 26
-    await testRunner.GivenAsync("a profile that fixes extendedKeyUsage to \"serverAuth\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("a profile that fixes extendedKeyUsage to \"serverAuth,codeSigning\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 27
     await testRunner.WhenAsync("the Linux client enrolls from that profile asking for \"clientAuth\" in the CSR", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
@@ -254,7 +254,7 @@ namespace OpenCertServer.Iq.Tests.Features
     await testRunner.AndAsync("inspects the issued certificate with \"openssl x509 -text\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 29
-    await testRunner.ThenAsync("the extendedKeyUsage is \"serverAuth\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("the extendedKeyUsage is \"serverAuth,codeSigning\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
