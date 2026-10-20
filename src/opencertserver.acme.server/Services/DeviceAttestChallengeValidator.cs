@@ -44,7 +44,9 @@ public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChalle
             foreach (var (key, consumed) in _consumedNonces)
             {
                 if (consumed < cutoff)
+                {
                     _consumedNonces.TryRemove(key, out _);
+                }
             }
         }
         catch
@@ -159,11 +161,15 @@ public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChalle
     private bool VerifyAikCertificateChain(string? aikCertB64Url)
     {
         if (string.IsNullOrEmpty(aikCertB64Url))
+        {
             return false;
+        }
 
         var aikBytes = TryDecodeBase64Url(aikCertB64Url);
         if (aikBytes == null)
+        {
             return false;
+        }
 
         var roots = _trustProvider.GetTrustedRoots();
 
@@ -171,7 +177,9 @@ public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChalle
         // System trust is never used as a fallback — any certificate chaining to a
         // public CA would otherwise pass, defeating the purpose of attestation.
         if (roots.Count == 0)
+        {
             return false;
+        }
 
         try
         {
@@ -211,11 +219,15 @@ public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChalle
     private bool VerifyProof(DeviceAttestChallengeAnswer answer, string challengeToken)
     {
         if (string.IsNullOrEmpty(answer.Proof))
+        {
             return false;
+        }
 
         var proofBytes = TryDecodeBase64Url(answer.Proof);
         if (proofBytes == null || proofBytes.Length == 0)
+        {
             return false;
+        }
 
         // Parse the Tpm2bAttest (size-prefixed TPMS_ATTEST) structure.
         Tpm2bAttest tpm2bAttest;
@@ -233,19 +245,27 @@ public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChalle
 
         // Check TPM magic constant (0xff544347 = TPM_GENERATED_VALUE).
         if (attest.magic != Generated.Value)
+        {
             return false;
+        }
 
         // Check attestation type is Quote (not Certify, Time, NV, etc.).
         if (attest.attested is not QuoteInfo)
+        {
             return false;
+        }
 
         // Verify the nonce embedded in extraData matches the challenge token bytes.
         var expectedNonce = TryDecodeBase64Url(challengeToken);
         if (expectedNonce == null)
+        {
             return false;
+        }
 
         if (!expectedNonce.AsSpan().SequenceEqual(attest.extraData))
+        {
             return false;
+        }
 
         // Verify the AIK signature over the proof bytes.
         return VerifyAikSignature(proofBytes, answer.Signature, answer.AikCertificate);
@@ -258,19 +278,25 @@ public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChalle
     private static bool VerifyAikSignature(byte[] proofBytes, string? signatureB64Url, string? aikCertB64Url)
     {
         if (string.IsNullOrEmpty(signatureB64Url) || string.IsNullOrEmpty(aikCertB64Url))
+        {
             return false;
+        }
 
         var sigBytes = TryDecodeBase64Url(signatureB64Url);
         var aikBytes = TryDecodeBase64Url(aikCertB64Url);
         if (sigBytes == null || aikBytes == null)
+        {
             return false;
+        }
 
         try
         {
             using var cert = X509CertificateLoader.LoadCertificate(aikBytes);
             using var rsa = cert.GetRSAPublicKey();
             if (rsa == null)
+            {
                 return false;
+            }
 
             return rsa.VerifyData(proofBytes, sigBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         }

@@ -25,7 +25,9 @@ public sealed class AmdSnpNativeAttestationSteps
     public void GivenNotRunningOnLinux()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
             Assert.Skip("This scenario tests non-Linux behaviour; skipping when running on Linux.");
+        }
     }
 
     [When(@"the native AMD SNP provider tries to retrieve the VCEK ChipID")]

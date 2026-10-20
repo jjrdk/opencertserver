@@ -10,7 +10,8 @@ using Directory = CertesSlim.Acme.Resource.Directory;
 /// Defines the serializer context for CertesSlim.
 /// </summary>
 [JsonSourceGenerationOptions(
-    UseStringEnumConverter = true, WriteIndented = false,
+    UseStringEnumConverter = true,
+    WriteIndented = false,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(Account))]
 [JsonSerializable(typeof(Account.Payload))]

@@ -82,7 +82,9 @@ public class AppleSeAttestationSteps : IDisposable
     public void ThenTheServerShouldVerify()
     {
         if (_result is null || _result.Length == 0)
+        {
             throw new Exception("Expected a non-empty attestation result from Apple provider");
+        }
     }
 
     public void Dispose() => _realNative?.Dispose();

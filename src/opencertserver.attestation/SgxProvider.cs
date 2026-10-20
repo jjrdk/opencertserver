@@ -115,7 +115,11 @@ public sealed class SgxProvider : IAttestationProvider
 
     private static string PointerToHex(IntPtr ptr, int length)
     {
-        if (length <= 0) return string.Empty;
+        if (length <= 0)
+        {
+            return string.Empty;
+        }
+
         var buffer = new byte[length];
         unsafe
         {

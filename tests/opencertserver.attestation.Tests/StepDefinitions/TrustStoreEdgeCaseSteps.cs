@@ -35,7 +35,9 @@ public class TrustStoreEdgeCaseSteps
     public void GivenTrustStoreHasPinnedRoot(string vendor)
     {
         if (_trustStore is null)
+        {
             _trustStore = BuildEmptyTrustStore();
+        }
 
         _caKey = RSA.Create(2048);
         var req = new CertificateRequest(

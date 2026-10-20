@@ -8,14 +8,17 @@ using CertesSlim.Properties;
 /// <remarks>See RFC 7515 Appendix C.</remarks>
 public static class JwsConvert
 {
-    /// <summary>
-    /// Encodes the data to the base64 string without padding.
-    /// </summary>
     /// <param name="data">The data to be encoded.</param>
-    /// <returns>The encoded data.</returns>
-    public static string ToBase64String(this byte[]? data)
+    extension(byte[]? data)
     {
-        return ToBase64String(data != null ? new ReadOnlyMemory<byte>(data) : null);
+        /// <summary>
+        /// Encodes the data to the base64 string without padding.
+        /// </summary>
+        /// <returns>The encoded data.</returns>
+        public string ToBase64String()
+        {
+            return ToBase64String(data != null ? new ReadOnlyMemory<byte>(data) : null);
+        }
     }
 
     /// <summary>

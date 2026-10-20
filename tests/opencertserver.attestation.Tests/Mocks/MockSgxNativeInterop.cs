@@ -31,7 +31,9 @@ public sealed class MockSgxNativeInterop : ISgxNativeInterop
     public int CreateQuote(IntPtr quoteBuffer, ref uint quoteSize, ReadOnlySpan<byte> nonce)
     {
         if (CreateQuoteReturnCode != SgxErrorCodes.Success)
+        {
             return CreateQuoteReturnCode;
+        }
 
         if (quoteBuffer == IntPtr.Zero)
         {

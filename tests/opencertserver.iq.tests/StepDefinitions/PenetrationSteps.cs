@@ -322,7 +322,7 @@ public sealed class PenetrationSteps(
     {
         public string Header(string name) => Headers.Split("\r\n")
             .FirstOrDefault(line => line.StartsWith(name + ":", StringComparison.OrdinalIgnoreCase))
-            ?[(name.Length + 1)..].Trim() ?? "";
+            ?[(name.Length + 1)..]?.Trim() ?? "";
 
         public static Reply Parse(string text)
         {

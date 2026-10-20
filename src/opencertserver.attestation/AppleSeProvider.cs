@@ -84,10 +84,14 @@ public sealed class AppleSeProvider : IAttestationProvider
     public async Task<byte[]> GenerateAndSignQuoteAsync(X509Certificate2 cert, byte[] nonce)
     {
         if (nonce is null || nonce.Length == 0)
+        {
             throw new ArgumentException("Nonce/attestation object must not be empty.", nameof(nonce));
+        }
 
         if (_options.UseDeviceAttestation && IsApplePlatform())
+        {
             return await GenerateAttestationOnDeviceAsync(nonce).ConfigureAwait(false);
+        }
 
         return await VerifyAttestationOnServerAsync(nonce).ConfigureAwait(false);
     }

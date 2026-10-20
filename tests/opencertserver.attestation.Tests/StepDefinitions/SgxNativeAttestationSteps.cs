@@ -30,7 +30,9 @@ public sealed class SgxNativeAttestationSteps
     public void GivenNotRunningOnLinux()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
             Assert.Skip("This scenario tests non-Linux behaviour; skipping when running on Linux.");
+        }
     }
 
     [When(@"the native SGX provider tries to retrieve the PCK ID")]

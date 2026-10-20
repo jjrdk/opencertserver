@@ -27,7 +27,9 @@ public sealed class InMemoryCertificateCache : ICertificateCache
         if (_store.TryGetValue(deviceId, out var entry))
         {
             if (DateTime.UtcNow < entry.ExpiresAt)
+            {
                 return entry.Certificate;
+            }
 
             _store.TryRemove(deviceId, out _);
         }

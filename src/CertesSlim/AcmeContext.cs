@@ -145,11 +145,13 @@ public class AcmeContext : IAcmeContext
     /// </returns>
     public async Task<Directory> GetDirectory()
     {
-        if (_directory == null)
+        if (_directory != null)
         {
-            var resp = await HttpClient.Get<Directory>(DirectoryUri).ConfigureAwait(false);
-            _directory = resp.Resource;
+            return _directory;
         }
+
+        var resp = await HttpClient.Get<Directory>(DirectoryUri).ConfigureAwait(false);
+        _directory = resp.Resource;
 
         return _directory;
     }
@@ -252,11 +254,4 @@ public class AcmeContext : IAcmeContext
     /// </returns>
     public IAuthorizationContext Authorization(Uri location)
         => new AuthorizationContext(this, location);
-}
-
-internal class KeyChange
-{
-    public Uri Account { get; set; } = null!;
-
-    public JsonWebKey OldKey { get; set; } = null!;
 }

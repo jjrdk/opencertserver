@@ -36,9 +36,13 @@ public static class ServiceCollectionExtensions
         // For Apple: use SecurityFramework direct interop on macOS (no shim package required);
         // fall back to the shim-based interop on iOS where the shim can be distributed.
         if (OperatingSystem.IsMacOS())
+        {
             services.TryAddSingleton<IAppleAttestNativeInterop, SecurityFrameworkAppleAttestInterop>();
+        }
         else
+        {
             services.TryAddSingleton<IAppleAttestNativeInterop, AppleAttestNativeInterop>();
+        }
 
         // Attestation providers
         services.AddTransient<IAttestationProvider, SgxProvider>();

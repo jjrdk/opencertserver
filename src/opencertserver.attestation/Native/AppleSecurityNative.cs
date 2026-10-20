@@ -91,9 +91,17 @@ internal static partial class AppleCF
     /// <summary>Copies bytes from a CFData into a managed array.</summary>
     internal static byte[] CFDataToBytes(IntPtr data)
     {
-        if (data == IntPtr.Zero) return [];
+        if (data == IntPtr.Zero)
+        {
+            return [];
+        }
+
         nint len = CFDataGetLength(data);
-        if (len <= 0) return [];
+        if (len <= 0)
+        {
+            return [];
+        }
+
         var buf = new byte[len];
         IntPtr ptr = CFDataGetBytePtr(data);
         Marshal.Copy(ptr, buf, 0, (int)len);
@@ -103,9 +111,17 @@ internal static partial class AppleCF
     /// <summary>Returns a human-readable description of a CF object (for error logging).</summary>
     internal static string DescribeCF(IntPtr cf)
     {
-        if (cf == IntPtr.Zero) return "(null)";
+        if (cf == IntPtr.Zero)
+        {
+            return "(null)";
+        }
+
         var desc = CFCopyDescription(cf);
-        if (desc == IntPtr.Zero) return "(no description)";
+        if (desc == IntPtr.Zero)
+        {
+            return "(no description)";
+        }
+
         try
         {
             nint len = CFStringGetLength(desc);

@@ -61,7 +61,9 @@ public sealed class GlobalAttestationService
     public string GetEndpointForVendor(string vendor)
     {
         if (!VendorToConfigSection.TryGetValue(vendor, out var section))
+        {
             throw new NotSupportedException($"Vendor '{vendor}' has no known configuration section.");
+        }
 
         var cloudContext = _options.CloudContext;
 
@@ -86,10 +88,14 @@ public sealed class GlobalAttestationService
     private string ResolveVendor()
     {
         if (!string.IsNullOrWhiteSpace(_options.VendorPreference))
+        {
             return _options.VendorPreference!;
+        }
 
         if (DefaultVendorByCloud.TryGetValue(_options.CloudContext, out var defaultVendor))
+        {
             return defaultVendor;
+        }
 
         throw new NotSupportedException(
             $"Cloud context '{_options.CloudContext}' has no default vendor mapping. Set 'VendorPreference' in configuration to specify the vendor explicitly.");

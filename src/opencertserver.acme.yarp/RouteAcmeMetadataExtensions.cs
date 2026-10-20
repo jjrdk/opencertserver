@@ -22,56 +22,57 @@ public static class AcmeRouteMetadataKeys
 /// </summary>
 public static class RouteAcmeMetadataExtensions
 {
-    /// <summary>
-    /// Builds a YARP <c>RouteConfig</c> with the ACME metadata bag attached. The route metadata
-    /// is init-only, so the metadata must be supplied at construction time.
-    /// </summary>
-    public static RouteConfig WithAcmeRoute(
-        this RouteConfig route,
-        RouteAcmeOptions options)
+    extension(RouteConfig route)
     {
-        var metadata = route.Metadata is null
-            ? new Dictionary<string, string>()
-            : new Dictionary<string, string>(route.Metadata);
-
-        metadata[AcmeRouteMetadataKeys.Options] = JsonSerializer.Serialize(
-            options,
-            RouteAcmeOptionsSerializerContext.Default.RouteAcmeOptions);
-
-        return route with { Metadata = metadata };
-    }
-
-    /// <summary>
-    /// Reads the <see cref="RouteAcmeOptions"/> attached to a route, if any. Returns null
-    /// when the route carries no <c>acme</c> metadata, so the config filter can skip routes
-    /// that have not opted into ACME.
-    /// </summary>
-    public static RouteAcmeOptions? TryReadOptions(this RouteConfig route)
-    {
-        if (route.Metadata is null)
+        /// <summary>
+        /// Builds a YARP <c>RouteConfig</c> with the ACME metadata bag attached. The route metadata
+        /// is init-only, so the metadata must be supplied at construction time.
+        /// </summary>
+        public RouteConfig WithAcmeRoute(RouteAcmeOptions options)
         {
-            return null;
+            var metadata = route.Metadata is null
+                ? new Dictionary<string, string>()
+                : new Dictionary<string, string>(route.Metadata);
+
+            metadata[AcmeRouteMetadataKeys.Options] = JsonSerializer.Serialize(
+                options,
+                RouteAcmeOptionsSerializerContext.Default.RouteAcmeOptions);
+
+            return route with { Metadata = metadata };
         }
 
-        if (!route.Metadata.TryGetValue(AcmeRouteMetadataKeys.Options, out var json))
+        /// <summary>
+        /// Reads the <see cref="RouteAcmeOptions"/> attached to a route, if any. Returns null
+        /// when the route carries no <c>acme</c> metadata, so the config filter can skip routes
+        /// that have not opted into ACME.
+        /// </summary>
+        public RouteAcmeOptions? TryReadOptions()
         {
-            return null;
+            if (route.Metadata is null)
+            {
+                return null;
+            }
+
+            if (!route.Metadata.TryGetValue(AcmeRouteMetadataKeys.Options, out var json))
+            {
+                return null;
+            }
+
+            return JsonSerializer.Deserialize<RouteAcmeOptions>(json,
+                RouteAcmeOptionsSerializerContext.Default.RouteAcmeOptions);
         }
 
-        return JsonSerializer.Deserialize<RouteAcmeOptions>(json,
-            RouteAcmeOptionsSerializerContext.Default.RouteAcmeOptions);
-    }
-
-    /// <summary>
-    /// Reads the <see cref="RouteAcmeOptions"/> attached to a route, defaulting to a disabled
-    /// <see cref="RouteAcmeOptions"/> (<see cref="RouteAcmeOptions.Enabled"/> false) when the
-    /// metadata bag is absent so an unannotated route is not silently enrolled in issuance.
-    /// Prefer <see cref="TryReadOptions"/> when <see langword="null"/> is the correct "no
-    /// options" signal.
-    /// </summary>
-    public static RouteAcmeOptions ReadOptionsOrDefault(this RouteConfig route)
-    {
-        var options = route.TryReadOptions();
-        return options ?? new RouteAcmeOptions { Enabled = false };
+        /// <summary>
+        /// Reads the <see cref="RouteAcmeOptions"/> attached to a route, defaulting to a disabled
+        /// <see cref="RouteAcmeOptions"/> (<see cref="RouteAcmeOptions.Enabled"/> false) when the
+        /// metadata bag is absent so an unannotated route is not silently enrolled in issuance.
+        /// Prefer <see cref="TryReadOptions"/> when <see langword="null"/> is the correct "no
+        /// options" signal.
+        /// </summary>
+        public RouteAcmeOptions ReadOptionsOrDefault()
+        {
+            var options = route.TryReadOptions();
+            return options ?? new RouteAcmeOptions { Enabled = false };
+        }
     }
 }
