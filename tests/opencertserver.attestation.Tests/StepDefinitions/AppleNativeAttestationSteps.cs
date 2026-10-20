@@ -58,14 +58,22 @@ public sealed class AppleNativeAttestationSteps : IDisposable
     [When(@"the provider generates a hardware-backed key via Apple Security\.framework")]
     public async Task WhenGenerateHardwareBackedKey()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         _keyId = await _interop!.GenerateKeyAsync().ConfigureAwait(false);
     }
 
     [When(@"the key is attested with a SHA-256 hash of a server challenge")]
     public async Task WhenAttestKeyWithChallenge()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_keyId);
 
         // Use a deterministic challenge so we can verify the signature in the Then step
@@ -77,7 +85,11 @@ public sealed class AppleNativeAttestationSteps : IDisposable
     [When(@"the key is attested with challenge ""(.*)""")]
     public async Task WhenAttestKeyWithNamedChallenge(string challengeText)
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_keyId);
 
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(challengeText));
@@ -112,7 +124,11 @@ public sealed class AppleNativeAttestationSteps : IDisposable
     [Then(@"a non-empty keyId is returned from the native call")]
     public void ThenNonEmptyKeyId()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_keyId);
         Assert.NotEmpty(_keyId);
         // KeyId is hex(SHA-256) = 64 hex chars
@@ -122,7 +138,11 @@ public sealed class AppleNativeAttestationSteps : IDisposable
     [Then(@"the attestation object contains a DER ECDSA signature and an EC public key")]
     public void ThenAttestationObjectHasSignatureAndKey()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_attestationObject1);
         Assert.True(_attestationObject1!.Length > 4, "Attestation object is too short.");
 
@@ -143,7 +163,11 @@ public sealed class AppleNativeAttestationSteps : IDisposable
     [Then(@"the ECDSA signature in the attestation object verifies correctly against the challenge hash")]
     public void ThenSignatureVerifies()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_attestationObject1);
         Assert.NotNull(_challengeHash1);
 
@@ -171,7 +195,11 @@ public sealed class AppleNativeAttestationSteps : IDisposable
     [Then(@"the two attestation signatures are different")]
     public void ThenSignaturesAreDifferent()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_attestationObject1);
         Assert.NotNull(_attestationObject2);
 

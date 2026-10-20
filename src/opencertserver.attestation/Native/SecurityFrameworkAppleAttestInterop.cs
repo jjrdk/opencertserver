@@ -40,12 +40,16 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
     {
         GuardPlatform();
         if (clientDataHash.Length != SHA256.HashSizeInBytes)
+        {
             throw new ArgumentException(
                 $"clientDataHash must be {SHA256.HashSizeInBytes} bytes (SHA-256).", nameof(clientDataHash));
+        }
 
         if (!_keys.TryGetValue(keyId, out var privateKey))
+        {
             throw new InvalidOperationException(
                 $"Key '{keyId}' not found. Call GenerateKeyAsync() first.");
+        }
 
         return await Task.Run(() => BuildAttestationObject(privateKey, clientDataHash.ToArray())).ConfigureAwait(false);
     }
@@ -86,7 +90,9 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
             }
 
             if (key == IntPtr.Zero)
+            {
                 return null;
+            }
 
             return key;
         }
@@ -104,14 +110,22 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
     {
         var pubKey = AppleSecurity.SecKeyCopyPublicKey(privateKey);
         if (pubKey == IntPtr.Zero)
+        {
             throw new AttestationException("SecKeyCopyPublicKey returned null.");
+        }
 
         try
         {
             var pubData = AppleSecurity.SecKeyCopyExternalRepresentation(pubKey, out var err);
-            if (err != IntPtr.Zero) AppleCF.CFRelease(err);
+            if (err != IntPtr.Zero)
+            {
+                AppleCF.CFRelease(err);
+            }
+
             if (pubData == IntPtr.Zero)
+            {
                 throw new AttestationException("SecKeyCopyExternalRepresentation returned null.");
+            }
 
             try
             {
@@ -139,7 +153,10 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
         try
         {
             signatureCF = AppleSecurity.SecKeyCreateSignature(privateKey, algCF, dataCF, out var signErr);
-            if (signErr != IntPtr.Zero) AppleCF.CFRelease(signErr);
+            if (signErr != IntPtr.Zero)
+            {
+                AppleCF.CFRelease(signErr);
+            }
         }
         finally
         {
@@ -148,8 +165,10 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
         }
 
         if (signatureCF == IntPtr.Zero)
+        {
             throw new AttestationException("SecKeyCreateSignature returned null. " +
                 "Verify the key supports ECDSA signing.");
+        }
 
         byte[] signature;
         try
@@ -164,15 +183,24 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
         // Extract public key (X9.63 uncompressed: 0x04 ‖ X ‖ Y, 65 bytes for P-256)
         var pubKey = AppleSecurity.SecKeyCopyPublicKey(privateKey);
         if (pubKey == IntPtr.Zero)
+        {
             throw new AttestationException("SecKeyCopyPublicKey returned null while building attestation.");
+        }
 
         byte[] pubKeyBytes;
         try
         {
             var pubData = AppleSecurity.SecKeyCopyExternalRepresentation(pubKey, out var pubErr);
-            if (pubErr != IntPtr.Zero) AppleCF.CFRelease(pubErr);
+            if (pubErr != IntPtr.Zero)
+            {
+                AppleCF.CFRelease(pubErr);
+            }
+
             if (pubData == IntPtr.Zero)
+            {
                 throw new AttestationException("SecKeyCopyExternalRepresentation returned null.");
+            }
+
             try
             {
                 pubKeyBytes = AppleCF.CFDataToBytes(pubData);
@@ -201,8 +229,10 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
     private static void GuardPlatform()
     {
         if (!OperatingSystem.IsMacOS() && !OperatingSystem.IsIOS())
+        {
             throw new PlatformNotSupportedException(
                 "SecurityFrameworkAppleAttestInterop requires macOS 10.12+ or iOS 10+.");
+        }
     }
 
     /// <summary>
@@ -213,19 +243,25 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
     public static bool VerifyAttestationObject(byte[] attestationObject, byte[] originalDigest)
     {
         if (attestationObject is null || attestationObject.Length < 4)
+        {
             throw new ArgumentException("Attestation object is too short.", nameof(attestationObject));
+        }
 
         int sigLen = BitConverter.ToInt32(attestationObject, 0);
         if (sigLen <= 0 || 4 + sigLen >= attestationObject.Length)
+        {
             throw new ArgumentException($"Invalid sigLen={sigLen} in attestation object.", nameof(attestationObject));
+        }
 
         var signature = attestationObject.AsSpan(4, sigLen);
         var pubKeyBytes = attestationObject.AsSpan(4 + sigLen);
 
         if (pubKeyBytes.Length != 65 || pubKeyBytes[0] != 0x04)
+        {
             throw new ArgumentException(
                 $"Unexpected public key format (expected 65-byte uncompressed P-256, got {pubKeyBytes.Length} bytes).",
                 nameof(attestationObject));
+        }
 
         var ecParams = new ECParameters
         {
@@ -246,7 +282,10 @@ public sealed class SecurityFrameworkAppleAttestInterop : IAppleAttestNativeInte
     {
         foreach (var (_, key) in _keys)
             if (key != IntPtr.Zero)
+            {
                 AppleCF.CFRelease(key);
+            }
+
         _keys.Clear();
     }
 }

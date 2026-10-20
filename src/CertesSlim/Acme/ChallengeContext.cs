@@ -66,7 +66,3 @@ internal class ChallengeContext : EntityContext<Challenge>, IChallengeContext
         return resp.Resource;
     }
 }
-
-internal class EmptyObject
-{
-}

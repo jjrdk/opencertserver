@@ -30,7 +30,9 @@ public sealed class MockAmdSnpNativeInterop : IAmdSnpNativeInterop
     public int GenerateReport(IntPtr reportBuffer, ref uint reportSize, ReadOnlySpan<byte> nonce)
     {
         if (GenerateReportReturnCode != AmdSnpErrorCodes.Success)
+        {
             return GenerateReportReturnCode;
+        }
 
         if (reportBuffer == IntPtr.Zero)
         {

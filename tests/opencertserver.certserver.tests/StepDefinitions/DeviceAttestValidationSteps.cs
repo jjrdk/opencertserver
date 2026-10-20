@@ -165,9 +165,17 @@ public sealed class DeviceAttestValidationSteps : IDisposable
 
     private DeviceAttestChallengeValidator GetOrCreateValidator(X509Certificate2? trustedCa)
     {
-        if (_validator != null) return _validator;
+        if (_validator != null)
+        {
+            return _validator;
+        }
+
         var roots = new X509Certificate2Collection();
-        if (trustedCa != null) roots.Add(trustedCa);
+        if (trustedCa != null)
+        {
+            roots.Add(trustedCa);
+        }
+
         _validator = new DeviceAttestChallengeValidator(new StaticAttestationTrustProvider(roots));
         return _validator;
     }

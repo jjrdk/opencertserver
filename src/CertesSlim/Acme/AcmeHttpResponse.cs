@@ -1,9 +1,9 @@
 ﻿namespace CertesSlim.Acme;
 
 /// <summary>
-///
+/// Represents an ACME HTTP response.
 /// </summary>
-/// <typeparam name="T"></typeparam>
+/// <typeparam name="T">The type of the resource.</typeparam>
 public class AcmeHttpResponse<T>
 {
     /// <summary>

@@ -16,14 +16,20 @@ public sealed class MockAppleAttestNativeInterop : IAppleAttestNativeInterop
     public Task<string> GenerateKeyAsync()
     {
         if (ShouldThrowOnGenerateKey)
+        {
             throw ExceptionToThrow ?? new AttestationException("Mock: key generation failed", -1);
+        }
+
         return Task.FromResult(KeyIdToReturn);
     }
 
     public Task<byte[]> AttestKeyAsync(string keyId, ReadOnlyMemory<byte> clientDataHash)
     {
         if (ShouldThrowOnAttestKey)
+        {
             throw ExceptionToThrow ?? new AttestationException("Mock: key attestation failed", -1);
+        }
+
         return Task.FromResult(AttestationObjectToReturn);
     }
 }

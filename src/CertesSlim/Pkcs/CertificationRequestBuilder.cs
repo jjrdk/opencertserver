@@ -100,7 +100,7 @@ public class CertificationRequestBuilder
     public byte[] Generate()
     {
         var csr = GeneratePkcs10();
-        return csr.CreateSigningRequest(); //.GetDerEncoded();
+        return csr.CreateSigningRequest();
     }
 
     private CertificateRequest GeneratePkcs10()
