@@ -67,8 +67,10 @@ internal static class ScepHandler
         ICertificateAuthority ca,
         CancellationToken cancellationToken)
     {
-        // A separate RA: the RA certificate first, then the CA chain.
-        var chain = await ca.GetRootCertificates(profile, cancellationToken).ConfigureAwait(false);
+        // A separate RA: the RA certificate first, then the published CA chain - the same set as
+        // EST /cacerts. Below a root that is the issuing CA plus the root; Windows looks for the
+        // root thumbprint of its Intune profile here and gives up before the request without it.
+        var chain = await ca.GetPublishedCertificates(profile, cancellationToken).ConfigureAwait(false);
         X509Certificate2[] certificates = [options.RaCertificate, .. chain];
         return Results.Bytes(ScepMessageCodec.EncodeCertificatesOnly(certificates), CaRaCert);
     }

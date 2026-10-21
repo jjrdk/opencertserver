@@ -12,6 +12,16 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
         And the first certificate is the RA certificate
         And the bundle contains the CA certificate
 
+    # Below a root, GetCACert carries the published chain, root included. Windows looks
+    # for the root thumbprint of its Intune profile in this response and gives up before
+    # sending a request when it is missing ("The hash value is not correct", 0x80091007).
+    Scenario: The server publishes the root above an issuing CA
+        Given a certificate server with SCEP whose CA is issued by a root
+        When a client asks for the CA certificates
+        Then the first certificate is the RA certificate
+        And the bundle contains the CA certificate
+        And the bundle contains the root certificate
+
     Scenario Outline: Enrollment with the right challenge password
         Given a certificate server that complies with SCEP (RFC 8894)
         When a client enrolls with the challenge password "<challenge>" using the "<profile>" profile

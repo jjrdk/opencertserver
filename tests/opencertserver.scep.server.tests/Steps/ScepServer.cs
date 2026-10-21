@@ -28,6 +28,7 @@ public sealed class ScepServer : IDisposable
     private X509Certificate2 _rsaCa = null!;
     private X509Certificate2 _ecdsaCa = null!;
     private X509Certificate2 _ra = null!;
+    private X509Certificate2? _root;
 
     private string? _caps;
     private string _caCertContentType = "";
@@ -45,15 +46,34 @@ public sealed class ScepServer : IDisposable
     [Given("a certificate server with SCEP but no challenge validator")]
     public Task GivenAServerWithoutValidator() => StartServer(withChallenge: false);
 
-    private async Task StartServer(bool withChallenge)
+    [Given("a certificate server with SCEP whose CA is issued by a root")]
+    public Task GivenAServerBelowARoot() => StartServer(withChallenge: true, belowRoot: true);
+
+    private async Task StartServer(bool withChallenge, bool belowRoot = false)
     {
-        using var rsaKey = RSA.Create(2048);
+        var rsaKey = RSA.Create(2048);
         var rsaReq = new CertificateRequest("CN=SCEP Test RSA CA", rsaKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         rsaReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
         rsaReq.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(rsaReq.PublicKey, false));
         rsaReq.CertificateExtensions.Add(new X509KeyUsageExtension(
             X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
-        _rsaCa = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+        if (belowRoot)
+        {
+            using var rootKey = RSA.Create(2048);
+            var rootReq = new CertificateRequest("CN=SCEP Test Root", rootKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            rootReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+            rootReq.CertificateExtensions.Add(new X509KeyUsageExtension(
+                X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
+            _root = rootReq.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-2), DateTimeOffset.UtcNow.AddYears(2));
+            _rsaCa = rsaReq.Create(_root, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1),
+                    RandomNumberGenerator.GetBytes(16))
+                .CopyWithPrivateKey(rsaKey);
+        }
+        else
+        {
+            _rsaCa = rsaReq.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+            rsaKey.Dispose();
+        }
 
         using var ecKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         var ecReq = new CertificateRequest("CN=SCEP Test ECDSA CA", ecKey, HashAlgorithmName.SHA256);
@@ -75,6 +95,10 @@ public sealed class ScepServer : IDisposable
         var rsaCa = _rsaCa;
         var ecdsaCa = _ecdsaCa;
         var ra = _ra;
+        // The issuing CA signs; the root is only published (EST /cacerts and SCEP GetCACert).
+        X509Certificate2Collection published = _root is null
+            ? []
+            : [X509Certificate2.CreateFromPem(rsaCa.ExportCertificatePem()), X509Certificate2.CreateFromPem(_root.ExportCertificatePem())];
         _host = new HostBuilder()
             .ConfigureWebHost(web => web
                 .UseTestServer()
@@ -89,6 +113,7 @@ public sealed class ScepServer : IDisposable
                                 new CaProfile
                                 {
                                     CertificateChain = [X509Certificate2.CreateFromPem(rsaCa.ExportCertificatePem())],
+                                    PublishedCertificateChain = published,
                                     Name = "rsa",
                                     CertificateValidity = TimeSpan.FromDays(90),
                                     CrlNumber = BigInteger.Zero,
@@ -142,6 +167,9 @@ public sealed class ScepServer : IDisposable
 
     [Then("the bundle contains the CA certificate")]
     public void ThenContainsCa() => Assert.Contains(_caCerts, c => c.Thumbprint == _rsaCa.Thumbprint);
+
+    [Then("the bundle contains the root certificate")]
+    public void ThenContainsRoot() => Assert.Contains(_caCerts, c => c.Thumbprint == _root!.Thumbprint);
 
     [When("a client enrolls with the challenge password {string} using the {string} profile")]
     public Task WhenEnroll(string challenge, string profile) => Enroll(challenge, profile, useGet: false);
@@ -394,6 +422,7 @@ public sealed class ScepServer : IDisposable
         _newKey?.Dispose();
         _clientKey?.Dispose();
         _clientSigner?.Dispose();
+        _root?.Dispose();
         _response?.Dispose();
     }
 }
