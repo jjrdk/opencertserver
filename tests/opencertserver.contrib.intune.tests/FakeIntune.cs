@@ -47,6 +47,9 @@ public sealed class FakeIntune : HttpMessageHandler
     /// <summary>Intune managed device ids that still exist.</summary>
     public ConcurrentDictionary<string, byte> ManagedDevices { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>The name Intune shows for a managed device id; a device without an entry has none.</summary>
+    public ConcurrentDictionary<string, string> DeviceNames { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Entra devices: deviceId → enabled.</summary>
     public ConcurrentDictionary<string, bool> EntraDevices { get; } = new(StringComparer.OrdinalIgnoreCase);
 
@@ -180,8 +183,11 @@ public sealed class FakeIntune : HttpMessageHandler
         if (path.StartsWith("/v1.0/deviceManagement/managedDevices/", StringComparison.Ordinal))
         {
             var id = Uri.UnescapeDataString(path["/v1.0/deviceManagement/managedDevices/".Length..]);
+            // Graph returns exactly what $select names - a lookup asking for the id must not see the name.
             return ManagedDevices.ContainsKey(id)
-                ? Json(HttpStatusCode.OK, new { id })
+                ? query.Contains("deviceName", StringComparison.Ordinal)
+                    ? Json(HttpStatusCode.OK, new { deviceName = DeviceNames.GetValueOrDefault(id) })
+                    : Json(HttpStatusCode.OK, new { id })
                 : Json(HttpStatusCode.NotFound, new { error = new { code = "ResourceNotFound" } });
         }
 

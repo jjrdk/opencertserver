@@ -27,6 +27,12 @@ It is an operation, not a scheduler: `POST /scep/intune/sync?dryRun=true|false`
 returns a report, 409 while a run is in progress; the endpoint requires the
 authorization policy `scep_intune_sync`.
 
+**Device names.** A certificate carries the Intune device id, not the name a
+person recognises. `IIntuneClient.GetManagedDeviceName` asks Graph for the
+`deviceName` of a managed device (null when it no longer exists), with the
+same permission the sync already has - for an inventory page that lists
+certificates by device.
+
 ## Configuration (`Scep:Intune`)
 
 | Key | Meaning |

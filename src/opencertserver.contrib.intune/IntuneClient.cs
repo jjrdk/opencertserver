@@ -62,6 +62,14 @@ public interface IIntuneClient
 
     Task<DirectoryState> GetManagedDeviceState(string intuneDeviceId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The name Intune shows for a managed device (<c>deviceName</c>), for an inventory that
+    /// lists certificates by device. Null when the device no longer exists or has no name;
+    /// throws <see cref="GraphUnavailableException"/> when Graph could not say. Same
+    /// permission as <see cref="GetManagedDeviceState"/>.
+    /// </summary>
+    Task<string?> GetManagedDeviceName(string intuneDeviceId, CancellationToken cancellationToken);
+
     Task<DirectoryState> GetEntraDeviceState(string entraDeviceId, CancellationToken cancellationToken);
 }
 
@@ -183,6 +191,30 @@ public sealed partial class IntuneClient : IIntuneClient
             HttpStatusCode.OK => DirectoryState.Present,
             _ => throw new GraphUnavailableException($"Graph managedDevices: HTTP {(int)status}")
         };
+    }
+
+    public async Task<string?> GetManagedDeviceName(string intuneDeviceId, CancellationToken cancellationToken)
+    {
+        var (status, body) = await GraphGet(
+                $"v1.0/deviceManagement/managedDevices/{Uri.EscapeDataString(intuneDeviceId)}?$select=deviceName",
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (status == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        if (status != HttpStatusCode.OK)
+        {
+            throw new GraphUnavailableException($"Graph managedDevices: HTTP {(int)status}");
+        }
+
+        using var document = JsonDocument.Parse(body);
+        return document.RootElement.TryGetProperty("deviceName", out var name)
+               && name.ValueKind == JsonValueKind.String
+               && name.GetString() is { Length: > 0 } text
+            ? text
+            : null;
     }
 
     public async Task<DirectoryState> GetEntraDeviceState(string entraDeviceId, CancellationToken cancellationToken)
