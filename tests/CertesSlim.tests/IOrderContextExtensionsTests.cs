@@ -306,7 +306,7 @@ public class IOrderContextExtensionsTests
         await Assert.ThrowsAsync<AcmeException>(() =>
             orderCtxMock.Generate(new CsrInfo
             {
-                CountryName = "C",
+                CountryName = "XX",
                 CommonName = "www.certes.com"
             }, key));
     }

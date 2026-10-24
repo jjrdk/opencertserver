@@ -16,7 +16,17 @@ public class CsrInfo
     public string? CountryName
     {
         get { return _data.GetValueOrDefault("C"); }
-        set { _data["C"] = value ?? throw new ArgumentNullException(nameof(value)); }
+        set
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(value);
+
+            if (value.Length != 2)
+            {
+                throw new ArgumentException("Country name must be a two-letter ISO abbreviation.", nameof(value));
+            }
+
+            _data["C"] = value;
+        }
     }
 
     /// <summary>
