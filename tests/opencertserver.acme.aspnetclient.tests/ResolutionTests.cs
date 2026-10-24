@@ -27,7 +27,7 @@ public sealed class ResolutionTests
                             TimeUntilExpiryBeforeRenewal = TimeSpan.FromDays(30),
                             CertificateSigningRequest = new CsrInfo()
                             {
-                                CountryName = "CountryNameStuff",
+                                CountryName = "XX",
                                 Locality = "LocalityStuff",
                                 Organization = "OrganizationStuff",
                                 OrganizationUnit = "OrganizationUnitStuff",

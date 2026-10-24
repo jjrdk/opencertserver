@@ -8,33 +8,39 @@ using CertesSlim.Properties;
 /// <remarks>See RFC 7515 Appendix C.</remarks>
 public static class JwsConvert
 {
-    /// <summary>
-    /// Encodes the data to the base64 string without padding.
-    /// </summary>
     /// <param name="data">The data to be encoded.</param>
-    /// <returns>The encoded data.</returns>
-    public static string ToBase64String(this byte[]? data)
+    extension(byte[]? data)
     {
-        return ToBase64String(data != null ? new ReadOnlyMemory<byte>(data) : null);
+        /// <summary>
+        /// Encodes the data to the base64 string without padding.
+        /// </summary>
+        /// <returns>The encoded data.</returns>
+        public string ToBase64String()
+        {
+            return ToBase64String(data != null ? new ReadOnlyMemory<byte>(data) : null);
+        }
     }
 
-    /// <summary>
-    /// Encodes the data to the base64 string without padding.
-    /// </summary>
     /// <param name="data">The data to be encoded.</param>
-    /// <returns>The encoded data.</returns>
-    public static string ToBase64String(this ReadOnlyMemory<byte>? data)
+    extension(ReadOnlyMemory<byte>? data)
     {
-        if (!data.HasValue || data.Value.Length == 0)
+        /// <summary>
+        /// Encodes the data to the base64 string without padding.
+        /// </summary>
+        /// <returns>The encoded data.</returns>
+        public string ToBase64String()
         {
-            return string.Empty;
-        }
+            if (!data.HasValue || data.Value.Length == 0)
+            {
+                return string.Empty;
+            }
 
-        var s = Convert.ToBase64String(data.Value.Span); // Regular base64 encoder
-        s = s.Split('=')[0]; // Remove any trailing '='s
-        s = s.Replace('+', '-'); // 62nd char of encoding
-        s = s.Replace('/', '_'); // 63rd char of encoding
-        return s;
+            var s = Convert.ToBase64String(data.Value.Span); // Regular base64 encoder
+            s = s.Split('=')[0]; // Remove any trailing '='s
+            s = s.Replace('+', '-'); // 62nd char of encoding
+            s = s.Replace('/', '_'); // 63rd char of encoding
+            return s;
+        }
     }
 
     /// <summary>

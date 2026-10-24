@@ -49,14 +49,22 @@ public sealed class AppleAttestationValidationSteps : IDisposable
     [When(@"the provider generates a hardware-backed key via Apple Security\.framework")]
     public async Task WhenGenerateHardwareBackedKey()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         _keyId = await _interop!.GenerateKeyAsync().ConfigureAwait(false);
     }
 
     [When(@"the key is attested with a known challenge hash")]
     public async Task WhenAttestKeyWithKnownChallenge()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_keyId);
 
         // Deterministic challenge so we can re-verify in Then steps
@@ -68,7 +76,11 @@ public sealed class AppleAttestationValidationSteps : IDisposable
     [When(@"the key is attested with two different challenge hashes")]
     public async Task WhenAttestKeyWithTwoDifferentChallenges()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_keyId);
 
         var challenge1 = Encoding.UTF8.GetBytes("challenge-one");
@@ -85,7 +97,11 @@ public sealed class AppleAttestationValidationSteps : IDisposable
     [Then(@"a non-empty keyId is returned from the native call")]
     public void ThenNonEmptyKeyId()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_keyId);
         Assert.NotEmpty(_keyId);
         // KeyId is hex(SHA-256) = 64 hex chars
@@ -95,7 +111,11 @@ public sealed class AppleAttestationValidationSteps : IDisposable
     [Then(@"the keyId format matches Apple AppAttest conventions")]
     public void ThenKeyIdMatchesAppleConventions()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_keyId);
         Assert.Equal(64, _keyId!.Length);
 
@@ -113,7 +133,11 @@ public sealed class AppleAttestationValidationSteps : IDisposable
         @"the signature in the attestation object correctly verifies against the challenge using the embedded public key")]
     public void ThenSignatureVerifiesAgainstChallenge()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_attestationObject);
         Assert.NotNull(_challengeHash);
 
@@ -142,7 +166,11 @@ public sealed class AppleAttestationValidationSteps : IDisposable
     [Then(@"the attestation object has a valid length-prefixed DER signature at offset 0")]
     public void ThenAttestationObjectHasDerSignatureAtOffset()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_attestationObject);
 
         // Parse length prefix (4 bytes, little-endian)
@@ -157,7 +185,11 @@ public sealed class AppleAttestationValidationSteps : IDisposable
     [Then(@"the attestation object contains a 65-byte X9\.62 uncompressed P-256 public key")]
     public void ThenAttestationObjectHasPublicKey()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_attestationObject);
 
         // Skip length prefix and signature to get to public key
@@ -187,7 +219,11 @@ public sealed class AppleAttestationValidationSteps : IDisposable
     [Then(@"the two attestation signatures are cryptographically distinct")]
     public void ThenTwoAttestationSignaturesAreDistinct()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_attestationObject);
         Assert.NotNull(_attestationObjectForChallenge2);
 
@@ -206,7 +242,11 @@ public sealed class AppleAttestationValidationSteps : IDisposable
     [Then(@"the keyId matches the SHA-256 hash of the attestation public key bytes")]
     public void ThenKeyIdMatchesSha256OfPublicKeyBytes()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_keyId);
         Assert.NotNull(_attestationObject);
 
@@ -224,7 +264,11 @@ public sealed class AppleAttestationValidationSteps : IDisposable
     [Then(@"verifying the attestation against a different challenge hash fails")]
     public void ThenVerifyingAgainstDifferentChallengeFails()
     {
-        if (!_platformAvailable) return;
+        if (!_platformAvailable)
+        {
+            return;
+        }
+
         Assert.NotNull(_attestationObject);
         _wrongChallengeHash ??= SHA256.HashData(Encoding.UTF8.GetBytes("completely-different-challenge"));
 

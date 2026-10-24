@@ -34,7 +34,9 @@ public sealed class TrustStore
     private void TryLoadRoot(string vendor, string path)
     {
         if (string.IsNullOrWhiteSpace(path))
+        {
             return;
+        }
 
         if (File.Exists(path))
         {

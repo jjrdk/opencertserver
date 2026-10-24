@@ -29,7 +29,7 @@ public class AcmeHttpClient : IAcmeHttpClient
         new(".NET", Environment.Version.ToString())
     ];
 
-    private readonly static Lazy<HttpClient> SharedHttp = new(CreateHttpClient);
+    private static readonly Lazy<HttpClient> SharedHttp = new(CreateHttpClient);
     private readonly Lazy<HttpClient> _http;
 
     private Uri? _newNonceUri;
@@ -50,7 +50,7 @@ public class AcmeHttpClient : IAcmeHttpClient
     /// <summary>
     /// Creates an instance of HttpClient configured with default settings.
     /// </summary>
-    internal static HttpClient CreateHttpClient()
+    private static HttpClient CreateHttpClient()
     {
         var client = new HttpClient();
         return client;
@@ -60,7 +60,7 @@ public class AcmeHttpClient : IAcmeHttpClient
     /// Initializes a new instance of the <see cref="AcmeHttpClient" /> class.
     /// </summary>
     /// <param name="directoryUri">The ACME directory URI.</param>
-    /// <param name="http">The HTTP.</param>
+    /// <param name="http">The HTTP client.</param>
     /// <exception cref="ArgumentNullException">directoryUri</exception>
     public AcmeHttpClient(Uri directoryUri, HttpClient? http = null)
     {
@@ -158,7 +158,7 @@ public class AcmeHttpClient : IAcmeHttpClient
         var links = default(ILookup<string, Uri>);
         if (response.Headers.Contains("Link"))
         {
-            links = response.Headers.GetValues("Link")?
+            links = response.Headers.GetValues("Link")
                 .Select(h =>
                 {
                     var segments = h.Split(';');
@@ -199,23 +199,23 @@ public class AcmeHttpClient : IAcmeHttpClient
 
         if (response.IsSuccessStatusCode)
         {
-            if (IsJsonMedia(response.Content?.Headers.ContentType?.MediaType))
+            if (IsJsonMedia(response.Content.Headers.ContentType?.MediaType))
             {
-                var json = await response.Content!.ReadAsStringAsync().ConfigureAwait(false);
+                var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 resource = JsonSerializer.Deserialize(json,
                     (JsonTypeInfo<T>)CertesSerializerContext.Default.GetTypeInfo(typeof(T))!);
             }
             else if (typeof(T) == typeof(string))
             {
-                object content = await response.Content!.ReadAsStringAsync().ConfigureAwait(false);
+                object content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 resource = (T)content;
             }
         }
         else
         {
-            if (IsJsonMedia(response.Content?.Headers?.ContentType?.MediaType))
+            if (IsJsonMedia(response.Content.Headers.ContentType?.MediaType))
             {
-                var json = await response.Content!.ReadAsStringAsync().ConfigureAwait(false);
+                var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 error = JsonSerializer.Deserialize<AcmeError>(json, CertesSerializerContext.Default.AcmeError);
             }
             else
