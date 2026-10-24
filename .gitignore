@@ -337,3 +337,4 @@ tools
 memory.md
 lessons_learned.md
 .ollamassist
+tests/*/Features/*.feature.cs
