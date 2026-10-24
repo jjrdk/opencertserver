@@ -171,10 +171,10 @@ public class AcmeContext : IAcmeContext
         IKey? certificatePrivateKey)
     {
         var endpoint = await this.GetResourceUri(d => d.RevokeCert).ConfigureAwait(false);
-
+        ReadOnlyMemory<byte>? readOnlyCert = certificate;
         var body = new CertificateRevocation
         {
-            Certificate = JwsConvert.ToBase64String(certificate),
+            Certificate = readOnlyCert.ToBase64String(),
             Reason = reason
         };
 
