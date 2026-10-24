@@ -29,8 +29,7 @@ public partial class PerRouteRegistrationSteps
     public void GivenAnAcmeRouteForHosts(string routeId, string hosts)
     {
         var sanList = hosts
-             .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-             .ToArray();
+            .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         _pendingRoutes.Add(Route(routeId, [.. sanList], new RouteAcmeOptions()));
     }
 
@@ -85,15 +84,10 @@ public partial class PerRouteRegistrationSteps
             RouteId = routeId,
             Match = new RouteMatch
             {
-                Hosts = hosts is null ? null : [.. hosts]
+                Hosts = [.. hosts]
             }
         };
 
-        if (acme is not null)
-        {
-            return RouteAcmeMetadataExtensions.WithAcmeRoute(route, acme);
-        }
-
-        return route;
+        return acme is not null ? route.WithAcmeRoute(acme) : route;
     }
 }
