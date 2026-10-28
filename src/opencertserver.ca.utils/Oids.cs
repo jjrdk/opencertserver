@@ -7,6 +7,12 @@ using System.Security.Cryptography;
 /// </summary>
 public static class Oids
 {
+    // Subject Alternative Name OIDs
+    /// <summary>
+    /// Represents the member.
+    /// </summary>
+    public const string DnsSrvOid = "1.3.6.1.5.5.7.8.7";
+
     // Symmetric encryption algorithms
     /// <summary>
     /// Represents the member.
