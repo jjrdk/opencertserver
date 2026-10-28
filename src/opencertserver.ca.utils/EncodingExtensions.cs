@@ -170,28 +170,18 @@ public static class EncodingExtensions
     extension(X500DistinguishedName distinguishedName)
     {
         /// <summary>
-        /// Executes the Encode operation.
+        /// Writes the name exactly as it is encoded in <see cref="X500DistinguishedName.RawData"/>.
         /// </summary>
+        /// <remarks>
+        /// A name is compared by its encoding (RFC 5280, 7.1): a CRL issuer must match the
+        /// subject of the issuing certificate. Rebuilding it from
+        /// <see cref="X500DistinguishedName.EnumerateRelativeDistinguishedNames(bool)"/> reversed
+        /// the order of the RDNs (the method enumerates in reverse by default), wrote every
+        /// value as PrintableString and could not represent multi-valued RDNs.
+        /// </remarks>
         public void Encode(AsnWriter writer)
         {
-            using (writer.PushSequence())
-            {
-                foreach (var relativeDistinguishedName in
-                    distinguishedName.EnumerateRelativeDistinguishedNames())
-                {
-                    using (writer.PushSetOf())
-                    {
-                        using (writer.PushSequence())
-                        {
-                            writer.WriteObjectIdentifier(relativeDistinguishedName.GetSingleElementType()
-                                .Value!);
-                            writer.WriteCharacterString(
-                                UniversalTagNumber.PrintableString,
-                                relativeDistinguishedName.GetSingleElementValue()!);
-                        }
-                    }
-                }
-            }
+            writer.WriteEncodedValue(distinguishedName.RawData);
         }
     }
 
