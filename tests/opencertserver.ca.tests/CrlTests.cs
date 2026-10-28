@@ -1,5 +1,6 @@
 namespace OpenCertServer.Ca.Tests;
 
+using System.Formats.Asn1;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -101,6 +102,35 @@ public class CrlTests
         Assert.Equal(3, loadedCrl.RevokedCertificates.First().Extensions.Count);
         // AKI is auto-injected by WriteTbsCertList (RFC 5280 §5.2.1), so expect 3 extensions: CRL Number + AIA + AKI
         Assert.Equal(3, loadedCrl.Extensions.Count);
+    }
+
+    [Theory]
+    [InlineData("CN=Test CA,C=US")]
+    [InlineData("CN=netzpass CA,O=netzpass")]
+    [InlineData("CN=Prüfstelle CA,O=Ärztekammer,C=AT")]
+    public void CrlIssuerIsEncodedLikeTheIssuingCertificateSubject(string subject)
+    {
+        using var rsa = RSA.Create();
+        var request = new CertificateRequest(subject, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        request.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+        using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+        var crl = new CertificateRevocationList(
+            TypeVersion.V2,
+            HashAlgorithmName.SHA256,
+            certificate.SubjectName,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddDays(1),
+            [],
+            [new X509CrlNumberExtension(BigInteger.One, false)]);
+
+        var crlBytes = crl.Build(HashAlgorithmName.SHA256, rsa);
+
+        // CertificateList ::= SEQUENCE { tbsCertList SEQUENCE { version, signature, issuer, ... } }
+        var tbsCertList = new AsnReader(crlBytes, AsnEncodingRules.DER).ReadSequence().ReadSequence();
+        tbsCertList.ReadInteger();
+        tbsCertList.ReadSequence();
+        var issuer = tbsCertList.ReadEncodedValue();
+        Assert.Equal(Convert.ToHexString(certificate.SubjectName.RawData), Convert.ToHexString(issuer.Span));
     }
 
     [Fact]
