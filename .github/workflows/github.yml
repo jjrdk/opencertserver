@@ -21,6 +21,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 25.x
+      - name: Install Native AOT prerequisites
+        run: sudo apt-get update -qq && sudo apt-get install -y clang zlib1g-dev libssl-dev
       - name: Build OpenCertServer
         run: dotnet build opencertserver.slnx -c Release
       - name: Test OpenCertServer

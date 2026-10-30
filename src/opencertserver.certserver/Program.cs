@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
 using OpenCertServer.Est.Server.TrustAnchor;
+using OpenCertServer.Data;
+using OpenCertServer.Data.PostgreSql;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
@@ -249,9 +251,34 @@ internal static class Program
 
         // --- Hardened-deployment registrations, each config-gated and fail-closed when unset ---
 
-        // External account keys (RFC 8555 §7.3.4): when provisioned in configuration the read-only
-        // static store that carries them overrides the empty in-memory store registered above, so a
-        // hardened deployment can bind EAB-authenticated accounts without writing a key to disk.
+        switch (builder.Configuration["AcmeServer:Persistence"]?.ToLowerInvariant())
+        {
+            case null:
+            case "memory":
+                break;
+            case "file":
+                services.AddAcmeFileStore(builder.Configuration);
+                break;
+            case "relational":
+                services.AddPostgreSqlStore()
+                    .AddAcmeRelationalStore(builder.Configuration, "OpenCertServer");
+                break;
+            default:
+                throw new InvalidOperationException("Unsupported AcmeServer:Persistence.");
+        }
+        switch (builder.Configuration["Ca:Persistence"]?.ToLowerInvariant())
+        {
+            case null:
+            case "memory":
+                break;
+            case "relational":
+                services.AddPostgreSqlStore()
+                    .AddCaRelationalStore(builder.Configuration, "OpenCertServer");
+                break;
+            default:
+                throw new InvalidOperationException("Unsupported Ca:Persistence.");
+        }
+        // Configured EAB keys override the selected empty or relational key store.
         RegisterExternalAccountKeys(services, builder.Configuration);
 
         // Attestation trust roots for the device-attest-01 challenge: when configured the static trust

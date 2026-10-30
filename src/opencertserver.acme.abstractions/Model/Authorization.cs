@@ -5,6 +5,7 @@ using OpenCertServer.Acme.Abstractions.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// Represents an ACME authorization, which binds an identifier to an account and tracks challenge status.
@@ -45,6 +46,26 @@ public sealed class Authorization
     }
 
     /// <summary>
+    /// Hydrates an authorization from persisted storage. The <see cref="Order"/> back-reference is
+    /// <see cref="JsonIgnoreAttribute"/>-excluded and re-attached by the store's mapper after the parent
+    /// order is reconstructed, avoiding a circular reference in the serialized graph.
+    /// </summary>
+    [JsonConstructor]
+    internal Authorization(
+        string authorizationId,
+        Identifier identifier,
+        AuthorizationStatus status,
+        DateTimeOffset expires,
+        List<Challenge> challenges)
+    {
+        AuthorizationId = authorizationId;
+        Identifier = identifier;
+        Status = status;
+        Expires = expires;
+        Challenges = challenges ?? [];
+    }
+
+    /// <summary>
     /// Gets the unique authorization identifier.
     /// </summary>
     public string AuthorizationId { get; }
@@ -56,7 +77,10 @@ public sealed class Authorization
 
     /// <summary>
     /// Gets the order to which this authorization belongs.
+    /// <see cref="JsonIgnoreAttribute"/>-excluded from the serialized graph; the store's mapper re-attaches
+    /// it after the parent order is reconstructed.
     /// </summary>
+    [JsonIgnore]
     public Order Order
     {
         get { return field ?? throw new NotInitializedException(); }

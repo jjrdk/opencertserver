@@ -28,6 +28,106 @@ This produces the `opencert` CLI, the `certserver` web app, and the NuGet packag
 
 ## 2. Run the cert server
 
+### PostgreSQL persistence
+
+Memory remains the default. To retain ACME accounts/orders and the CA inventory across
+restarts, deploy PostgreSQL and supply its connection through your deployment secret
+provider as `ConnectionStrings__OpenCertServer` (the standard `ConnectionStrings:OpenCertServer`
+entry). Do not put credentials in checked-in JSON or shell
+history. Then select:
+
+```sh
+export AcmeServer__Persistence=relational
+export Ca__Persistence=relational
+```
+
+For a regular **untrimmed JIT** deployment:
+
+```sh
+dotnet publish src/opencertserver.certserver -c Release -p:PublishAot=false -p:PublishTrimmed=false
+```
+
+Use untrimmed JIT for relational storage. Native AOT qualification does not carry over
+to the provider-separated implementation: compiled models and query interceptors need
+provider-specific generation and runtime integration. The shared data project deliberately
+does not select a database engine at build time.
+
+Apply migrations **once, before starting/upgrading the server**, with a regular .NET SDK
+process (not the Native AOT server):
+
+```sh
+dotnet ef database update --project src/opencertserver.data.postgresql
+```
+
+The design-time context reads `ConnectionStrings__OpenCertServer` from the environment.
+For another connection name, pass it after `--`, for example
+`dotnet ef database update --project src/opencertserver.data.postgresql -- MyDatabase`
+with `ConnectionStrings__MyDatabase` supplied by your secret provider.
+Missing or blank connections fail explicitly. Use an EF CLI matching the centrally pinned EF Core
+version. Back up the database before upgrades; generate/review a migration SQL script for
+controlled deployments:
+
+```sh
+dotnet ef migrations script --idempotent --project src/opencertserver.data.postgresql
+```
+
+Embedded JIT hosts can instead run
+`await CaStoreMigration.MigrateAsync(connection, cancellationToken)` in a deployment tool.
+Do not grant routine server credentials schema-modification permissions.
+
+After migrations, start `certserver` with the same CA profiles and authentication arguments
+as below. The host registers the PostgreSQL dependency before selecting the shared stores.
+Embedded hosts reference `opencertserver.data.postgresql` and register it **after** default
+store registrations and **before** building the container:
+
+```csharp
+using OpenCertServer.Data;
+using OpenCertServer.Data.PostgreSql;
+
+services.AddPostgreSqlStore()
+    .AddAcmeRelationalStore(configuration, "OpenCertServer")
+    .AddCaRelationalStore(configuration, "OpenCertServer");
+```
+
+Each registration only installs relational stores and reads the named entry using
+`configuration.GetConnectionString(name)`. Embedded hosts select their own connection name
+and which stores to register; the standalone host retains its existing persistence-mode
+settings and uses the name `OpenCertServer`. The old per-section relational connection
+keys and `OCS_RELATIONAL_CONN` fallback are no longer read.
+`AddAcmeRelationalStore(connection)` and `AddCaRelationalStore(connection)` remain available
+when the connection is supplied directly. The shared `opencertserver.data`
+project has no database-engine dependency; another adapter can implement
+`IRelationalStoreProvider` and supply its own EF configuration, migrations and atomic
+operations. See [the data module](../src/opencertserver.data/README.md). Do not confuse
+these server stores with ASP.NET ACME client certificate/challenge persistence strategies.
+
+Use persistent CA signing-key files/your existing key provider across replicas and restarts:
+the database contains public certificates, not CA private keys. Protect database connections,
+backups and EAB MAC keys using TLS, access controls and storage encryption. Tenant isolation
+is not implemented: use separate databases/deployments for separate trust domains. This task
+does not add cleanup/retention jobs, a distributed validation-worker lease, or cluster-wide
+CRL-number allocation. Retain certificate/revocation records according to your CA policy;
+plan nonce/account/order retention separately. Do not interpret shared persistence alone as
+qualification of unrestricted multi-writer CA operation.
+
+For an embedded SQL Server host, reference `opencertserver.data.mssql`, import
+`OpenCertServer.Data.MsSql` and replace `AddPostgreSqlStore()` with `AddMsSqlStore()`.
+Supply a SQL Server connection through the same standard named connection-string entry.
+Use `--project src/opencertserver.data.mssql` for its separate EF migration commands.
+The standalone host remains wired to PostgreSQL. See [the MSSQL adapter](../src/opencertserver.data.mssql/README.md).
+
+Run the PostgreSQL and MSSQL contract scenarios (Docker required):
+
+```sh
+dotnet test --project tests/opencertserver.data.tests
+dotnet test --project tests/opencertserver.certserver.tests --filter-class '*Relational*'
+```
+
+Scenario outlines select PostgreSQL and MSSQL through their `Examples` tables.
+SQL Server containers require an x86-64 Docker runtime (or working AMD64 emulation).
+Further providers and Redis are left for later sessions.
+See the [configuration reference](documentation.md#optional-postgresql-persistence).
+
 The `certserver` application is configured entirely through command-line arguments, with environment
 variables and `appsettings.json` as fall-through. There are **no required environment variables**.
 

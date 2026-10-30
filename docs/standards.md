@@ -16,6 +16,29 @@ feature, so you can verify it rather than take it on trust.
 
 ## Enrollment protocols
 
+### Pluggable relational store
+
+The optional `opencertserver.data` module persists ACME accounts, complete order/authorization/
+challenge graphs, nonces, external-account keys and CA certificate inventory through
+provider-independent EF Core stores. The optional `opencertserver.data.postgresql` dependency
+supplies Npgsql, SQL, migrations and design-time tooling; `opencertserver.data.mssql`
+supplies the corresponding SQL Server implementation and separate migrations. This is a persistence capability,
+not a new protocol conformance claim.
+Default memory/file implementations remain available and no protocol call sites depend on
+the provider. PostgreSQL and MSSQL use the same database-table scenarios; Redis and
+further providers are deferred.
+Runtime qualification covers an untrimmed JIT host. Native AOT qualification does not carry
+over to the provider split; provider-specific compiled-model/query integration remains open.
+
+**Proving features:** [RelationalStores.feature](../tests/opencertserver.data.tests/Features/RelationalStores.feature)
+covers reloads, optimistic concurrency, atomic/case-sensitive nonce consumption, UTC certificate
+status and memory-equivalent pagination using real containers. Each scenario outline's database
+examples table is the extension point for future providers. A separate provider-boundary
+scenario proves engine-free shared assembly dependencies and injected adapter dispatch.
+[RelationalStore.feature](../tests/opencertserver.certserver.tests/Features/RelationalStore.feature)
+qualifies ACME/CA service flows with relational configuration.
+See [PostgreSQL setup](getting-started.md#postgresql-persistence).
+
 | Standard | OpenCertServer name | Project | One-line summary |
 |---|---|---|---|
 | [RFC 7030](https://www.rfc-editor.org/rfc/rfc7030) | **EST** (Enrollment over Secure Transport) | `opencertserver.est.server`, `opencertserver.est.client` | Enroll/renew/peek certificates over TLS with mTLS or a JWT |

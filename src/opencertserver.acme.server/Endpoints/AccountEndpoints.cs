@@ -50,7 +50,7 @@ public static class AccountEndpoints
         var orders = orderIds.Select(orderId => new Uri(GetOrderUrl(context, links, orderId)))
             .ToList();
 
-        return Results.Ok(new { orders });
+        return Results.Ok(new Dictionary<string, string[]> { ["orders"] = orders.Select(uri => uri.OriginalString).ToArray() });
     }
 
     [AcmeLocation("Account")]

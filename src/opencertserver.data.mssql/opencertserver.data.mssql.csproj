@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Data.MsSql</RootNamespace>
+        <IsAotCompatible>false</IsAotCompatible>
+        <IsTrimmable>false</IsTrimmable>
+        <EFScaffoldModelStage>none</EFScaffoldModelStage>
+        <EFPrecompileQueriesStage>none</EFPrecompileQueriesStage>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../opencertserver.data/opencertserver.data.csproj" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="All" />
+        <PackageReference Include="System.Security.Cryptography.Pkcs" />
+    </ItemGroup>
+</Project>
