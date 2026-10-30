@@ -21,6 +21,26 @@ public class InMemoryCertificateStore : IStoreCertificates
     }
 
     /// <inheritdoc />
+    public Task AddCertificate(
+        X509Certificate2 certificate,
+        string issuingProfile,
+        CancellationToken cancellationToken = default)
+    {
+        var item = CertificateItem.FromX509Certificate2(certificate);
+        item.IssuingProfile = issuingProfile;
+        _certificates.Add(item.SerialNumber, item);
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task<string?> GetIssuingProfile(string thumbprint, CancellationToken cancellationToken = default)
+    {
+        var item = _certificates.Values.SingleOrDefault(
+            item => string.Equals(item.Thumbprint, thumbprint, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(item?.IssuingProfile);
+    }
+
+    /// <inheritdoc />
     public Task<bool> RemoveCertificate(
         string serialNumber,
         X509RevocationReason reason,

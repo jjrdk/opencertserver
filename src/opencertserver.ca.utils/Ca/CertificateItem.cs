@@ -8,6 +8,12 @@ using System.Security.Cryptography.X509Certificates;
 public class CertificateItem : CertificateItemInfo
 {
     /// <summary>
+    /// Gets or sets the resolved issuing profile recorded by the CA at issuance.
+    /// Null denotes a legacy or imported certificate without trusted profile provenance.
+    /// </summary>
+    public string? IssuingProfile { get; set; }
+
+    /// <summary>
     /// Gets or sets the certificate PEM-encoded public data.
     /// </summary>
     public required string PublicKeyPem { get; set; }

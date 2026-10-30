@@ -536,6 +536,7 @@ public sealed class CertificateAuthorityTests : IDisposable
             DateTimeOffset.UtcNow.AddDays(-1),
             DateTimeOffset.UtcNow.AddDays(30),
             RandomNumberGenerator.GetBytes(16));
+        await store.AddCertificate(previous, "rsa", TestContext.Current.CancellationToken);
         using var nextKey = RSA.Create(2048);
         var nextRequest = CreateCertificateRequest(nextKey);
 

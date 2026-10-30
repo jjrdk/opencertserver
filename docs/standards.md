@@ -83,6 +83,11 @@ client-side enrollment against a live EST server (drives `EstClient.Enroll`).
 * [EstServer.feature](../tests/opencertserver.est.server.tests/Features/EstServer.feature) —
 endpoint-level server tests, including acceptance of a configured external client CA and refusal
 when that CA is not configured.
+* [ReEnrollmentProfiles.feature](../tests/opencertserver.est.server.tests/Features/ReEnrollmentProfiles.feature) —
+re-enrollment stays within its recorded issuing profile even when profiles share a CA key/chain
+or identical permissions. Covers named/default EST routes, direct CA calls, revoked certificates,
+missing/imported provenance, and serial-number collisions. Missing provenance fails closed;
+see [re-enrollment upgrade and custom-store requirements](documentation.md#post-well-knownestsimplereenroll).
 * [IQ EstEnrollment.feature](../tests/opencertserver.iq.tests/Features/EstEnrollment.feature) —
 all six Cisco `estclient` scenarios against the deployed container: published CA verification,
 signed-JWT enrollment, same-key mTLS re-enrollment, retrieval and independent inspection of a

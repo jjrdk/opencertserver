@@ -222,10 +222,26 @@ returning no requirements. Embedded hosts can still supply their own `ICsrTempla
 - Description: Re-enroll using an existing certificate or the server-key-generated key.
 - Authentication: the existing client certificate (mTLS) or a JWT.
 - The certificate being renewed must have been signed by one of the profile's CA certificates
-   (`OwnCertificateValidation` builds the chain; a matching issuer name alone is not enough), and
+   (`OwnCertificateValidation` verifies the signature; a matching issuer name alone is not enough), and
    must not have been revoked by this CA (the store is asked by serial number). An expired
    certificate may still renew - RFC 7030 §4.2.2 leaves that to the CA's policy.
    A profile that holds only its issuing intermediate, without the root, works.
+- **Profile binding:** the CA records the resolved issuing profile with each issued certificate.
+   `OwnCertificateValidation` looks up that provenance by the exact certificate thumbprint and
+   requires an ordinal, case-sensitive match with the resolved requested profile. This applies to
+   both `/{profileName}/simplereenroll` and the default route, and to direct CA re-enrollment calls.
+   Sharing a CA key/chain does not authorize moving between profiles.
+- **Upgrade/custom-store behavior:** missing provenance fails closed, including imported certificates,
+   certificates issued before profile tracking, and certificates lost from an in-memory store after
+   restart. Custom `IStoreCertificates` implementations must persist the profile in the
+   `AddCertificate(certificate, issuingProfile, cancellationToken)` overload and implement
+   `GetIssuingProfile(thumbprint, cancellationToken)` to support renewal. The compatibility defaults
+   still support issuance, but report unavailable provenance and therefore cannot authorize renewal.
+   Use fresh enrollment when provenance cannot be recovered from trusted issuance records.
+   EKUs/policies are not a substitute: different profiles can have identical extensions but different
+   validity or enrollment requirements. Hosts intentionally allowing transitions or legacy renewal
+   must replace `OwnCertificateValidation` with an explicit validator (retaining issuer-signature
+   and revocation checks); adding a permissive validator alongside it does not override its rejection.
 - Response: as `simpleenroll`.
 
 ### POST /.well-known/est/serverkeygen
@@ -238,6 +254,12 @@ returning no requirements. Embedded hosts can still supply their own `ICsrTempla
 Per-profile variants of the above (`{profile}/cacerts`, `{profile}/csrattrs`, …) let one server act
 as multiple logical CAs. For runnable client code (including `ServerKeyGeneration`) see
 [Getting started → EST](getting-started.md#enroll-a-certificate-via-est-jwt-bearer-auth).
+
+Profile-bound renewal is not enrollment authorization. `simpleenroll` and `serverkeygen` are
+fresh issuance paths: their default policies require authentication, not membership in the
+requested profile. Hosts using profiles as permission boundaries must supply appropriate
+`enrollPolicy` and `serverKeyGenPolicy` authorization policies as well as restrict the CA CSR
+routes described under [Authentication](#authentication).
 
 > See [Implemented standards → EST](standards.md#est--rfc-7030) for the full RFC 7030 + RFC 8951 +
 > RFC 9908 behaviour and the `EstConformance.feature` scenarios.
@@ -411,8 +433,15 @@ OpenCertServer authenticates differently per protocol:
 - **ACME** — RFC 8555 account-based authentication: the first request presents the account key as a
    JWS `jwk`; subsequent requests reference it via `kid`. External account binding (EAB) is
    supported via `IExternalAccountBindingService`, which verifies the EAB JWS signature.
-- **CA endpoints** (`/ca/*`) — a client certificate over TLS. Revocation (`DELETE /ca/revoke`)
-   additionally requires a SHA-256 signature over `serialNumber + reason` signed with the
+- **CA signing endpoints** (`POST /ca/csr` and `POST /ca/{profileName}/csr`) require only an
+   authenticated user under the host's authentication configuration, subject to the CA request
+   validators. They do not enforce EST enrollment policies or profile-specific enrollment
+   authorization. If the host's default authentication accepts EST Basic credentials, those users
+   can also request certificates here in any profile. `AddCertificateAuthorityAuthorization`
+   configures `/ca/revoke` only; it does not restrict signing. Hosts exposing `/ca` only for
+   CRL/OCSP must explicitly block the CSR routes or map only the required responder endpoints.
+- **CA revocation** (`DELETE /ca/revoke`) requires a client certificate and
+   a SHA-256 signature over `serialNumber + reason` signed with the
    presented key (proof of possession), **and** enforces one of two authorization paths: the
    presented certificate must be the CA-issued certificate with that serial number (self-service),
    or the caller must hold the `ca_admin` role (administrative revocation). Register the default
