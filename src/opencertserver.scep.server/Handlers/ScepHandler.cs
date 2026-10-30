@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
 
 /// <summary>
@@ -207,9 +208,11 @@ internal static class ScepHandler
     /// <summary>
     /// A RenewalReq is signed with the certificate it renews (RFC 8894, 3.3.1.2). That
     /// certificate is the proof, so it is checked cryptographically here: it must chain to
-    /// this profile's CA, be valid now, not be revoked, and carry the same subject as the
-    /// request. The CA core compares only the issuer name of <c>reenrollingFrom</c>, which a
-    /// self-signed certificate can imitate (#96). Returns the reason for a refusal, or null.
+    /// this profile's CA, be valid now, not be revoked, and carry the same subject and the
+    /// same subjectAltName as the request - as EST requires for simplereenroll (RFC 7030,
+    /// 4.2.2); the profile copies the subjectAltName from the request. The CA core compares
+    /// only the issuer name of <c>reenrollingFrom</c>, which a self-signed certificate can
+    /// imitate (#96). Returns the reason for a refusal, or null.
     /// </summary>
     private static async Task<string?> CheckRenewal(
         X509Certificate2 previous,
@@ -243,8 +246,19 @@ internal static class ScepHandler
             return "the request names a different subject than the certificate it renews";
         }
 
+        if (!SubjectAltNames(previous.Extensions).SetEquals(SubjectAltNames(csr.CertificateExtensions)))
+        {
+            return "the request names a different subjectAltName than the certificate it renews";
+        }
+
         return null;
     }
+
+    // Compared by content: a set of byte arrays would compare references.
+    private static HashSet<string> SubjectAltNames(IEnumerable<X509Extension> extensions) =>
+        extensions.Where(x => x.Oid?.Value == Oids.SubjectAltName)
+            .Select(x => Convert.ToHexString(x.RawData))
+            .ToHashSet(StringComparer.Ordinal);
 
     private static IResult Failure(ScepRequest request, ScepFailInfo failInfo, ScepServerOptions options) =>
         Results.Bytes(ScepMessageCodec.EncodeFailure(request, failInfo, options.RaCertificate), PkiMessage);

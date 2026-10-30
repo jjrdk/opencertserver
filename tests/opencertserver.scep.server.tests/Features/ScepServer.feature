@@ -108,6 +108,29 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
         Then the server answers FAILURE with failInfo badRequest
         And no certificate is returned
 
+    # As for EST simplereenroll (RFC 7030, 4.2.2): the renewal names what the certificate
+    # it renews names. The profile copies the subjectAltName from the request.
+    Scenario: A certificate with a subject alternative name is renewed with the same name
+        Given a certificate server that complies with SCEP (RFC 8894)
+        And a client holding a certificate from the "rsa" profile with the UPN "anna@contoso.test"
+        When the client renews it with the UPN "anna@contoso.test"
+        Then the server answers SUCCESS
+        And the renewed certificate has the same subject and a new key
+
+    Scenario: A renewal for another subject alternative name is refused
+        Given a certificate server that complies with SCEP (RFC 8894)
+        And a client holding a certificate from the "rsa" profile with the UPN "anna@contoso.test"
+        When the client renews it with the UPN "bert@contoso.test"
+        Then the server answers FAILURE with failInfo badRequest
+        And no certificate is returned
+
+    Scenario: A renewal that drops the subject alternative name is refused
+        Given a certificate server that complies with SCEP (RFC 8894)
+        And a client holding a certificate from the "rsa" profile with the UPN "anna@contoso.test"
+        When the client renews it without a subject alternative name
+        Then the server answers FAILURE with failInfo badRequest
+        And no certificate is returned
+
     Scenario: A renewal with a revoked certificate is refused
         Given a certificate server that complies with SCEP (RFC 8894)
         And a client holding a certificate from the "rsa" profile

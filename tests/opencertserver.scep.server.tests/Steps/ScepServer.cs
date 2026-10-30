@@ -235,6 +235,20 @@ public sealed class ScepServer : IDisposable
         _held = _certRep!.Issued!.CopyWithPrivateKey(_clientKey!);
     }
 
+    [Given("a client holding a certificate from the {string} profile with the UPN {string}")]
+    public async Task GivenHeldCertificateUpn(string profile, string upn)
+    {
+        _clientKey = RSA.Create(2048);
+        _clientSigner = ScepTestClient.CreateTransientSigner(_clientKey);
+        var csr = ScepTestClient.CreateCsr(_clientKey, Subject, Challenge);
+        csr.CertificateExtensions.Add(Upn(upn));
+        _response = await new ScepTestClient(_host.GetTestClient(), "/scep/" + profile)
+            .Enroll(csr, _clientSigner, _ra, _transactionId, _senderNonce).ConfigureAwait(false);
+        await ReadCertRep().ConfigureAwait(false);
+        ThenSuccess();
+        _held = _certRep!.Issued!.CopyWithPrivateKey(_clientKey);
+    }
+
     [Given("that certificate is revoked")]
     public async Task GivenRevoked()
     {
@@ -248,6 +262,12 @@ public sealed class ScepServer : IDisposable
 
     [When("the client renews it for the subject {string}")]
     public Task WhenRenewOtherSubject(string subject) => Renew(subject, _held!);
+
+    [When("the client renews it with the UPN {string}")]
+    public Task WhenRenewUpn(string upn) => Renew(Subject, _held!, upn);
+
+    [When("the client renews it without a subject alternative name")]
+    public Task WhenRenewWithoutSan() => Renew(Subject, _held!);
 
     [When("a client renews with a certificate from a look-alike CA of the same name")]
     public Task WhenRenewLookAlike()
@@ -277,17 +297,30 @@ public sealed class ScepServer : IDisposable
         await ReadCertRep().ConfigureAwait(false);
     }
 
-    private async Task Renew(string subject, X509Certificate2 signer)
+    private async Task Renew(string subject, X509Certificate2 signer, string? upn = null)
     {
         _newKey = RSA.Create(2048);
         _clientSigner = signer;
+        var csr = ScepTestClient.CreateCsr(_newKey, subject, challenge: null);
+        if (upn is not null)
+        {
+            csr.CertificateExtensions.Add(Upn(upn));
+        }
+
         var client = new ScepTestClient(_host.GetTestClient(), "/scep/rsa");
         _response = await client.Enroll(
-            ScepTestClient.CreateCsr(_newKey, subject, challenge: null),
+            csr,
             signer, _ra, Convert.ToHexString(RandomNumberGenerator.GetBytes(8)), RandomNumberGenerator.GetBytes(16),
             messageType: "17").ConfigureAwait(false);
         await ReadCertRep().ConfigureAwait(false);
         _renewed = _certRep!.Issued;
+    }
+
+    private static X509Extension Upn(string upn)
+    {
+        var san = new SubjectAlternativeNameBuilder();
+        san.AddUserPrincipalName(upn);
+        return san.Build();
     }
 
     [Then("the renewed certificate has the same subject and a new key")]
