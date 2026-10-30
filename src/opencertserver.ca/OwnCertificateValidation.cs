@@ -44,9 +44,16 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
             return "Re-enrollment certificate is not issued by this CA";
         }
 
-        // A certificate this CA has revoked does not renew itself. The store answers by serial number;
-        // a certificate it does not know (issued before a restart of an in-memory store) is not
-        // treated as revoked - the chain check above already says it is ours.
+        // The issuer signature proves CA ownership, not profile membership: profiles may share a key.
+        var issuingProfile = await _certificateStore
+            .GetIssuingProfile(reenrollingFrom.Thumbprint, cancellationToken).ConfigureAwait(false);
+        if (issuingProfile == null
+         || !string.Equals(issuingProfile, caProfile.Name, StringComparison.Ordinal))
+        {
+            LogReEnrollmentProfileMismatch(reenrollingFrom.Thumbprint, issuingProfile, caProfile.Name);
+            return "Re-enrollment certificate issuing profile is unknown or does not match the requested profile";
+        }
+
         var (_, status, _) = await _certificateStore
             .GetCertificateStatus(CertId.Create(reenrollingFrom, HashAlgorithmName.SHA256), cancellationToken)
             .ConfigureAwait(false);
@@ -292,4 +299,8 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
 
     [LoggerMessage(LogLevel.Warning, "Re-enrollment refused: certificate {SerialNumber} is revoked")]
     partial void LogReEnrollmentFromRevokedCertificate(string serialNumber);
+
+    [LoggerMessage(LogLevel.Warning,
+        "Re-enrollment refused: certificate {Thumbprint} issuing profile {IssuingProfile} does not match requested profile {RequestedProfile}, or is unknown")]
+    partial void LogReEnrollmentProfileMismatch(string thumbprint, string? issuingProfile, string requestedProfile);
 }
