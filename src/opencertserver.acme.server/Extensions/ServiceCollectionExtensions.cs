@@ -31,6 +31,8 @@ public static class ServiceCollectionExtensions
             acmeServerOptions ??= new AcmeServerOptions();
             acmeServerConfig.Bind(acmeServerOptions);
 
+            services.ConfigureHttpJsonOptions(options =>
+                options.SerializerOptions.TypeInfoResolverChain.Insert(0, AcmeHttpSerializerContext.Default));
             services.AddScoped<IRequestValidationService, DefaultRequestValidationService>();
             services.AddScoped<INonceService, DefaultNonceService>();
             services.AddScoped<IAccountService, DefaultAccountService>();

@@ -6,6 +6,8 @@
         <OutputType>Exe</OutputType>
         <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
         <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+        <EFScaffoldModelStage>none</EFScaffoldModelStage>
+        <EFPrecompileQueriesStage>none</EFPrecompileQueriesStage>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -17,6 +19,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\opencertserver.data.postgresql\opencertserver.data.postgresql.csproj"/>
         <ProjectReference Include="..\opencertserver.acme.server\opencertserver.acme.server.csproj"/>
         <ProjectReference Include="..\opencertserver.ca.server\opencertserver.ca.server.csproj"/>
         <ProjectReference Include="..\opencertserver.est.server\opencertserver.est.server.csproj"/>
@@ -24,6 +27,7 @@
         <ProjectReference Include="..\opencertserver.contrib.intune\opencertserver.contrib.intune.csproj"/>
     </ItemGroup>
     <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tasks" PrivateAssets="All"/>
         <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens"/>
         <PackageReference Include="Microsoft.IdentityModel.Protocols"/>
         <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect"/>

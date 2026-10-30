@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// Represents an ACME account, including its key, contacts, status, and terms of service agreement.
@@ -30,6 +31,32 @@ public sealed class Account : IVersioned
         Contacts = contacts?.ToList();
         TosAccepted = tosAccepted;
         ExternalAccountId = externalAccountId;
+    }
+
+    /// <summary>
+    /// Hydrates an account from persisted storage, restoring the identity that the primary constructor
+    /// generates. Used by the relational store; the <see cref="JsonConstructorAttribute"/> marks the
+    /// parameterized shape the source-generated serializer context reconstructs from.
+    /// </summary>
+    [JsonConstructor]
+    internal Account(
+        string accountId,
+        JsonWebKey jwk,
+        List<string>? contacts,
+        DateTimeOffset? tosAccepted,
+        string? externalAccountId,
+        AccountStatus status,
+        string? accountUri,
+        long version)
+    {
+        AccountId = accountId;
+        Jwk = jwk;
+        Contacts = contacts;
+        TosAccepted = tosAccepted;
+        ExternalAccountId = externalAccountId;
+        Status = status;
+        AccountUri = accountUri;
+        Version = version;
     }
 
     /// <summary>

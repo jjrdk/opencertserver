@@ -28,6 +28,53 @@ you don't have to read handler source. The reasoning and the RFC citations for e
 
 ## Host perimeter and deployment configuration
 
+### Optional PostgreSQL persistence
+
+`opencertserver.data` implements the ACME account, order, nonce and external-account-key
+stores and the CA certificate inventory behind their existing interfaces without depending
+on a database engine. The optional `opencertserver.data.postgresql` dependency owns Npgsql,
+SQL, migrations and design-time tooling. Configure it before building the service provider;
+the standalone host selects storage modes and calls `AddPostgreSqlStore()` followed by
+`AddAcmeRelationalStore(configuration, "OpenCertServer")` and/or
+`AddCaRelationalStore(configuration, "OpenCertServer")` for the selected relational stores.
+Embedded hosts must register an `IRelationalStoreProvider` before selecting relational
+storage. No schema changes run automatically during server startup.
+
+| Key (environment form) | Default | Meaning |
+|---|---|---|
+| `AcmeServer__Persistence` | `memory` | `memory`, `file` (existing `AcmeFileStore` settings), or `relational` |
+| `Ca__Persistence` | `memory` | `memory` or `relational` |
+| `ConnectionStrings__OpenCertServer` | unset | Standard named connection string used by the standalone host and default migration tooling; supply through a secret provider |
+
+The mode settings belong to the standalone host, not the shared data registration API.
+Embedded hosts explicitly register relational stores with an `IConfiguration` and connection
+string name (`GetConnectionString`), or with a connection string directly.
+The old per-section relational connection keys and `OCS_RELATIONAL_CONN` fallback are not read.
+ACME and CA can select persistence independently. If both select relational storage,
+their connections must match because they share one context/schema. Unsupported host selections
+and missing connections/providers fail at registration rather than silently reverting to memory.
+Existing `ExternalAccountBinding:Keys` configuration still installs the host's read-only
+static external-account-key store; omit it when provisioning keys in the relational store.
+Embedded hosts can instead reference `opencertserver.data.mssql` and register
+`AddMsSqlStore()` from `OpenCertServer.Data.MsSql` before the same shared-store registrations.
+It owns SQL Server configuration, atomic SQL and separate migrations. The standalone host
+remains wired to PostgreSQL; it does not select an engine from a connection-string format.
+See [the MSSQL adapter](../src/opencertserver.data.mssql/README.md).
+Redis and further database providers are deferred.
+
+**Runtime support:** untrimmed JIT deployments. Native AOT is not qualified after the
+provider split; provider-specific compiled-model/query generation and runtime integration
+are still required. Apply migrations separately with a JIT deployment tool using the
+chosen adapter project, not the shared data project.
+
+Accounts, orders and external-account keys use optimistic version checks, raising the
+existing ACME `ConcurrencyException` for stale writes. Nonce consumption is one atomic
+SQL delete. Certificates are stored as public PEM only, with UTC validity/revocation dates;
+CA signing keys are **not** stored in this database.
+
+See [the PostgreSQL setup guide](getting-started.md#postgresql-persistence) for schema
+deployment, operational boundaries and the provider-table BDD tests.
+
 The standalone `opencertserver.certserver` host applies these policies to every protocol,
 including health checks:
 
