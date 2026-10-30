@@ -193,7 +193,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
 
         if (chainBuilt || await _x509ChainValidation.Validate(chain, cancellationToken).ConfigureAwait(false))
         {
-            await _certificateStore.AddCertificate(cert, cancellationToken).ConfigureAwait(false);
+            await _certificateStore.AddCertificate(cert, profile.Name, cancellationToken).ConfigureAwait(false);
             if (reenrollingFrom != null)
             {
                 await _certificateStore.RemoveCertificate(reenrollingFrom.SerialNumber, X509RevocationReason.Superseded,
