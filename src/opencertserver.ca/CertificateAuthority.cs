@@ -380,9 +380,10 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         CancellationToken cancellationToken = default)
     {
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
-        return profile.PublishedCertificateChain.Count > 0
-            ? profile.PublishedCertificateChain
-            : profile.CertificateChain;
+        return new X509Certificate2Collection(profile.CertificateChain
+            .Concat(profile.PublishedCertificateChain)
+            .DistinctBy(certificate => certificate.Thumbprint, StringComparer.OrdinalIgnoreCase)
+            .ToArray());
     }
 
     /// <inheritdoc/>

@@ -99,7 +99,16 @@ public partial class EstServer
                 ProfileSettings,
                 BasicUsers,
                 BasicUsersFile,
-                trustAnchors)
+                trustAnchors,
+                _context.TryGetValue("profileTrustAnchors", out var profileAnchors)
+                    ? profileAnchors as X509Certificate2Collection
+                    : null,
+                _context.TryGetValue("profileChainCertificates", out var profileChain)
+                    ? profileChain as X509Certificate2Collection
+                    : null,
+                _context.TryGetValue("estChainCertificates", out var commonChain)
+                    ? commonChain as X509Certificate2Collection
+                    : null)
             .Build();
         await host.StartAsync().ConfigureAwait(false);
         _server = host.GetTestServer();
@@ -124,7 +133,10 @@ public partial class EstServer
         ProfileSettings? rsaSettings = null,
         Dictionary<string, string>? basicUsers = null,
         string? basicUsersFile = null,
-        X509Certificate2Collection? estTrustAnchors = null)
+        X509Certificate2Collection? estTrustAnchors = null,
+        X509Certificate2Collection? profileTrustAnchors = null,
+        X509Certificate2Collection? profileChainCertificates = null,
+        X509Certificate2Collection? estChainCertificates = null)
     {
         var caProfiles = new CaProfileSet(
             "rsa",
@@ -140,7 +152,9 @@ public partial class EstServer
                  ?? [Oids.SubjectAltName, Oids.EnhancedKeyUsage, Oids.KeyUsage],
                 CertificatePolicies = rsaSettings?.CertificatePolicies ?? [],
                 KeyUsage = rsaSettings?.KeyUsage,
-                ExtendedKeyUsages = rsaSettings?.ExtendedKeyUsages
+                ExtendedKeyUsages = rsaSettings?.ExtendedKeyUsages,
+                TrustAnchors = profileTrustAnchors ?? [],
+                AdditionalChainCertificates = profileChainCertificates ?? []
             },
             new CaProfile
             {
@@ -188,8 +202,12 @@ public partial class EstServer
                                 [],
                                 []))
                         .AddEstServer<TestCsrAttributesLoader>()
-                                .AddEstTrustAnchors(estTrustAnchors ?? new X509Certificate2Collection())
-                                .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
+                        .AddEstTrustAnchors(options =>
+                        {
+                            options.TrustAnchors.AddRange(estTrustAnchors ?? []);
+                            options.AdditionalChainCertificates.AddRange(estChainCertificates ?? []);
+                        })
+                        .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
                         .ConfigureOptions<ConfigureOauthOptions>();
                 })
                 .Configure(app =>

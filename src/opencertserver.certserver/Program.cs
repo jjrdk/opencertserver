@@ -6,6 +6,7 @@ using OpenCertServer.Est.Server.TrustAnchor;
 namespace OpenCertServer.CertServer;
 
 using System.Security.Cryptography;
+using OpenCertServer.Ca.Utils;
 using OpenCertServer.Ca.Utils.Ca;
 using System.Linq;
 using System.Numerics;
@@ -547,7 +548,7 @@ internal static class Program
         return forwardedHeadersOptions;
     }
 
-    private static async Task<CaProfile> CreateProfile(
+    internal static async Task<CaProfile> CreateProfile(
         string[] args,
         IConfiguration configuration,
         string profileName,
@@ -556,27 +557,61 @@ internal static class Program
         string publishedArgument,
         Func<X509Certificate2, AsymmetricAlgorithm?> getPrivateKey)
     {
-        var certificate = await CreateCert(args, certArgument, keyArgument).ConfigureAwait(false);
+        using var certificate = await CreateCert(args, certArgument, keyArgument).ConfigureAwait(false);
         var privateKey = getPrivateKey(certificate)
          ?? throw new InvalidOperationException(
                 $"The certificate configured for profile '{profileName}' does not expose a compatible private key.");
-        var activeCertificate = X509Certificate2.CreateFromPem(certificate.ExportCertificatePem());
+        using var activeCertificate = X509Certificate2.CreateFromPem(certificate.ExportCertificatePem());
         var publishedCertificatePath =
             GetArgumentValue(args, publishedArgument) ?? configuration[$"{profileName}:PublishedPem"];
 
         return new CaProfile
         {
             Name = profileName,
-            CertificateChain = [activeCertificate],
-            PublishedCertificateChain = await LoadPublishedCertificateChain(publishedCertificatePath, activeCertificate)
+            CertificateChain = await LoadCertificateBundle(
+                args[Array.IndexOf(args, certArgument) + 1], activeCertificate).ConfigureAwait(false),
+            PublishedCertificateChain = await LoadCertificateBundle(publishedCertificatePath, activeCertificate)
                 .ConfigureAwait(false),
             CertificateValidity = TimeSpan.FromDays(90),
             CrlNumber = BigInteger.Zero,
             PrivateKey = privateKey,
             CertificatePolicies = ReadList(configuration, $"{profileName}:CertificatePolicies") ?? [],
             KeyUsage = ReadKeyUsage(configuration[$"{profileName}:KeyUsage"]),
-            ExtendedKeyUsages = ReadList(configuration, $"{profileName}:ExtendedKeyUsages")
+            ExtendedKeyUsages = ReadList(configuration, $"{profileName}:ExtendedKeyUsages"),
+            TrustAnchors = ReadProfileCaCertificates(configuration, $"{profileName}:TrustAnchors"),
+            AdditionalChainCertificates = ReadProfileCaCertificates(
+                configuration, $"{profileName}:AdditionalChainCertificates")
         };
+    }
+
+    private static X509Certificate2Collection ReadProfileCaCertificates(IConfiguration configuration, string key)
+    {
+        var section = configuration.GetSection(key);
+        var paths = section.GetChildren().Select(child => child.Value).OfType<string>().ToArray();
+        if (paths.Length == 0 && section.Value is { } path)
+        {
+            paths = [path];
+        }
+
+        X509Certificate2Collection certificates = [];
+        foreach (var certificatePath in paths)
+        {
+            X509Certificate2Collection imported = [];
+            imported.ImportFromPem(File.ReadAllText(certificatePath));
+            if (imported.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"CA profile setting '{key}' file '{certificatePath}' contains no PEM certificates.");
+            }
+
+            foreach (var certificate in imported)
+            {
+                certificate.ValidateCertificateAuthority();
+                AddUniqueCertificate(certificates, certificate);
+            }
+        }
+
+        return certificates;
     }
 
     /// <summary>
@@ -617,7 +652,7 @@ internal static class Program
             : null;
     }
 
-    private static async Task<X509Certificate2Collection> LoadPublishedCertificateChain(
+    private static async Task<X509Certificate2Collection> LoadCertificateBundle(
         string? certificateBundlePath,
         X509Certificate2 activeCertificate)
     {
@@ -632,7 +667,7 @@ internal static class Program
         if (importedCertificates.Count == 0)
         {
             throw new InvalidOperationException(
-                $"The published EST certificate bundle '{certificateBundlePath}' did not contain any PEM certificates.");
+                $"The CA certificate bundle '{certificateBundlePath}' did not contain any PEM certificates.");
         }
 
         X509Certificate2Collection publishedCertificates = [];
