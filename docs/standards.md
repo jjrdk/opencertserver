@@ -45,7 +45,7 @@ the one OpenCertServer's `est-enroll` CLI and `EstClient` wrap.
 | `GET /.well-known/est/csrattrs` | §4.5 (with [RFC 9908](#rst-9908--csr-attribute-templates)) | A `CsrAttributesResponse` in `application/csrattrs` telling the client which template to use. |
 | `POST /.well-known/est/simpleenroll` | §4.2 | Accepts PEM/DER PKCS#10; returns leaf+chain in `application/pkix-cert` or `application/pem-certificate-chain` via `Accept`. |
 | HTTP Basic authentication | §3.2.3 | Opt-in (`AddEstBasicAuthentication`): a user name and password over TLS, next to certificates and tokens. Off until users are configured; the identity is the user name; passwords are held as PBKDF2-SHA256 hashes. Tested in [EstBasicAuthentication.feature](../tests/opencertserver.est.server.tests/Features/EstBasicAuthentication.feature). |
-| Explicit client trust anchors | §3.3 | `certserver` can add explicitly configured PEM trust anchors for EST client-certificate authentication. The CA's own chain remains trusted; external anchors are not accepted on non-EST endpoints. |
+| Explicit client trust anchors | §3.3.2 | `CaProfile.TrustAnchors` and `AdditionalChainCertificates` scope client authentication to the selected profile. `IEstTrustAnchorProvider` adds only server-wide trust. Intermediates alone never establish trust; external anchors are not accepted on non-EST endpoints. |
 | `POST /.well-known/est/simplereenroll` | §4.2.3 | Re-enrolls using the current cert (mTLS) or a JWT. |
 | `POST /.well-known/est/serverkeygen` | §4.4 | Server generates the key on the client's behalf; returns a `multipart/mixed` bundle with the private key, optionally encrypted (see below). |
 | `/{profile}/…` | §3.2.2 | Per-profile variants of the above let one server act as multiple logical CAs. |
@@ -69,9 +69,13 @@ Endpoints are mapped in
 (`MapPost`/`MapGet` under `/.well-known/est`). The client is
 [`src/opencertserver.est.client/EstClient.cs`](../src/opencertserver.est.client/EstClient.cs)
 (`Enroll`, `ReEnroll`, `ServerCertificates`, `GetCsrAttributes`). Registration is
-`AddEstServer<TCsrTemplateLoader>()` → `UseEstServer()`. The server options and provider are
-`EstTrustAnchorOptions` and `IEstTrustAnchorProvider`; `certserver` reads PEM paths from
-`Est:ExplicitTrustAnchors` (or the `Est:TrustedClientCerts` alias).
+`AddEstServer<TCsrTemplateLoader>()` → `UseEstServer()`. Profile-specific trust is configured on
+`CaProfile` (`rsa:TrustAnchors` / `rsa:AdditionalChainCertificates`, likewise for `ecdsa`).
+`EstTrustAnchorOptions` and `IEstTrustAnchorProvider` are exclusively server-wide;
+`certserver` reads their PEM paths from `Est:ExplicitTrustAnchors` (or `Est:TrustedClientCerts`).
+Client-authentication anchors are separate from the section 4.1.3 `/cacerts` response:
+the selected profile's issuing chain is always published, together with any additional
+`PublishedCertificateChain` rollover certificates, without unrelated client-authentication roots.
 
 **Tests that prove it.**
 * [EstConformance.feature](../tests/opencertserver.certserver.tests/Features/EstConformance.feature) —
@@ -82,7 +86,9 @@ JWT), `Accept` negotiation, and RFC 9908 `CsrAttributes` responses.
 client-side enrollment against a live EST server (drives `EstClient.Enroll`).
 * [EstServer.feature](../tests/opencertserver.est.server.tests/Features/EstServer.feature) —
 endpoint-level server tests, including acceptance of a configured external client CA and refusal
-when that CA is not configured.
+when that CA is not configured; profile/default-profile isolation, server-wide client trust,
+intermediate-chain building without promoting intermediates to trust anchors, non-EST isolation,
+and exclusion of client-authentication roots from `/cacerts`.
 * [ReEnrollmentProfiles.feature](../tests/opencertserver.est.server.tests/Features/ReEnrollmentProfiles.feature) —
 re-enrollment stays within its recorded issuing profile even when profiles share a CA key/chain
 or identical permissions. Covers named/default EST routes, direct CA calls, revoked certificates,

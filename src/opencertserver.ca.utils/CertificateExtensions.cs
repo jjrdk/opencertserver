@@ -13,6 +13,26 @@ using System.Text;
 /// </summary>
 public static class CertificateExtensions
 {
+    /// <summary>
+    /// Rejects certificates that cannot be used as CA trust anchors or chain-building certificates.
+    /// </summary>
+    public static void ValidateCertificateAuthority(this X509Certificate2 certificate)
+    {
+        var constraints = certificate.Extensions.OfType<X509BasicConstraintsExtension>().FirstOrDefault();
+        if (constraints?.CertificateAuthority != true)
+        {
+            throw new ArgumentException(
+                $"The configured CA certificate '{certificate.Subject}' must have Basic Constraints CA:TRUE.");
+        }
+
+        var keyUsage = certificate.Extensions.OfType<X509KeyUsageExtension>().FirstOrDefault();
+        if (keyUsage is not null && !keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.KeyCertSign))
+        {
+            throw new ArgumentException(
+                $"The configured CA certificate '{certificate.Subject}' must permit certificate signing.");
+        }
+    }
+
     extension(X509Certificate2 cert)
     {
         /// <summary>

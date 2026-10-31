@@ -6,15 +6,16 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.Extensions.Options;
 using Est.Server;
+using OpenCertServer.Ca.Utils.Ca;
 
 public class ConfigureCertificateAuthenticationOptions :
     OpenCertServer.CertServer.ConfigureCertificateAuthenticationOptions,
     IPostConfigureOptions<CertificateAuthenticationOptions>
 {
     public ConfigureCertificateAuthenticationOptions(
-        Func<string?, CancellationToken, Task<X509Certificate2Collection>> certificates,
+        IStoreCaProfiles profiles,
         IEstTrustAnchorProvider trustAnchorProvider)
-        : base(certificates, trustAnchorProvider)
+        : base(profiles, trustAnchorProvider)
     {
     }
 

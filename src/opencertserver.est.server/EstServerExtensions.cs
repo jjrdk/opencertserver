@@ -45,7 +45,8 @@ public static class EstServerExtensions
         }
 
         /// <summary>
-        /// Registers explicit trust anchors used to authenticate EST client certificates.
+        /// Registers server-wide trust anchors used to authenticate EST clients across all profiles.
+        /// Profile-specific trust belongs on <see cref="CaProfile.TrustAnchors"/>.
         /// </summary>
         /// <param name="configure">Configures trust anchors and additional chain certificates.</param>
         /// <returns>The configured service collection.</returns>
@@ -59,7 +60,8 @@ public static class EstServerExtensions
         }
 
         /// <summary>
-        /// Registers explicit trust anchors used to authenticate EST client certificates.
+        /// Registers server-wide trust anchors used to authenticate EST clients across all profiles.
+        /// Profile-specific trust belongs on <see cref="CaProfile.TrustAnchors"/>.
         /// </summary>
         /// <param name="trustAnchors">The certificates that terminate trusted client chains.</param>
         /// <returns>The configured service collection.</returns>

@@ -14,6 +14,8 @@ public record CaProfile : IDisposable
     private AsymmetricAlgorithm _privateKey = null!;
     private X509Certificate2Collection _certificateChain = [];
     private X509Certificate2Collection _publishedCertificateChain = [];
+    private X509Certificate2Collection _trustAnchors = [];
+    private X509Certificate2Collection _additionalChainCertificates = [];
 
     /// <summary>
     /// Gets or sets the name of the CA profile.
@@ -39,13 +41,49 @@ public record CaProfile : IDisposable
     }
 
     /// <summary>
-    /// Gets the certificates that should be published to EST clients.
-    /// When empty, <see cref="CertificateChain"/> is published.
+    /// Gets additional certificates to publish to EST clients, including rollover certificates.
+    /// The issuing <see cref="CertificateChain"/> is always published (RFC 7030 section 4.1.3).
     /// </summary>
     public X509Certificate2Collection PublishedCertificateChain
     {
         get { return _publishedCertificateChain; }
         init { _publishedCertificateChain = value; }
+    }
+
+    /// <summary>
+    /// Gets additional explicit roots for EST client authentication against this profile (RFC 7030 section 3.3.2).
+    /// These do not replace the issuing chain and are not published by /cacerts.
+    /// </summary>
+    public X509Certificate2Collection TrustAnchors
+    {
+        get { return _trustAnchors; }
+        init
+        {
+            foreach (var certificate in value)
+            {
+                certificate.ValidateCertificateAuthority();
+            }
+
+            _trustAnchors = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets CA certificates used only to build EST client authentication chains for this profile.
+    /// These certificates do not independently establish trust and are not published by /cacerts.
+    /// </summary>
+    public X509Certificate2Collection AdditionalChainCertificates
+    {
+        get { return _additionalChainCertificates; }
+        init
+        {
+            foreach (var certificate in value)
+            {
+                certificate.ValidateCertificateAuthority();
+            }
+
+            _additionalChainCertificates = value;
+        }
     }
 
     /// <summary>
@@ -114,7 +152,8 @@ public record CaProfile : IDisposable
         _certificateChain = [newActiveCertificate];
         _publishedCertificateChain = rolloverCertificates;
 
-        DisposeReplacedMaterials(currentPrivateKey, oldCertificates, oldPublishedCertificates);
+        DisposeReplacedMaterials(currentPrivateKey, oldCertificates, oldPublishedCertificates,
+            TrustAnchors.Concat(AdditionalChainCertificates));
     }
 
     /// <summary>
@@ -131,29 +170,31 @@ public record CaProfile : IDisposable
         }
 
         _publishedCertificateChain = publishedCertificates;
-        DisposeRemovedPublishedCertificates(oldPublishedCertificates, publishedCertificates);
+        DisposeRemovedPublishedCertificates(oldPublishedCertificates,
+            new X509Certificate2Collection(publishedCertificates.Concat(TrustAnchors)
+                .Concat(AdditionalChainCertificates).ToArray()));
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
-        DisposeReplacedMaterials(PrivateKey, CertificateChain, PublishedCertificateChain);
+        DisposeReplacedMaterials(PrivateKey,
+            new X509Certificate2Collection(CertificateChain.Concat(TrustAnchors)
+                .Concat(AdditionalChainCertificates).ToArray()), PublishedCertificateChain);
         GC.SuppressFinalize(this);
     }
 
     private static void DisposeReplacedMaterials(
         AsymmetricAlgorithm privateKey,
         X509Certificate2Collection certificateChain,
-        X509Certificate2Collection publishedCertificateChain)
+        X509Certificate2Collection publishedCertificateChain,
+        IEnumerable<X509Certificate2>? retainedCertificates = null)
     {
         privateKey.Dispose();
-        foreach (var cert in certificateChain)
-        {
-            cert.Dispose();
-        }
-
-        var chainSet = new HashSet<X509Certificate2>(certificateChain, ReferenceEqualityComparer.Instance);
-        foreach (var cert in publishedCertificateChain.Where(cert => !chainSet.Contains(cert)))
+        var retained = new HashSet<X509Certificate2>(retainedCertificates ?? [], ReferenceEqualityComparer.Instance);
+        foreach (var cert in certificateChain.Concat(publishedCertificateChain)
+            .Distinct<X509Certificate2>(ReferenceEqualityComparer.Instance)
+            .Where(cert => !retained.Contains(cert)))
         {
             cert.Dispose();
         }

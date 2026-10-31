@@ -76,13 +76,20 @@ as environment variables `rsa__…`):
 
 | Key | Meaning |
 |---|---|
-| `PublishedPem` | Path of the PEM bundle published as the profile's CA chain (also `--rsa-published` / `--ec-published`). |
+| `PublishedPem` | Optional additional PEM certificates to publish alongside the issuing chain, e.g. rollover certificates (also `--rsa-published` / `--ec-published`). |
+| `TrustAnchors` | PEM file path or array of paths containing explicit roots for EST client authentication against this profile only. Every certificate in these files is explicitly trusted. Default: none beyond the issuing chain's roots. |
+| `AdditionalChainCertificates` | PEM file path or array of paths containing untrusted CA intermediates for this profile's EST client authentication. Does not establish trust. Default: none. |
 | `CertificatePolicies` | Policy OIDs the CA asserts in every certificate from this profile; an array section (`rsa__CertificatePolicies__0=…`) or one value with the OIDs separated by commas. Default: none. |
 | `KeyUsage` | Key usage flags fixed for every certificate, by name, several separated by commas (`DigitalSignature, KeyEncipherment`). Default: the CSR's. |
 | `ExtendedKeyUsages` | Extended key usage OIDs fixed for every certificate, array section or comma-separated. Default: the CSR's. |
 
 What the profile fixes replaces what the CSR asked for; see
 [Implemented standards → Certificate content fixed by the profile](standards.md#certificate-content-fixed-by-the-profile-certificatepolicies-keyusage-extendedkeyusages).
+
+The `--rsa` / `--ec` PEM file contains the active issuing certificate first, followed by its
+intermediate chain and root. All of these certificates populate `CaProfile.CertificateChain`.
+RFC 7030 section 4.1.3 requires `/cacerts` to include the current root and the intermediates needed
+to validate issued certificates: `PublishedCertificateChain` supplements, never replaces, that chain.
 
 **Key algorithms.** A profile signs requests of either key algorithm: an ECDSA profile issues for an
 RSA key and the reverse. The issued certificate keeps the request's key and carries the signature
@@ -152,17 +159,29 @@ chain is retrievable without authentication.
 
 ### EST client-certificate trust anchors
 
-The `certserver` host validates EST client certificates against its configured CA chain and may also
-trust external client CAs explicitly. Configure one or more PEM file paths under
-`Est:ExplicitTrustAnchors`; `Est:TrustedClientCerts` is accepted as an alias. A setting may be a
-single path or an array. If a PEM file contains a certificate chain, list intermediate certificates
-first and the CA trust-anchor certificate last. Trust anchors and additional chain certificates
+RFC 7030 section 3.3.2 defines the EST **server's** trust database used to authenticate clients.
+Configure profile-specific trust on `CaProfile.TrustAnchors` and
+`CaProfile.AdditionalChainCertificates` (or `rsa:TrustAnchors` / `rsa:AdditionalChainCertificates`
+and the equivalent `ecdsa` settings in `certserver`). The selected profile's issuing chain remains
+available: its self-issued root certificates establish trust; intermediates only help build paths.
+The unlabelled EST URL uses the default profile, not a union of all profiles' trust.
+
+Only certificates intentionally common to **every** EST profile belong in
+`IEstTrustAnchorProvider` / `AddEstTrustAnchors`. The host configures those using
+`Est:ExplicitTrustAnchors` (`Est:TrustedClientCerts` is an alias). These existing server-wide
+settings accept a single PEM path or an array; within each file, list intermediates first and the
+trust anchor last. Profile settings instead keep roots and intermediates in separate files/collections.
+Trust anchors and additional chain certificates
 must declare `Basic Constraints: CA:TRUE`; a present key-usage extension must permit certificate
 signing. Missing files, malformed PEM, files without certificates, or invalid CA certificates fail
 host startup rather than silently disabling the configured trust.
 
 ```json
 {
+  "rsa": {
+    "TrustAnchors": ["/etc/opencertserver/rsa-client-root.pem"],
+    "AdditionalChainCertificates": ["/etc/opencertserver/rsa-client-intermediate.pem"]
+  },
   "Est": {
     "ExplicitTrustAnchors": [
       "/etc/opencertserver/est-client-root.pem"
@@ -171,13 +190,21 @@ host startup rather than silently disabling the configured trust.
 }
 ```
 
-In environment-based configuration, use `Est__ExplicitTrustAnchors__0` for the first path.
+In environment-based configuration, use `rsa__TrustAnchors__0` for profile trust and
+`Est__ExplicitTrustAnchors__0` for server-wide trust.
 External anchors apply only to requests under `/.well-known/est`; CA and other endpoints continue
 to validate client certificates against the CA's own chain. The server still checks the client
 certificate's validity period and client-auth EKU, rejects CA certificates as client identities,
 and applies the configured certificate revocation mode. `certserver` does not cache certificate
 authentication results because trust is route-scoped; embedded hosts must not use a route-independent
 certificate-authentication cache with EST trust anchors.
+
+Client-authentication roots are **not** automatically published by `/cacerts`. Section 4.1.3
+describes the issuing CA trust that clients use to validate issued certificates and subsequently
+authenticate the EST server, not all third-party CAs permitted to enroll. Configure that publication
+through `CaProfile.CertificateChain` and `PublishedCertificateChain`; the EST TLS certificate must
+chain to the advertised issuing trust when clients switch to explicit trust. This refactor does
+not enable OS/implicit client trust or change enrollment authorization policy.
 
 ### GET /.well-known/est/cacerts
 

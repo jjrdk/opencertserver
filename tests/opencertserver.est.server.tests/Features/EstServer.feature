@@ -176,3 +176,61 @@ Feature: Certificate server compliance with EST (RFC 7030)
         And the external client certificate accesses a non-EST route
         Then the server returns a signed certificate
         And the client is not authenticated on the non-EST route
+
+    Scenario: A profile trust anchor authenticates its own and the default profile only
+        Given an EST server with an external client trust anchor only in the rsa profile
+        When a client certificate from the external CA enrolls in profile "rsa"
+        Then the server returns a signed certificate
+        When the default profile is requested by the external client
+        And a client certificate from the external CA enrolls in profile "ecdsa"
+        Then the enrollment is refused
+
+    Scenario: A profile trust anchor does not authenticate a client on a non-EST route
+        Given an EST server with an external client trust anchor only in the rsa profile
+        When a client certificate from the external CA enrolls
+        And the external client certificate accesses a non-EST route
+        Then the server returns a signed certificate
+        And the client is not authenticated on the non-EST route
+
+    Scenario Outline: Server-wide trust anchors apply to every profile
+        Given an EST server configured with an external client trust anchor
+        When a client certificate from the external CA enrolls in profile "<profile>"
+        Then the server returns a signed certificate
+        And cacerts publishes the issuing chain but not the external client trust anchor for profile "<profile>"
+
+        Examples:
+          | profile |
+          | rsa     |
+          | ecdsa   |
+
+    Scenario: Profile client trust anchors are not published as issuing trust
+        Given an EST server with an external client trust anchor only in the rsa profile
+        Then cacerts publishes the issuing chain but not the external client trust anchor for profile "rsa"
+
+    Scenario Outline: Explicit roots and untrusted intermediates have distinct roles
+        Given an EST server with an external client intermediate and "<trust>" trust
+        When a client certificate from the external CA enrolls in profile "<profile>"
+        Then the server returns a signed certificate
+
+        Examples:
+          | trust               | profile |
+          | profile             | rsa     |
+          | server-wide         | rsa     |
+          | server-wide         | ecdsa   |
+          | shared root         | rsa     |
+          | shared intermediate | rsa     |
+
+    Scenario: An additional chain certificate does not independently establish trust
+        Given an EST server with an external client intermediate and "no root" trust
+        When a client certificate from the external CA enrolls
+        Then the enrollment is refused
+
+    Scenario: A profile intermediate cannot leak trust into another profile
+        Given an EST server with an external client intermediate and "profile" trust
+        When a client certificate from the external CA enrolls in profile "ecdsa"
+        Then the enrollment is refused
+
+    Scenario: A shared intermediate does not share a profile-specific trust anchor
+        Given an EST server with an external client intermediate and "shared intermediate" trust
+        When a client certificate from the external CA enrolls in profile "ecdsa"
+        Then the enrollment is refused
