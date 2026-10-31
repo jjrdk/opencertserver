@@ -3,7 +3,8 @@ using System.Security.Cryptography.X509Certificates;
 namespace OpenCertServer.Est.Server.TrustAnchor;
 
 /// <summary>
-/// Explicit client trust anchors and intermediate certificates used by EST certificate authentication.
+/// Server-wide client trust anchors and intermediate certificates shared by every EST profile.
+/// Configure profile-specific trust on <see cref="OpenCertServer.Ca.Utils.Ca.CaProfile"/> instead.
 /// </summary>
 public sealed class EstTrustAnchorOptions
 {

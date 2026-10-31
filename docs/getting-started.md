@@ -374,12 +374,7 @@ services.AddAcmeServer(configuration)
 // 5. Authentication — both certificate (mTLS) and JWT bearer are supported
 services.AddAuthentication()
         .AddJwtBearer()
-        .AddCertificate()
-        .AddCertificateCache(options =>
-        {
-          options.CacheSize = 1024;
-          options.CacheEntryExpiration = TimeSpan.FromMinutes(5);
-        });
+        .AddCertificate();
 
 // 6. Authorization — registers the default "ca_revoke" policy for DELETE /ca/revoke.
 //    Pass a configure action to tighten the policy further (e.g. require a specific scheme).
@@ -390,6 +385,15 @@ services.AddCertificateAuthorityAuthorization();
 // services.AddCertificateAuthorityAuthorization(p => p.RequireAuthenticatedUser()
 //     .AddAuthenticationSchemes(CertificateAuthenticationDefaults.AuthenticationScheme));
 ```
+
+For profile-specific EST client trust, configure `CaProfile.TrustAnchors` and
+`CaProfile.AdditionalChainCertificates`; the latter supplies intermediates, not trust roots.
+Use `AddEstTrustAnchors(...)` only for certificates common to every EST profile.
+The `certserver` certificate-authentication configuration resolves the selected profile on
+each request. Do not add a route-independent certificate-authentication cache to that setup:
+an authentication result for one profile must not be reused for another.
+See [EST client-certificate trust anchors](documentation.md#est-client-certificate-trust-anchors)
+for PEM and environment configuration and the distinction from `/cacerts` publication.
 
 ```csharp
 app.UseHttpsRedirection()

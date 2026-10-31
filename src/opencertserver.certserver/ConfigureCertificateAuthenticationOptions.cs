@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Est.Server;
+using OpenCertServer.Ca.Utils.Ca;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.Extensions.Options;
 
@@ -23,14 +24,14 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
         KeyValuePair.Create("C", ClaimTypes.Country)
     ]);
 
-    private readonly Func<string?, CancellationToken, Task<X509Certificate2Collection>> _certificates;
+    private readonly IStoreCaProfiles _profiles;
     private readonly IEstTrustAnchorProvider _trustAnchorProvider;
 
     public ConfigureCertificateAuthenticationOptions(
-        Func<string?, CancellationToken, Task<X509Certificate2Collection>> certificates,
+        IStoreCaProfiles profiles,
         IEstTrustAnchorProvider trustAnchorProvider)
     {
-        _certificates = certificates;
+        _profiles = profiles;
         _trustAnchorProvider = trustAnchorProvider;
     }
 
@@ -39,11 +40,13 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
         options.AllowedCertificateTypes = CertificateTypes.Chained;
         options.ValidateCertificateUse = true;
         options.ValidateValidityPeriod = true;
-        var certificates = _certificates(null, CancellationToken.None).GetAwaiter().GetResult();
+        var profile = _profiles.GetProfile(null, CancellationToken.None).GetAwaiter().GetResult();
+        var certificates = profile.CertificateChain;
         options.AdditionalChainCertificates.Clear();
         options.AdditionalChainCertificates.AddRange(certificates);
         options.CustomTrustStore.Clear();
-        options.CustomTrustStore.AddRange(certificates);
+        AddIssuingRoots(options.CustomTrustStore, certificates);
+        options.CustomTrustStore.AddRange(profile.TrustAnchors);
         foreach (var anchor in _trustAnchorProvider.TrustAnchors)
         {
             options.CustomTrustStore.Add(anchor);
@@ -112,7 +115,8 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
         }
 
         var profileName = httpContext.Request.RouteValues["profileName"] as string;
-        var caCertificates = await _certificates(profileName, httpContext.RequestAborted).ConfigureAwait(false);
+        var profile = await _profiles.GetProfile(profileName, httpContext.RequestAborted).ConfigureAwait(false);
+        var caCertificates = profile.CertificateChain;
         var isEstRequest = IsEstRequest(httpContext.Request.Path);
         var chainPolicy = new X509ChainPolicy
         {
@@ -122,10 +126,12 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
             VerificationFlags = X509VerificationFlags.NoFlag
         };
         chainPolicy.ApplicationPolicy.Add(new Oid("1.3.6.1.5.5.7.3.2"));
-        chainPolicy.CustomTrustStore.AddRange(caCertificates);
+        AddIssuingRoots(chainPolicy.CustomTrustStore, caCertificates);
         chainPolicy.ExtraStore.AddRange(caCertificates);
         if (isEstRequest)
         {
+            chainPolicy.CustomTrustStore.AddRange(profile.TrustAnchors);
+            chainPolicy.ExtraStore.AddRange(profile.AdditionalChainCertificates);
             foreach (var anchor in _trustAnchorProvider.TrustAnchors)
             {
                 chainPolicy.CustomTrustStore.Add(anchor);
@@ -155,6 +161,19 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
         return string.IsNullOrEmpty(chainErrors)
             ? "Certificate chain validation failed."
             : $"Certificate chain validation failed: {chainErrors}";
+    }
+
+    private static void AddIssuingRoots(
+        X509Certificate2Collection roots,
+        X509Certificate2Collection certificates)
+    {
+        foreach (var certificate in certificates)
+        {
+            if (certificate.SubjectName.RawData.AsSpan().SequenceEqual(certificate.IssuerName.RawData))
+            {
+                roots.Add(certificate);
+            }
+        }
     }
 
     private static bool IsEstRequest(PathString path) =>

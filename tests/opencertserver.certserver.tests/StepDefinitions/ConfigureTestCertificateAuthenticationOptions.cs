@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.Extensions.Options;
 using OpenCertServer.Est.Server;
 using OpenCertServer.Est.Server.TrustAnchor;
+using OpenCertServer.Ca.Utils.Ca;
 
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
@@ -11,9 +12,9 @@ public class ConfigureTestCertificateAuthenticationOptions :
     IPostConfigureOptions<CertificateAuthenticationOptions>
 {
     public ConfigureTestCertificateAuthenticationOptions(
-        Func<string?, CancellationToken, Task<X509Certificate2Collection>> certificates,
+        IStoreCaProfiles profiles,
         IEstTrustAnchorProvider trustAnchorProvider)
-        : base(certificates, trustAnchorProvider)
+        : base(profiles, trustAnchorProvider)
     {
     }
 

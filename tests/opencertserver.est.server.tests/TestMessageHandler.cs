@@ -39,7 +39,7 @@ public sealed class TestMessageHandler : HttpMessageHandler
                     ctx.Request.Scheme = request.RequestUri.Scheme;
                 }
 
-                ctx.Request.Method = HttpMethod.Post.Method;
+                ctx.Request.Method = request.Method.Method;
                 ctx.Request.Path = request.RequestUri?.PathAndQuery;
                 if (_certificate != null)
                 {
