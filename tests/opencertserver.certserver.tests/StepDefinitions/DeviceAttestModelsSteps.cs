@@ -3,6 +3,7 @@ namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 using System.Text.Json;
 using OpenCertServer.Acme.Abstractions.Model;
 using OpenCertServer.Acme.Abstractions.Services;
+using OpenCertServer.Acme.Server.Services;
 using Reqnroll;
 using Xunit;
 
@@ -112,17 +113,25 @@ public sealed class DeviceAttestModelsSteps
         Assert.Equal(expected, _answer.DeviceId);
     }
 
-    [When(@"I inspect the IValidateDeviceAttestChallenges type via reflection")]
-    public void WhenIInspectTheInterfaceViaReflection()
+    [When(@"I inspect the DeviceAttestChallengeValidator type via reflection")]
+    public void WhenIInspectTheValidatorViaReflection()
     {
-        // No state needed; the Then step does the inspection
+        // No state needed; the Then steps do the inspection
     }
 
     [Then(@"it implements IValidateChallenges")]
     public void ThenItImplementsIValidateChallenges()
     {
         Assert.True(
-            typeof(IValidateChallenges).IsAssignableFrom(typeof(IValidateDeviceAttestChallenges)),
-            "IValidateDeviceAttestChallenges must extend IValidateChallenges");
+            typeof(IValidateChallenges).IsAssignableFrom(typeof(DeviceAttestChallengeValidator)),
+            "DeviceAttestChallengeValidator must implement IValidateChallenges");
+    }
+
+    [Then(@"IValidateChallenges declares an AppliesTo discriminator property")]
+    public void ThenIValidateChallengesDeclaresAppliesTo()
+    {
+        var appliesTo = typeof(IValidateChallenges).GetProperty("AppliesTo");
+        Assert.NotNull(appliesTo);
+        Assert.Equal(typeof(string), appliesTo!.PropertyType);
     }
 }

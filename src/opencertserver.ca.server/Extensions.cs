@@ -116,7 +116,7 @@ public static class Extensions
                     chainValidation ?? new ValidateAll(),
                     certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
                     sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                    [.. sp.GetServices<IValidateCertificateRequests>()]));
+                    sp.GetRequiredService<IValidatorPipeline>()));
         }
 
         /// <summary>
@@ -141,7 +141,7 @@ public static class Extensions
                     chainValidation ?? new ValidateAll(),
                     certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
                     sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                    [.. sp.GetServices<IValidateCertificateRequests>()]));
+                    sp.GetRequiredService<IValidatorPipeline>()));
         }
 
         /// <summary>
@@ -205,7 +205,7 @@ public static class Extensions
                         chainValidation ?? new ValidateAll(),
                         certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
                         logger,
-                        validators: [.. sp.GetServices<IValidateCertificateRequests>()]);
+                        sp.GetRequiredService<IValidatorPipeline>());
                     return certificateAuthority;
                 });
         }
@@ -219,6 +219,11 @@ public static class Extensions
             services.AddSingleton<IValidateCertificateRequests, KeyCrlSignatureValidation>();
             services.AddSingleton<IValidateCertificateRequests, AuthenticatedSubjectValidation>();
             services.AddSingleton<ICertificateRequestValueConverter, AuthenticatedSubjectRequestValueConverter>();
+
+            // Assemble the phased validator pipeline (T09) from the registered request validators. The five historical
+            // validators run in the Issuance phase in registration order, in aggregate (run-all, join-errors) mode, so
+            // behaviour is unchanged; operators can add more validators via AddValidator<T> or disable one via config.
+            services.AddValidatorPipeline();
             return services;
         }
 

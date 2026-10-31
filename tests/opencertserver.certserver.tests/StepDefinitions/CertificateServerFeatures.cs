@@ -202,9 +202,18 @@ public partial class CertificateServerFeatures
             services.AddSingleton(sp => new DefaultIssuer(sp.GetRequiredService<ICertificateAuthority>()));
             services.AddSingleton(sp => new TestAcmeIssuer(sp.GetRequiredService<DefaultIssuer>()));
             services.AddSingleton<TestAcmeChallengeValidationState>();
-            services.AddSingleton<IValidateHttp01Challenges, TestAcmeHttp01ChallengeValidator>();
-            services.AddSingleton<IValidateDns01Challenges, TestAcmeDns01ChallengeValidator>();
-            services.AddSingleton<IValidateDeviceAttestChallenges, TestAcmeDeviceAttestChallengeValidator>();
+            // The factory resolves IValidateChallenges as a collection and routes by AppliesTo,
+            // so remove the production validator registrations and add the test doubles instead
+            // (one per challenge type) so the test controls validation via TestAcmeChallengeValidationState.
+            for (var i = services.Count - 1; i >= 0; i--)
+            {
+                if (services[i].ServiceType == typeof(IValidateChallenges))
+                    services.RemoveAt(i);
+            }
+
+            services.Add(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeHttp01ChallengeValidator>());
+            services.Add(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeDns01ChallengeValidator>());
+            services.Add(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeDeviceAttestChallengeValidator>());
             services.Replace(ServiceDescriptor.Singleton<IIssueCertificates>(sp => sp.GetRequiredService<TestAcmeIssuer>()));
             storage.Register(services);
         }

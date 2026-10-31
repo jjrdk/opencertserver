@@ -9,11 +9,14 @@ using System.Threading.Tasks;
 using Abstractions.Model;
 using Abstractions.Services;
 using CertesSlim.Acme;
+using ChallengeTypes = CertesSlim.Acme.Resource.ChallengeTypes;
 using DnsClientX;
 using Microsoft.IdentityModel.Tokens;
 
-public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidateHttp01Challenges
+public sealed class ValidateHttp01Challenges : TokenChallengeValidator
 {
+    public override string AppliesTo => ChallengeTypes.Http01;
+
     private readonly HttpClient _httpClient;
     private readonly ICaaValidator _caaValidator;
     private readonly IDnsResolver _dnsResolver;

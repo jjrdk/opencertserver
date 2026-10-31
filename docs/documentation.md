@@ -294,6 +294,23 @@ for the client setup sample.
   profile material (keys, chains, validity) never crosses the wire. The RA host exposes this to its
   own clients as `GET /ra/profiles`.
 
+### Validators framework configuration
+
+The CA issuance path runs a phased validator pipeline (see
+[Implemented standards → Validators framework](standards.md#validators-framework-phased-pipeline)).
+The `Validators` section binds the phase order and per-validator settings (environment variables use
+the `Validators__…` double-underscore hierarchy):
+
+| Key | Meaning | Default |
+|---|---|---|
+| `Validators__Phases` | The phase order the pipeline runs (`Approval`, `Data`, `Issuance`, `PreSign`, `Post`). | The canonical fixed order `Approval, Data, Issuance, PreSign, Post`. |
+| `Validators__<Name>__Enabled` | When `false`, the validator is skipped. | `true`. |
+| `Validators__<Name>__Phase` | Override the validator's phase. | The phase it was registered at. |
+| `Validators__<Name>__Order` | Override the validator's within-phase order (lower runs first). | The order it was registered at. |
+
+`<Name>` is the validator's registration name (the type name by default, or the `name` passed to
+`AddValidator<T>`). No secret values are read here.
+
 ### GET /ca/crl
 
 - Description: Retrieve the current Certificate Revocation List for the CA (or a profile).

@@ -573,7 +573,8 @@ and Apple Secure Element so the ACME server can talk to any of them behind `IAtt
 * Model: `src/opencertserver.acme.abstractions/Model/DeviceAttestChallengeAnswer.cs`,
    `Challenge.cs` (challenge `type` field).
 * Interfaces: `src/opencertserver.acme.abstractions/Services/IAttestationTrustProvider.cs`,
-   `IValidateDeviceAttestChallenges.cs`.
+   `IValidateChallenges.cs` (unified validator; the `AppliesTo` discriminator replaces the
+   per-type marker interfaces).
 * Server-side validator: `src/opencertserver.acme.server/Services/DeviceAttestChallengeValidator.cs`,
    `StaticAttestationTrustProvider.cs`, `DefaultChallengeValidatorFactory.cs`,
    `DefaultAuthorizationFactory.cs`.
@@ -609,6 +610,47 @@ and Apple Secure Element so the ACME server can talk to any of them behind `IAtt
    JSON round-trip of `DeviceAttestChallengeAnswer`.
 * `tests/opencertserver.attestation.Tests` — platform-specific coverage (AMD SEV-SNP, Intel SGX,
    Apple SE, `GlobalServiceMapping`, `TrustStore`, `TrustStoreEdgeCases`, `Config`).
+
+### Validators framework (phased pipeline)
+
+**What it is.** A minimal, extensible, **phased** request-validation pipeline (T09) that the CA
+issuance path runs before and after signing. It generalises the historical
+`IValidateCertificateRequests` chain into an ordered, phase-aware pipeline so new validators
+(T10–T12) and CAs plug in without invasive changes. It is AOT-friendly (no runtime
+`Enum.GetValues`) and additive: the default CA behaviour is unchanged.
+
+* **Phases.** `ValidatorPhase` fixes the order `Approval → Data → Issuance → PreSign → Post`. The
+  pre-sign phases (`Approval`..`PreSign`) run before the request is signed; `Post` runs after signing,
+  on the issued certificate (`ValidatorContext.IssuedCertificate`). The default phase order is
+  `ValidatorPipeline.DefaultPhaseOrder`.
+* **Context / result.** Each validator receives a `ValidatorContext` (request, profile, requestor,
+  re-enrollment source, T03 request-id, and the running annotation list) and returns a
+  `ValidationResult`: `Passed` (no objection), `Reject(reason)` (default **short-circuit** — later
+  phases stop), `Error(reason)` (rejected but **aggregate** — recorded, pipeline continues), or
+  `NeedsApproval(reason)` (records `needs-approval`, wired by T04).
+* **Wiring the existing validators.** The five existing
+  `IValidateCertificateRequests` validators (`CaExtensionValidation`, `OwnCertificateValidation`,
+  `DistinguishedNameValidation`, `KeyCrlSignatureValidation`, `AuthenticatedSubjectValidation`) are
+  registered directly in `ValidatorPhase.Issuance`. The interface's default pipeline overload maps
+  their existing error-string result to a non-short-circuiting rejection, so every validator runs and
+  their errors are joined — preserving the pre-pipeline behaviour.
+* **Short-circuit vs. aggregate.** A `ValidationResult.ShortCircuit` rejection stops the pipeline; a
+  non-short-circuiting rejection is recorded and the pipeline continues.
+* **Where it lives.** `src/opencertserver.ca.utils/Ca/` — `IValidateCertificateRequests`,
+  `IValidatorPipeline`, `ValidatorPipeline`, `ValidatorRegistration`, `ValidatorContext`,
+  `ValidationResult`/`ValidationOutcome`.
+  `ca.server/Extensions.cs` builds the pipeline; `ca/CertificateAuthority.cs` calls
+  `pipeline.Run(context)` (pre-sign) and `pipeline.RunPost(context)` (post-issue).
+* **DI + config.** `ValidatorPipelineExtensions` exposes `AddValidator<T>(phase, order)`,
+  `AddCertificateRequestValidator<T>(name, phase, order)`, and `AddValidatorPipeline(options)`. Both
+  registration helpers accept `IValidateCertificateRequests` implementations. The
+  `Validators` section binds `Validators__Phases` (phase order) and `Validators__<Name>__Enabled` /
+  `__Phase` / `__Order` per validator.
+
+**Proved by** [ValidatorPipeline.feature](../tests/opencertserver.ca.tests/Features/ValidatorPipeline.feature)
+(a Data-phase rejection prevents later-phase validators from running; a short-circuiting validator stops
+the pipeline) and the existing `DistinguishedName` / `CaExtension` / `AuthenticatedSubject` /
+`OwnCertificate` / `KeyCrlSignature` suites (no behavioural regression).
 
 ### Supporting encodings
 

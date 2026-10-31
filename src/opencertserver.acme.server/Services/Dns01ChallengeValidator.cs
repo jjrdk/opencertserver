@@ -10,12 +10,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using Abstractions.Model;
 using Abstractions.Services;
+using ChallengeTypes = CertesSlim.Acme.Resource.ChallengeTypes;
 using DnsClientX;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 
-public sealed partial class ValidateDns01Challenges : TokenChallengeValidator, IValidateDns01Challenges
+public sealed partial class ValidateDns01Challenges : TokenChallengeValidator
 {
+    public override string AppliesTo => ChallengeTypes.Dns01;
+
     private readonly ILogger<ValidateDns01Challenges> _logger;
     private readonly IDnsResolver _client;
     private readonly ICaaValidator _caaValidator;

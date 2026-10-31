@@ -77,13 +77,13 @@ public static class ServiceCollectionExtensions
 
             if (httpClient == null)
             {
-                services.AddHttpClient<IValidateHttp01Challenges, ValidateHttp01Challenges>()
+                services.AddHttpClient<IValidateChallenges, ValidateHttp01Challenges>()
                     .ConfigurePrimaryHttpMessageHandler(SsrfBlockingSocketsHandler.Create)
                     .ConfigureHttpClient(client => client.Timeout = acmeServerOptions.UrlRetrievalTimeout);
             }
             else
             {
-                services.AddTransient<IValidateHttp01Challenges>(sp =>
+                services.AddTransient<IValidateChallenges>(sp =>
                 {
                     var dnsResolver = sp.GetRequiredService<IDnsResolver>();
                     return new ValidateHttp01Challenges(
@@ -130,10 +130,10 @@ public static class ServiceCollectionExtensions
                     sp.GetRequiredService<ILogger<MultiPerspectiveDnsResolver>>());
             });
             services.AddScoped<ICaaValidator, CaaValidator>();
-            services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();
+            services.AddScoped<IValidateChallenges, ValidateDns01Challenges>();
             services.AddSingleton<IAttestationTrustProvider>(
                 new StaticAttestationTrustProvider([]));
-            services.AddScoped<IValidateDeviceAttestChallenges, DeviceAttestChallengeValidator>();
+            services.AddScoped<IValidateChallenges, DeviceAttestChallengeValidator>();
             services.AddScoped<IChallengeValidatorFactory, DefaultChallengeValidatorFactory>();
 
             services.AddHostedService<HostedValidationService>();

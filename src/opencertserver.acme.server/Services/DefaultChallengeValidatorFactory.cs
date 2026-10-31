@@ -1,39 +1,34 @@
-﻿using CertesSlim.Acme.Resource;
+using CertesSlim.Acme.Resource;
 
 namespace OpenCertServer.Acme.Server.Services;
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Abstractions.Model;
 using Abstractions.Services;
 
+/// <summary>
+/// Routes an <see cref="Challenge"/> to the <see cref="IValidateChallenges"/> whose
+/// <see cref="IValidateChallenges.AppliesTo"/> matches <see cref="Challenge.Type"/>. The per-type marker
+/// interfaces were removed in favour of this single discriminator, so all challenge validators are registered
+/// as <see cref="IValidateChallenges"/> and resolved as a collection.
+/// </summary>
 public sealed class DefaultChallengeValidatorFactory : IChallengeValidatorFactory
 {
-    private readonly IValidateHttp01Challenges _validateHttp01Challenges;
-    private readonly IValidateDns01Challenges _validateDns01Challenges;
-    private readonly IValidateDeviceAttestChallenges _validateDeviceAttestChallenges;
+    private readonly IReadOnlyList<IValidateChallenges> _validators;
 
-    public DefaultChallengeValidatorFactory(
-        IValidateHttp01Challenges validateHttp01Challenges,
-        IValidateDns01Challenges validateDns01Challenges,
-        IValidateDeviceAttestChallenges validateDeviceAttestChallenges)
+    public DefaultChallengeValidatorFactory(IEnumerable<IValidateChallenges> validators)
     {
-        _validateHttp01Challenges = validateHttp01Challenges;
-        _validateDns01Challenges = validateDns01Challenges;
-        _validateDeviceAttestChallenges = validateDeviceAttestChallenges;
+        ArgumentNullException.ThrowIfNull(validators);
+        _validators = validators.ToList();
     }
 
     public IValidateChallenges GetValidator(Challenge challenge)
     {
         ArgumentNullException.ThrowIfNull(challenge);
 
-        IValidateChallenges validator = challenge.Type switch
-        {
-            ChallengeTypes.Http01 => _validateHttp01Challenges,
-            ChallengeTypes.Dns01 => _validateDns01Challenges,
-            ChallengeTypes.DeviceAttest01 => _validateDeviceAttestChallenges,
-            _ => throw new InvalidOperationException("Unknown Challenge Type")
-        };
-
-        return validator;
+        var validator = _validators.FirstOrDefault(v => v.AppliesTo == challenge.Type);
+        return validator ?? throw new InvalidOperationException("Unknown Challenge Type");
     }
 }

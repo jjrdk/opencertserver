@@ -651,6 +651,35 @@ standalone host's opt-in settings.
 See the [Documentation index](documentation.md) for request/response detail and
 [Implemented standards](standards.md) for the behaviour each endpoint guarantees.
 
+### Adding a validator to the pipeline
+
+The CA issuance path runs a **phased validator pipeline** before (and, for `Post`, after) signing
+(see [Implemented standards → Validators framework](standards.md#validators-framework-phased-pipeline)).
+Add your own check by implementing `IValidateCertificateRequests` and registering it at a phase:
+
+```csharp
+public sealed class RequireCnValidator : IValidateCertificateRequests
+{
+    public Task<ValidationResult> Validate(ValidatorContext ctx, CancellationToken ct = default)
+        => Task.FromResult(string.IsNullOrWhiteSpace(ctx.Request.Subject.CN)
+            ? ValidationResult.Reject("Common name is required")   // short-circuits later phases
+            : ValidationResult.Passed);
+}
+
+// in your Add*Server wiring, before AddValidatorPipeline():
+services.AddSingleton<RequireCnValidator>();
+services.AddValidator<RequireCnValidator>(ValidatorPhase.Data, order: 10);
+services.AddValidatorPipeline();   // assembles IValidatorPipeline from all registrations
+```
+
+Registering is additive: the five existing request validators run in the `Issuance` phase in aggregate
+mode. The interface's default pipeline overload maps their existing error-string result to
+`ValidationResult`, so adding a validator does not change their behaviour. A
+`ValidationResult.Reject` stops the pipeline (short-circuit); `ValidationResult.Error` records the
+rejection and continues; `ValidationResult.NeedsApproval` tags the request for human approval.
+Prove the routing with
+[ValidatorPipeline.feature](../tests/opencertserver.ca.tests/Features/ValidatorPipeline.feature).
+
 ---
 
 ## 7. Device attestation (`device-attest-01`)

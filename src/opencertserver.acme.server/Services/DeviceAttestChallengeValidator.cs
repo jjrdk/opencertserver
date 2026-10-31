@@ -1,4 +1,5 @@
 using CertesSlim.Acme;
+using ChallengeTypes = CertesSlim.Acme.Resource.ChallengeTypes;
 
 namespace OpenCertServer.Acme.Server.Services;
 
@@ -18,8 +19,10 @@ using Tpm2Lib;
 /// Checks: nonce match → TPM quote structure → AIK signature → AIK certificate chain.
 /// See: https://smallstep.com/blog/build-your-own-device-identity-solution/
 /// </summary>
-public sealed class DeviceAttestChallengeValidator : IValidateDeviceAttestChallenges, IDisposable
+public sealed class DeviceAttestChallengeValidator : IValidateChallenges, IDisposable
 {
+    public string AppliesTo => ChallengeTypes.DeviceAttest01;
+
     private readonly IAttestationTrustProvider _trustProvider;
 
     // S-III: Track consumed nonces to prevent replay attacks.
