@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Net;
 using Microsoft.AspNetCore.Http;
 using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Ca.Server.RegistrationAuthority;
 using Utils.X509Extensions;
 
 public static class CsrHandler
@@ -18,12 +19,13 @@ public static class CsrHandler
     /// define makes the generated request delegate throw before the handler runs.
     /// </summary>
     public static Task<IResult> Handle(
+        HttpContext context,
         ClaimsPrincipal user,
         ICertificateAuthority ca,
         [FromBody] Stream body,
         CancellationToken cancellationToken)
     {
-        return HandleProfile(null, user, ca, body, cancellationToken);
+        return HandleProfile(null, context, user, ca, body, cancellationToken);
     }
 
     /// <summary>
@@ -31,6 +33,7 @@ public static class CsrHandler
     /// </summary>
     public static async Task<IResult> HandleProfile(
         [FromRoute] string? profileName,
+        HttpContext context,
         ClaimsPrincipal user,
         ICertificateAuthority ca,
         [FromBody] Stream body,
@@ -43,7 +46,25 @@ public static class CsrHandler
         {
             using var reader = new StreamReader(body);
             var csrPem = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-            var certResponse = await ca.SignCertificateRequestPem(csrPem, profileName, user.Identity as ClaimsIdentity,
+            var requestor = user.Identity as ClaimsIdentity;
+            if (context.Request.Headers.TryGetValue(RaClaimTypes.DelegatedSubjectHeader, out var scopes))
+            {
+                if (scopes.Count != 1 || string.IsNullOrWhiteSpace(scopes[0]) ||
+                    requestor?.FindFirst(RaClaimTypes.RaId) == null)
+                {
+                    return Results.BadRequest("A delegated-subject selector is valid only for an authenticated RA.");
+                }
+
+                var claims = requestor.Claims.ToList();
+                claims.Add(new Claim(RaClaimTypes.DelegatedSubject, scopes[0]!));
+                requestor = new ClaimsIdentity(
+                    claims,
+                    requestor.AuthenticationType,
+                    requestor.NameClaimType,
+                    requestor.RoleClaimType);
+            }
+
+            var certResponse = await ca.SignCertificateRequestPem(csrPem, profileName, requestor,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             if (certResponse is SignCertificateResponse.Success success)
             {

@@ -26,13 +26,16 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
 
     private readonly IStoreCaProfiles _profiles;
     private readonly IEstTrustAnchorProvider _trustAnchorProvider;
+    private readonly IStoreRas? _raStore;
 
     public ConfigureCertificateAuthenticationOptions(
         IStoreCaProfiles profiles,
-        IEstTrustAnchorProvider trustAnchorProvider)
+        IEstTrustAnchorProvider trustAnchorProvider,
+        IStoreRas? raStore = null)
     {
         _profiles = profiles;
         _trustAnchorProvider = trustAnchorProvider;
+        _raStore = raStore;
     }
 
     public void PostConfigure(string? name, CertificateAuthenticationOptions options)
@@ -68,7 +71,9 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
                     return;
                 }
 
-                context.Principal = CreatePrincipal(context.ClientCertificate);
+                context.Principal = await CreatePrincipalAsync(
+                    context.ClientCertificate,
+                    context.HttpContext.RequestAborted).ConfigureAwait(false);
                 context.Success();
             },
             OnAuthenticationFailed = async context =>
@@ -91,7 +96,9 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
                     return;
                 }
 
-                context.Principal = CreatePrincipal(certificate);
+                context.Principal = await CreatePrincipalAsync(
+                    certificate,
+                    context.HttpContext.RequestAborted).ConfigureAwait(false);
                 context.Success();
             }
         };
@@ -196,5 +203,22 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
         return new ClaimsPrincipal(new ClaimsIdentity(
             claims,
             CertificateAuthenticationDefaults.AuthenticationScheme));
+    }
+
+    private async Task<ClaimsPrincipal> CreatePrincipalAsync(
+        X509Certificate2 certificate,
+        CancellationToken cancellationToken)
+    {
+        var principal = CreatePrincipal(certificate);
+        var identity = (ClaimsIdentity)principal.Identity!;
+        var raId = identity.FindFirst(ClaimTypes.Name)?.Value;
+        if (_raStore is not null &&
+            !string.IsNullOrWhiteSpace(raId) &&
+            await _raStore.Find(raId, cancellationToken).ConfigureAwait(false) is not null)
+        {
+            identity.AddClaim(new Claim(RaClaimTypes.RaId, raId));
+        }
+
+        return principal;
     }
 }

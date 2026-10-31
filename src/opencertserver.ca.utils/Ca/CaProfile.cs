@@ -23,6 +23,13 @@ public record CaProfile : IDisposable
     public required string Name { get; init; }
 
     /// <summary>
+    /// Gets a value indicating whether unauthenticated enrollment is allowed for this profile.
+    /// The public RA validator still requires the server to be enabled and the PKCS#10 request
+    /// signature to be valid.
+    /// </summary>
+    public bool AllowPublicEnrollment { get; init; }
+
+    /// <summary>
     /// Gets the private key associated with the CA profile.
     /// </summary>
     public required AsymmetricAlgorithm PrivateKey

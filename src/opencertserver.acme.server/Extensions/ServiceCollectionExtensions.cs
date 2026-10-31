@@ -1,4 +1,8 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 
 namespace OpenCertServer.Acme.Server.Extensions;
 
@@ -28,8 +32,33 @@ public static class ServiceCollectionExtensions
             string sectionName = "AcmeServer")
         {
             var acmeServerConfig = configuration.GetSection(sectionName);
+            var publicRaConfig = configuration.GetSection("PublicRa");
             acmeServerOptions ??= new AcmeServerOptions();
             acmeServerConfig.Bind(acmeServerOptions);
+            var publicRaEnabled = bool.TryParse(publicRaConfig["Enabled"], out var enabled) && enabled;
+            var requirePublicEab = publicRaEnabled &&
+                                   bool.TryParse(publicRaConfig["RequireEab"], out var requireEab) && requireEab;
+            if (requirePublicEab)
+            {
+                acmeServerOptions.ExternalAccountRequired = true;
+            }
+
+            var configuredRateLimit = int.TryParse(publicRaConfig["RateLimit"], out var rate)
+                ? rate
+                : 60;
+            var rateLimit = publicRaEnabled ? configuredRateLimit : int.MaxValue;
+            if (rateLimit < 1)
+            {
+                throw new InvalidOperationException("PublicRa:RateLimit must be at least one request per minute.");
+            }
+
+            if (publicRaEnabled &&
+                bool.TryParse(publicRaConfig["RequireApproval"], out var requireApproval) &&
+                requireApproval)
+            {
+                throw new InvalidOperationException(
+                    "PublicRa:RequireApproval is not supported until the certificate approval workflow is available.");
+            }
 
             services.AddScoped<IRequestValidationService, DefaultRequestValidationService>();
             services.AddScoped<INonceService, DefaultNonceService>();
@@ -87,6 +116,25 @@ public static class ServiceCollectionExtensions
             services.AddHostedService<HostedValidationService>();
 
             services.Configure<AcmeServerOptions>(acmeServerConfig);
+            if (requirePublicEab)
+            {
+                services.Configure<AcmeServerOptions>(options => options.ExternalAccountRequired = true);
+            }
+
+            services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.AddPolicy("PublicRa", context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = rateLimit,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueLimit = 0,
+                            AutoReplenishment = true
+                        }));
+            });
 
             return services;
         }

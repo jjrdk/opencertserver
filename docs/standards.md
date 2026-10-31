@@ -194,6 +194,40 @@ in the loop. It's the protocol that backs Let's Encrypt. OpenCertServer is a ful
 * [AcmeIssuance.feature](../tests/opencertserver.iq.tests/Features/AcmeIssuance.feature) — black-box
    IQ run against a container, driven by `acme.sh` and `certbot` from a Linux client container.
 
+### Registration authorities (scoped peer and public self-service)
+
+OpenCertServer supports two opt-in RA modes. A peer RA delegates enrollment and renewal to a
+central CA over outbound HTTPS; a public self-service RA accepts ACME orders only after the ACME
+challenge proves control of each requested DNS name. Neither mode creates an anonymous direct CA
+signing path.
+
+**Scoped peer RA (T05).** `opencertserver.ra` is an outbound client; it does not host a listener.
+The CA must enable `Ca:AcceptRa` and configure each `Ca:RaBindings` entry with its authenticated
+RA ID, permitted DNS suffixes, and profiles. A JWT RA identity supplies the `ra` claim; for mTLS,
+the CA maps a CA-issued client certificate's CN to an RA ID only when that ID has a configured
+binding. Every CSR must contain DNS SANs exclusively, and each name must equal or be below the
+selected delegated suffix. `X-Delegated-Subject` is only a selector and grants no scope by itself.
+JWT subject/name matching is deferred to this scope validator for bound RA identities.
+`EnrollAsync` and `RenewAsync` submit a replacement PKCS#10 CSR; the central CA applies its normal
+profile and enrollment policy on each request. Revocation additionally requires the RA client
+certificate on the outbound TLS connection and proof of possession.
+
+**Public self-service RA (T06).** `PublicRa:Enabled` defaults to `false`. When enabled, only names
+in `PublicRa:Profiles` that are also marked `AllowPublicEnrollment` on their CA profile can be
+issued, and only through the ACME challenge/order flow (including CSR key proof-of-possession).
+`PublicRa:RequireEab` can require external account binding, and `PublicRa:RateLimit` caps requests
+per client IP per minute; excess requests return `429 Too Many Requests`. Anonymous `/ca/csr`
+remains unauthorized. `PublicRa:RequireApproval=true` currently fails startup because the T04
+approval workflow is not implemented; do not enable it.
+
+**Where it lives and tests.** CA scope checks are in
+`src/opencertserver.ca.server/RegistrationAuthority/RaScopeValidator.cs`; public issuance checks are
+in `src/opencertserver.ca.server/PublicRa/PublicRaValidation.cs`; the outbound-only client is
+`src/opencertserver.ra/RaPeerClient.cs`. The [RegistrationAuthority.feature](../tests/opencertserver.certserver.tests/Features/RegistrationAuthority.feature)
+and [PublicRa.feature](../tests/opencertserver.certserver.tests/Features/PublicRa.feature) BDD
+features cover delegated-scope enforcement, outbound HTTPS, public issuance, direct-CA rejection,
+EAB, and throttling.
+
 ### RST 8659 — CAA
 
 **What it is.** The Certification Authority Authorization resource record. It's the DNS mechanism by

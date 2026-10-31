@@ -532,6 +532,66 @@ unknown tool name returns a failed result with error code
 
 ---
 
+## Registration authorities
+
+The central CA accepts a peer RA only when the RA is explicitly bound to profiles and DNS scopes.
+For example, configure the CA with:
+
+```text
+Ca__AcceptRa=true
+Ca__RaBindings__0__RaId=ra-tenant-a
+Ca__RaBindings__0__Scopes__0=tenant-a.example.com
+Ca__RaBindings__0__Profiles__0=default
+```
+
+The RA process initiates every connection; no inbound listener or CA-to-RA route is needed. Its
+configuration uses `Ra:PeerUrl` (HTTPS only), `Ra:Scope`, optional `Ra:Profile`, and optionally
+`Ra:BearerToken`. Keep tokens in a secret provider, not source-controlled settings. For mTLS, load
+the RA's CA-issued client certificate from a secure store and configure the outbound handler:
+
+```csharp
+using System.Security.Cryptography.X509Certificates;
+using OpenCertServer.Ra;
+
+var builder = WebApplication.CreateBuilder(args);
+var raCertificate = X509CertificateLoader.LoadPkcs12FromFile(
+    certificatePathFromSecretStore,
+    certificatePasswordFromSecretStore);
+builder.Services.AddRaPeerClient(builder.Configuration, handler =>
+{
+    handler.ClientCertificateOptions = ClientCertificateOption.Manual;
+    handler.ClientCertificates.Add(raCertificate);
+});
+```
+
+The CA maps an mTLS certificate's CN to a configured `RaId`; a JWT peer instead supplies the `ra`
+claim. The CA must trust the mTLS certificate under its client-certificate policy. In either case,
+the request's delegated DNS suffix and selected profile are checked against the CA binding.
+`RaPeerClient.EnrollAsync(csrPem)` and `RenewAsync(replacementCsrPem)` submit PKCS#10 requests;
+`RevokeAsync(raIdentityCertificate, serialNumberHex, reason)` sends a signed revocation request.
+Renewal is a new CSR submission, so the central CA's configured protocol and profile policy are
+reapplied.
+
+### Public self-service RA
+
+Public enrollment is disabled in the base configuration. To enable it, explicitly enable ACME for
+the selected profile as well as listing that profile in `PublicRa:Profiles`:
+
+```text
+PublicRa__Enabled=true
+PublicRa__RateLimit=60
+PublicRa__RequireEab=true
+PublicRa__Profiles__0=default
+default__AllowPublicEnrollment=true
+```
+
+ACME still requires account-based JWS requests and successful domain challenges; it is not an
+anonymous `/ca/csr` endpoint. Provision EAB keys through the existing ACME EAB configuration and
+store key material in a secret provider. Rate-limit rejections return HTTP 429. Human approval is
+not yet supported: setting `PublicRa:RequireApproval=true` intentionally fails startup until the T04
+approval workflow is implemented. See [Implemented standards → Registration authorities](standards.md#registration-authorities-scoped-peer-and-public-self-service)
+and the full [configuration reference](documentation.md#registration-authority-configuration).
+
 ## Next steps
 
 * [Implemented standards](standards.md) — every RFC, what OpenCertServer does, and the tests that prove it.

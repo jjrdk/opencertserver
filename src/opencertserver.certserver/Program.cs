@@ -68,6 +68,9 @@ internal static class Program
                 });
             })
             .AddInMemoryCertificateStore();
+        services = services
+            .AddRa(builder.Configuration)
+            .AddPublicRa(builder.Configuration);
         var port = int.TryParse(builder.Configuration.GetSection("port").Value, out var p)
             ? p
             : 5001; //portIndex >= 0 ? int.Parse(args[portIndex + 1]) : 5001;
@@ -575,6 +578,9 @@ internal static class Program
             CertificateValidity = TimeSpan.FromDays(90),
             CrlNumber = BigInteger.Zero,
             PrivateKey = privateKey,
+            AllowPublicEnrollment =
+                bool.TryParse(configuration[$"{profileName}:AllowPublicEnrollment"], out var allowPublicEnrollment)
+                && allowPublicEnrollment,
             CertificatePolicies = ReadList(configuration, $"{profileName}:CertificatePolicies") ?? [],
             KeyUsage = ReadKeyUsage(configuration[$"{profileName}:KeyUsage"]),
             ExtendedKeyUsages = ReadList(configuration, $"{profileName}:ExtendedKeyUsages"),

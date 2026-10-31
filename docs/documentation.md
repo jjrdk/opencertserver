@@ -97,6 +97,56 @@ algorithm of the profile's CA key
 ([CertificateAuthority.feature](../tests/opencertserver.certserver.tests/Features/CertificateAuthority.feature),
 "A profile signs requests of either key algorithm").
 
+### Registration authority configuration
+
+The CA-side RA binding store is configuration-backed and in-memory by default. A deployment that
+needs durable or remotely managed bindings can register its own `IStoreRas` implementation. RA
+acceptance is disabled unless `Ca:AcceptRa` is true.
+
+| Key | Meaning |
+|---|---|
+| `Ca:AcceptRa` | Enables authenticated RA identities at the CA. Default: `false`. |
+| `Ca:RaBindings:<index>:RaId` | Stable identity bound to a JWT `ra` claim or, for mTLS, a CA-issued client certificate CN. |
+| `Ca:RaBindings:<index>:Scopes:<index>` | DNS suffixes the RA may act for. CSR SANs must contain DNS names only and each must equal or be a subdomain of one selected suffix. |
+| `Ca:RaBindings:<index>:Profiles:<index>` | CA profile names the RA may select. |
+| `PublicRa:Enabled` | Enables public ACME self-service issuance. Default: `false`. |
+| `PublicRa:Profiles` | Profiles exposed to public enrollment; each must also set `AllowPublicEnrollment=true`. |
+| `PublicRa:RateLimit` | ACME requests allowed per client IP per minute. Default: `60`; values below 1 fail startup. |
+| `PublicRa:RequireEab` | Requires EAB for new ACME accounts when public RA is enabled. Default: `false`. |
+| `PublicRa:RequireApproval` | Reserved for the future T04 approval workflow. `true` fails startup while that workflow is unavailable. |
+| `<profile>:AllowPublicEnrollment` | Per-profile opt-in for public ACME issuance. Default: `false`. |
+
+Example:
+
+```json
+{
+  "Ca": {
+    "AcceptRa": true,
+    "RaBindings": [
+      {
+        "RaId": "ra-tenant-a",
+        "Scopes": [ "tenant-a.example.com" ],
+        "Profiles": [ "default" ]
+      }
+    ]
+  },
+  "PublicRa": {
+    "Enabled": false,
+    "RateLimit": 60,
+    "RequireEab": false,
+    "RequireApproval": false,
+    "Profiles": []
+  }
+}
+```
+
+The outbound RA library reads `Ra:PeerUrl` (absolute HTTPS URL), `Ra:Scope`, optional
+`Ra:Profile`, and optional `Ra:BearerToken`. Use a secret provider for bearer tokens. For mTLS,
+register `AddRaPeerClient(configuration, configureHandler)` and add the RA client certificate to
+the supplied `HttpClientHandler.ClientCertificates`. The peer only makes outbound requests; it
+does not expose a customer-side CA listener. See [Getting started → Registration authorities](getting-started.md#registration-authorities)
+for the client setup sample.
+
 ### GET /ca/crl
 
 - Description: Retrieve the current Certificate Revocation List for the CA (or a profile).
