@@ -8,14 +8,80 @@ using Utils.Ocsp;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Handlers;
+using OpenCertServer.Ca.Server.PublicRa;
+using OpenCertServer.Ca.Server.RegistrationAuthority;
 
 public static class Extensions
 {
     /// <param name="services">The service collection.</param>
     extension(IServiceCollection services)
     {
+        /// <summary>
+        /// Enables the opt-in public ACME self-service validator.
+        /// ACME remains responsible for challenge validation and CSR proof-of-possession.
+        /// </summary>
+        public IServiceCollection AddPublicRa(IConfiguration configuration)
+        {
+            return services.AddPublicRa(PublicRaOptions.FromConfiguration(configuration));
+        }
+
+        /// <summary>
+        /// Enables the opt-in public ACME self-service validator.
+        /// </summary>
+        public IServiceCollection AddPublicRa(PublicRaOptions options)
+        {
+            if (options.RateLimit < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(options), "PublicRa rate limit must be at least one.");
+            }
+
+            if (options.Enabled && options.Profiles.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "PublicRa:Profiles must list at least one profile when public enrollment is enabled.");
+            }
+
+            if (options.Enabled && options.RequireApproval)
+            {
+                throw new InvalidOperationException(
+                    "PublicRa:RequireApproval is not supported until the certificate approval workflow is available.");
+            }
+
+            services.AddSingleton(options);
+            if (options.Enabled)
+            {
+                services.TryAddEnumerable(
+                    ServiceDescriptor.Singleton<IValidateCertificateRequests, PublicRaValidation>());
+            }
+
+            return services;
+        }
+
+        /// <summary>
+        /// Registers the CA-side RA bindings from configuration.
+        /// </summary>
+        public IServiceCollection AddRa(IConfiguration configuration)
+        {
+            return services.AddRa(RaServerOptions.FromConfiguration(configuration));
+        }
+
+        /// <summary>
+        /// Registers the CA-side RA bindings.
+        /// </summary>
+        public IServiceCollection AddRa(RaServerOptions options)
+        {
+            services.AddSingleton(options);
+            services.TryAddSingleton<IStoreRas>(_ => new InMemoryRaStore(options.Bindings));
+            services.TryAddSingleton<RaScopeValidator>();
+            services.AddSingleton<IValidateCertificateRequests>(
+                serviceProvider => serviceProvider.GetRequiredService<RaScopeValidator>());
+            return services;
+        }
+
         /// <summary>
         /// Registers an in-memory certificate store to the service collection.
         ///
@@ -99,23 +165,26 @@ public static class Extensions
             IValidateX509Chains? chainValidation = null,
             IGenerateCertificateId? certificateIdGenerator = null,
             bool strictOcspHttpBinding = false,
-            TimeSpan ocspFreshnessWindow = default)
+            TimeSpan ocspFreshnessWindow = default,
+            bool allowPublicEnrollment = false)
         {
+            var validity = certificateValidity == TimeSpan.Zero
+                ? TimeSpan.FromDays(90)
+                : certificateValidity;
+            var freshness = ocspFreshnessWindow == TimeSpan.Zero
+                ? TimeSpan.FromHours(1)
+                : ocspFreshnessWindow;
+            var rsaProfile = CertificateAuthority.CreateSelfSignedRsa(
+                "default", distinguishedName, validity, BigInteger.Zero, freshness)
+                with { AllowPublicEnrollment = allowPublicEnrollment };
+            var ecdsaProfile = CertificateAuthority.CreateSelfSignedEcdsa(
+                "ecdsa", distinguishedName, validity, BigInteger.Zero, freshness)
+                with { AllowPublicEnrollment = allowPublicEnrollment };
             var config = new CaConfiguration(
                 new CaProfileSet(
                     "default",
-                    CertificateAuthority.CreateSelfSignedRsa(
-                        "default",
-                        distinguishedName,
-                        certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
-                        BigInteger.Zero,
-                        ocspFreshnessWindow == TimeSpan.Zero ? TimeSpan.FromHours(1) : ocspFreshnessWindow),
-                    CertificateAuthority.CreateSelfSignedEcdsa(
-                        "ecdsa",
-                        distinguishedName,
-                        certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
-                        BigInteger.Zero,
-                        ocspFreshnessWindow == TimeSpan.Zero ? TimeSpan.FromHours(1) : ocspFreshnessWindow)
+                    rsaProfile,
+                    ecdsaProfile
                 ),
                 ocspUrls ?? [],
                 crlUrls ?? [],

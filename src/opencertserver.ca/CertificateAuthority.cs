@@ -934,6 +934,12 @@ public sealed partial class AuthenticatedSubjectValidation : IValidateCertificat
             return Task.FromResult<string?>(null);
         }
 
+        if (requestor.FindFirst(RaClaimTypes.RaId) is not null)
+        {
+            // RA identity is bound to the configured delegation scope by RaScopeValidator instead.
+            return Task.FromResult<string?>(null);
+        }
+
         var identityNames = requestor.Claims
             .Where(c => IdentityClaimTypes.Contains(c.Type) && !string.IsNullOrWhiteSpace(c.Value))
             .Select(c => c.Value.Trim())

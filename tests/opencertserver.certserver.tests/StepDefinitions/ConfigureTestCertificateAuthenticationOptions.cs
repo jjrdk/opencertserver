@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.Extensions.Options;
 using OpenCertServer.Est.Server.TrustAnchor;
 using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Ca.Server.RegistrationAuthority;
 
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
@@ -12,8 +13,9 @@ public class ConfigureTestCertificateAuthenticationOptions :
 {
     public ConfigureTestCertificateAuthenticationOptions(
         IStoreCaProfiles profiles,
-        IEstTrustAnchorProvider trustAnchorProvider)
-        : base(profiles, trustAnchorProvider)
+        IEstTrustAnchorProvider trustAnchorProvider,
+        IStoreRas? raStore = null)
+        : base(profiles, trustAnchorProvider, raStore)
     {
     }
 
