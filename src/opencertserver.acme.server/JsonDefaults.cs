@@ -7,10 +7,11 @@ using OpenCertServer.Acme.Abstractions.Model;
 
 [JsonSourceGenerationOptions(
     UseStringEnumConverter = true,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWriting,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     WriteIndented = false,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(Account))]
+[JsonSerializable(typeof(Order))]
 [JsonSerializable(typeof(ExternalAccountKey))]
 [JsonSerializable(typeof(AcmeHeader))]
 [JsonSerializable(typeof(JwsPayload))]

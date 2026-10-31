@@ -21,20 +21,27 @@ public sealed class NonceStore : INonceStore
         ArgumentNullException.ThrowIfNull(nonce);
 
         var noncePath = Path.Combine(_options.Value.NoncePath, nonce.Token);
-        await File.WriteAllTextAsync(noncePath, DateTime.Now.ToString("o", CultureInfo.InvariantCulture), cancellationToken).ConfigureAwait(false);
+        await File.WriteAllTextAsync(noncePath, DateTime.Now.ToString("o", CultureInfo.InvariantCulture),
+            cancellationToken).ConfigureAwait(false);
     }
 
     public Task<bool> TryRemoveNonceAsync(Nonce nonce, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(nonce);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var noncePath = Path.Combine(_options.Value.NoncePath, nonce.Token);
-        if (!File.Exists(noncePath))
+        var consumedPath = noncePath + ".consumed";
+        try
+        {
+            File.Move(noncePath, consumedPath);
+        }
+        catch (FileNotFoundException)
         {
             return Task.FromResult(false);
         }
 
-        File.Delete(noncePath);
+        File.Delete(consumedPath);
         return Task.FromResult(true);
     }
 }

@@ -6,6 +6,7 @@ using CertesSlim.Acme.Resource;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// Represents an ACME order, which tracks the lifecycle of a certificate request and its associated authorizations.
@@ -36,6 +37,24 @@ public sealed class Order : IVersioned
         Identifiers = [.. identifiers];
         Authorizations = [];
         Profile = profile;
+    }
+
+    [JsonConstructor]
+    public Order(
+        string orderId,
+        string accountId,
+        OrderStatus status,
+        List<Identifier> identifiers,
+        List<Authorization> authorizations)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(orderId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(accountId);
+        OrderId = orderId;
+        AccountId = accountId;
+        Status = status;
+        Identifiers = identifiers ?? throw new ArgumentNullException(nameof(identifiers));
+        Authorizations = authorizations ?? throw new ArgumentNullException(nameof(authorizations));
+        foreach (var authorization in Authorizations) authorization.Order = this;
     }
 
     /// <summary>

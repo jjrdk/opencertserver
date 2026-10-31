@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// Represents an ACME account, including its key, contacts, status, and terms of service agreement.
@@ -28,6 +29,22 @@ public sealed class Account : IVersioned
 
         Jwk = jwk;
         Contacts = contacts?.ToList();
+        TosAccepted = tosAccepted;
+        ExternalAccountId = externalAccountId;
+    }
+
+    [JsonConstructor]
+    public Account(
+        string accountId,
+        JsonWebKey jwk,
+        List<string>? contacts,
+        DateTimeOffset? tosAccepted,
+        string? externalAccountId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(accountId);
+        AccountId = accountId;
+        Jwk = jwk ?? throw new ArgumentNullException(nameof(jwk));
+        Contacts = contacts;
         TosAccepted = tosAccepted;
         ExternalAccountId = externalAccountId;
     }

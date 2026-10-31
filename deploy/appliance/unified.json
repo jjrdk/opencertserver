@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "AllowedHosts": "pki.example.com;localhost",
+  "port": 5001,
+  "Jwt": {
+    "Authority": "https://identity.example.com",
+    "Audiences": ["opencertserver"]
+  },
+  "rsa": {
+    "Pem": "/run/secrets/rsa-ca.pem",
+    "KeyPem": "/run/secrets/rsa-ca.key"
+  },
+  "ecdsa": {
+    "Pem": "/run/secrets/ecdsa-ca.pem",
+    "KeyPem": "/run/secrets/ecdsa-ca.key"
+  },
+  "Kestrel": {
+    "Certificates": {
+      "Default": {
+        "Path": "/run/secrets/tls.pem",
+        "KeyPath": "/run/secrets/tls.key"
+      }
+    }
+  },
+  "CaServer": {
+    "OCSP": ["https://pki.example.com:5001/ca/ocsp"],
+    "CrlDistributionPoints": ["https://pki.example.com:5001/ca/crl"]
+  },
+  "AcmeServer": {
+    "CAAIdentities": ["pki.example.com"]
+  },
+  "Telemetry": {
+    "Enabled": false
+  }
+}

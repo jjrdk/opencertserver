@@ -1,94 +1,30 @@
-# Running the Containerized Server
+# Container deployments
 
-The containerized OpenCertServer provides both the EST and ACME endpoints. The container is configured using command line arguments pointing to the keys to use as root certificates.
+The appliance images are source-built .NET 10 Alpine containers. For role selection,
+configuration, TLS, trust, storage, backup, upgrades, and rollback, follow the
+[headless appliance operator guide](docs/appliance.md).
 
-The containerized server is available on [Docker Hub](https://hub.docker.com/jjrdk/opencertserver).
+| Dockerfile | Role |
+|---|---|
+| `Dockerfile.unified` or `Dockerfile.appliance` | Unified CA + EST + ACME server |
+| `Dockerfile.ca` | Existing CA HTTP endpoints (`/ca/*`) and health only |
+| `Dockerfile.ra` | Operator-facing RA API backed by the outbound `RaPeerClient` |
 
-The Linux image enforces TLS 1.2/1.3 with AEAD-only ciphers, 180-day HSTS and
-strict request framing. **Set `AllowedHosts` to your service's hostnames**, separated
-by semicolons and without ports (for example `ca.example.com;opencertserver;localhost`).
-The default permits only localhost and loopback addresses. Health probes must send
-an allowed Host too; unexpected hosts are rejected before HTTP redirects.
-See the [host perimeter reference](docs/documentation.md#host-perimeter-and-deployment-configuration).
+Build images from the repository root:
 
-## Calling the EST endpoints
-
-To get the server certificate, use the following command:
-
-```bash
-curl -k https://localhost:8084/.well-known/est/cacerts
+```sh
+docker build -f Dockerfile.unified -t opencertserver-unified:local .
+docker build -f Dockerfile.ca -t opencertserver-ca:local .
+docker build -f Dockerfile.ra -t opencertserver-ra:local .
 ```
 
-## Container Setup
+The samples in [`deploy/appliance/`](deploy/appliance/) are starting configurations, not
+production secrets. Replace example hostnames and file paths, provision your own keys and
+certificates, and apply the permissions and persistence guidance in the operator guide.
+Do not use mutable `latest` tags or share a writable CA state volume between replicas.
 
-To register the keys as secrets in kubernetes, use the following commands:
-
-```bash
-kubectl create secret generic opencertserver-certs --from-file=rsa-cert=rsa-cert.pem --from-file=rsa-privatekey=rsa-privatekey.pem --from-file=ecdsa-cert=ecdsa-cert.pem --from-file=ecdsa-privatekey=ecdsa-privatekey.pem
-````
-
-Below is an example kubernetes deployment:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: opencertserver
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      rs: opencerterver
-  template:
-    metadata:
-      name: opencertserver-deployment
-      labels:
-        app: opencertserver
-        rs: opencertserver
-    spec:
-      volumes:
-      - name: cert-volume
-        secret:
-          secretName: opencertserver-certs
-      containers:
-        - name: opencertserver
-          image: jjrdk/opencertserver:latest
-          args: ["--authority https://your.authority.url --rsa", "/var/lib/cert-volume/rsa-cert", "--rsa-key", "/var/lib/cert-volume/rsa-privatekey","--ec", "/var/lib/cert-volume/ecdsa-cert", "--ec-key", "/var/lib/cert-volume/ecdsa-privatekey"]
-          ports:
-          - containerPort: 8084
-          env:
-            - name: AllowedHosts
-              value: "ca.example.com;opencertserver;localhost"
-            - name: ASPNETCORE_URLS
-              value: "http://*:8084"
-          volumeMounts:
-          - name: cert-volume
-            readOnly: true
-            mountPath: "/var/lib/cert-volume"
-          resources:
-            requests:
-              memory: 64Mi
-              cpu: 500m
-            limits :
-              memory: 256Mi
-              cpu: 1000m
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8084
-              httpHeaders:
-                - name: Host
-                  value: opencertserver
-            initialDelaySeconds: 10
-            timeoutSeconds: 30
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8084
-              httpHeaders:
-                - name: Host
-                  value: opencertserver
-            initialDelaySeconds: 10
-            timeoutSeconds: 10
-            periodSeconds: 600
-```
+The appliance images run as UID 1654, use TLS 1.3, and expect a mounted configuration file
+at `/config/appsettings.json` by default. Configuration is mounted read-only; environment
+variables and then command-line arguments can override it. The CA and unified roles need
+persistent writable state at `/var/lib/opencertserver`; the RA role has no local issuing keys
+or CA state.

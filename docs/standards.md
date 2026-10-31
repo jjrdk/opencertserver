@@ -201,7 +201,8 @@ central CA over outbound HTTPS; a public self-service RA accepts ACME orders onl
 challenge proves control of each requested DNS name. Neither mode creates an anonymous direct CA
 signing path.
 
-**Scoped peer RA (T05).** `opencertserver.ra` is an outbound client; it does not host a listener.
+**Scoped peer RA (T05).** The `opencertserver.ra` package is an outbound client library; by
+itself, it does not host a listener.
 The CA must enable `Ca:AcceptRa` and configure each `Ca:RaBindings` entry with its authenticated
 RA ID, permitted DNS suffixes, and profiles. A JWT RA identity supplies the `ra` claim; for mTLS,
 the CA maps a CA-issued client certificate's CN to an RA ID only when that ID has a configured
@@ -219,6 +220,11 @@ issued, and only through the ACME challenge/order flow (including CSR key proof-
 per client IP per minute; excess requests return `429 Too Many Requests`. Anonymous `/ca/csr`
 remains unauthorized. `PublicRa:RequireApproval=true` currently fails startup because the T04
 approval workflow is not implemented; do not enable it.
+
+The separate headless `Dockerfile.ra` appliance role hosts the operator API and delegates
+outbound to this library. It is not an EST or ACME proxy and does not load CA signing keys.
+See the [appliance operator guide](appliance.md#roles-and-images) for its `/ra/*` endpoints,
+JWT `ra_operator` requirement, mTLS backend identity, and deployment configuration.
 
 **Where it lives and tests.** CA scope checks are in
 `src/opencertserver.ca.server/RegistrationAuthority/RaScopeValidator.cs`; public issuance checks are
@@ -758,8 +764,46 @@ are enabled by shipping `ASPNETCORE_ENVIRONMENT=Hardened` (the profile in
 
 The attestation trust roots are intentionally **not baked in** — the default (absent) posture fails
 closed and offers no `device-attest-01` challenge; operators supply the roots per deployment via
-`Attestation__TrustAnchors__0=<PEM>` (and `__1`, `__2`, …). The `AcmeServer:ExternalAccountKey`
-`MacKey` shipped in the profile is an **example** and must be rotated before real use.
+`Attestation__TrustAnchors__0=<PEM>` (and `__1`, `__2`, …). No EAB credential is shipped:
+operators provision `AcmeServer:ExternalAccountKey` from their secret source.
+
+### Hardened headless appliance (T18)
+
+`Dockerfile.appliance` / `Dockerfile.unified`, `Dockerfile.ca`, and `Dockerfile.ra` publish native-AOT
+Linux/Alpine images as a non-root user. Appliance roles enforce **TLS 1.3 only**, strict OCSP
+HTTP binding, and the existing request validators. Only the Unified role has ACME endpoints and
+therefore applies the hardened EAB, CAA, and challenge-validation worker settings. No attestation
+roots are implicitly trusted; no example EAB key is baked in. A local CA requires persistent keys
+and a persistent certificate/revocation store. The RA holds a transport identity only and delegates
+CA operations over mutually authenticated TLS.
+
+Native-AOT publish currently reports TPM marshaller reflection warning IL2067 and DnsClientX AOT
+warning IL3053. Dockerfiles keep these warnings visible using
+`IlcTreatWarningsAsErrors=false` and `TrimmerTreatWarningsAsErrors=false`; they are not suppressed,
+and C# compiler warnings remain errors. Runtime qualification covers ordinary mounted-configuration,
+CA, RA, and ACME account/order persistence paths, not hardware-attestation or dynamic TPM operations.
+Do not interpret the AOT image
+build as qualification of every dependency or hardware/device-attestation path; hardware
+qualification is separate.
+
+Configuration is a read-only mounted JSON file with a version field. Version 1-to-2 migration
+groups legacy JWT settings; `configload` writes a new file, `configdump` round-trips it, and
+`Migration:AutoApply` permits in-memory migration without touching the mount. Unknown schema
+versions fail closed. This is configuration-store migration, not a certificate database migration.
+Operational request audit events go to container logs; tamper-evident auditing and a general timer
+framework remain separate roadmap work.
+
+**Tests that prove it.**
+[`ApplianceUpgrade.feature`](../tests/opencertserver.certserver.tests/Features/ApplianceUpgrade.feature)
+exercises mounted-file startup, configuration migration/round-trip and future-version rejection,
+CAA bypass rejection, persistent certificate/revocation state, and ACME aggregate/nonce persistence.
+Its image-backed scenarios prove TLS 1.3 succeeds and TLS 1.2 fails, Unified/CA/RA route isolation,
+native EAB-bound ACME account/order reloads, and real mTLS CA/RA enrollment, signature verification,
+scope rejection and revocation. Process-level TLS tests depend on the host TLS stack; use the
+documented image variables to run these checks on macOS. This is separate from hardware-attestation
+and dynamic TPM qualification.
+See [Getting started](getting-started.md#appliance-roles-and-upgrades) and the
+[headless appliance operator guide](appliance.md).
 
 ### OpenTelemetry metrics emitted
 

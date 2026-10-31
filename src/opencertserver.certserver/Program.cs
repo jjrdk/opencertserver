@@ -42,13 +42,24 @@ internal static class Program
 {
     public static async Task Main(string[] args)
     {
-        if (args.Length == 0)
+        if (ApplianceConfiguration.RunCommand(args))
         {
-            throw new Exception("No configuration values passed");
+            return;
         }
 
         var builder = WebApplication.CreateBuilder(args);
+        builder.Services.ConfigureHttpJsonOptions(options =>
+            options.SerializerOptions.TypeInfoResolverChain.Insert(0, ApplianceJsonContext.Default));
+        ApplianceConfiguration.AddMountedConfiguration(builder.Configuration, args);
         builder.Configuration.AddEnvironmentVariables().AddCommandLine(args);
+        var appliance = ApplianceOptions.Read(builder.Configuration);
+        if (appliance.Role == "Ra")
+        {
+            await RaApplianceHost.Run(builder, appliance).ConfigureAwait(false);
+            return;
+        }
+
+        var hasEnrollment = appliance.Role != "Ca";
         var services = builder.Services
             .AddCors(options =>
             {
@@ -71,6 +82,11 @@ internal static class Program
         services = services
             .AddRa(builder.Configuration)
             .AddPublicRa(builder.Configuration);
+        if (!string.IsNullOrWhiteSpace(appliance.DataDirectory))
+        {
+            services.AddSingleton<IStoreCertificates>(_ => new ApplianceCertificateStore(appliance.DataDirectory));
+        }
+
         var port = int.TryParse(builder.Configuration.GetSection("port").Value, out var p)
             ? p
             : 5001; //portIndex >= 0 ? int.Parse(args[portIndex + 1]) : 5001;
@@ -176,23 +192,27 @@ internal static class Program
                         new CaProfileSet("rsa", rsaProfile, ecdsaProfile),
                         ocspUrls.ToArray(),
                         crlUrls.ToArray(),
-                        caIssuerUrls.ToArray()))
+                        caIssuerUrls.ToArray(),
+                        strictOcspHttpBinding: appliance.Hardened))
                 .AddEstServer<ConfiguredCsrTemplateLoader>();
         }
 
         services = services.AddEstTrustAnchors(options => ReadEstTrustAnchors(builder.Configuration, options));
 
-        var a = Array.IndexOf(args, "--authority");
-        var authority = a >= 0
-            ? args[a + 1]
-            : throw new Exception("No authority specified. Use --authority <url> to specify the authority URL.");
+        var authority = builder.Configuration["Jwt:Authority"] ?? builder.Configuration["authority"]
+         ?? throw new InvalidOperationException("Set Jwt:Authority in configuration or use --authority.");
+        var audiences = ListConfigValues(builder.Configuration.GetSection("Jwt:Audiences"));
+        if (audiences.Count == 0)
+        {
+            audiences = ListConfigValues(builder.Configuration.GetSection("audience"));
+        }
 
-        var aud = Array.IndexOf(args, "--audience");
-        var audiences = aud >= 0
-            ? args[aud + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            : throw new Exception("No audience specified. Use --audience <url> to specify the audience URL.");
+        if (audiences.Count == 0)
+        {
+            throw new InvalidOperationException("Set Jwt:Audiences in configuration or use --audience.");
+        }
 
-        var forwardedHeadersOptions = CreateForwardedHeaderOptions();
+        var forwardedHeadersOptions = CreateForwardedHeaderOptions(appliance.Hardened);
         const string caAuthenticationScheme = "CaAuthentication";
 
         _ = services.AddAuthentication(options =>
@@ -203,7 +223,8 @@ internal static class Program
             .AddPolicyScheme(caAuthenticationScheme, null, options =>
             {
                 options.ForwardDefaultSelector = context =>
-                    context.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                    context.Request.Headers.Authorization.ToString()
+                        .StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
                         ? JwtBearerDefaults.AuthenticationScheme
                         : CertificateAuthenticationDefaults.AuthenticationScheme;
             })
@@ -215,9 +236,7 @@ internal static class Program
             // Est:BasicAuth:UsersFile is set. Hashes only - `opencert hash-password` makes them.
             .AddEstBasicAuthentication(options => ReadBasicAuthentication(builder.Configuration, options))
             .Services
-            .AddAcmeServer(builder.Configuration)
-            .AddAcmeInMemoryStore()
-            .AddSingleton(new JwtParameters { Authority = authority, Audiences = audiences })
+            .AddSingleton(new JwtParameters { Authority = authority, Audiences = audiences.ToArray() })
             .AddSingleton<ICsrValidator, DefaultCsrValidator>()
             .AddSingleton<IIssueCertificates, DefaultIssuer>()
             .ConfigureOptions<ConfigureJwtBearerOptions>()
@@ -227,6 +246,20 @@ internal static class Program
                 JwtBearerDefaults.AuthenticationScheme,
                 CertificateAuthenticationDefaults.AuthenticationScheme))
             .AddHealthChecks();
+
+        if (hasEnrollment)
+        {
+            services.AddAcmeServer(builder.Configuration);
+            if (!string.IsNullOrWhiteSpace(appliance.DataDirectory))
+            {
+                builder.Configuration["AcmeFileStore:BasePath"] = Path.Combine(appliance.DataDirectory, "acme");
+                services.AddAcmeFileStore(builder.Configuration);
+            }
+            else
+            {
+                services.AddAcmeInMemoryStore();
+            }
+        }
 
         services.AddHsts(options =>
         {
@@ -246,12 +279,13 @@ internal static class Program
         // External account keys (RFC 8555 §7.3.4): when provisioned in configuration the read-only
         // static store that carries them overrides the empty in-memory store registered above, so a
         // hardened deployment can bind EAB-authenticated accounts without writing a key to disk.
-        RegisterExternalAccountKeys(services, builder.Configuration);
+        if (hasEnrollment)
+        {
+            RegisterExternalAccountKeys(services, builder.Configuration);
 
-        // Attestation trust roots for the device-attest-01 challenge: when configured the static trust
-        // provider overrides the ACME server's empty default (which rejects every proof), enabling device
-        // identity without broadening the default.
-        RegisterAttestationTrustAnchors(services, builder.Configuration);
+            // Attestation remains fail-closed when no trust roots are configured.
+            RegisterAttestationTrustAnchors(services, builder.Configuration);
+        }
 
         // OpenTelemetry metrics and traces: exported over OTLP when enabled, so a deployment's
         // instrumentation (the opencertserver.acme / .est / .ca meters and activity sources) is scrapeable.
@@ -263,7 +297,9 @@ internal static class Program
                 options.ConfigureHttpsDefaults(httpsOptions =>
                 {
                     // RFC 7030 requires TLS 1.1 or later for EST; prefer TLS 1.2+ in practice.
-                    httpsOptions.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                    httpsOptions.SslProtocols = appliance.Protocols;
+                    httpsOptions.OnAuthenticate = (_, authentication) =>
+                        authentication.EnabledSslProtocols = appliance.Protocols;
                     if (OperatingSystem.IsLinux())
                     {
                         var cipherPolicy = new CipherSuitesPolicy(
@@ -280,10 +316,11 @@ internal static class Program
                         ]);
                         httpsOptions.OnAuthenticate = (_, authentication) =>
                         {
-                            authentication.EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                            authentication.EnabledSslProtocols = appliance.Protocols;
                             authentication.CipherSuitesPolicy = cipherPolicy;
                         };
                     }
+
                     // Kestrel presents an X.509 server certificate that is expected to conform to RFC5280.
                     // Leave TLS session resumption enabled (the default) because RFC 7030 recommends session resumption support.
                     // Ask the client for a certificate: EST re-enrollment and self-service revocation
@@ -294,10 +331,24 @@ internal static class Program
                 });
             })
             .UseUrls($"https://*:{port}");
-        var app = builder.Build();
+        await using var app = builder.Build();
+        // Resolve persistent state before opening the listener, not on the first issuance request.
+        _ = app.Services.GetRequiredService<IStoreCertificates>();
+
         if (!OperatingSystem.IsLinux())
         {
-            app.Logger.LogWarning("The TLS cipher allow-list requires Linux/OpenSSL; this host uses the operating system cipher policy.");
+            app.Logger.LogWarning(
+                "The TLS cipher allow-list requires Linux/OpenSSL; this host uses the operating system cipher policy.");
+        }
+
+        if (appliance.Hardened)
+        {
+            app.Use(next => context =>
+            {
+                // This profile terminates mTLS itself; never accept an asserted certificate from a header.
+                context.Request.Headers.Remove("X-Client-Cert");
+                return next(context);
+            });
         }
 
         app.UseHsts()
@@ -307,7 +358,7 @@ internal static class Program
                 // Kestrel renames Content-Length to X-Content-Length when normalizing CL+TE.
                 if (context.Request.Headers.ContainsKey("X-Content-Length") ||
                     (context.Request.Headers.ContainsKey("Content-Length") &&
-                     context.Request.Headers.ContainsKey("Transfer-Encoding")))
+                        context.Request.Headers.ContainsKey("Transfer-Encoding")))
                 {
                     app.Logger.LogWarning("Rejected ambiguous request framing on connection {ConnectionId}.",
                         context.Connection.Id);
@@ -328,14 +379,35 @@ internal static class Program
             .UseHealthChecks("/health")
             .UseCertificateForwarding()
             .UseRouting()
+            .Use(next => async context =>
+            {
+                if (!appliance.Hardened)
+                {
+                    await next(context);
+                    return;
+                }
+
+                context.Response.OnCompleted(() =>
+                {
+                    app.Logger.LogWarning("Appliance audit {TraceId} {Method} {Path} {StatusCode} {Authenticated}",
+                        context.TraceIdentifier, context.Request.Method, context.Request.Path,
+                        context.Response.StatusCode, context.User.Identity?.IsAuthenticated == true);
+                    return Task.CompletedTask;
+                });
+                await next(context);
+            })
             .UseAuthentication()
-            .UseAuthorization()
-            .UseAcmeServer()
-            .UseEstServer(
+            .UseAuthorization();
+        if (hasEnrollment)
+        {
+            app.UseAcmeServer().UseEstServer(
                 enrollPolicy: EstPolicy(),
                 reEnrollPolicy: EstPolicy(),
-                serverKeyGenPolicy: EstPolicy())
-            .UseCertificateAuthorityServer();
+                serverKeyGenPolicy: EstPolicy());
+        }
+
+        app.UseCertificateAuthorityServer();
+
         await app.RunAsync().ConfigureAwait(false);
     }
 
@@ -425,7 +497,9 @@ internal static class Program
     /// are configured nothing is registered and the empty in-memory store that <c>AddAcmeInMemoryStore</c>
     /// registered is retained, so EAB simply cannot bind.
     /// </summary>
-    private static IServiceCollection RegisterExternalAccountKeys(IServiceCollection services, IConfiguration configuration)
+    private static IServiceCollection RegisterExternalAccountKeys(
+        IServiceCollection services,
+        IConfiguration configuration)
     {
         var keys = configuration
             .GetSection("AcmeServer:ExternalAccountKey")
@@ -450,7 +524,9 @@ internal static class Program
     /// When none are configured the ACME server's empty trust provider is retained, which rejects every
     /// device-attest-01 proof - the fail-closed default for a hardened deployment.
     /// </summary>
-    private static IServiceCollection RegisterAttestationTrustAnchors(IServiceCollection services, IConfiguration configuration)
+    private static IServiceCollection RegisterAttestationTrustAnchors(
+        IServiceCollection services,
+        IConfiguration configuration)
     {
         var paths = ListConfigValues(configuration.GetSection("Attestation:TrustAnchors"));
         if (paths.Count == 0)
@@ -463,6 +539,7 @@ internal static class Program
         {
             roots.ImportFromPem(File.ReadAllText(path));
         }
+
         if (roots.Count == 0)
         {
             throw new InvalidOperationException(
@@ -531,13 +608,14 @@ internal static class Program
             .ToList();
         if (values.Count == 0 && section.Value is { } lone)
         {
-            values.AddRange(lone.Split([',', ';', ' ', '\t', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            values.AddRange(lone.Split([',', ';', ' ', '\t', '\n'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         }
 
         return values;
     }
 
-    private static ForwardedHeadersOptions CreateForwardedHeaderOptions()
+    private static ForwardedHeadersOptions CreateForwardedHeaderOptions(bool hardened)
     {
         var forwardedHeadersOptions = new ForwardedHeadersOptions
         {
@@ -545,8 +623,11 @@ internal static class Program
             ForwardLimit = null,
             AllowedHosts = []
         };
-        forwardedHeadersOptions.KnownIPNetworks.Clear();
-        forwardedHeadersOptions.KnownProxies.Clear();
+        if (!hardened)
+        {
+            forwardedHeadersOptions.KnownIPNetworks.Clear();
+            forwardedHeadersOptions.KnownProxies.Clear();
+        }
 
         return forwardedHeadersOptions;
     }
@@ -560,7 +641,8 @@ internal static class Program
         string publishedArgument,
         Func<X509Certificate2, AsymmetricAlgorithm?> getPrivateKey)
     {
-        using var certificate = await CreateCert(args, certArgument, keyArgument).ConfigureAwait(false);
+        using var certificate = await CreateCert(args, configuration, profileName, certArgument, keyArgument)
+            .ConfigureAwait(false);
         var privateKey = getPrivateKey(certificate)
          ?? throw new InvalidOperationException(
                 $"The certificate configured for profile '{profileName}' does not expose a compatible private key.");
@@ -572,7 +654,8 @@ internal static class Program
         {
             Name = profileName,
             CertificateChain = await LoadCertificateBundle(
-                args[Array.IndexOf(args, certArgument) + 1], activeCertificate).ConfigureAwait(false),
+                    GetArgumentValue(args, certArgument) ?? configuration[$"{profileName}:Pem"], activeCertificate)
+                .ConfigureAwait(false),
             PublishedCertificateChain = await LoadCertificateBundle(publishedCertificatePath, activeCertificate)
                 .ConfigureAwait(false),
             CertificateValidity = TimeSpan.FromDays(90),
@@ -580,7 +663,7 @@ internal static class Program
             PrivateKey = privateKey,
             AllowPublicEnrollment =
                 bool.TryParse(configuration[$"{profileName}:AllowPublicEnrollment"], out var allowPublicEnrollment)
-                && allowPublicEnrollment,
+             && allowPublicEnrollment,
             CertificatePolicies = ReadList(configuration, $"{profileName}:CertificatePolicies") ?? [],
             KeyUsage = ReadKeyUsage(configuration[$"{profileName}:KeyUsage"]),
             ExtendedKeyUsages = ReadList(configuration, $"{profileName}:ExtendedKeyUsages"),
@@ -636,7 +719,8 @@ internal static class Program
         }
 
         return section.Value is { } value
-            ? value.Split([',', ';', ' ', '\t', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            ? value.Split([',', ';', ' ', '\t', '\n'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             : null;
     }
 
@@ -701,12 +785,17 @@ internal static class Program
         collection.Add(certificate);
     }
 
-    private static async Task<X509Certificate2> CreateCert(string[] args, string cert, string certKey)
+    private static async Task<X509Certificate2> CreateCert(
+        string[] args,
+        IConfiguration configuration,
+        string profileName,
+        string cert,
+        string certKey)
     {
-        var certIndex = args[Array.IndexOf(args, cert) + 1];
-        var keyIndex = Array.IndexOf(args, certKey);
-        var key = keyIndex >= 0 ? args[keyIndex + 1] : null;
-        using var file = File.OpenText(certIndex);
+        var path = GetArgumentValue(args, cert) ?? configuration[$"{profileName}:Pem"]
+         ?? throw new InvalidOperationException($"Set {profileName}:Pem or {cert} to a CA certificate file.");
+        var key = GetArgumentValue(args, certKey) ?? configuration[$"{profileName}:KeyPem"];
+        using var file = File.OpenText(path);
         using var keyFile = key == null ? TextReader.Null : File.OpenText(key);
         var pem = await file.ReadToEndAsync().ConfigureAwait(false);
         var keyPem = await keyFile.ReadToEndAsync().ConfigureAwait(false);

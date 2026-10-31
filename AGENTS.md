@@ -38,7 +38,6 @@ When adding or changing features, update the relevant docs in the same PR.
 | `opencertserver.tpm` / `opencertserver.tss.net` / `TSS.Net.Managed` | TPM-backed CA key provisioning. |
 | `opencertserver.lambda2` | AWS Lambda entry point (`opencertserver.lambda` for legacy). |
 | `CertesSlim` | Lightweight ACME protocol library (JWS, order flow, challenge validation). |
-| `src/web` | Angular management UI; see `src/web/README.md`. |
 | `opencertserver.data` | Data persistence store abstractions. |
 
 ### Service Boundaries & Data Flows
@@ -48,7 +47,6 @@ When adding or changing features, update the relevant docs in the same PR.
 - CA logic is centralized in `opencertserver.ca` and consumed by `ca.server` and `acme.server` via DI.
 - The `opencertserver.attestation` layer abstracts hardware trust roots so `acme.server` can accept device identities through `device-attest-01`.
 - The `opencertserver.mcp` project wraps `ca.server` and `ca.utils` behind a stdio MCP transport for AI agent tool-calling.
-- Web UI is the Angular app in `src/web`; see `src/web/README.md` for setup.
 
 ### Developer Workflows
 
@@ -67,7 +65,6 @@ When adding or changing features, update the relevant docs in the same PR.
    dotnet test tests/opencertserver.acme.yarp.tests/           # YARP per-route ACME
    dotnet test tests/opencertserver.attestation.Tests/         # attestation backends
         ```
-- **Web UI:** See `src/web/README.md` for Angular build, OIDC setup, and tenant config.
 - **Deployment:**
         - Main server: `dotnet run --project src/opencertserver.certserver/`
         - Lambda: `opencertserver.lambda2` (preferred) or `opencertserver.lambda` (legacy).
@@ -93,7 +90,6 @@ When adding or changing features, update the relevant docs in the same PR.
 | `Yarp.ReverseProxy` | `acme.yarp`, `yarp.server` | Reverse-proxy routing; per-route ACME |
 | `DnsClientX` | `acme.server` | `dns-01` challenge validation |
 | `Amazon.Lambda.AspNetCoreServer` | `opencertserver.lambda2` | AWS Lambda + ASP.NET Core adapter |
-| `angular-material` / `@angular/core` | `src/web` | Management UI |
 | `OpenCertServer.Amd.Native` / `Sgx.Native` | `attestation` | Platform-specific native attestation runtimes |
 
 ### Key Docs & Entry Points

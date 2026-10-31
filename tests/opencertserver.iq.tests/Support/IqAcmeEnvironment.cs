@@ -336,6 +336,9 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
             .WithEnvironment("Kestrel__Certificates__Default__Path", "/certs/tls.crt")
             .WithEnvironment("Kestrel__Certificates__Default__KeyPath", "/certs/tls.key")
             .WithEnvironment("AllowedHosts", $"localhost;127.0.0.1;[::1];{ServerAlias};{TosServerAlias}")
+            // These interoperability scenarios deliberately exercise ephemeral keys and TLS 1.2.
+            .WithEnvironment("Appliance__Hardened", "false")
+            .WithEnvironment("AcmeServer__ExternalAccountRequired", "false")
             // Resolve through the container's resolver (Docker DNS -> the test DNS server), not public DoH.
             .WithEnvironment("AcmeServer__DnsEndpoint", "System")
             .WithEnvironment("AcmeServer__DisableCaaChecks", _disableCaaChecks ? "true" : "false")

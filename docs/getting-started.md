@@ -21,15 +21,17 @@ client libraries, so you can copy and adapt it directly.
 ./build.ps1
 ```
 
-This produces the `opencert` CLI, the `certserver` web app, and the NuGet packages under
+This produces the `opencert` CLI, the `certserver` HTTP server, and the NuGet packages under
 `artifacts/`.
 
 ---
 
 ## 2. Run the cert server
 
-The `certserver` application is configured entirely through command-line arguments, with environment
-variables and `appsettings.json` as fall-through. There are **no required environment variables**.
+The `certserver` application accepts JSON configuration files, environment variables, and command-line
+arguments. For production, use the [hardened appliance](../Docker.md): mount a versioned configuration
+file read-only at `/config/appsettings.json`, keys separately, and persistent storage at
+`/var/lib/opencertserver`. No certificate command-line arguments are needed.
 
 ### Mode 1 — Self-signed CA (fastest way to try it)
 
@@ -39,6 +41,8 @@ startup:
 ```sh
 dotnet opencertserver.certserver.dll \
    --dn "CN=My Internal CA" \
+   --authority https://identity.example.com \
+   --audience opencertserver \
    --port 5001 \
    --ocsp http://localhost:5001/ca/ocsp \
    --ca-issuer http://localhost:5001/ca/certificate
@@ -62,6 +66,8 @@ dotnet opencertserver.certserver.dll \
    --rsa-key /path/to/rsa-ca-key.pem \
    --ec     /path/to/ec-ca.pem \
    --ec-key  /path/to/ec-ca-key.pem \
+   --authority https://identity.example.com \
+   --audience opencertserver \
    --port 5001 \
    --ocsp   http://pki.example.com/ocsp \
    --ca-issuer http://pki.example.com/ca/certificate
@@ -75,14 +81,55 @@ dotnet opencertserver.certserver.dll \
 | `--ec-key <path>` | Path to the ECDSA CA private key PEM file (optional if the key is embedded in the cert file). |
 
 At least one of `--dn` or `--rsa`/`--ec` must be supplied; the server throws on startup otherwise.
-The TLS listener is pinned to TLS 1.2/1.3 because EST (RFC 7030) requires TLS ≥ 1.1.
+The development listener accepts TLS 1.2/1.3. Appliance images enforce **TLS 1.3 only** for all
+roles and reject ephemeral `--dn` CAs; provision persistent CA certificates and keys instead.
 
-For a containerized or Kubernetes deployment, see [Docker](../Docker.md). The equivalent Docker
-smoke test is:
+For a containerized deployment, start with the [headless appliance operator guide](appliance.md).
+The equivalent Docker smoke test is:
 
 ```sh
-curl -k https://localhost:8084/.well-known/est/cacerts
+curl --cacert tls-root.pem https://pki.example.com:5001/.well-known/est/cacerts
 ```
+
+### Appliance roles and upgrades
+
+Build `Dockerfile.unified` for CA + EST + ACME, `Dockerfile.ca` for the existing CA endpoints
+and health check only, or `Dockerfile.ra` for the authenticated operator RA API backed by the
+outbound `RaPeerClient` library. The RA image exposes `/ra/enroll`, `/ra/renew`, `/ra/revoke`,
+and liveness `/health`; it does not expose EST, ACME, or CA endpoints and never loads an issuing
+CA private key. `Dockerfile.appliance` is an alias for the unified role. Start with the sample
+configuration for the selected role under [`deploy/appliance/`](../deploy/appliance/), then
+follow the [headless appliance operator guide](appliance.md) for role-specific trust, endpoint,
+backup, upgrade, and rollback details.
+
+On the host (without a container), the same file is accepted:
+
+```sh
+ASPNETCORE_ENVIRONMENT=Hardened \
+  dotnet run --project src/opencertserver.certserver -- --config /absolute/path/appsettings.json
+```
+
+Set `Appliance:DataDirectory` to an existing writable host location outside a container.
+Stop the server and back up configuration, CA keys, certificate inventory/revocations, and
+ACME account/order files before upgrading. Use the **new** image to migrate a copy:
+
+```sh
+docker run --rm --user "$(id -u):$(id -g)" \
+  --mount type=bind,src="$PWD/config",dst=/config \
+  opencertserver-unified:local configload /config/v1.json /config/v2.json
+docker run --rm --user "$(id -u):$(id -g)" \
+  --mount type=bind,src="$PWD/config",dst=/config \
+  opencertserver-unified:local configdump /config/v2.json /config/export.json
+```
+
+`configload` migrates version 1 (`authority`, comma-separated `audience`) to version 2
+(`Jwt:Authority`, `Jwt:Audiences`). `configdump` exports a current-version file; both preserve
+all other JSON settings, refuse existing destinations, and create owner-only files on Unix.
+These exports contain any secrets already in the source: store them securely. They do not export
+environment-variable secrets or certificate private keys. Startup rejects old/newer schemas unless
+`Migration:AutoApply=true` opts into supported older-version upgrades **in memory**, never rewriting
+a read-only mount. An unsupported future version is always rejected. See the operator guide for
+rollback and image digest pinning.
 
 ---
 
@@ -528,7 +575,6 @@ unknown tool name returns a failed result with error code
 * **TPM-backed CA keys.** `opencertserver.tpm` / `opencertserver.tss.net` can provision the CA
   private key *inside* a TPM so it never leaves the hardware. See [Implemented standards → TPM](standards.md#tpm-backed-ca-keys).
 * **Lambda / serverless.** `opencertserver.lambda2` is the AWS Lambda entry point.
-* **Web UI.** The `web` Angular project is the management frontend; see `web/README.md`.
 
 ---
 
@@ -571,6 +617,11 @@ the request's delegated DNS suffix and selected profile are checked against the 
 `RevokeAsync(raIdentityCertificate, serialNumberHex, reason)` sends a signed revocation request.
 Renewal is a new CSR submission, so the central CA's configured protocol and profile policy are
 reapplied.
+
+This client library is distinct from the `Dockerfile.ra` appliance role. The RA appliance hosts
+the JWT-protected operator API and uses `RaPeerClient` to make outbound requests to the CA; its
+routes, credentials, and deployment configuration are documented in the
+[headless appliance operator guide](appliance.md#endpoints).
 
 ### Public self-service RA
 

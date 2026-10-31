@@ -5,6 +5,7 @@ using OpenCertServer.Acme.Abstractions.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// Represents an ACME authorization, which binds an identifier to an account and tracks challenge status.
@@ -44,6 +45,23 @@ public sealed class Authorization
         Expires = expires;
     }
 
+    [JsonConstructor]
+    public Authorization(
+        string authorizationId,
+        AuthorizationStatus status,
+        Identifier identifier,
+        DateTimeOffset expires,
+        List<Challenge> challenges)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(authorizationId);
+        AuthorizationId = authorizationId;
+        Status = status;
+        Identifier = identifier ?? throw new ArgumentNullException(nameof(identifier));
+        Expires = expires;
+        Challenges = challenges ?? throw new ArgumentNullException(nameof(challenges));
+        foreach (var challenge in Challenges) challenge.Authorization = this;
+    }
+
     /// <summary>
     /// Gets the unique authorization identifier.
     /// </summary>
@@ -57,6 +75,7 @@ public sealed class Authorization
     /// <summary>
     /// Gets the order to which this authorization belongs.
     /// </summary>
+    [JsonIgnore]
     public Order Order
     {
         get { return field ?? throw new NotInitializedException(); }

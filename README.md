@@ -70,7 +70,6 @@ walkthrough with the tests that prove each behaviour.
 | `opencertserver.attestation` | Hardware attestation layer (AMD SEV-SNP, Intel SGX, Apple Secure Element) for device-attest. |
 | `opencertserver.tpm` / `opencertserver.tss.net` | TPM key provisioning so CA private keys can stay inside a TPM. |
 | `opencertserver.cli` | The `opencert` command-line tool (keys, CSRs, EST enroll/reenroll). |
-| `web` | Angular UI for certificate management. |
 
 Components are also published as NuGet packages, so you can embed the EST, ACME, or CA server in your
 own ASP.NET Core host. See [Getting started → Embedding the server](docs/getting-started.md#6-embedding-the-server-in-your-own-app).

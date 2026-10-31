@@ -6,6 +6,7 @@ using CertesSlim.Acme.Resource;
 using OpenCertServer.Acme.Abstractions.Exceptions;
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// Represents an ACME challenge, which is used to prove control over an identifier as part of the ACME protocol.
@@ -41,6 +42,18 @@ public sealed class Challenge
         Authorization.Challenges.Add(this);
     }
 
+    [JsonConstructor]
+    public Challenge(string challengeId, ChallengeStatus status, string type, string token)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(challengeId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(type);
+        ArgumentException.ThrowIfNullOrWhiteSpace(token);
+        ChallengeId = challengeId;
+        Status = status;
+        Type = type;
+        Token = token;
+    }
+
     /// <summary>
     /// Gets the unique challenge identifier.
     /// </summary>
@@ -64,6 +77,7 @@ public sealed class Challenge
     /// <summary>
     /// Gets the parent authorization to which this challenge belongs.
     /// </summary>
+    [JsonIgnore]
     public Authorization Authorization
     {
         get { return field ?? throw new NotInitializedException(); }

@@ -31,6 +31,8 @@ public static class ServiceCollectionExtensions
             AcmeServerOptions? acmeServerOptions = null,
             string sectionName = "AcmeServer")
         {
+            services.ConfigureHttpJsonOptions(options =>
+                options.SerializerOptions.TypeInfoResolverChain.Insert(0, AcmeHttpJsonContext.Default));
             var acmeServerConfig = configuration.GetSection(sectionName);
             var publicRaConfig = configuration.GetSection("PublicRa");
             acmeServerOptions ??= new AcmeServerOptions();

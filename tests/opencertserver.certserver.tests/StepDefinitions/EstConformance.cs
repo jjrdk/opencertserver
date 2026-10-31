@@ -1,6 +1,8 @@
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Formats.Asn1;
+using System.Security.Authentication;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.WebUtilities;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Est.Server.Response;
@@ -700,9 +702,12 @@ public partial class CertificateServerFeatures
     [Then(@"TLS 1\.1 or a later version MUST be used for EST communication")]
     public void ThenTls11OrALaterVersionMustBeUsedForEstCommunication()
     {
-        var source = string.Concat(ConformanceState.CheckedFiles);
-        Assert.Contains("SslProtocols", source, StringComparison.Ordinal);
-        Assert.Contains("Tls12", source, StringComparison.OrdinalIgnoreCase);
+        using var configuration = new ConfigurationManager();
+        Assert.Equal(SslProtocols.Tls12 | SslProtocols.Tls13, ApplianceOptions.Read(configuration).Protocols);
+        configuration["Appliance:Hardened"] = "true";
+        configuration["Appliance:Role"] = "Ra";
+        configuration["AllowedHosts"] = "localhost";
+        Assert.Equal(SslProtocols.Tls13, ApplianceOptions.Read(configuration).Protocols);
     }
 
     [Then("TLS server authentication with certificates MUST be supported")]

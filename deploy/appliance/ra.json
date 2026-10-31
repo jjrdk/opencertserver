@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "AllowedHosts": "ra.example.com;localhost",
+  "port": 5001,
+  "Jwt": {
+    "Authority": "https://identity.example.com",
+    "Audiences": ["opencertserver"]
+  },
+  "Kestrel": {
+    "Certificates": {
+      "Default": {
+        "Path": "/run/secrets/tls.pem",
+        "KeyPath": "/run/secrets/tls.key"
+      }
+    }
+  },
+  "Ra": {
+    "PeerUrl": "https://ca.example.com:5001",
+    "Scope": "tenant-a.example.com",
+    "Profile": "rsa",
+    "ClientCertificatePath": "/run/secrets/ra-client.pem",
+    "ClientPrivateKeyPath": "/run/secrets/ra-client.key",
+    "CaTrustRoots": ["/run/secrets/ca-root.pem"]
+  },
+  "Telemetry": {
+    "Enabled": false
+  }
+}

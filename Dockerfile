@@ -12,8 +12,11 @@ ENV DOTNET_NOLOGO=true
 # enforces the device-attest-01 fail-closed posture when no trust roots are mounted.
 ENV ASPNETCORE_ENVIRONMENT=Hardened
 RUN addgroup -S certificateservergroup && adduser -S certificateserveruser -G certificateservergroup
+RUN mkdir -p /var/lib/opencertserver \
+    && chown certificateserveruser:certificateservergroup /var/lib/opencertserver
 USER certificateserveruser
 COPY artifacts/publish/server/${RID}/ app/
 WORKDIR /app
 EXPOSE 6000 6001
+VOLUME ["/var/lib/opencertserver"]
 ENTRYPOINT ["./opencertserver.certserver"]

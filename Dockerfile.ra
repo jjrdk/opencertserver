@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
+ARG TARGETARCH
+RUN apk add --no-cache clang build-base zlib-dev
+WORKDIR /source
+COPY Directory.Build.props Directory.Packages.props global.json ./
+COPY src/ src/
+RUN case "$TARGETARCH" in amd64) rid=linux-musl-x64 ;; arm64) rid=linux-musl-arm64 ;; *) exit 1 ;; esac \
+    && dotnet publish src/opencertserver.certserver/opencertserver.certserver.csproj \
+       -c Release -r "$rid" -p:PublishAot=true -p:StripSymbols=true \
+       -p:IlcTreatWarningsAsErrors=false -p:TrimmerTreatWarningsAsErrors=false -o /publish
+
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine
+RUN mkdir -p /var/lib/opencertserver /config \
+    && chown -R app:app /var/lib/opencertserver /config
+WORKDIR /app
+COPY --from=build /publish/ ./
+ENV ASPNETCORE_ENVIRONMENT=Hardened \
+    OPENCERT_CONFIG=/config/appsettings.json \
+    Appliance__Role=Ra \
+    DOTNET_NOLOGO=true \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1
+USER app
+EXPOSE 5001
+ENTRYPOINT ["./opencertserver.certserver"]

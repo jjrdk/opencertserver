@@ -1,0 +1,42 @@
+{
+  "version": 2,
+  "AllowedHosts": "ca.example.com;localhost",
+  "port": 5001,
+  "Jwt": {
+    "Authority": "https://identity.example.com",
+    "Audiences": ["opencertserver"]
+  },
+  "rsa": {
+    "Pem": "/run/secrets/rsa-ca.pem",
+    "KeyPem": "/run/secrets/rsa-ca.key"
+  },
+  "ecdsa": {
+    "Pem": "/run/secrets/ecdsa-ca.pem",
+    "KeyPem": "/run/secrets/ecdsa-ca.key"
+  },
+  "Kestrel": {
+    "Certificates": {
+      "Default": {
+        "Path": "/run/secrets/tls.pem",
+        "KeyPath": "/run/secrets/tls.key"
+      }
+    }
+  },
+  "Ca": {
+    "AcceptRa": true,
+    "RaBindings": [
+      {
+        "RaId": "ra-tenant-a",
+        "Scopes": ["tenant-a.example.com"],
+        "Profiles": ["rsa"]
+      }
+    ]
+  },
+  "CaServer": {
+    "OCSP": ["https://ca.example.com:5001/ca/ocsp"],
+    "CrlDistributionPoints": ["https://ca.example.com:5001/ca/crl"]
+  },
+  "Telemetry": {
+    "Enabled": false
+  }
+}

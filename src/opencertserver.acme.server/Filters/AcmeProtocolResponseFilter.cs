@@ -3,9 +3,7 @@ using CertesSlim.Acme;
 
 namespace OpenCertServer.Acme.Server.Filters;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using OpenCertServer.Acme.Abstractions.Exceptions;
@@ -50,12 +48,6 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
         }
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026",
-        Justification =
-            "ACME problem documents are small known DTOs and this server path is not trimmed in the test/runtime configuration.")]
-    [UnconditionalSuppressMessage("AOT", "IL3050",
-        Justification =
-            "ACME problem responses are emitted in the regular ASP.NET runtime configuration used by this project.")]
     private async Task<IResult> CreateProblemResultAsync(
         HttpContext httpContext,
         AcmeException exception,
@@ -97,13 +89,8 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
                 .ToList();
         }
 
-        var jsonOptions = new JsonSerializerOptions
-        {
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-
-        return Results.Json(problem, jsonOptions, contentType: "application/problem+json", statusCode: statusCode);
+        return Results.Json(problem, AcmeHttpJsonContext.Default.AcmeError,
+            contentType: "application/problem+json", statusCode: statusCode);
     }
 
     private static int MapStatusCode(AcmeException exception)
