@@ -384,7 +384,7 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
         using var key = RSA.Create(2048);
         var request = new CertificateRequest("CN=persistent", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         _certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddDays(1));
-        await _store!.AddCertificate(_certificate);
+        await _store!.AddCertificate(_certificate, "rsa");
         Assert.True(await _store.RemoveCertificate(_certificate.SerialNumber, X509RevocationReason.KeyCompromise));
         _store.Dispose();
         _store = null;
@@ -398,6 +398,7 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
         var item = Assert.Single(items);
         Assert.Equal(_certificate!.Thumbprint, item.Thumbprint);
         Assert.Equal(X509RevocationReason.KeyCompromise, item.RevocationReason);
+        Assert.Equal("rsa", await _store.GetIssuingProfile(_certificate.Thumbprint));
         Assert.Single(await _store.GetRevocationList().ToArrayAsync());
     }
 

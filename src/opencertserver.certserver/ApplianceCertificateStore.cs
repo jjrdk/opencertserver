@@ -49,10 +49,25 @@ internal sealed class ApplianceCertificateStore : IStoreCertificates, IDisposabl
 
     public async Task AddCertificate(X509Certificate2 certificate, CancellationToken cancellationToken = default)
     {
+        await AddCertificateCore(certificate, issuingProfile: null, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task AddCertificate(
+        X509Certificate2 certificate,
+        string issuingProfile,
+        CancellationToken cancellationToken = default) =>
+        AddCertificateCore(certificate, issuingProfile, cancellationToken);
+
+    private async Task AddCertificateCore(
+        X509Certificate2 certificate,
+        string? issuingProfile,
+        CancellationToken cancellationToken)
+    {
         await _gate.WaitAsync(cancellationToken);
         try
         {
             var item = CertificateItem.FromX509Certificate2(certificate);
+            item.IssuingProfile = issuingProfile;
             if (_certificates.Any(existing => existing.SerialNumber == item.SerialNumber))
             {
                 throw new InvalidOperationException("The certificate serial number is already stored.");
@@ -66,6 +81,13 @@ internal sealed class ApplianceCertificateStore : IStoreCertificates, IDisposabl
         {
             _gate.Release();
         }
+    }
+
+    public Task<string?> GetIssuingProfile(string thumbprint, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(_certificates.FirstOrDefault(certificate =>
+            string.Equals(certificate.Thumbprint, thumbprint, StringComparison.OrdinalIgnoreCase))?.IssuingProfile);
     }
 
     public async Task<bool> RemoveCertificate(
@@ -87,6 +109,7 @@ internal sealed class ApplianceCertificateStore : IStoreCertificates, IDisposabl
             // Never mutate the live snapshot before its durable replacement succeeds.
             using var certificate = X509Certificate2.CreateFromPem(updated[index].PublicKeyPem);
             updated[index] = CertificateItem.FromX509Certificate2(certificate);
+            updated[index].IssuingProfile = _certificates[index].IssuingProfile;
             updated[index].RevocationDate = _certificates[index].RevocationDate ?? DateTimeOffset.UtcNow;
             updated[index].RevocationReason = reason;
             Save(updated);
