@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Ra.Server</RootNamespace>
+        <AssemblyName>opencertserver.ra.server</AssemblyName>
+        <OutputType>Exe</OutputType>
+        <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
+        <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <Description>A standalone registration authority (RA) that acts as its own process and delegates
+        enrollment and revocation to a backing certificate authority over a trusted HTTPS connection. It
+        hosts RA policy and an outbound delegator front endpoint, but no CA core: every issuance and
+        revocation is forwarded to opencertserver.ca.client. The backing CA stays authoritative for scope
+        and identity. This project references opencertserver.ca.client and opencertserver.ra, but never
+        opencertserver.ca.</Description>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <NoWarn>1701;1702;IL2026</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+        <NoWarn>1701;1702;IL2026</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.ca.client\opencertserver.ca.client.csproj"/>
+        <ProjectReference Include="..\opencertserver.est.server\opencertserver.est.server.csproj"/>
+        <ProjectReference Include="..\opencertserver.ra\opencertserver.ra.csproj" />
+    </ItemGroup>
+
+</Project>

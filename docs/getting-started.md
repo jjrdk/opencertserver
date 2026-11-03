@@ -572,6 +572,7 @@ standalone host's opt-in settings.
 | ACME | `/order/{id}/finalize` | POST | JWS |
 | ACME | `/order/{id}/certificate` | POST | JWS |
 | CA | `/ca/csr`, `/ca/{profile}/csr` | POST | Yes |
+| CA | `/ca/profiles` | GET | Yes (lists supported profile names; RA/ACME discovery + refresh) |
 | CA | `/ca/revoke` | DELETE | Yes (mTLS + signature; self-service or `ca_admin` role) |
 | CA | `/ca/crl`, `/ca/{profile}/crl` | GET | No |
 | CA | `/ca/ocsp`, `/ca/ocsp/{requestEncoded}` | POST/GET | No |
@@ -739,9 +740,10 @@ Ca__RaBindings__0__Profiles__0=default
 ```
 
 The RA process initiates every connection; no inbound listener or CA-to-RA route is needed. Its
-configuration uses `Ra:PeerUrl` (HTTPS only), `Ra:Scope`, optional `Ra:Profile`, and optionally
-`Ra:BearerToken`. Keep tokens in a secret provider, not source-controlled settings. For mTLS, load
-the RA's CA-issued client certificate from a secure store and configure the outbound handler:
+configuration uses `Ra:PeerUrl` (HTTPS only), `Ra:Scope`, optional `Ra:Profile`, optional
+`Ra:Profiles` (a comma-separated delegated profile set; empty means *all* profiles the CA supports),
+and optionally `Ra:BearerToken`. Keep tokens in a secret provider, not source-controlled settings. For
+mTLS, load the RA's CA-issued client certificate from a secure store and configure the outbound handler:
 
 ```csharp
 using System.Security.Cryptography.X509Certificates;
@@ -761,8 +763,11 @@ builder.Services.AddRaPeerClient(builder.Configuration, handler =>
 The CA maps an mTLS certificate's CN to a configured `RaId`; a JWT peer instead supplies the `ra`
 claim. The CA must trust the mTLS certificate under its client-certificate policy. In either case,
 the request's delegated DNS suffix and selected profile are checked against the CA binding.
-`RaPeerClient.EnrollAsync(csrPem)` and `RenewAsync(replacementCsrPem)` submit PKCS#10 requests;
-`RevokeAsync(raIdentityCertificate, serialNumberHex, reason)` sends a signed revocation request.
+`RaPeerClient.EnrollAsync(csrPem, profile)` (the `profile` selects a CA profile and defaults to
+`Ra:Profile`) and `RenewAsync(replacementCsrPem)` submit PKCS#10 requests;
+`RevokeAsync(raIdentityCertificate, serialNumberHex, reason)` sends a signed revocation request;
+`GetSupportedProfiles()` asks the CA for its current profile set so the RA can offer, and refresh,
+the full set of profiles the CA supports.
 Renewal is a new CSR submission, so the central CA's configured protocol and profile policy are
 reapplied.
 
@@ -786,8 +791,28 @@ not yet supported: setting `PublicRa:RequireApproval=true` intentionally fails s
 approval workflow is implemented. See [Implemented standards → Registration authorities](standards.md#registration-authorities-scoped-peer-and-public-self-service)
 and the full [configuration reference](documentation.md#registration-authority-configuration).
 
+## Separating RA / CA / ACME
+
+By default `opencertserver.certserver` runs everything in one process: the CA core,
+EST, ACME (with an in-process issuer), RA acceptance, and the public RA. The roles
+can be split across hosts that talk to each other over **trusted HTTPS connections**;
+the CA stays authoritative for scope and identity.
+
+- **CA that validates its own clients and acts as an ACME server** — the default
+  monolith (in-process `DefaultIssuer`).
+- **Separate ACME server → backing CA** — run the `opencertserver.acme` host, or set
+  `AcmeServer:Issuer=remote` in `certserver`. It issues through a `CaClient` to
+  `Ca:RemoteUrl` over HTTPS (bearer/mTLS). The ACME process never loads a CA key.
+- **RA → backing CA** — run the `opencertserver.ra.server` host. It forwards CSR to a
+  backing CA (`Ca:RemoteUrl`) and, when configured, RA peers (`Ra:PeerUrl`).
+
+See [Architecture: separating RA/CA/ACME](architecture-separation.md) for the full
+topology map, project boundaries, trusted-connection details, and the `Ca`/`Ra`/
+`AcmeServer` configuration keys.
+
 ## Next steps
 
+* [Separating RA/CA/ACME](architecture-separation.md) — deploy the roles as one process or split them over trusted HTTPS connections.
 * [Implemented standards](standards.md) — every RFC, what OpenCertServer does, and the tests that prove it.
 * [Documentation index](documentation.md) — the endpoint reference.
 * [Certification Practice Statement](opencertserver_cps.md) and

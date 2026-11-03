@@ -1,3 +1,5 @@
+using OpenCertServer.Ca.Protocol;
+
 namespace OpenCertServer.Ca.Server;
 
 using System.Numerics;
@@ -266,6 +268,10 @@ public static class Extensions
             policy.RequireAuthenticatedUser();
         });
         groupBuilder.MapPost("/{profileName}/csr", CsrHandler.HandleProfile).RequireAuthorization(policy =>
+        {
+            policy.RequireAuthenticatedUser();
+        });
+        groupBuilder.MapGet("/profiles", ProfilesHandler.Handle).RequireAuthorization(policy =>
         {
             policy.RequireAuthenticatedUser();
         });

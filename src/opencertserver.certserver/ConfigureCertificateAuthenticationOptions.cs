@@ -1,3 +1,4 @@
+using OpenCertServer.Ca.Protocol;
 using OpenCertServer.Est.Server.TrustAnchor;
 
 namespace OpenCertServer.CertServer;

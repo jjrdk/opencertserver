@@ -20,6 +20,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\opencertserver.data.postgresql\opencertserver.data.postgresql.csproj"/>
+        <ProjectReference Include="..\opencertserver.acme.remote\opencertserver.acme.remote.csproj"/>
         <ProjectReference Include="..\opencertserver.acme.server\opencertserver.acme.server.csproj"/>
         <ProjectReference Include="..\opencertserver.ca.server\opencertserver.ca.server.csproj"/>
         <ProjectReference Include="..\opencertserver.est.server\opencertserver.est.server.csproj"/>

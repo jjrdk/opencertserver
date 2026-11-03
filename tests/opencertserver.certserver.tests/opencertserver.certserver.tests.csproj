@@ -10,7 +10,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\opencertserver.ra\opencertserver.ra.csproj"/>
+        <ProjectReference Include="..\..\src\opencertserver.ca.client\opencertserver.ca.client.csproj"/>
+        <ProjectReference Include="..\..\src\opencertserver.acme.remote\opencertserver.acme.remote.csproj"/>
+        <ProjectReference Include="..\..\src\opencertserver.ra\opencertserver.ra.csproj" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.TestHost"/>

@@ -1,10 +1,10 @@
-namespace OpenCertServer.Ra;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using Microsoft.Extensions.DependencyInjection;
+using OpenCertServer.Ca.Protocol;
+
+namespace OpenCertServer.Ra;
 
 /// <summary>
 /// Outbound-only client for a registration authority that delegates enrollment to a central CA.
@@ -30,13 +30,36 @@ public sealed class RaPeerClient
     public Uri PeerUrl => _options.PeerUrl;
 
     /// <summary>Submits a proof-of-possession PKCS#10 request to the central CA.</summary>
-    public Task<string> EnrollAsync(string csrPem, CancellationToken cancellationToken = default)
+    /// <param name="csrPem">The PKCS#10 certificate request.</param>
+    /// <param name="profile">
+    /// The CA profile to enroll against, or null to use the peer's default profile
+    /// (<see cref="RaPeerOptions.Profile"/>). This lets one RA serve multiple CA profiles.
+    /// </param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    public Task<string> EnrollAsync(
+        string csrPem,
+        string? profile = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(csrPem);
-        var path = string.IsNullOrWhiteSpace(_options.Profile)
-            ? "ca/csr"
-            : $"ca/{Uri.EscapeDataString(_options.Profile)}/csr";
+        var effectiveProfile = profile ?? _options.Profile;
+        var path = RaProtocol.CsrPathFor(effectiveProfile);
         return SendForCertificateAsync(new Uri(_options.PeerUrl, path), csrPem, cancellationToken);
+    }
+
+    /// <summary>
+    /// Requests the set of profiles the backing CA supports, so the RA can discover and offer the full
+    /// set and refresh it later to pick up a profile set the CA has updated. Only profile names come
+    /// back over the wire.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> GetSupportedProfiles(CancellationToken cancellationToken = default)
+    {
+        var requestUri = new Uri(_options.PeerUrl, RaProtocol.ProfilesPath);
+        using var request = CreateRequest(HttpMethod.Get, requestUri);
+        using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        return body.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
     }
 
     /// <summary>
@@ -45,7 +68,7 @@ public sealed class RaPeerClient
     /// </summary>
     public Task<string> RenewAsync(string csrPem, CancellationToken cancellationToken = default)
     {
-        return EnrollAsync(csrPem, cancellationToken);
+        return EnrollAsync(csrPem, _options.Profile, cancellationToken);
     }
 
     /// <summary>Requests revocation of a certificate in the delegated DNS scope.</summary>
@@ -63,11 +86,11 @@ public sealed class RaPeerClient
         }
 
         var reasonName = reason.ToString();
-        var signature = Sign(raIdentityCertificate, serialNumberHex + reasonName);
+        var signature = Sign(raIdentityCertificate, RaProtocol.BuildRevocationMessage(serialNumberHex, reasonName));
         var requestUri = new Uri(_options.PeerUrl,
-            $"ca/revoke?sn={Uri.EscapeDataString(serialNumberHex)}" +
-            $"&reason={Uri.EscapeDataString(reasonName)}" +
-            $"&signature={Uri.EscapeDataString(Convert.ToBase64String(signature))}");
+            $"{RaProtocol.RevokePath}?{RaProtocol.QuerySn}={Uri.EscapeDataString(serialNumberHex)}" +
+            $"&{RaProtocol.QueryReason}={Uri.EscapeDataString(reasonName)}" +
+            $"&{RaProtocol.QuerySignature}={Uri.EscapeDataString(Convert.ToBase64String(signature))}");
         using var request = CreateRequest(HttpMethod.Delete, requestUri);
         using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound)
@@ -99,7 +122,7 @@ public sealed class RaPeerClient
         }
 
         var request = new HttpRequestMessage(method, requestUri);
-        request.Headers.Add("X-Delegated-Subject", _options.Scope);
+        request.Headers.Add(RaProtocol.DelegatedSubjectHeader, _options.Scope);
         if (!string.IsNullOrWhiteSpace(_options.BearerToken))
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.BearerToken);
@@ -120,38 +143,5 @@ public sealed class RaPeerClient
         using var ecdsa = certificate.GetECDsaPrivateKey();
         return ecdsa?.SignData(data, HashAlgorithmName.SHA256)
                ?? throw new NotSupportedException("The RA identity certificate must use RSA or ECDSA.");
-    }
-}
-
-/// <summary>Dependency-injection extensions for the outbound RA peer.</summary>
-public static class RaPeerServiceCollectionExtensions
-{
-    /// <summary>Registers a configured HTTPS-only peer client.</summary>
-    public static IServiceCollection AddRaPeerClient(
-        this IServiceCollection services,
-        Microsoft.Extensions.Configuration.IConfiguration configuration)
-    {
-        return services.AddRaPeerClient(configuration, null);
-    }
-
-    /// <summary>
-    /// Registers a configured HTTPS-only peer client and optionally configures its outbound TLS
-    /// handler, for example to present an RA client certificate.
-    /// </summary>
-    public static IServiceCollection AddRaPeerClient(
-        this IServiceCollection services,
-        Microsoft.Extensions.Configuration.IConfiguration configuration,
-        Action<HttpClientHandler>? configureHandler)
-    {
-        var options = RaPeerOptions.FromConfiguration(configuration);
-        services.AddSingleton(options);
-        services.AddHttpClient<RaPeerClient>()
-            .ConfigurePrimaryHttpMessageHandler(() =>
-            {
-                var handler = new HttpClientHandler();
-                configureHandler?.Invoke(handler);
-                return handler;
-            });
-        return services;
     }
 }

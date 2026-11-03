@@ -28,6 +28,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Acme.Server;
 using Acme.Server.Extensions;
+using OpenCertServer.Acme.Remote;
 using Acme.Server.Services;
 using Acme.Abstractions.Storage;
 using Acme.Abstractions.Model;
@@ -223,7 +224,6 @@ internal static class Program
             .AddAcmeInMemoryStore()
             .AddSingleton(new JwtParameters { Authority = authority, Audiences = audiences })
             .AddSingleton<ICsrValidator, DefaultCsrValidator>()
-            .AddSingleton<IIssueCertificates, DefaultIssuer>()
             .ConfigureOptions<ConfigureJwtBearerOptions>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
             .AddAuthorization(options => options.AddPolicy(
@@ -238,6 +238,20 @@ internal static class Program
                 JwtBearerDefaults.AuthenticationScheme,
                 CertificateAuthenticationDefaults.AuthenticationScheme))
             .AddHealthChecks();
+
+        // WP5 config gate: the ACME issuer is selectable. Default (empty or "inproc") preserves
+        // today's monolith behavior (the in-process CA issues ACME certificates). "remote" runs a
+        // remote ACME server that issues through a backing certificate authority over a trusted
+        // HTTPS connection (mTLS/bearer + PoP); it registers the remote issuer plus the CA client.
+        var acmeIssuer = builder.Configuration.GetSection("AcmeServer")["Issuer"];
+        if (string.Equals(acmeIssuer, "remote", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddAcmeRemoteCa(builder.Configuration);
+        }
+        else
+        {
+            services.AddSingleton<IIssueCertificates, DefaultIssuer>();
+        }
 
         services.AddHsts(options =>
         {
@@ -557,6 +571,7 @@ internal static class Program
                     .AddMeter("opencertserver.intune")
                     .AddMeter("opencertserver.ca")
                     .AddMeter("opencertserver.ca.core")
+                    .AddMeter("opencertserver.ca.client")
                     .AddMeter("opencertserver.data")
                     .AddMeter("opencertserver.data.postgresql")
                     .AddMeter("opencertserver.data.mssql")
@@ -571,6 +586,7 @@ internal static class Program
                     .AddSource("opencertserver.intune")
                     .AddSource("opencertserver.ca")
                     .AddSource("opencertserver.ca.core")
+                    .AddSource("opencertserver.ca.client")
                     .AddSource("opencertserver.data")
                     .AddSource("opencertserver.data.postgresql")
                     .AddSource("opencertserver.data.mssql")

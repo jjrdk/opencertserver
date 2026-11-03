@@ -1,4 +1,5 @@
-﻿using OpenCertServer.Ca.Utils.X509;
+﻿using OpenCertServer.Ca.Protocol;
+using OpenCertServer.Ca.Utils.X509;
 
 namespace OpenCertServer.Ca;
 
@@ -413,6 +414,18 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             .ToArray());
         telemetry.Complete();
         return certificates;
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<string>> GetSupportedProfiles(CancellationToken cancellationToken = default)
+    {
+        var names = new List<string>();
+        await foreach (var profile in _config.Profiles.GetProfiles(cancellationToken).ConfigureAwait(false))
+        {
+            names.Add(profile.Name);
+        }
+
+        return names;
     }
 
     /// <inheritdoc/>

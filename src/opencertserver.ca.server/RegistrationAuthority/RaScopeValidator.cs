@@ -1,3 +1,5 @@
+using OpenCertServer.Ca.Protocol;
+
 namespace OpenCertServer.Ca.Server.RegistrationAuthority;
 
 using System.Globalization;

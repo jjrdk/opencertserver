@@ -1,3 +1,5 @@
+using OpenCertServer.Ra;
+
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Net;
@@ -13,7 +15,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.CertServer.Tests;
-using OpenCertServer.Ra;
 using Reqnroll;
 using Xunit;
 
@@ -29,6 +30,7 @@ public partial class CertificateServerFeatures
     private Exception? _accountCreationError;
     private HttpStatusCode? _firstDirectoryStatus;
     private HttpStatusCode? _secondDirectoryStatus;
+    private IReadOnlyList<string>? _supportedProfiles;
 
     [Given(@"an outbound RA peer for ""(.*)""")]
     public void GivenAnOutboundRaPeerFor(string dnsName)
@@ -147,6 +149,37 @@ public partial class CertificateServerFeatures
     {
         Assert.Equal(HttpStatusCode.BadRequest, _raResponseStatus);
         Assert.Null(_raCertificatePem);
+    }
+
+    [When("the RA requests the supported profiles")]
+    public async Task WhenTheRaRequestsTheSupportedProfiles()
+    {
+        Assert.NotNull(_raPeerClient);
+        _supportedProfiles = await _raPeerClient.GetSupportedProfiles().ConfigureAwait(false);
+    }
+
+    [Then(@"the supported profiles include ""(.+)"" and ""(.+)""")]
+    public void ThenTheSupportedProfilesInclude(string first, string second)
+    {
+        Assert.NotNull(_supportedProfiles);
+        Assert.Contains(first, _supportedProfiles);
+        Assert.Contains(second, _supportedProfiles);
+    }
+
+    [When(@"the RA enrolls a certificate against the ""(.+)"" profile")]
+    public async Task WhenTheRaEnrollsACertificateAgainstTheNamedProfile(string profile)
+    {
+        Assert.NotNull(_raPeerClient);
+        Assert.NotNull(_raCsr);
+        try
+        {
+            _raCertificatePem = await _raPeerClient.EnrollAsync(_raCsr, profile).ConfigureAwait(false);
+            _raResponseStatus = HttpStatusCode.OK;
+        }
+        catch (HttpRequestException exception)
+        {
+            _raResponseStatus = exception.StatusCode;
+        }
     }
 
     [Then("the peer request uses HTTPS")]

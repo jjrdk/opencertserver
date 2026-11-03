@@ -236,11 +236,24 @@ Example:
 ```
 
 The outbound RA library reads `Ra:PeerUrl` (absolute HTTPS URL), `Ra:Scope`, optional
-`Ra:Profile`, and optional `Ra:BearerToken`. Use a secret provider for bearer tokens. For mTLS,
+`Ra:Profile`, optional `Ra:Profiles` (a comma-separated delegated profile set; empty means *all*
+profiles the CA supports), and optional `Ra:BearerToken`. The RA can refresh the CA's current profile
+set on demand via `RaPeerClient.GetSupportedProfiles` (which the RA host exposes as `GET /ra/profiles`).
+Use a secret provider for bearer tokens. For mTLS,
 register `AddRaPeerClient(configuration, configureHandler)` and add the RA client certificate to
 the supplied `HttpClientHandler.ClientCertificates`. The peer only makes outbound requests; it
 does not expose a customer-side CA listener. See [Getting started → Registration authorities](getting-started.md#registration-authorities)
 for the client setup sample.
+
+### GET /ca/profiles
+
+- Description: Lists the names of the profiles the CA supports, one per line.
+- Response: `text/plain` with newline-delimited profile names.
+- Authorization: requires an authenticated user (like `POST /ca/csr`).
+- Purpose: the discovery endpoint an RA (or a remote ACME issuer) uses to learn the profile set it
+  may offer and to **refresh** it when the CA adds or removes profiles. Only names are returned; the
+  profile material (keys, chains, validity) never crosses the wire. The RA host exposes this to its
+  own clients as `GET /ra/profiles`.
 
 ### GET /ca/crl
 
@@ -627,6 +640,27 @@ In the environment, use `AcmeServer__DohServers__0`, `AcmeServer__DohServers__1`
 
 For challenge types, CAA enforcement, and the `device-attest-01` validator, see
 [Implemented standards → ACME / CAA / device attestation](standards.md#acme--rfc-8555).
+
+### Remote ACME issuer (`AcmeServer:Issuer`)
+
+The ACME issuer is selectable so a deployment can run a **remote ACME server** that issues
+through a backing certificate authority over a trusted HTTPS connection instead of an
+in-process CA.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `AcmeServer:Issuer` | (empty / `inproc`) | `remote` selects the `RemoteIssuer`, which delegates issuance to a `CaClient` (`AddAcmeRemoteCa`). Empty or `inproc` keeps the in-process `DefaultIssuer`. |
+| `Ca:RemoteUrl` (or `Ca:BaseUrl`) | — | Absolute HTTPS URL of the backing CA. Required when `Issuer=remote`. |
+| `Ca:Profile` | — | Issuance profile forwarded to the CA. |
+| `Ca:DelegatedScope` | — | Delegated scope; the CA's RA-scope validator re-checks it authoritatively. |
+| `Ca:BearerToken` | — | Shared secret / JWT bearer for the trusted connection. |
+| `Ca:Trust` | — | Path to a PEM bundle of CA trust anchors (PEM → `Ca:TrustCertPath`). |
+| `Ca:ClientCert` / `Ca:ClientCertPassword` | — | PFX for the client cert (revocation PoP + mTLS). |
+
+The `opencertserver.acme` host always uses the remote issuer (it contains no CA core); the
+`opencertserver.ra.server` host uses the same `Ca` keys to forward CSR to a backing CA. The
+default monolith (`opencertserver.certserver` with no `AcmeServer:Issuer`) is unchanged. See
+[Separating RA/CA/ACME](architecture-separation.md).
 
 ---
 

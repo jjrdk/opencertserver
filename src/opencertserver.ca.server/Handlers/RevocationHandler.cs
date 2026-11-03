@@ -1,3 +1,5 @@
+using OpenCertServer.Ca.Protocol;
+
 namespace OpenCertServer.Ca.Server.Handlers;
 
 using System.Diagnostics;
@@ -33,13 +35,13 @@ public static class RevocationHandler
                 return;
             }
 
-            var signature = context.Request.Query["signature"].ToString().Base64DecodeBytes();
-            var serialNumberHex = context.Request.Query["sn"].ToString();
+            var signature = context.Request.Query[RaProtocol.QuerySignature].ToString().Base64DecodeBytes();
+            var serialNumberHex = context.Request.Query[RaProtocol.QuerySn].ToString();
             var asymmetricAlgorithm = clientCert.GetRSAPublicKey() ?? (AsymmetricAlgorithm?)clientCert.GetECDsaPublicKey();
-            var reasonString = context.Request.Query["reason"];
+            var reasonString = context.Request.Query[RaProtocol.QueryReason].ToString();
             if (asymmetricAlgorithm == null
              || !asymmetricAlgorithm.VerifySignature(
-                    Encoding.UTF8.GetBytes(serialNumberHex + reasonString),
+                    Encoding.UTF8.GetBytes(RaProtocol.BuildRevocationMessage(serialNumberHex, reasonString)),
                     signature,
                     HashAlgorithmName.SHA256))
             {
@@ -52,7 +54,7 @@ public static class RevocationHandler
             }
 
             if (string.IsNullOrEmpty(serialNumberHex)
-             || !Enum.TryParse(reasonString.ToString(), true, out X509RevocationReason reason))
+             || !Enum.TryParse(reasonString, true, out X509RevocationReason reason))
             {
                 context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                 await context.Response.CompleteAsync().ConfigureAwait(false);

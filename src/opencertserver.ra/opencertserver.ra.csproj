@@ -9,4 +9,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
         <PackageReference Include="Microsoft.Extensions.Http"/>
     </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\opencertserver.ca.protocol\opencertserver.ca.protocol.csproj" />
+    </ItemGroup>
 </Project>

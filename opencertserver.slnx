@@ -1,9 +1,12 @@
 <Solution>
     <Folder Name="/servers/">
         <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
-        <Project Path="src/opencertserver.ra/opencertserver.ra.csproj"/>
+        <Project Path="src/opencertserver.ca.client/opencertserver.ca.client.csproj" />
         <Project Path="src/opencertserver.mcp/opencertserver.mcp.csproj" />
         <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
+        <Project Path="src\opencertserver.acme.remote\opencertserver.acme.remote.csproj" />
+        <Project Path="src\opencertserver.acme\opencertserver.acme.csproj" />
+        <Project Path="src\opencertserver.ra.server\opencertserver.ra.server.csproj" />
         <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
         <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
         <Project Path="src/opencertserver.scep.server/opencertserver.scep.server.csproj"/>
@@ -41,6 +44,8 @@
     <Project Path="build\opencertserver.build\opencertserver.build.csproj" />
     <Project Path="src\opencertserver.cli\opencertserver.cli.csproj" />
     <Project Path="src/opencertserver.attestation/opencertserver.attestation.csproj" />
+    <Project Path="src/opencertserver.ca.protocol/opencertserver.ca.protocol.csproj" />
+    <Project Path="src/opencertserver.ra/opencertserver.ra.csproj" />
     <Project Path="src/OpenCertServer.Sgx.Native/OpenCertServer.Sgx.Native.csproj" />
     <Project Path="src/opencertserver.acme.yarp/opencertserver.acme.yarp.csproj" />
     <Project Path="src/OpenCertServer.Amd.Native/OpenCertServer.Amd.Native.csproj" />

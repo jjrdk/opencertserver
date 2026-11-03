@@ -1,3 +1,5 @@
+using OpenCertServer.Ca.Protocol;
+
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Security.Claims;
@@ -26,7 +28,6 @@ using Ca.Server;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Server.PublicRa;
 using OpenCertServer.Ca.Server.RegistrationAuthority;
-using OpenCertServer.Ra;
 using Ca.Utils.Ocsp;
 using Est.Server;
 using Reqnroll;

@@ -1,6 +1,6 @@
-namespace OpenCertServer.Ra;
-
 using Microsoft.Extensions.Configuration;
+
+namespace OpenCertServer.Ra;
 
 /// <summary>Configuration for the outbound-only peer RA client.</summary>
 public sealed class RaPeerOptions
@@ -13,6 +13,13 @@ public sealed class RaPeerOptions
 
     /// <summary>Gets the CA profile to use, or null to use the CA's default profile.</summary>
     public string? Profile { get; init; }
+
+    /// <summary>
+    /// Gets the profiles this RA is delegated to, or empty to be allowed to use every profile the
+    /// backing CA supports. A non-empty set restricts the RA to that subset. The set may be refreshed
+    /// from the CA via <see cref="RaPeerClient.GetSupportedProfiles"/>.
+    /// </summary>
+    public IReadOnlyList<string> Profiles { get; init; } = Array.Empty<string>();
 
     /// <summary>Gets the optional bearer token used to authenticate this RA.</summary>
     public string? BearerToken { get; init; }
@@ -41,7 +48,22 @@ public sealed class RaPeerOptions
                 : new Uri(peerUrl.AbsoluteUri + "/", UriKind.Absolute),
             Scope = scope,
             Profile = section["Profile"],
+            Profiles = ParseProfiles(section["Profiles"]),
             BearerToken = section["BearerToken"]
         };
+    }
+
+    /// <summary>
+    /// Parses a comma-separated profile list into the delegated profile set; a blank value yields an
+    /// empty set, which means "all profiles the CA supports".
+    /// </summary>
+    private static IReadOnlyList<string> ParseProfiles(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return Array.Empty<string>();
+        }
+
+        return raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 }
