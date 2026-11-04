@@ -127,11 +127,11 @@ internal static class ScepHandler
             return Failure(request, ScepFailInfo.BadRequest, options);
         }
 
-        // A transaction ID is accepted once per window: a captured request, replayed,
-        // would otherwise have the CA issue again.
-        if (!transactions.TryClaim(request.TransactionId))
+        // A request is accepted once per window: a captured request, replayed, would otherwise
+        // have the CA issue again. A new request under the same transaction ID carries a new nonce.
+        if (!transactions.TryClaim(request.TransactionId, request.SenderNonce))
         {
-            logger.LogWarning("SCEP transaction {TransactionId} refused: transaction ID already used",
+            logger.LogWarning("SCEP transaction {TransactionId} refused: request already seen (replay)",
                 request.TransactionId);
             return Failure(request, ScepFailInfo.BadRequest, options);
         }

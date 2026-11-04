@@ -168,6 +168,14 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
         Then the server answers FAILURE with failInfo badRequest
         And no certificate is returned
 
+    # Clients derive the transaction ID from the public key (RFC 8894, 3.2.1.1.1): a new
+    # request with the same key - a renewal, a retry - carries the earlier ID with a new nonce.
+    Scenario: A new request under an earlier transaction ID is accepted
+        Given a certificate server that complies with SCEP (RFC 8894)
+        When a client enrolls with the challenge password "falsch" using the "rsa" profile
+        And the client tries again with the challenge password "geheim", the same transaction ID and a new nonce
+        Then the server answers SUCCESS
+
     # certserver wires SCEP in by default. Until a challenge is configured, the endpoint
     # publishes its certificates but issues nothing.
     Scenario: A server without a challenge validator issues nothing

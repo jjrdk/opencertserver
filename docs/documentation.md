@@ -346,7 +346,7 @@ renewal rules and what Windows does differently are in
 
 A host that embeds the server calls `AddScepServer(new ScepServerOptions { RaCertificate = … },
 validator)` and `MapScepServer()`. `ScepServerOptions.TransactionIdWindow` (default 24 hours) is how
-long a transaction ID is remembered for replay protection.
+long an accepted request (transaction ID and senderNonce) is remembered for replay protection.
 
 ### SCEP with Intune
 

@@ -145,7 +145,7 @@ deployment without Microsoft's PKI, the CA has to speak SCEP.
 | `GET`/`POST ?operation=PKIOperation` | §4.3 | `PKCSReq` (initial enrollment) and `RenewalReq` (renewal); `CertRep` with `SUCCESS` or `FAILURE` and `failInfo`. |
 | Message protection | §3.1, §3.2.1 | Requests are enveloped to the RA (RSA key transport) and signed by the requester. The reply is encrypted with the content-encryption algorithm of the request (AES-128/192/256-CBC, 3DES-CBC) and signed with SHA-256. A `senderNonce` must be 16 bytes. |
 | Challenge password | §2.2 | Read from the CSR and passed to an `IScepChallengeValidator`: a shared secret by default, Intune with `opencertserver.contrib.intune`. Without a validator, `PKIOperation` issues nothing. |
-| Replay protection | — | A transaction ID is remembered for 24 hours; a second `PKCSReq` or `RenewalReq` with it is refused. |
+| Replay protection | §3.2.1.5 | An accepted request is remembered for 24 hours by transaction ID and `senderNonce`; the same message again is refused. A new request under an earlier transaction ID - clients derive it from the key, so a renewal with the same key or a retry carries it - has a new nonce and is accepted. |
 | `/scep/{profile}` | — | One endpoint per CA profile; `/scep` is the default profile. |
 
 **Not implemented:** `CertPoll` / `PENDING` (manual approval), `GetCert`, `GetCRL` (the CRL is
@@ -193,8 +193,8 @@ capabilities, `GetCACert` with and without a root above the issuing CA, enrollme
 GET and through the `/pkiclient.exe` paths, wrong and missing challenge, a request encrypted to
 another key, the UPN carried into the certificate, a CA certificate refused, renewal with the
 previous certificate, a look-alike issuer, another subject or subjectAltName, a revoked certificate,
-renewal through another profile of the same CA key, replay, no validator, the reply algorithm, and
-the `senderNonce` length. The test client builds real SCEP messages with `SignedCms` and
+renewal through another profile of the same CA key, replay, a new request under an earlier
+transaction ID, no validator, the reply algorithm, and the `senderNonce` length. The test client builds real SCEP messages with `SignedCms` and
 `EnvelopedCms`, so the server is exercised over HTTP the way a device would.
 * During development the server was also checked by hand against `sscep`, micromdm's `scep`
   client and smallstep's; those checks are not part of the suite.

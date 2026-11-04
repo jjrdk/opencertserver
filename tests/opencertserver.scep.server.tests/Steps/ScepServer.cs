@@ -298,6 +298,17 @@ public sealed class ScepServer : IDisposable
         return Renew(Subject, lookAlike);
     }
 
+    [When("the client tries again with the challenge password {string}, the same transaction ID and a new nonce")]
+    public async Task WhenRetrySameTransaction(string challenge)
+    {
+        // Same key and transaction ID, as a client deriving the ID from its key would send.
+        var client = new ScepTestClient(_host.GetTestClient(), "/scep/rsa");
+        _response = await client.Enroll(
+            ScepTestClient.CreateCsr(_clientKey!, Subject, challenge),
+            _clientSigner!, _ra, _transactionId, RandomNumberGenerator.GetBytes(16)).ConfigureAwait(false);
+        await ReadCertRep().ConfigureAwait(false);
+    }
+
     [When("the same request is sent again")]
     public async Task WhenSameAgain()
     {

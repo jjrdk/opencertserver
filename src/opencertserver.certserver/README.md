@@ -38,6 +38,7 @@ challenge is configured:
 
 A renewal (`RenewalReq`) is signed with the certificate it replaces. It needs no
 challenge; the server checks that the certificate was issued by this CA, is valid, is not
-revoked and names the same subject, and revokes it once the new one is issued. A
-transaction ID is accepted once within `TransactionIdWindow` (24 hours).
+revoked and names the same subject and subjectAltName, and revokes it once the new one is
+issued. The same request - transaction ID and senderNonce - is accepted once within
+`TransactionIdWindow` (24 hours).
 
