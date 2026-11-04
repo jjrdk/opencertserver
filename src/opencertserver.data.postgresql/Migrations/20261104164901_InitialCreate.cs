@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -31,6 +32,7 @@ namespace OpenCertServer.Data.PostgreSql.Migrations
                 columns: table => new
                 {
                     SerialNumber = table.Column<string>(type: "text", nullable: false),
+                    ProfileName = table.Column<string>(type: "text", nullable: true),
                     DistinguishedName = table.Column<string>(type: "text", nullable: false),
                     Issuer = table.Column<string>(type: "text", nullable: true),
                     NotBefore = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),

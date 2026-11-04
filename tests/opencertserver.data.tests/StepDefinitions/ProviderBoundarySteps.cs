@@ -21,8 +21,8 @@ public sealed class ProviderBoundarySteps
         var assembly = typeof(CaDbContext).Assembly;
         Assert.DoesNotContain(assembly.GetReferencedAssemblies(),
             reference => reference.Name?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true
-                || reference.Name?.Contains("SqlServer", StringComparison.OrdinalIgnoreCase) == true
-                || reference.Name?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) == true);
+             || reference.Name?.Contains("SqlServer", StringComparison.OrdinalIgnoreCase) == true
+             || reference.Name?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) == true);
         Assert.DoesNotContain(assembly.GetTypes(),
             type => typeof(Migration).IsAssignableFrom(type) || typeof(ModelSnapshot).IsAssignableFrom(type));
     }
@@ -54,7 +54,7 @@ public sealed class ProviderBoundarySteps
             TestContext.Current.CancellationToken));
         Assert.Equal("01", Assert.Single(await certificates.GetInventory(2, 3,
             TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken)).SerialNumber);
-        Assert.Equal("01", Assert.Single(await certificates.GetRevocationList(4, 5,
+        Assert.Equal("01", Assert.Single(await certificates.GetRevocationList(null, 4, 5,
             TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken)).SerialNumber);
         Assert.Equal("engine-independent", adapter.Connection);
         Assert.Equal(6, adapter.Configurations);
@@ -87,16 +87,24 @@ public sealed class ProviderBoundarySteps
         public Task<bool> TryRemoveNonceAsync(CaDbContext context, Nonce nonce, CancellationToken cancellationToken) =>
             Task.FromResult(_tokens.Remove(nonce.Token));
 
-        public Task<bool> RevokeCertificateAsync(CaDbContext context, string serialNumber,
-            X509RevocationReason reason, CancellationToken cancellationToken)
+        public Task<bool> RevokeCertificateAsync(
+            CaDbContext context,
+            string serialNumber,
+            X509RevocationReason reason,
+            CancellationToken cancellationToken)
         {
             Revocation = (serialNumber, reason);
             return Task.FromResult(true);
         }
 
-        public async IAsyncEnumerable<CertificateItemInfo> ReadCertificatePage(CaDbContext context,
-            int page, int pageSize, bool revokedOnly,
-            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        public async IAsyncEnumerable<CertificateItemInfo> ReadCertificatePage(
+            CaDbContext context,
+            string? profileName,
+            int page,
+            int pageSize,
+            bool revokedOnly,
+            [System.Runtime.CompilerServices.EnumeratorCancellation]
+            CancellationToken cancellationToken)
         {
             Pages.Add((page, pageSize, revokedOnly));
             await Task.CompletedTask;

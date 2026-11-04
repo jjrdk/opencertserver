@@ -288,8 +288,8 @@ public sealed class RelationalStoresSteps
         using var foundByThumbprint = Assert.Single(byThumbprint);
         Assert.Equal(certificate.RawData, foundByThumbprint.RawData);
         var inventory = Assert.Single(await Certificates.GetInventory(cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(DateTimeKind.Utc, inventory.NotBefore.Kind);
-        Assert.Equal(DateTimeKind.Utc, inventory.NotAfter.Kind);
+        Assert.Equal(DateTimeKind.Utc, inventory.NotBefore.DateTime.Kind);
+        Assert.Equal(DateTimeKind.Utc, inventory.NotAfter.DateTime.Kind);
         Assert.True(await Certificates.RemoveCertificate(certificate.SerialNumber, X509RevocationReason.KeyCompromise, TestContext.Current.CancellationToken));
         await Reload();
         var revoked = await Certificates.GetCertificateStatus(id, TestContext.Current.CancellationToken);
@@ -320,8 +320,8 @@ public sealed class RelationalStoresSteps
             var actual = await Certificates.GetInventory(page, 40, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
             Assert.Equal(expected.Select(c => c.SerialNumber), actual.Select(c => c.SerialNumber));
             Assert.Equal(expected.Select(c => c.RevocationReason), actual.Select(c => c.RevocationReason));
-            var expectedRevoked = await memory.GetRevocationList(page, 40, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
-            var actualRevoked = await Certificates.GetRevocationList(page, 40, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+            var expectedRevoked = await memory.GetRevocationList(null, page, 40, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+            var actualRevoked = await Certificates.GetRevocationList(null, page, 40, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
             Assert.Equal(expectedRevoked.Select(c => c.SerialNumber), actualRevoked.Select(c => c.SerialNumber));
         }
     }

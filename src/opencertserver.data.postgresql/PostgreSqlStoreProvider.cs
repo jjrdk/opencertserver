@@ -28,20 +28,31 @@ public sealed class PostgreSqlStoreProvider : IRelationalStoreProvider
             cancellationToken);
 
     /// <inheritdoc />
-    public async Task<bool> TryRemoveNonceAsync(CaDbContext context, Nonce nonce, CancellationToken cancellationToken) =>
+    public async Task<bool> TryRemoveNonceAsync(
+        CaDbContext context,
+        Nonce nonce,
+        CancellationToken cancellationToken) =>
         await context.Database.ExecuteSqlInterpolatedAsync(
             $"""DELETE FROM "Nonces" WHERE "Token" = {nonce.Token}""", cancellationToken) == 1;
 
     /// <inheritdoc />
-    public async Task<bool> RevokeCertificateAsync(CaDbContext context, string serialNumber,
-        X509RevocationReason reason, CancellationToken cancellationToken) =>
+    public async Task<bool> RevokeCertificateAsync(
+        CaDbContext context,
+        string serialNumber,
+        X509RevocationReason reason,
+        CancellationToken cancellationToken) =>
         await context.Database.ExecuteSqlInterpolatedAsync(
             $"""UPDATE "Certificates" SET "RevocationReason" = {(int)reason}, "RevocationDate" = {DateTimeOffset.UtcNow} WHERE "SerialNumber" = {serialNumber}""",
             cancellationToken) == 1;
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<CertificateItemInfo> ReadCertificatePage(CaDbContext context,
-        int page, int pageSize, bool revokedOnly, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<CertificateItemInfo> ReadCertificatePage(
+        CaDbContext context,
+        string? profileName,
+        int page,
+        int pageSize,
+        bool revokedOnly,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await context.Database.OpenConnectionAsync(cancellationToken);
         try
@@ -49,11 +60,11 @@ public sealed class PostgreSqlStoreProvider : IRelationalStoreProvider
             await using var command = context.Database.GetDbConnection().CreateCommand();
             // EF's experimental precompiler aliases Skip/Take parameters; keep distinct SQL parameters.
             const string columns = """
-                SELECT "SerialNumber", "DistinguishedName", "Issuer", "NotBefore", "NotAfter",
-                       "Thumbprint", "RevocationReason", "RevocationDate" FROM "Certificates"
-                """;
+                                   SELECT "SerialNumber", "DistinguishedName", "Issuer", "NotBefore", "NotAfter",
+                                          "Thumbprint", "RevocationReason", "RevocationDate" FROM "Certificates"
+                                   """;
             command.CommandText = columns + (revokedOnly ? """ WHERE "RevocationReason" IS NOT NULL""" : "")
-                + """ ORDER BY "SerialNumber" LIMIT @size OFFSET @offset""";
+              + """ ORDER BY "SerialNumber" LIMIT @size OFFSET @offset""";
             var size = command.CreateParameter();
             size.ParameterName = "size";
             size.Value = pageSize;

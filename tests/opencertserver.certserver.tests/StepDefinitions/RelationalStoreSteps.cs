@@ -1,7 +1,6 @@
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Security.Cryptography.X509Certificates;
-using CertesSlim.Acme;
 using CertesSlim.Extensions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -17,12 +16,9 @@ using OpenCertServer.Acme.AspNetClient.Certes;
 using OpenCertServer.Acme.AspNetClient.Persistence;
 using OpenCertServer.Acme.Server;
 using OpenCertServer.Acme.Server.Configuration;
-using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Ca;
-using OpenCertServer.Ca.Server;
-using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Data;
 using OpenCertServer.Testing;
+using OpenCertServer.Ca.Utils.Ca;
 using Reqnroll;
 using Xunit;
 using AcmeHeader = OpenCertServer.Acme.Abstractions.HttpModel.Requests.AcmeHeader;

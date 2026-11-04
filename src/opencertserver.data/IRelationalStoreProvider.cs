@@ -21,10 +21,18 @@ public interface IRelationalStoreProvider
     Task<bool> TryRemoveNonceAsync(CaDbContext context, Nonce nonce, CancellationToken cancellationToken);
 
     /// <summary>Records revocation and returns whether the certificate exists.</summary>
-    Task<bool> RevokeCertificateAsync(CaDbContext context, string serialNumber,
-        X509RevocationReason reason, CancellationToken cancellationToken);
+    Task<bool> RevokeCertificateAsync(
+        CaDbContext context,
+        string serialNumber,
+        X509RevocationReason reason,
+        CancellationToken cancellationToken);
 
     /// <summary>Streams a zero-based, serial-ordered certificate page, optionally restricted to revocations.</summary>
-    IAsyncEnumerable<CertificateItemInfo> ReadCertificatePage(CaDbContext context,
-        int page, int pageSize, bool revokedOnly, CancellationToken cancellationToken);
+    IAsyncEnumerable<CertificateItemInfo> ReadCertificatePage(
+        CaDbContext context,
+        string? profileName,
+        int page,
+        int pageSize,
+        bool revokedOnly,
+        CancellationToken cancellationToken);
 }

@@ -2,7 +2,6 @@ namespace OpenCertServer.Data.MsSql;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using OpenCertServer.Data.Entities;
 
 /// <summary>Applies SQL Server conventions without coupling the shared context to an engine.</summary>
 public sealed class MsSqlModelCustomizer(ModelCustomizerDependencies dependencies) : RelationalModelCustomizer(dependencies)
@@ -17,10 +16,10 @@ public sealed class MsSqlModelCustomizer(ModelCustomizerDependencies dependencie
         {
             property.SetCollation("Latin1_General_100_BIN2");
         }
-        // SQL Server datetime2 does not retain DateTime.Kind.
-        modelBuilder.Entity<CertificateEntity>().Property(c => c.NotBefore)
-            .HasConversion(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
-        modelBuilder.Entity<CertificateEntity>().Property(c => c.NotAfter)
-            .HasConversion(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
+//        // SQL Server datetime2 does not retain DateTime.Kind.
+//        modelBuilder.Entity<CertificateEntity>().Property(c => c.NotBefore)
+//            .HasConversion<UtcDateTimeConverter>();
+//        modelBuilder.Entity<CertificateEntity>().Property(c => c.NotAfter)
+//            .HasConversion<UtcDateTimeConverter>();
     }
 }

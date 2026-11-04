@@ -25,12 +25,12 @@ public class CertificateItemInfo
     /// <summary>
     /// Gets or sets the certificate validity start time.
     /// </summary>
-    public DateTime NotBefore { get; set; }
+    public DateTimeOffset NotBefore { get; set; }
 
     /// <summary>
     /// Gets or sets the certificate validity end time.
     /// </summary>
-    public DateTime NotAfter { get; set; }
+    public DateTimeOffset NotAfter { get; set; }
 
     /// <summary>
     /// Represents the IsRevoked.

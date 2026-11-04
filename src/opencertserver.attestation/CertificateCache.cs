@@ -18,7 +18,7 @@ public interface ICertificateCache
 /// </summary>
 public sealed class InMemoryCertificateCache : ICertificateCache
 {
-    private readonly record struct CacheEntry(X509Certificate2 Certificate, DateTime ExpiresAt);
+    private readonly record struct CacheEntry(X509Certificate2 Certificate, DateTimeOffset ExpiresAt);
 
     private readonly ConcurrentDictionary<string, CacheEntry> _store = new(StringComparer.OrdinalIgnoreCase);
 
@@ -26,7 +26,7 @@ public sealed class InMemoryCertificateCache : ICertificateCache
     {
         if (_store.TryGetValue(deviceId, out var entry))
         {
-            if (DateTime.UtcNow < entry.ExpiresAt)
+            if (DateTimeOffset.UtcNow < entry.ExpiresAt)
             {
                 return entry.Certificate;
             }
@@ -39,7 +39,7 @@ public sealed class InMemoryCertificateCache : ICertificateCache
 
     public void Set(string deviceId, X509Certificate2 certificate, TimeSpan ttl)
     {
-        var entry = new CacheEntry(certificate, DateTime.UtcNow.Add(ttl));
+        var entry = new CacheEntry(certificate, DateTimeOffset.UtcNow.Add(ttl));
         _store[deviceId] = entry;
     }
 }
