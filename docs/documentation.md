@@ -103,6 +103,7 @@ algorithm of the profile's CA key
 - Paths: `/ca/crl` and `/ca/{profile}/crl`.
 - Response: `application/pkix-crl` (DER). Cached for 12 hours.
 - Scope: each profile's CRL lists only certificates issued under that profile; revocations from other profiles are never included.
+- Partitioning: each CRL has a critical `issuingDistributionPoint` naming the profile's CRL URL, and issued certificates carry the same URL in `cRLDistributionPoints`. Use the `{profile}` token in `CaServer:CrlDistributionPoints` (e.g. `http://localhost:6001/ca/{profile}/crl`). With more than one profile, untokenized URLs are rejected (fail closed). The MCP `get_server_metadata` tool reports the raw templates, including `{profile}`.
 
 ### DELETE /ca/revoke
 

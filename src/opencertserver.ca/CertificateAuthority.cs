@@ -3,6 +3,7 @@
 namespace OpenCertServer.Ca;
 
 using System;
+using System.Formats.Asn1;
 using System.Linq;
 using System.Numerics;
 using System.Security.Claims;
@@ -142,6 +143,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         CancellationToken cancellationToken = default)
     {
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
+        await _config.ValidateCrlUrlsAsync(cancellationToken).ConfigureAwait(false);
         var results = await Task.WhenAll(_validators.Select(v =>
             // ReSharper disable once AccessToModifiedClosure
             v.Validate(request, profileName, requestor, reenrollingFrom, cancellationToken))).ConfigureAwait(false);
@@ -300,10 +302,11 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
         }
 
-        if (_config.CrlUrls.Length > 0)
+        var crlUrls = _config.GetCrlUrls(profile.Name);
+        if (crlUrls.Length > 0)
         {
             request.CertificateExtensions.Add(
-                CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(_config.CrlUrls));
+                CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(crlUrls));
         }
 
         if (_config.OcspUrls.Length > 0 || _config.CaIssuersUrls.Length > 0)
@@ -401,6 +404,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         CancellationToken cancellationToken = default)
     {
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
+        await _config.ValidateCrlUrlsAsync(cancellationToken).ConfigureAwait(false);
 
         // Read all pages so the CRL is never silently truncated at the store's default page size.
         const int pageSize = 100;
@@ -434,6 +438,16 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         }
         while (batchCount == pageSize);
         var nextCrlNumber = profile.GetNextCrlNumber();
+        var crlExtensions = new List<X509Extension> { new X509CrlNumberExtension(nextCrlNumber, false) };
+        var profileCrlUrls = _config.GetCrlUrls(profile.Name);
+        if (profileCrlUrls.Length > 0)
+        {
+            // RFC 5280 §5.2.5: a critical issuingDistributionPoint scopes this (partial) CRL to the
+            // profile-specific distribution point carried in that profile's certificates, so relying
+            // parties never accept another profile's CRL as authoritative for a certificate.
+            crlExtensions.Add(BuildIssuingDistributionPoint(profileCrlUrls));
+        }
+
         var crl = new CertificateRevocationList(
             TypeVersion.V2,
             HashAlgorithmName.SHA256,
@@ -441,10 +455,29 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow.AddDays(7),
             revoked,
-            [new X509CrlNumberExtension(nextCrlNumber, false)]
+            crlExtensions
         );
 
         return crl.Build(HashAlgorithmName.SHA256, profile.PrivateKey);
+    }
+
+    private static X509Extension BuildIssuingDistributionPoint(IEnumerable<string> uris)
+    {
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        using (writer.PushSequence())
+        using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+        using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+        {
+            foreach (var uri in uris)
+            {
+                writer.WriteCharacterString(
+                    UniversalTagNumber.IA5String,
+                    uri,
+                    new Asn1Tag(TagClass.ContextSpecific, 6));
+            }
+        }
+
+        return new X509Extension(Oids.IssuingDistributionPoint, writer.Encode(), true);
     }
 
     private static (RSA, X509Certificate2) CreateSelfSignedRsaCert(

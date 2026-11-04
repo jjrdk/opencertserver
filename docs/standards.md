@@ -471,6 +471,13 @@ fetch it by CA or by profile.
   profile matches (ordinal comparison), so one profile's (tenant's) revocations are never published
   in another profile's CRL. Certificates stored without an issuing profile appear in no CRL; OCSP
   still reports them as revoked.
+* Because profiles may share one CA key, each profile's CRL is a partitioned CRL. It carries a
+  **critical `issuingDistributionPoint`** (2.5.29.28) whose distribution point equals that profile's
+  CRL URL. Issued certificates carry a matching `cRLDistributionPoints` entry. Configure this with
+  the `{profile}` token in `CaServer:CrlDistributionPoints` (e.g. `https://ca.example/ca/{profile}/crl`).
+  When more than one profile is configured, every CRL URL must contain `{profile}`. Otherwise
+  issuance and CRL generation fail closed with `InvalidOperationException`, because a certificate
+  could otherwise be checked against another profile's partial CRL and be treated as unrevoked.
 * `DELETE /ca/revoke` is authenticated and authorized. The caller must:
    1. Present a TLS client certificate.
    2. Supply a SHA-256 signature of `serialNumber + reason` made with that certificate's private key

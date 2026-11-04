@@ -13,7 +13,10 @@ internal sealed class IqAuthorityConfiguration(
     public const string EstIdentity = "est.example.com";
     public const string OcspUrl = "http://localhost:6001/ocsp";
     public const string CaIssuersUrl = "http://localhost:6001/ca/ca.pem";
-    public const string CrlUrl = "http://localhost:6001/ca/crl.pem";
+    public const string CrlUrlTemplate = "http://localhost:6001/ca/{profile}/crl";
+
+    /// <summary>The CDP of a certificate issued under the default <c>rsa</c> profile.</summary>
+    public const string CrlUrl = "http://localhost:6001/ca/rsa/crl";
     public const string PolicyOid = "1.3.6.1.4.1.9999.1";
     public const string ExtendedKeyUsages = "TLS Web Server Authentication, TLS Web Client Authentication";
 
@@ -49,7 +52,7 @@ internal sealed class IqAuthorityConfiguration(
                 "/certs/est-users", fileMode: Unix.FileMode644)
             .WithEnvironment("CaServer__OCSP__0", OcspUrl)
             .WithEnvironment("CaServer__CaIssuers__0", CaIssuersUrl)
-            .WithEnvironment("CaServer__CrlDistributionPoints__0", CrlUrl);
+            .WithEnvironment("CaServer__CrlDistributionPoints__0", CrlUrlTemplate);
 
         if (qualifyProfileIssuance)
         {
