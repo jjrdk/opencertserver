@@ -1507,7 +1507,7 @@ public partial class CertificateServerFeatures
         var ecdsaRequest = new CertificateRequest("CN=ecdsa-profile", ecdsa, HashAlgorithmName.SHA256);
         CrlState.SecondIssuedCert = Assert.IsType<SignCertificateResponse.Success>(
             await ca.SignCertificateRequest(ecdsaRequest, "ecdsa").ConfigureAwait(false)).Certificate;
-        CrlState.FirstCrlBytes = await FetchCrlBytesAsync("ca/rsa/crl").ConfigureAwait(false);
+        CrlState.FirstCrlBytes = await FetchCrlBytesAsync("ca/default/crl").ConfigureAwait(false);
         CrlState.SecondCrlBytes = await FetchCrlBytesAsync("ca/ecdsa/crl").ConfigureAwait(false);
     }
 
