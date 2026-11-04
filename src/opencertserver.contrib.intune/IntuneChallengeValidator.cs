@@ -21,9 +21,12 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
     private readonly IIntuneClient _intune;
     private readonly ILogger<IntuneChallengeValidator> _logger;
 
-    // Transactions Intune has allowed and not yet heard the outcome of. Intune is told
-    // about a failure only for those: when Intune itself said no, it knows already.
-    private readonly ConcurrentDictionary<string, byte> _allowed = new(StringComparer.Ordinal);
+    // Requests Intune has allowed and not yet heard the outcome of. Intune is told about a
+    // failure only for those: when Intune itself said no, it knows already. Kept by the
+    // request's context - the object the SCEP server hands to Validate and later to the
+    // notification - not by transaction ID: two requests may carry the same one (a renewal
+    // or a retry with the same key), and they must not take each other's state.
+    private readonly ConcurrentDictionary<ScepChallengeContext, byte> _allowed = new(ReferenceEqualityComparer.Instance);
 
     public IntuneChallengeValidator(IIntuneClient intune, ILogger<IntuneChallengeValidator> logger)
     {
@@ -59,7 +62,7 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
             return ScepChallengeResult.Deny("Intune could not be asked: " + ex.Message);
         }
 
-        _allowed[context.TransactionId] = 0;
+        _allowed[context] = 0;
         var requestor = new ClaimsIdentity("Intune");
         requestor.AddClaim(new Claim("scep:transaction", context.TransactionId));
         return ScepChallengeResult.Allow() with { Requestor = requestor };
@@ -67,7 +70,7 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
 
     public async Task NotifySuccess(ScepChallengeContext context, X509Certificate2 issued, CancellationToken cancellationToken)
     {
-        if (!_allowed.TryRemove(context.TransactionId, out _))
+        if (!_allowed.TryRemove(context, out _))
         {
             return;
         }
@@ -91,7 +94,7 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
 
     public async Task NotifyFailure(ScepChallengeContext context, string reason, CancellationToken cancellationToken)
     {
-        if (!_allowed.TryRemove(context.TransactionId, out _))
+        if (!_allowed.TryRemove(context, out _))
         {
             return;
         }

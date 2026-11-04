@@ -1,8 +1,9 @@
 Feature: Revocation sync for Intune-issued certificates
 
     Intune never tells the CA when a user is disabled or a device is retired. The sync
-    asks Microsoft Graph about every certificate's user and device and revokes what is
-    gone. Graph unreachable or throttled means unknown, and unknown is never revoked.
+    asks Microsoft Graph about the user and device of every certificate issued through
+    the configured profiles and revokes what is gone. Graph unreachable, throttled or
+    answering unexpectedly means unknown, and unknown is never revoked.
 
     Background:
         Given a CA with a certificate for the user "anna@contoso.test"
@@ -51,6 +52,29 @@ Feature: Revocation sync for Intune-issued certificates
         When the sync runs
         Then nothing was revoked
         And 3 certificates are reported as unknown
+
+    # A 200 without the list Graph promises is not "the device is gone".
+    Scenario: Graph answers the device lookup without a value list - nothing is revoked
+        Given Graph answers the device lookup without a value list
+        When the sync runs
+        Then nothing was revoked
+        And 1 certificates are reported as unknown
+
+    # The CA may hold certificates from other paths - EST for users of another directory.
+    # The sync judges only what was issued through the profiles it is configured for.
+    Scenario: A certificate from another profile is not judged
+        Given a certificate for the user "carl@contoso.test" from the "ecdsa" profile
+        When the sync runs
+        Then 3 certificates were checked
+        And the certificate for "carl@contoso.test" is still valid
+
+    Scenario: Without sync profiles nothing is checked
+        Given the user "anna@contoso.test" is disabled
+        And the sync is configured for no CA profile
+        When the sync runs
+        Then the run was aborted
+        And 0 certificates were checked
+        And the certificate for "anna@contoso.test" is still valid
 
     Scenario: A dry run reports but revokes nothing
         Given the user "anna@contoso.test" is disabled

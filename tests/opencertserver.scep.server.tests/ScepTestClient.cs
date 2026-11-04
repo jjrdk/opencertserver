@@ -41,7 +41,9 @@ public sealed class ScepTestClient(HttpClient http, string path = "/scep")
         string messageType = "19",
         string encryptionOid = OpenCertServer.Ca.Utils.Oids.Aes128Cbc,
         byte[]? innerContent = null,
-        IReadOnlyList<X509Certificate2>? additionalSigners = null)
+        IReadOnlyList<X509Certificate2>? additionalSigners = null,
+        string encryptionOid = OpenCertServer.Ca.Utils.Oids.Aes128Cbc,
+        bool senderNonceAsInteger = false)
     {
         var csrDer = innerContent ?? csr.CreateSigningRequest();
         var enveloped = new EnvelopedCms(
@@ -58,10 +60,11 @@ public sealed class ScepTestClient(HttpClient http, string path = "/scep")
             };
             cmsSigner.SignedAttributes.Add(Printable(ScepOids.MessageType, messageType));
             cmsSigner.SignedAttributes.Add(Printable(ScepOids.TransactionId, transactionId));
-            cmsSigner.SignedAttributes.Add(Octets(ScepOids.SenderNonce, senderNonce));
+            cmsSigner.SignedAttributes.Add(senderNonceAsInteger
+            ? Integer(ScepOids.SenderNonce, senderNonce)
+            : Octets(ScepOids.SenderNonce, senderNonce));
             signed.ComputeSignature(cmsSigner);
         }
-
         var message = signed.Encode();
 
         if (useGet)
@@ -98,6 +101,14 @@ public sealed class ScepTestClient(HttpClient http, string path = "/scep")
     {
         var writer = new AsnWriter(AsnEncodingRules.DER);
         writer.WriteCharacterString(UniversalTagNumber.PrintableString, value);
+        return new AsnEncodedData(new System.Security.Cryptography.Oid(oid), writer.Encode());
+    }
+
+    // A signed attribute of the wrong ASN.1 type - what a broken client might send.
+    private static AsnEncodedData Integer(string oid, byte[] value)
+    {
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        writer.WriteIntegerUnsigned(value);
         return new AsnEncodedData(new System.Security.Cryptography.Oid(oid), writer.Encode());
     }
 

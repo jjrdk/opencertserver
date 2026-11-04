@@ -20,7 +20,9 @@ public sealed class IntuneRevocationSync : IDisposable
     private readonly FakeIntune _fake = new();
     private IHost? _host;
     private int _maxRevocations = 25;
+    private IReadOnlyList<string>? _syncProfiles;
     private readonly Dictionary<string, X509Certificate2> _byLabel = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _profileByLabel = new(StringComparer.Ordinal);
     private SyncReport? _report;
     private Task<SyncReport>? _running;
     private HttpResponseMessage? _http;
@@ -74,9 +76,28 @@ public sealed class IntuneRevocationSync : IDisposable
     [Given("the sync may revoke at most {int} certificate per run")]
     public void GivenLimit(int limit)
     {
-        // The limit is read at construction; rebuild the host with it and re-issue nothing -
-        // the store is per host, so the certificates must be issued again.
         _maxRevocations = limit;
+        Rebuild();
+    }
+
+    [Given("a certificate for the user {string} from the {string} profile")]
+    public Task GivenUserCertificateFromProfile(string upn, string profile) =>
+        GivenCertificateAgain(upn, $"CN={upn}", upn, null, null, profile);
+
+    [Given("the sync is configured for no CA profile")]
+    public void GivenNoSyncProfiles()
+    {
+        _syncProfiles = [];
+        Rebuild();
+    }
+
+    [Given("Graph answers the device lookup without a value list")]
+    public void GivenDevicesWithoutValueList() => _fake.DevicesWithoutValueList = true;
+
+    // Options are read at construction: rebuild the host with them. The store is per host,
+    // so the certificates are issued again, each from the profile it came from.
+    private void Rebuild()
+    {
         var issued = _byLabel.ToList();
         _byLabel.Clear();
         _host?.Dispose();
@@ -85,7 +106,8 @@ public sealed class IntuneRevocationSync : IDisposable
         {
             var identity = CertificateIdentity.Read(certificate);
             var dns = label.Contains('.') && identity.UserPrincipalName is null ? label : null;
-            GivenCertificateAgain(label, certificate.Subject, identity.UserPrincipalName, identity.IntuneDeviceId, dns).GetAwaiter().GetResult();
+            GivenCertificateAgain(label, certificate.Subject, identity.UserPrincipalName, identity.IntuneDeviceId, dns,
+                _profileByLabel[label]).GetAwaiter().GetResult();
         }
     }
 
@@ -208,14 +230,15 @@ public sealed class IntuneRevocationSync : IDisposable
 
     // --- Helpers ------------------------------------------------------------
 
-    private IHost Host => _host ??= TestHostBuilder.Build(_fake, _maxRevocations).Host;
+    private IHost Host => _host ??= TestHostBuilder.Build(_fake, _maxRevocations, syncProfiles: _syncProfiles).Host;
 
     private Intune.IntuneRevocationSync Sync() => Host.Services.GetRequiredService<Intune.IntuneRevocationSync>();
 
     private Task Issue(string label, string subject, string? upn, string? intuneDeviceId, string? dns = null) =>
         GivenCertificateAgain(label, subject, upn, intuneDeviceId, dns);
 
-    private async Task GivenCertificateAgain(string label, string subject, string? upn, string? intuneDeviceId, string? dns)
+    private async Task GivenCertificateAgain(
+        string label, string subject, string? upn, string? intuneDeviceId, string? dns, string profile = "rsa")
     {
         using var key = RSA.Create(2048);
         var csr = new CertificateRequest(subject, key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
@@ -225,9 +248,10 @@ public sealed class IntuneRevocationSync : IDisposable
         }
 
         var ca = Host.Services.GetRequiredService<ICertificateAuthority>();
-        var response = await ca.SignCertificateRequest(csr, "rsa").ConfigureAwait(false);
+        var response = await ca.SignCertificateRequest(csr, profile).ConfigureAwait(false);
         var success = Assert.IsType<SignCertificateResponse.Success>(response);
         _byLabel[label] = success.Certificate;
+        _profileByLabel[label] = profile;
     }
 
     /// <summary>

@@ -17,12 +17,17 @@ notification. A renewal signed with the previous certificate passes without
 Intune, as with the shared secret.
 
 **Revocation sync.** Intune never tells the CA when a user is disabled or a
-device is retired. `IntuneRevocationSync` walks the CA inventory and asks
-Graph about the user (UPN from the SAN), the Intune device
-(`IntuneDeviceId://` URI) and the Entra device (GUID common name), and
-revokes what is gone or disabled (reason `cessationOfOperation`). Graph
-unreachable or throttled means *unknown*, and unknown is never revoked. A
-run aborts when it would revoke more than `MaxRevocationsPerSync` (25).
+device is retired. `IntuneRevocationSync` walks the CA inventory - only the
+certificates issued through the profiles in `SyncProfiles`, as the certificate
+store recorded them at issuance - and asks Graph about the user (UPN from the
+SAN), the Intune device (`IntuneDeviceId://` URI) and the Entra device (GUID
+common name), and revokes what is gone or disabled (reason
+`cessationOfOperation`). A certificate from another profile is never judged,
+even with a UPN in it: an EST certificate for a user of another directory is
+not the sync's to revoke. Without `SyncProfiles` the sync checks nothing.
+Graph unreachable, throttled or answering in a shape it does not promise means
+*unknown*, and unknown is never revoked. A run aborts when it would revoke more
+than `MaxRevocationsPerSync` (25).
 It is an operation, not a scheduler: `POST /scep/intune/sync?dryRun=true|false`
 returns a report, 409 while a run is in progress; the endpoint requires the
 authorization policy `scep_intune_sync`.
@@ -46,6 +51,7 @@ certificates by device.
 | `ValidationEndpoint` | Skip Graph discovery (tests) |
 | `Timeout` | Per request (default 30 s) |
 | `MaxRevocationsPerSync` | Guard for the sync (default 25) |
+| `SyncProfiles` | The CA profiles Intune issues through - the only ones the sync judges; array (`SyncProfiles:0`) or comma-separated. Empty: the sync checks nothing. Needs a certificate store that records the issuing profile (#140) |
 
 As environment variables: `Scep__Intune__TenantId` and so on.
 

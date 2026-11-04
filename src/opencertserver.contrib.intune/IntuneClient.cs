@@ -227,23 +227,52 @@ public sealed partial class IntuneClient : IIntuneClient
             throw new GraphUnavailableException($"Graph devices: HTTP {(int)status}");
         }
 
-        using var document = JsonDocument.Parse(body);
-        if (!document.RootElement.TryGetProperty("value", out var values) || values.GetArrayLength() == 0)
+        // Only an explicitly empty list says the device is gone. Anything else - no list,
+        // not a list, not JSON - is an answer Graph did not mean, and the sync must not
+        // revoke on it.
+        using var document = ParseGraph(body, "Graph devices");
+        if (document.RootElement.ValueKind != JsonValueKind.Object
+            || !document.RootElement.TryGetProperty("value", out var values)
+            || values.ValueKind != JsonValueKind.Array)
+        {
+            throw new GraphUnavailableException("Graph devices: unexpected reply without a value list");
+        }
+
+        if (values.GetArrayLength() == 0)
         {
             return DirectoryState.Missing;
         }
 
-        var first = values[0];
-        return first.TryGetProperty("accountEnabled", out var enabled) && enabled.ValueKind == JsonValueKind.False
-            ? DirectoryState.Disabled
-            : DirectoryState.Present;
+        return ReadAccountEnabled(values[0], "Graph devices") ? DirectoryState.Present : DirectoryState.Disabled;
     }
 
     private static bool ReadEnabled(string body)
     {
-        using var document = JsonDocument.Parse(body);
-        return !(document.RootElement.TryGetProperty("accountEnabled", out var enabled)
-                 && enabled.ValueKind == JsonValueKind.False);
+        using var document = ParseGraph(body, "Graph users");
+        return ReadAccountEnabled(document.RootElement, "Graph users");
+    }
+
+    // accountEnabled must be there and be a boolean - a reply without it says nothing.
+    private static bool ReadAccountEnabled(JsonElement element, string what) =>
+        element.ValueKind == JsonValueKind.Object && element.TryGetProperty("accountEnabled", out var enabled)
+            ? enabled.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => throw new GraphUnavailableException($"{what}: accountEnabled is not a boolean")
+            }
+            : throw new GraphUnavailableException($"{what}: unexpected reply without accountEnabled");
+
+    private static JsonDocument ParseGraph(string body, string what)
+    {
+        try
+        {
+            return JsonDocument.Parse(body);
+        }
+        catch (JsonException ex)
+        {
+            throw new GraphUnavailableException($"{what}: unreadable reply", ex);
+        }
     }
 
     private async Task PostToIntune(string action, JsonContent payload, string transactionId, CancellationToken cancellationToken)
@@ -335,31 +364,65 @@ public sealed partial class IntuneClient : IIntuneClient
                 return _validationEndpoint;
             }
 
-            var (status, body) = await GraphGet(
-                    $"v1.0/servicePrincipals/appId={IntuneAppId}/endpoints",
-                    cancellationToken)
-                .ConfigureAwait(false);
+            // Discovery is part of asking Intune: whatever stops it - token, network, an
+            // unreadable reply - surfaces as HttpRequestException, which the validator turns
+            // into a SCEP FAILURE and the notifications into a lost notification, not an HTTP 500.
+            HttpStatusCode status;
+            string body;
+            try
+            {
+                (status, body) = await GraphGet(
+                        $"v1.0/servicePrincipals/appId={IntuneAppId}/endpoints",
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (GraphUnavailableException ex)
+            {
+                throw new HttpRequestException($"Intune service discovery: {ex.Message}", ex);
+            }
+
             if (status != HttpStatusCode.OK)
             {
                 throw new HttpRequestException($"Intune service discovery: HTTP {(int)status}: {Truncate(body)}", null, status);
             }
 
-            using var document = JsonDocument.Parse(body);
-            if (document.RootElement.TryGetProperty("value", out var endpoints))
+            JsonDocument document;
+            try
+            {
+                document = JsonDocument.Parse(body);
+            }
+            catch (JsonException ex)
+            {
+                throw new HttpRequestException("Intune service discovery: unreadable reply", ex);
+            }
+
+            using var parsed = document;
+            if (document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("value", out var endpoints)
+                && endpoints.ValueKind == JsonValueKind.Array)
             {
                 foreach (var endpoint in endpoints.EnumerateArray())
                 {
-                    var name = endpoint.TryGetProperty("providerName", out var provider) && provider.ValueKind == JsonValueKind.String
-                        ? provider.GetString()
-                        : endpoint.TryGetProperty("serviceName", out var service) ? service.GetString() : null;
-                    if (!string.Equals(name, ValidationServiceName, StringComparison.OrdinalIgnoreCase)
-                        || !endpoint.TryGetProperty("uri", out var uri)
-                        || uri.GetString() is not { Length: > 0 } address)
+                    if (endpoint.ValueKind != JsonValueKind.Object)
                     {
                         continue;
                     }
 
-                    _validationEndpoint = new Uri(address.TrimEnd('/') + "/");
+                    var name = endpoint.TryGetProperty("providerName", out var provider) && provider.ValueKind == JsonValueKind.String
+                        ? provider.GetString()
+                        : endpoint.TryGetProperty("serviceName", out var service) && service.ValueKind == JsonValueKind.String
+                            ? service.GetString()
+                            : null;
+                    if (!string.Equals(name, ValidationServiceName, StringComparison.OrdinalIgnoreCase)
+                        || !endpoint.TryGetProperty("uri", out var uri)
+                        || uri.ValueKind != JsonValueKind.String
+                        || uri.GetString() is not { Length: > 0 } address
+                        || !Uri.TryCreate(address.TrimEnd('/') + "/", UriKind.Absolute, out var validationEndpoint))
+                    {
+                        continue;
+                    }
+
+                    _validationEndpoint = validationEndpoint;
                     _discoveredAt = _time.GetUtcNow();
                     LogDiscovered(_logger, _validationEndpoint);
                     return _validationEndpoint;
@@ -425,7 +488,16 @@ public sealed partial class IntuneClient : IIntuneClient
                     response.StatusCode);
             }
 
-            var reply = JsonSerializer.Deserialize(body, IntuneJsonContext.Default.TokenReply);
+            TokenReply? reply;
+            try
+            {
+                reply = JsonSerializer.Deserialize(body, IntuneJsonContext.Default.TokenReply);
+            }
+            catch (JsonException ex)
+            {
+                throw new HttpRequestException("Token reply is not readable.", ex);
+            }
+
             if (reply?.AccessToken is not { Length: > 0 } token)
             {
                 throw new HttpRequestException("Token reply carries no access_token.");

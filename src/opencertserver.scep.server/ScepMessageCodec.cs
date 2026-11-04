@@ -81,26 +81,35 @@ public static class ScepMessageCodec
         string? messageType = null;
         string? transactionId = null;
         byte[]? senderNonce = null;
-        foreach (var attribute in signer.SignedAttributes)
+        // The signature holds, but an attribute can still be encoded as the wrong type (a
+        // senderNonce as an INTEGER): that is a bad request, not a server error.
+        try
         {
-            if (attribute.Values.Count == 0)
+            foreach (var attribute in signer.SignedAttributes)
             {
-                continue;
-            }
+                if (attribute.Values.Count == 0)
+                {
+                    continue;
+                }
 
-            var raw = attribute.Values[0].RawData;
-            switch (attribute.Oid.Value)
-            {
-                case ScepOids.MessageType:
-                    messageType = ReadString(raw);
-                    break;
-                case ScepOids.TransactionId:
-                    transactionId = ReadString(raw);
-                    break;
-                case ScepOids.SenderNonce:
-                    senderNonce = new AsnReader(raw, AsnEncodingRules.BER).ReadOctetString();
-                    break;
+                var raw = attribute.Values[0].RawData;
+                switch (attribute.Oid.Value)
+                {
+                    case ScepOids.MessageType:
+                        messageType = ReadString(raw);
+                        break;
+                    case ScepOids.TransactionId:
+                        transactionId = ReadString(raw);
+                        break;
+                    case ScepOids.SenderNonce:
+                        senderNonce = new AsnReader(raw, AsnEncodingRules.BER).ReadOctetString();
+                        break;
+                }
             }
+        }
+        catch (AsnContentException ex)
+        {
+            throw new ScepException(ScepFailInfo.BadRequest, "A signed attribute of the message is not readable.", ex);
         }
 
         if (messageType is null || transactionId is null || senderNonce is null)

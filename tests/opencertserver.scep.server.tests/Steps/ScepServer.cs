@@ -51,7 +51,10 @@ public sealed class ScepServer : IDisposable
     [Given("a certificate server with SCEP whose CA is issued by a root")]
     public Task GivenAServerBelowARoot() => StartServer(withChallenge: true, belowRoot: true);
 
-    private async Task StartServer(bool withChallenge, bool belowRoot = false)
+    [Given("a certificate server with SCEP that remembers at most {int} request(s)")]
+    public Task GivenAServerWithSmallMemory(int requests) => StartServer(withChallenge: true, maxRemembered: requests);
+
+    private async Task StartServer(bool withChallenge, bool belowRoot = false, int? maxRemembered = null)
     {
         var rsaKey = RSA.Create(2048);
         var rsaReq = new CertificateRequest("CN=SCEP Test RSA CA", rsaKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
@@ -149,6 +152,10 @@ public sealed class ScepServer : IDisposable
                         DefaultProfile = "rsa",
                         TransactionIdWindow = _replayWindow
                     };
+                    if (maxRemembered is { } limit)
+                    {
+                        options = new ScepServerOptions { RaCertificate = ra, DefaultProfile = "rsa", MaxRememberedRequests = limit };
+                    }
                     _ = withChallenge
                         ? services.AddScepServer(options, new SharedSecretChallengeValidator(Challenge))
                         : services.AddScepServer(options);
@@ -351,6 +358,30 @@ public sealed class ScepServer : IDisposable
             ScepTestClient.CreateCsr(_clientKey!, Subject, challenge),
             _clientSigner!, _ra, _transactionId, RandomNumberGenerator.GetBytes(16)).ConfigureAwait(false);
         await ReadCertRep().ConfigureAwait(false);
+    }
+
+    [When("another client enrolls with the challenge password {string} under a new transaction")]
+    public async Task WhenAnotherClientEnrolls(string challenge)
+    {
+        _clientKey = RSA.Create(2048);
+        _clientSigner = ScepTestClient.CreateTransientSigner(_clientKey);
+        var client = new ScepTestClient(_host.GetTestClient(), "/scep/rsa");
+        _response = await client.Enroll(
+            ScepTestClient.CreateCsr(_clientKey, Subject, challenge),
+            _clientSigner, _ra, Convert.ToHexString(RandomNumberGenerator.GetBytes(8)), RandomNumberGenerator.GetBytes(16))
+            .ConfigureAwait(false);
+        await ReadCertRep().ConfigureAwait(false);
+    }
+
+    [When("a client sends a request whose senderNonce is encoded as an INTEGER")]
+    public async Task WhenNonceIsInteger()
+    {
+        _clientKey = RSA.Create(2048);
+        _clientSigner = ScepTestClient.CreateTransientSigner(_clientKey);
+        var client = new ScepTestClient(_host.GetTestClient(), "/scep/rsa");
+        _response = await client.Enroll(
+            ScepTestClient.CreateCsr(_clientKey, Subject, Challenge),
+            _clientSigner, _ra, _transactionId, _senderNonce, senderNonceAsInteger: true).ConfigureAwait(false);
     }
 
     [When("the same request is sent again")]
