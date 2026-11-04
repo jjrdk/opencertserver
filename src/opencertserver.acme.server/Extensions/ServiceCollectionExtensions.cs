@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace OpenCertServer.Acme.Server.Extensions;
@@ -8,7 +9,6 @@ using Abstractions.Storage;
 using Abstractions.Workers;
 using BackgroundServices;
 using Configuration;
-using DnsClientX;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -73,12 +73,18 @@ public static class ServiceCollectionExtensions
                 return client;
             }
 
-            services.AddSingleton<ClientX>(sp =>
+            services.AddSingleton<IDnsResolver>(sp =>
             {
-                var opts = sp.GetRequiredService<IOptions<AcmeServerOptions>>();
-                return new ClientX(opts.Value.DnsEndpoint);
+                var opts = sp.GetRequiredService<IOptions<AcmeServerOptions>>().Value;
+                var timeoutMilliseconds = (int)Math.Clamp(
+                    opts.DnsQueryTimeout.TotalMilliseconds,
+                    1,
+                    int.MaxValue);
+                var perspectives = DnsPerspectiveFactory.Create(opts, timeoutMilliseconds);
+                return new MultiPerspectiveDnsResolver(
+                    perspectives,
+                    sp.GetRequiredService<ILogger<MultiPerspectiveDnsResolver>>());
             });
-            services.AddScoped<IDnsResolver, DnsClientXResolver>();
             services.AddScoped<ICaaValidator, CaaValidator>();
             services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();
             services.AddSingleton<IAttestationTrustProvider>(
