@@ -346,7 +346,9 @@ renewal rules and what Windows does differently are in
 
 A host that embeds the server calls `AddScepServer(new ScepServerOptions { RaCertificate = … },
 validator)` and `MapScepServer()`. `ScepServerOptions.TransactionIdWindow` (default 24 hours) is how
-long an accepted request (transaction ID and senderNonce) is remembered for replay protection.
+long an accepted request (transaction ID and senderNonce) is remembered for replay protection;
+`MaxRememberedRequests` (default 100,000) bounds that store - only requests that passed their
+checks are remembered, and when it is full a new request is refused.
 
 ### SCEP with Intune
 
@@ -364,6 +366,7 @@ secret (`opencertserver.contrib.intune`) and maps the revocation sync:
 | `Scep:Intune:ValidationEndpoint` | A fixed address of the validation service instead of Graph discovery. |
 | `Scep:Intune:Timeout` | Per request to Intune or Graph. Default 30 seconds. |
 | `Scep:Intune:MaxRevocationsPerSync` | A sync that would revoke more aborts. Default 25. |
+| `Scep:Intune:SyncProfiles` | The CA profiles Intune issues through; the sync judges only certificates the store recorded as issued from one of them. Array (`SyncProfiles__0`) or comma-separated. Empty: the sync checks nothing. |
 
 `POST /scep/intune/sync?dryRun=true|false` runs the revocation sync and returns its report (what
 was revoked and why, what could not be checked); 409 while a run is in progress. It requires the

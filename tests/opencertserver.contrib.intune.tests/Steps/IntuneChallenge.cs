@@ -5,7 +5,9 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenCertServer.Scep.Server;
 using OpenCertServer.Scep.Tests;
 using Reqnroll;
 using Xunit;
@@ -47,6 +49,41 @@ public sealed class IntuneChallenge : IDisposable
 
     [Given("Intune is unreachable")]
     public void GivenUnreachable() => _fake.Intune = IntuneBehaviour.Unreachable;
+
+    // The order the SCEP server produces when two requests under one transaction ID overlap:
+    // both pass Intune, then the first is refused by the CA and the second is issued.
+    [When("two requests under one transaction ID overlap, the first refused by the CA and the second issued")]
+    public async Task WhenTwoRequestsOverlap()
+    {
+        var validator = _host.Services.GetRequiredService<IScepChallengeValidator>();
+        var first = Context();
+        var second = Context();
+        Assert.True((await validator.Validate(first, CancellationToken.None).ConfigureAwait(false)).Allowed);
+        Assert.True((await validator.Validate(second, CancellationToken.None).ConfigureAwait(false)).Allowed);
+        await validator.NotifyFailure(first, "The CA refused the first request.", CancellationToken.None).ConfigureAwait(false);
+        using var key = RSA.Create(2048);
+        using var issued = new CertificateRequest(Subject, key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
+            .CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddDays(1));
+        await validator.NotifySuccess(second, issued, CancellationToken.None).ConfigureAwait(false);
+
+        ScepChallengeContext Context()
+        {
+            using var deviceKey = RSA.Create(2048);
+            var csr = new CertificateRequest(Subject, deviceKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            return new ScepChallengeContext(_transactionId, Challenge, csr, csr.CreateSigningRequest(), "rsa",
+                ScepMessageType.PkcsReq);
+        }
+    }
+
+    [Then("Intune received one failure notification and one success notification")]
+    public void ThenBothNotified()
+    {
+        Assert.Single(_fake.CallsTo("failureNotification"));
+        Assert.Single(_fake.CallsTo("successNotification"));
+    }
+
+    [Given("no token for Microsoft Graph can be obtained")]
+    public void GivenNoGraphToken() => _fake.GraphTokenFails = true;
 
     [Given("Intune answers with HTTP 429")]
     public void GivenThrottled() => _fake.Intune = IntuneBehaviour.Throttle;

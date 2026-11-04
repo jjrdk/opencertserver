@@ -26,6 +26,22 @@ Feature: SCEP enrollment validated by Intune
         Then the server answers FAILURE with failInfo badRequest
         And no certificate is returned
 
+    # A renewal or a retry with the same key carries the earlier transaction ID: the
+    # server accepts it as a new request, and each keeps its own state with Intune.
+    Scenario: Two requests under one transaction ID keep their own state
+        Given a SCEP server that asks Intune about every request
+        When two requests under one transaction ID overlap, the first refused by the CA and the second issued
+        Then Intune received one failure notification and one success notification
+
+    # Discovery of the validation service goes through Graph; when that fails, the device
+    # gets a SCEP FAILURE like for any other way Intune cannot be asked - not an HTTP 500.
+    Scenario: The validation service cannot be discovered
+        Given a SCEP server that asks Intune about every request
+        And no token for Microsoft Graph can be obtained
+        When a device enrolls with the challenge Intune handed out
+        Then the server answers FAILURE with failInfo badRequest
+        And no certificate is returned
+
     Scenario: Intune throttles
         Given a SCEP server that asks Intune about every request
         And Intune answers with HTTP 429

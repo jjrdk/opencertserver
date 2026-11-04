@@ -566,6 +566,7 @@ one.
    export Scep__Intune__ClientId='00000000-0000-0000-0000-000000000000'
    export Scep__Intune__ClientCertificateFile=/run/secrets/intune-app.pem
    export Scep__Intune__ClientCertificateKeyFile=/run/secrets/intune-app-key.pem
+   export Scep__Intune__SyncProfiles=rsa    # the profile(s) Intune issues through
    ```
 
    Every `PKCSReq` is now checked with Intune; if Intune refuses, cannot be reached or throttles,
@@ -582,8 +583,9 @@ one.
    on `/scep`; rule sets that restrict request content types block `PKIOperation` otherwise.
 6. **Revocation sync.** Call `POST /scep/intune/sync?dryRun=true` with a client that holds the
    `ca_admin` role, read the report, then schedule the run without `dryRun` - once a day is a
-   reasonable start. It revokes certificates of disabled or deleted users and of retired devices,
-   and never revokes when Graph is unreachable.
+   reasonable start. It judges only certificates issued through `Scep:Intune:SyncProfiles`,
+   revokes those of disabled or deleted users and of retired devices, and never revokes when
+   Graph is unreachable.
 
 **Renewal on Windows.** Windows renews by enrolling again with a fresh Intune challenge, not with a
 `RenewalReq`. The previous certificate stays valid at the CA until it expires; see

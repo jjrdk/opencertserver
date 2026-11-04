@@ -145,7 +145,7 @@ deployment without Microsoft's PKI, the CA has to speak SCEP.
 | `GET`/`POST ?operation=PKIOperation` | §4.3 | `PKCSReq` (initial enrollment) and `RenewalReq` (renewal); `CertRep` with `SUCCESS` or `FAILURE` and `failInfo`. |
 | Message protection | §3.1, §3.2.1 | Requests are enveloped to the RA (RSA key transport) and signed by the requester. The reply is encrypted with the content-encryption algorithm of the request (AES-128/192/256-CBC, 3DES-CBC) and signed with SHA-256. A `senderNonce` must be 16 bytes. |
 | Challenge password | §2.2 | Read from the CSR and passed to an `IScepChallengeValidator`: a shared secret by default, Intune with `opencertserver.contrib.intune`. Without a validator, `PKIOperation` issues nothing. |
-| Replay protection | §3.2.1.5 | An accepted request is remembered for 24 hours by transaction ID and `senderNonce`; the same message again is refused. A new request under an earlier transaction ID - clients derive it from the key, so a renewal with the same key or a retry carries it - has a new nonce and is accepted. |
+| Replay protection | §3.2.1.5 | An accepted request is remembered for 24 hours by transaction ID and `senderNonce`; the same message again is refused. A new request under an earlier transaction ID - clients derive it from the key, so a renewal with the same key or a retry carries it - has a new nonce and is accepted. Only requests that passed the challenge or the renewal check are remembered, at most `MaxRememberedRequests` (100,000); when full, a new request is refused rather than risk a replay. |
 | `/scep/{profile}` | — | One endpoint per CA profile; `/scep` is the default profile. |
 
 **Not implemented:** `CertPoll` / `PENDING` (manual approval), `GetCert`, `GetCRL` (the CRL is
@@ -193,8 +193,10 @@ capabilities, `GetCACert` with and without a root above the issuing CA, enrollme
 GET and through the `/pkiclient.exe` paths, wrong and missing challenge, a request encrypted to
 another key, the UPN carried into the certificate, a CA certificate refused, renewal with the
 previous certificate, a look-alike issuer, another subject or subjectAltName, a revoked certificate,
-renewal through another profile of the same CA key, replay, a new request under an earlier
-transaction ID, no validator, the reply algorithm, and the `senderNonce` length. The test client builds real SCEP messages with `SignedCms` and
+renewal through another profile of the same CA key, renewal below a root that is only
+published, replay, a new request under an earlier transaction ID, a refused request not
+remembered, a full replay store, a malformed signed attribute, no validator, the reply
+algorithm, and the `senderNonce` length. The test client builds real SCEP messages with `SignedCms` and
 `EnvelopedCms`, so the server is exercised over HTTP the way a device would.
 * [IQ ScepEnrollment.feature](../tests/opencertserver.iq.tests/Features/ScepEnrollment.feature) —
 micromdm's `scepclient` against the deployed, hardened container: capabilities, the RA and CA
@@ -214,7 +216,7 @@ Intune.
 | Part | Behaviour |
 |---|---|
 | `IntuneChallengeValidator` | Sends each `PKCSReq` (transaction ID and CSR) to Intune's SCEP validation service (`validateRequest`, discovered through Microsoft Graph) and lets the CA issue only when Intune agrees. Refused, unreachable or throttled (429) all mean *deny*. After issuing it sends `successNotification`; when the CA refuses after Intune agreed, `failureNotification`. A `RenewalReq` signed with the previous certificate passes without Intune. |
-| `IntuneRevocationSync` | Walks the CA inventory and asks Graph about the user (UPN from the subjectAltName), the Intune managed device (`IntuneDeviceId://` URI) and the Entra device. What is gone or disabled is revoked (`cessationOfOperation`). Graph unreachable or throttled means *unknown*, and unknown is never revoked; a run that would revoke more than `MaxRevocationsPerSync` aborts. |
+| `IntuneRevocationSync` | Walks the certificates issued through the configured profiles (`SyncProfiles`, by the issuing profile the store recorded) and asks Graph about the user (UPN from the subjectAltName), the Intune managed device (`IntuneDeviceId://` URI) and the Entra device. What is gone or disabled is revoked (`cessationOfOperation`); certificates from other profiles are never judged. Graph unreachable, throttled or answering in an unexpected shape means *unknown*, and unknown is never revoked; a run that would revoke more than `MaxRevocationsPerSync` aborts. |
 | `POST /scep/intune/sync?dryRun=` | Runs the sync and returns the report; 409 while a run is in progress. Requires the authorization policy `scep_intune_sync`. It is an operation, not a scheduler - the caller decides how often. |
 | `IIntuneClient.GetManagedDeviceName` | The name of a managed device, for an inventory that lists certificates by device. |
 
@@ -224,12 +226,14 @@ under `Scep:Intune`, see the [configuration reference](documentation.md#scep-wit
 
 **Tests that prove it.**
 * [IntuneChallenge.feature](../tests/opencertserver.contrib.intune.tests/Features/IntuneChallenge.feature) —
-allowed, refused, unreachable, throttled, refused by the CA after Intune allowed, no challenge,
-discovery and token reuse, renewal without Intune, certificate credential instead of a secret.
+allowed, refused, unreachable, throttled, the validation service not discoverable, refused by
+the CA after Intune allowed, two requests under one transaction ID, no challenge, discovery and
+token reuse, renewal without Intune, certificate credential instead of a secret.
 * [IntuneRevocationSync.feature](../tests/opencertserver.contrib.intune.tests/Features/IntuneRevocationSync.feature) —
 nothing to do, disabled and deleted users, a retired Intune device, a disabled Entra device, Graph
-throttled or unreachable (nothing revoked), dry run, the revocation limit, a second run while one
-is in progress, and the endpoint's policy.
+throttled, unreachable or answering without a value list (nothing revoked), a certificate from
+another profile, no sync profiles, dry run, the revocation limit, a second run while one is in
+progress, and the endpoint's policy.
 * [IntuneDeviceName.feature](../tests/opencertserver.contrib.intune.tests/Features/IntuneDeviceName.feature).
 
 All three run against an in-process fake of Entra, Graph and the validation service. What a fake

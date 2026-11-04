@@ -64,10 +64,28 @@ public static class ContribIntuneExtensions
                 Timeout = TimeSpan.TryParse(section[nameof(IntuneOptions.Timeout)], out var timeout) ? timeout : defaults.Timeout,
                 MaxRevocationsPerSync = int.TryParse(section[nameof(IntuneOptions.MaxRevocationsPerSync)], out var max)
                     ? max
-                    : defaults.MaxRevocationsPerSync
+                    : defaults.MaxRevocationsPerSync,
+                SyncProfiles = List(section.GetSection(nameof(IntuneOptions.SyncProfiles)))
             };
             return services.AddIntune(options);
         }
+    }
+
+    /// <summary>An array section (<c>SyncProfiles:0</c>, …) or one value separated by commas.</summary>
+    private static string[] List(IConfigurationSection section)
+    {
+        var values = section.GetChildren()
+            .Select(child => child.Value)
+            .OfType<string>()
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .ToList();
+        if (values.Count == 0 && section.Value is { } lone)
+        {
+            values.AddRange(lone.Split([',', ';', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        }
+
+        return [.. values.Distinct(StringComparer.Ordinal)];
     }
 
     private static Uri? Address(IConfiguration section, string key) =>

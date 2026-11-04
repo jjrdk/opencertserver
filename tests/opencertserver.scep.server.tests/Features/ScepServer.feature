@@ -122,6 +122,15 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
         Then the server answers FAILURE with failInfo badRequest
         And no certificate is returned
 
+    # The issuing CA sits in the profile's CertificateChain, its root only in the published
+    # chain: the renewal check has to reach the root through the published chain.
+    Scenario: A certificate from an issuing CA below a root is renewed
+        Given a certificate server with SCEP whose CA is issued by a root
+        And a client holding a certificate from the "rsa" profile
+        When the client renews it with a new key
+        Then the server answers SUCCESS
+        And the renewed certificate has the same subject and a new key
+
     Scenario: A renewal for another subject is refused
         Given a certificate server that complies with SCEP (RFC 8894)
         And a client holding a certificate from the "rsa" profile
@@ -167,6 +176,29 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
         And the same request is sent again
         Then the server answers FAILURE with failInfo badRequest
         And no certificate is returned
+
+    # Only a request that passed its checks is remembered: a refused one takes no room, so
+    # the same transaction ID and nonce still go through with the right challenge.
+    Scenario: A refused request is not remembered
+        Given a certificate server that complies with SCEP (RFC 8894)
+        When a client enrolls with the challenge password "falsch" using the "rsa" profile
+        And a client enrolls with the challenge password "geheim" using the "rsa" profile
+        Then the server answers SUCCESS
+
+    # The anonymous endpoint cannot grow the store without bound: when it is full and
+    # nothing has expired, a new request is refused rather than risk a replay.
+    Scenario: A full replay store refuses new requests
+        Given a certificate server with SCEP that remembers at most 1 request
+        When a client enrolls with the challenge password "geheim" using the "rsa" profile
+        And another client enrolls with the challenge password "geheim" under a new transaction
+        Then the server answers FAILURE with failInfo badRequest
+        And no certificate is returned
+
+    # The signature holds, but a signed attribute has the wrong ASN.1 type.
+    Scenario: A malformed signed attribute is rejected as a bad request
+        Given a certificate server that complies with SCEP (RFC 8894)
+        When a client sends a request whose senderNonce is encoded as an INTEGER
+        Then the server rejects the message with HTTP 400
 
     # Clients derive the transaction ID from the public key (RFC 8894, 3.2.1.1.1): a new
     # request with the same key - a renewal, a retry - carries the earlier ID with a new nonce.

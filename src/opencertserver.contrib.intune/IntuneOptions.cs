@@ -60,6 +60,16 @@ public sealed class IntuneOptions
     /// </summary>
     public int MaxRevocationsPerSync { get; init; } = 25;
 
+    /// <summary>
+    /// The CA profiles whose certificates the revocation sync judges - the profiles Intune
+    /// issues through. A certificate from any other profile is never looked at, even when it
+    /// carries a UPN or a device id: an EST certificate for a user of another directory must
+    /// not be revoked because Entra does not know that user. The issuing profile is the one
+    /// the certificate store recorded at issuance; a certificate without that record is not
+    /// judged either. Empty: the sync checks nothing.
+    /// </summary>
+    public IReadOnlyList<string> SyncProfiles { get; init; } = [];
+
     internal bool UsesCertificate => !string.IsNullOrEmpty(ClientCertificateFile);
 
     internal string? ResolveClientSecret()

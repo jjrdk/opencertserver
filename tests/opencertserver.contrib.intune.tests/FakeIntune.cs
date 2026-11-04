@@ -66,6 +66,12 @@ public sealed class FakeIntune : HttpMessageHandler
     /// <summary>When set, Graph lookups wait here - to hold a sync in progress.</summary>
     public SemaphoreSlim? GraphGate { get; set; }
 
+    /// <summary>The Entra device lookup answers 200 with an object that has no <c>value</c> list.</summary>
+    public bool DevicesWithoutValueList { get; set; }
+
+    /// <summary>A token for Microsoft Graph cannot be obtained (the Intune resource still can).</summary>
+    public bool GraphTokenFails { get; set; }
+
     public IEnumerable<JsonNode?> CallsTo(string action) =>
         Calls.Where(c => c.Path.EndsWith(action, StringComparison.OrdinalIgnoreCase)).Select(c => c.Body);
 
@@ -102,6 +108,11 @@ public sealed class FakeIntune : HttpMessageHandler
             else if (form.GetValueOrDefault("client_secret") != "test-secret")
             {
                 return Json(HttpStatusCode.Unauthorized, new { error = "invalid_client" });
+            }
+
+            if (GraphTokenFails && form["scope"].StartsWith("https://graph.microsoft.com/", StringComparison.Ordinal))
+            {
+                return Json(HttpStatusCode.ServiceUnavailable, new { error = "temporarily_unavailable" });
             }
 
             return Json(HttpStatusCode.OK, new { access_token = "token-for-" + form["scope"], expires_in = 3600 });
@@ -193,6 +204,11 @@ public sealed class FakeIntune : HttpMessageHandler
 
         if (path == "/v1.0/devices")
         {
+            if (DevicesWithoutValueList)
+            {
+                return Json(HttpStatusCode.OK, new { error = "not what Graph means" });
+            }
+
             var filter = Uri.UnescapeDataString(query);
             var start = filter.IndexOf('\'') + 1;
             var deviceId = filter[start..filter.IndexOf('\'', start)];

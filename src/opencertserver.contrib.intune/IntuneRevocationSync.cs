@@ -26,7 +26,8 @@ public sealed record SyncReport(
 /// <summary>
 /// Intune never tells the CA when a user is disabled or a device is retired; without
 /// this, their certificates stay valid until they expire. The sync walks the CA's
-/// inventory, asks Graph about the user (UPN from the SAN), the Intune device
+/// inventory (only certificates issued through the profiles in
+/// <see cref="IntuneOptions.SyncProfiles"/>), asks Graph about the user (UPN from the SAN), the Intune device
 /// (<c>IntuneDeviceId://</c> URI) and the Entra device (GUID common name), and revokes
 /// what is gone or disabled. It is an operation, not a scheduler - whoever runs it
 /// decides how often.
@@ -83,6 +84,14 @@ public sealed partial class IntuneRevocationSync
 
     private async Task<SyncReport> RunLocked(bool dryRun, CancellationToken cancellationToken)
     {
+        if (_options.SyncProfiles.Count == 0)
+        {
+            LogNoProfiles(_logger);
+            return new SyncReport(dryRun, 0, [], [],
+                "Scep:Intune:SyncProfiles names no CA profile - nothing was checked.");
+        }
+
+        var profiles = _options.SyncProfiles.ToHashSet(StringComparer.Ordinal);
         var now = _time.GetUtcNow();
         var hits = new List<(CertificateItemInfo Item, string Reason)>();
         var unknown = new List<SyncUnknown>();
@@ -97,6 +106,15 @@ public sealed partial class IntuneRevocationSync
 
             var certificate = await LoadCertificate(item, cancellationToken).ConfigureAwait(false);
             if (certificate is null)
+            {
+                continue;
+            }
+
+            // Only what Intune issued: a shared CA may hold certificates with a UPN or a device
+            // id from other paths (EST, another directory), and those are not the sync's to judge.
+            var issuingProfile = await _store.GetIssuingProfile(certificate.Thumbprint, cancellationToken)
+                .ConfigureAwait(false);
+            if (issuingProfile is null || !profiles.Contains(issuingProfile))
             {
                 continue;
             }
@@ -233,6 +251,9 @@ public sealed partial class IntuneRevocationSync
 
         return null;
     }
+
+    [LoggerMessage(LogLevel.Warning, "Intune sync: Scep:Intune:SyncProfiles names no CA profile - nothing checked")]
+    private static partial void LogNoProfiles(ILogger logger);
 
     [LoggerMessage(LogLevel.Warning, "Intune sync: {Serial} ({Subject}) could not be judged, stays valid: {Reason}")]
     private static partial void LogUnknown(ILogger logger, string serial, string subject, string reason);

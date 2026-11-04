@@ -25,4 +25,11 @@ public sealed class ScepServerOptions
     /// cannot be replayed to have the CA issue again. Defaults to 24 hours.
     /// </summary>
     public TimeSpan TransactionIdWindow { get; init; } = TimeSpan.FromHours(24);
+
+    /// <summary>
+    /// How many accepted requests are remembered at most. Only requests that passed the
+    /// challenge or the renewal check count; when the store is full and nothing has expired,
+    /// a new request is refused rather than risk a replay. Defaults to 100,000.
+    /// </summary>
+    public int MaxRememberedRequests { get; init; } = 100_000;
 }

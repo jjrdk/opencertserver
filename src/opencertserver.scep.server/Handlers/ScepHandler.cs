@@ -128,8 +128,9 @@ internal static class ScepHandler
         }
 
         // A request is accepted once per window: a captured request, replayed, would otherwise
-        // have the CA issue again. A new request under the same transaction ID carries a new nonce.
-        if (!transactions.TryClaim(request.TransactionId, request.SenderNonce))
+        // have the CA issue again. A new request under the same transaction ID carries a new
+        // nonce. Refused here already when known; claimed only once it has passed its checks.
+        if (transactions.IsKnown(request.TransactionId, request.SenderNonce))
         {
             logger.LogWarning("SCEP transaction {TransactionId} refused: request already seen (replay)",
                 request.TransactionId);
@@ -185,6 +186,19 @@ internal static class ScepHandler
             return Failure(request, ScepFailInfo.BadRequest, options);
         }
 
+        // Claimed right before issuing, once the request has passed its checks: a stranger's
+        // messages take no room, and of two identical requests racing here one wins.
+        var claim = transactions.TryClaim(request.TransactionId, request.SenderNonce);
+        if (claim != ScepTransactionIds.ClaimResult.Claimed)
+        {
+            var reason = claim == ScepTransactionIds.ClaimResult.Full
+                ? "too many requests remembered for replay protection"
+                : "request already seen (replay)";
+            logger.LogWarning("SCEP transaction {TransactionId} refused: {Reason}", request.TransactionId, reason);
+            await validator.NotifyFailure(challenge, reason, cancellationToken).ConfigureAwait(false);
+            return Failure(request, ScepFailInfo.BadRequest, options);
+        }
+
         // For a renewal the CA supersedes the previous certificate once the new one is issued,
         // and refuses it when the previous certificate was issued under another profile (#140).
         var response = await ca.SignCertificateRequest(
@@ -223,11 +237,16 @@ internal static class ScepHandler
         ICertificateAuthority ca,
         CancellationToken cancellationToken)
     {
-        var roots = await ca.GetRootCertificates(profile, cancellationToken).ConfigureAwait(false);
+        // The profile's whole published chain: an issuing CA may sit in CertificateChain with
+        // its root only in PublishedCertificateChain, and the chain has to reach that root.
+        // The self-signed certificates in it are the anchors; that the certificate was signed
+        // by this profile's CA key is checked again by the CA core when it signs.
+        var published = await ca.GetPublishedCertificates(profile, cancellationToken).ConfigureAwait(false);
+        var anchors = published.Where(c => c.SubjectName.RawData.AsSpan().SequenceEqual(c.IssuerName.RawData)).ToArray();
         using var chain = new X509Chain();
         chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-        chain.ChainPolicy.CustomTrustStore.AddRange(roots);
-        chain.ChainPolicy.ExtraStore.AddRange(roots);
+        chain.ChainPolicy.CustomTrustStore.AddRange(anchors.Length > 0 ? anchors : [.. published]);
+        chain.ChainPolicy.ExtraStore.AddRange(published);
         // Revocation is checked against this CA's own list below, not over the network.
         chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
         if (!chain.Build(previous))

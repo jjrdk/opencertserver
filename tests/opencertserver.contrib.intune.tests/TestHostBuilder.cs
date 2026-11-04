@@ -28,7 +28,7 @@ public sealed class TestHostBuilder
     public const string AuthenticationScheme = "Test";
 
     public static (IHost Host, X509Certificate2 RsaCa, X509Certificate2 Ra) Build(
-        FakeIntune fake, int maxRevocations = 25, bool withCertificate = false)
+        FakeIntune fake, int maxRevocations = 25, bool withCertificate = false, IReadOnlyList<string>? syncProfiles = null)
     {
         using var rsaKey = RSA.Create(2048);
         var rsaReq = new CertificateRequest("CN=Intune Test RSA CA", rsaKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
@@ -72,7 +72,9 @@ public sealed class TestHostBuilder
             ClientCertificateFile = certificateFile,
             ClientCertificateKeyFile = keyFile,
             CallerInfo = "OpenCertServer tests",
-            MaxRevocationsPerSync = maxRevocations
+            MaxRevocationsPerSync = maxRevocations,
+            // Intune issues through "rsa"; "ecdsa" stands for any other path into the same CA.
+            SyncProfiles = syncProfiles ?? ["rsa"]
         };
 
         var host = new HostBuilder()
