@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.DependencyInjection;
 using Ca.Utils;
+using OpenCertServer.Ca;
 using OpenCertServer.Ca.Utils.Ca;
 using Ca.Utils.X509Extensions;
 using Reqnroll;
@@ -13,7 +14,7 @@ using Xunit;
 
 public partial class CertificateServerFeatures
 {
-    private const string CrlTestUrl = "http://crl.test/ca.crl";
+    private const string CrlTestUrl = "http://crl.test/ca/{profile}/crl";
     private const string DeltaCrlTestUrl = "http://crl.test/delta-ca.crl";
 
     private CrlConformanceState CrlState
@@ -1478,7 +1479,7 @@ public partial class CertificateServerFeatures
         await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
         CrlState.IssuedCert = _certCollection[0];
         await WhenIRevokeTheCertificate().ConfigureAwait(false);
-        CrlState.FirstCrlBytes = await FetchCrlBytesAsync("ca/rsa/crl").ConfigureAwait(false);
+        CrlState.FirstCrlBytes = await FetchCrlBytesAsync("ca/default/crl").ConfigureAwait(false);
         CrlState.SecondCrlBytes = await FetchCrlBytesAsync("ca/ecdsa/crl").ConfigureAwait(false);
     }
 
@@ -1492,6 +1493,85 @@ public partial class CertificateServerFeatures
     public void ThenTheEcdsaProfileCrlMustNotListTheRevokedSerial()
     {
         Assert.False(CrlListsIssuedCertificate(CrlState.SecondCrlBytes!));
+    }
+
+    [When("certificates are issued under the default and ecdsa profiles")]
+    public async Task WhenCertificatesAreIssuedUnderTheDefaultAndEcdsaProfiles()
+    {
+        var ca = _server.Services.GetRequiredService<ICertificateAuthority>();
+        using var rsa = RSA.Create(2048);
+        var rsaRequest = new CertificateRequest("CN=rsa-profile", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        CrlState.IssuedCert = Assert.IsType<SignCertificateResponse.Success>(
+            await ca.SignCertificateRequest(rsaRequest, "default").ConfigureAwait(false)).Certificate;
+        using var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var ecdsaRequest = new CertificateRequest("CN=ecdsa-profile", ecdsa, HashAlgorithmName.SHA256);
+        CrlState.SecondIssuedCert = Assert.IsType<SignCertificateResponse.Success>(
+            await ca.SignCertificateRequest(ecdsaRequest, "ecdsa").ConfigureAwait(false)).Certificate;
+        CrlState.FirstCrlBytes = await FetchCrlBytesAsync("ca/rsa/crl").ConfigureAwait(false);
+        CrlState.SecondCrlBytes = await FetchCrlBytesAsync("ca/ecdsa/crl").ConfigureAwait(false);
+    }
+
+    [Then(@"the (default|ecdsa) profile certificate MUST carry the CRL distribution point ""(.+)""")]
+    public void ThenTheProfileCertificateMustCarryTheCdp(string profile, string expectedUri)
+    {
+        var cert = profile == "default" ? CrlState.IssuedCert! : CrlState.SecondIssuedCert!;
+        var ext = cert.Extensions[Oids.CrlDistributionPoints];
+        Assert.NotNull(ext);
+        Assert.Equal([expectedUri], ReadDistributionPointUris(ext.RawData));
+    }
+
+    [Then(@"the (default|ecdsa) profile CRL MUST carry a critical issuingDistributionPoint for ""(.+)""")]
+    public void ThenTheProfileCrlMustCarryACriticalIdp(string profile, string expectedUri)
+    {
+        var crl = CertificateRevocationList.Load(profile == "default" ? CrlState.FirstCrlBytes! : CrlState.SecondCrlBytes!);
+        var idp = crl.Extensions?.SingleOrDefault(e => e.Oid?.Value == Oids.IssuingDistributionPoint);
+        Assert.NotNull(idp);
+        Assert.True(idp.Critical);
+
+        // IssuingDistributionPoint ::= SEQUENCE { distributionPoint [0] DistributionPointName OPTIONAL, ... }
+        var reader = new AsnReader(idp.RawData, AsnEncodingRules.DER);
+        var seq = reader.ReadSequence();
+        var dpName = seq.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+        var fullName = dpName.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+        var uris = new List<string>();
+        while (fullName.HasData)
+        {
+            uris.Add(fullName.ReadCharacterString(UniversalTagNumber.IA5String, new Asn1Tag(TagClass.ContextSpecific, 6)));
+        }
+
+        Assert.Equal([expectedUri], uris);
+    }
+
+    [When("a CA with multiple profiles is configured with a CRL URL without the profile placeholder")]
+    public async Task WhenAMultiProfileCaIsConfiguredWithAnUnpartitionedCrlUrl()
+    {
+        var profiles = _server.Services.GetRequiredService<IStoreCaProfiles>();
+        var config = new CaConfiguration(profiles, ["test"], ["http://crl.test/ca.crl"], []);
+        CrlState.ConfigurationError = await Record.ExceptionAsync(() => config.ValidateCrlUrlsAsync()).ConfigureAwait(false);
+    }
+
+    [Then("the CA configuration MUST be rejected")]
+    public void ThenTheCaConfigurationMustBeRejected()
+    {
+        Assert.IsType<InvalidOperationException>(CrlState.ConfigurationError);
+    }
+
+    private static List<string> ReadDistributionPointUris(byte[] cdpRaw)
+    {
+        var uris = new List<string>();
+        var points = new AsnReader(cdpRaw, AsnEncodingRules.DER).ReadSequence();
+        while (points.HasData)
+        {
+            var dp = points.ReadSequence();
+            var name = dp.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            var fullName = name.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            while (fullName.HasData)
+            {
+                uris.Add(fullName.ReadCharacterString(UniversalTagNumber.IA5String, new Asn1Tag(TagClass.ContextSpecific, 6)));
+            }
+        }
+
+        return uris;
     }
 
     private bool CrlListsIssuedCertificate(byte[] crlBytes)
@@ -1510,6 +1590,8 @@ internal sealed class CrlConformanceState
     public byte[]? CustomEntryBytes { get; set; }
     public HttpResponseMessage? LastHttpResponse { get; set; }
     public X509Certificate2? IssuedCert { get; set; }
+    public X509Certificate2? SecondIssuedCert { get; set; }
+    public Exception? ConfigurationError { get; set; }
     public DateTimeOffset RevocationDate { get; set; }
     public DateTimeOffset? InvalidityDate { get; set; }
     public BigInteger ExpectedBaseCrlNumber { get; set; }

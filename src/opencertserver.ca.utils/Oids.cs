@@ -1732,6 +1732,16 @@ public static class Oids
     /// <summary>
     /// Represents the member.
     /// </summary>
+    public const string IssuingDistributionPoint = "2.5.29.28";
+
+    /// <summary>
+    /// Represents the member.
+    /// </summary>
+    public const string IssuingDistributionPointFriendlyName = "issuingDistributionPoint";
+
+    /// <summary>
+    /// Represents the member.
+    /// </summary>
     public const string CertPolicies = "2.5.29.32";
 
     /// <summary>

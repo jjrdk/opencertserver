@@ -610,8 +610,9 @@ before and after the attempt: successful revocation must add the exact serial an
 reason, and `openssl verify -crl_check` must reject the certificate as revoked. A denied request
 must return 403, leave the serial absent and leave the target certificate verifiable.
 
-The configured CDP is `http://issuer:8080/ca/crl`. Linux/.NET online chain validation needs an HTTP
-distribution point; the Python container relays **only** this public CRL path to the server over
+The configured CDP template is `http://issuer:8080/ca/{profile}/crl`; certificates issued under the
+default `rsa` profile carry `http://issuer:8080/ca/rsa/crl`. Linux/.NET online chain validation needs an HTTP
+distribution point; the Python container relays **only** the public `/ca/crl` and `/ca/{profile}/crl` paths to the server over
 verified HTTPS, without caching or generating CRLs itself. Enrollment and revocation still go
 directly to the server over verified HTTPS. The CDP scenario checks the exact extension URI,
 fetches that URI and verifies the returned CRL signature. Issuer/relay logs join server/DNS logs

@@ -37,7 +37,8 @@ caller using that path directly.
 - **v2 CRL with cRLNumber**: The .NET `CertificateRevocationListBuilder` generates v2 CRLs with a non-critical cRLNumber extension.
 - **thisUpdate / nextUpdate encoding**: `CertificateRevocationListBuilder` uses the correct UTCTime / GeneralizedTime encoding.
 - **Revocation reasons**: `CertificateAuthority.RevokeCertificate` delegates to `IStoreCertificates.RemoveCertificate` with an `X509RevocationReason`; the reason is passed to `builder.AddEntry` and recorded in the CRL entry.
-- **CRL distribution points in certificates**: `CertificateAuthority.SignCertificateRequest` injects the `cRLDistributionPoints` extension into issued certificates when `_config.CrlUrls` is populated.
+- **CRL distribution points in certificates**: `CertificateAuthority.SignCertificateRequest` injects the `cRLDistributionPoints` extension into issued certificates when `_config.CrlUrls` is populated, expanding the `{profile}` token to the issuing profile.
+- **Partitioned per-profile CRLs**: each profile CRL carries a critical `issuingDistributionPoint` (2.5.29.28) matching the certificate CDP; multiple profiles with untokenized CRL URLs fail closed.
 - **authorityKeyIdentifier in certificates**: `X509AuthorityKeyIdentifierExtension.CreateFromSubjectKeyIdentifier` is added to every issued certificate.
 - **Extension class OIDs**: `X509CrlNumberExtension` (2.5.29.20), `X509DeltaCrlIndicatorExtension` (2.5.29.27), `X509FreshestCrlExtension` (2.5.29.46), `X509IssuerAltNameExtension` (2.5.29.18) all use the correct OIDs.
 - **CRL entry reasonCode, invalidityDate, certificateIssuer**: `CertificateExtension` encodes and decodes all three CRL entry extensions (OIDs 2.5.29.21, 2.5.29.24, 2.5.29.29).

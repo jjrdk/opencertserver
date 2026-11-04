@@ -223,3 +223,15 @@ They are intentionally written before adding step implementations so they can dr
             When a certificate issued under the rsa profile is revoked
             Then the rsa profile CRL MUST list the revoked certificate serial number
             And the ecdsa profile CRL MUST NOT list the revoked certificate serial number
+
+        @with-crl-urls
+        Scenario: Each CA profile publishes its CRL at its own distribution point
+            When certificates are issued under the default and ecdsa profiles
+            Then the default profile certificate MUST carry the CRL distribution point "http://crl.test/ca/default/crl"
+            And the ecdsa profile certificate MUST carry the CRL distribution point "http://crl.test/ca/ecdsa/crl"
+            And the default profile CRL MUST carry a critical issuingDistributionPoint for "http://crl.test/ca/default/crl"
+            And the ecdsa profile CRL MUST carry a critical issuingDistributionPoint for "http://crl.test/ca/ecdsa/crl"
+
+        Scenario: A multi-profile CA rejects CRL URLs that are not partitioned per profile
+            When a CA with multiple profiles is configured with a CRL URL without the profile placeholder
+            Then the CA configuration MUST be rejected
