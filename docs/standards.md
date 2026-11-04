@@ -196,8 +196,11 @@ previous certificate, a look-alike issuer, another subject or subjectAltName, a 
 renewal through another profile of the same CA key, replay, a new request under an earlier
 transaction ID, no validator, the reply algorithm, and the `senderNonce` length. The test client builds real SCEP messages with `SignedCms` and
 `EnvelopedCms`, so the server is exercised over HTTP the way a device would.
-* During development the server was also checked by hand against `sscep`, micromdm's `scep`
-  client and smallstep's; those checks are not part of the suite.
+* [IQ ScepEnrollment.feature](../tests/opencertserver.iq.tests/Features/ScepEnrollment.feature) —
+micromdm's `scepclient` against the deployed, hardened container: capabilities, the RA and CA
+bundle, enrollment with the challenge, a wrong challenge refused, the `/pkiclient.exe` path, and
+renewal with a `RenewalReq` signed by the certificate the client holds; `openssl` verifies what it
+receives. See the [IQ README](../tests/opencertserver.iq.tests/README.md#scep-enrollment-scenarios).
 
 ### Intune challenge validation and revocation sync (`opencertserver.contrib.intune`)
 

@@ -86,6 +86,19 @@ RUN curl -fsSL "https://github.com/acmesh-official/acme.sh/archive/refs/tags/${A
 #    dns-01, `--manual` with the mounted `certbot-dns-iq.sh` hook. Its Python `requests`
 #    stack trusts the system CA bundle, which holds the harness's test TLS root.
 
+#    micromdm's scepclient (MIT) is the independent SCEP (RFC 8894) client: a PKCSReq
+#    with the challenge while it holds no certificate, a RenewalReq signed with the one
+#    it holds otherwise. Go's HTTP client trusts the system CA bundle, like certbot.
+ARG SCEPCLIENT_VERSION=v2.3.0
+ARG SCEPCLIENT_SHA256=47b20e1b44b5789d4dd8572b17b22fe7d7d5fa6c1fe1b61f24fe26a3a1826a30
+RUN curl -fsSL "https://github.com/micromdm/scep/releases/download/${SCEPCLIENT_VERSION}/scepclient-linux-amd64-${SCEPCLIENT_VERSION}.zip" \
+      -o /tmp/scepclient.zip \
+ && echo "${SCEPCLIENT_SHA256}  /tmp/scepclient.zip" | sha256sum -c - \
+ && python3 -m zipfile -e /tmp/scepclient.zip /tmp/scepclient \
+ && install -m 0755 /tmp/scepclient/scepclient-linux-amd64 /usr/local/bin/scepclient \
+ && rm -rf /tmp/scepclient /tmp/scepclient.zip \
+ && scepclient -version >/dev/null
+
 # 4. The project's own CLI. The image is built with the `opencert` binary already
 #    present on the image; the IQ harness copies the freshly built Linux binary at
 #    image-build time so the CLI runs as a native binary, not via `dotnet run`.

@@ -48,6 +48,7 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
     private bool _disableCaaChecks;
     private bool _enableHttp;
     private bool _enableTelemetry;
+    private string? _scepChallenge;
 
     private IqAcmeEnvironment(TestTlsPki tls)
     {
@@ -81,7 +82,8 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
         bool disableCaaChecks = false,
         IqRevocationConfiguration? revocationConfiguration = null,
         bool enableHttp = false,
-        bool enableTelemetry = false)
+        bool enableTelemetry = false,
+        string? scepChallenge = null)
     {
         var (serverImage, clientImage) = await IqImages.GetAsync(cancellationToken).ConfigureAwait(false);
         var environment = new IqAcmeEnvironment(TestTlsPki.Create(
@@ -92,7 +94,8 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
             _revocationConfiguration = revocationConfiguration,
             _disableCaaChecks = disableCaaChecks,
             _enableHttp = enableHttp,
-            _enableTelemetry = enableTelemetry
+            _enableTelemetry = enableTelemetry,
+            _scepChallenge = scepChallenge
         };
         try
         {
@@ -373,6 +376,12 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
                 .WithEnvironment("OTEL_METRIC_EXPORT_INTERVAL", "1000")
                 .WithEnvironment("OTEL_BSP_SCHEDULE_DELAY", "200")
                 .WithEnvironment("OTEL_TRACES_SAMPLER", "always_on");
+        }
+
+        if (_scepChallenge is { } challenge)
+        {
+            // Without a challenge the SCEP endpoint answers GetCACaps/GetCACert but issues nothing.
+            builder = builder.WithEnvironment("Scep__Challenge", challenge);
         }
 
         if (!_disableCaaChecks)

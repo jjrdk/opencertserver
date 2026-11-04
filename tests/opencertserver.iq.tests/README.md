@@ -15,7 +15,7 @@ harness the conformance and correctness suites use.
 |---|---|---|
 | `opencertserver.certserver.tests`, `opencertserver.<proto>.tests` | in-process `WebApplicationFactory`/`TestServer` | .NET `EstClient`, `AcmeContext`, direct handler calls |
 | `opencertserver.mcp.tests` | in-process MCP host | .NET tool invocations |
-| **`opencertserver.iq.tests` (this project)** | **a running OpenCertServer container over HTTP/TLS** | **a Linux container running `estclient`, `openssl`, `curl`, `acme.sh`, `certbot`, `jq`, and the `opencert` CLI** |
+| **`opencertserver.iq.tests` (this project)** | **a running OpenCertServer container over HTTP/TLS** | **a Linux container running `estclient`, `scepclient`, `openssl`, `curl`, `acme.sh`, `certbot`, `jq`, and the `opencert` CLI** |
 | **MCP IQ feature** | **the published standalone MCP executable, launched in Linux** | **JSON-RPC over subprocess stdin/stdout, with independent OpenSSL checks** |
 
 The goal is **complementarity, not duplication**: the RFC-conformance and
@@ -42,7 +42,7 @@ Two TestContainers images are orchestrated by the step definitions:
    built from the Ubuntu package sources, the ACME client
    `acme.sh` (fetched over curl, the canonical ACME client), EFF `certbot` (from `apt`)
    and the project's own `opencert` CLI. Every scenario's Given/When/Then is something
-   this image can execute: `estclient`, `curl`, `openssl`, `acme.sh`, `certbot`, `jq`, `opencert`.
+   this image can execute: `estclient`, `scepclient`, `curl`, `openssl`, `acme.sh`, `certbot`, `jq`, `opencert`.
 
 A [`docker-compose.yml`](./docker-compose.yml) provides a manual equivalent of the
 same two-container topology for hands-on runs; TestContainers performs the same
@@ -474,6 +474,35 @@ to inspect the advertised DER template. All cryptographic operations and certifi
 run through OpenSSL in the Linux container. The helper is mounted by the harness, so prebuilt
 client images need no rebuild to pick up helper changes. Prebuilt images must include the patched
 `estclient`. Failure output includes the last client command and server, DNS and issuer/relay logs.
+
+### SCEP-enrollment scenarios
+
+Run all six SCEP scenarios (requires Docker):
+
+```sh
+dotnet test --project tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj \
+  --filter-class "OpenCertServer.Iq.Tests.Features.RFC8894SCEPEnrollmentWorksForALinuxDeviceClientFeature"
+```
+
+The client is micromdm's [`scepclient`](https://github.com/micromdm/scep) (MIT), an independent
+SCEP implementation in Go. The image downloads the pinned release and checks its SHA-256. It trusts
+the disposable TLS root through the system bundle; TLS verification stays enabled. The server of
+this feature is started with a shared challenge (`Scep__Challenge`); without one it issues nothing.
+Each scenario has its own directory for the key, the CSR and the certificate.
+
+- `curl ?operation=GetCACaps` must list `POSTPKIOperation`, `SHA-256`, `AES` and `Renewal`.
+- `curl ?operation=GetCACert` is decoded with `openssl pkcs7`; the bundle must hold an RA certificate
+  for key encipherment and a `CA:TRUE` certificate, each checked on its own.
+- `scepclient -challenge … -key-encipherment-selector` enrolls with a `PKCSReq`. The certificate must
+  name the requested common name and verify with `openssl verify` against the `CA:TRUE`
+  certificates of `GetCACert` - not the RA.
+- A wrong challenge must end in a SCEP `FAILURE` (`request failed, failInfo`), not a transport
+  error, and leave no certificate.
+- The same enrollment through `/scep/pkiclient.exe`, the path Windows uses.
+- Run again with the certificate it holds, `scepclient` sends a `RenewalReq` signed with it and
+  without a challenge. The new certificate must have a new serial and verify. `scepclient` renews
+  with the same key and therefore the same transaction ID (it derives it from the key) - this
+  scenario found that replay protection must remember the nonce, not the transaction ID alone.
 
 ### Profile-controlled issuance scenarios
 
