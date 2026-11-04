@@ -532,6 +532,66 @@ unknown tool name returns a failed result with error code
 
 ---
 
+## 10. SCEP and Intune
+
+SCEP (RFC 8894) is the enrollment protocol of device management: Windows, macOS, iOS and Android
+ship a client, and Intune deploys certificates through it. `certserver` serves it under `/scep`.
+
+### A shared challenge (to try it)
+
+```sh
+export Scep__Challenge='a-long-random-secret'   # never on the command line
+dotnet opencertserver.certserver.dll --dn "CN=My Internal CA" --port 5001 \
+   --scep-ra /path/to/scep-ra.pem --scep-ra-key /path/to/scep-ra-key.pem
+
+curl -k "https://localhost:5001/scep?operation=GetCACaps"
+# POSTPKIOperation SHA-256 AES SCEPStandard Renewal
+```
+
+The RA certificate must carry an **RSA** key, even for an ECDSA CA; without `--scep-ra` a temporary
+RA is created at every start. Any SCEP client can now enroll with the challenge, for example with
+the UPN of a user in the subjectAltName. `/scep` serves the default profile, `/scep/{profile}` a named
+one.
+
+### Intune-managed Windows devices
+
+1. **App registration in Entra.** Application permissions: Intune `scep_challenge_provider`; for
+   the revocation sync also Microsoft Graph `User.Read.All`, `Device.Read.All` and
+   `DeviceManagementManagedDevices.Read.All`. Grant admin consent. Give the app a certificate
+   credential (preferred - only the public half goes to Entra) or a secret.
+2. **Configure `certserver`** - instead of `Scep__Challenge`:
+
+   ```sh
+   export Scep__Intune__TenantId='contoso.onmicrosoft.com'
+   export Scep__Intune__ClientId='00000000-0000-0000-0000-000000000000'
+   export Scep__Intune__ClientCertificateFile=/run/secrets/intune-app.pem
+   export Scep__Intune__ClientCertificateKeyFile=/run/secrets/intune-app-key.pem
+   ```
+
+   Every `PKCSReq` is now checked with Intune; if Intune refuses, cannot be reached or throttles,
+   nothing is issued.
+3. **Trusted certificate profiles in Intune** for the CA chain - the root into the computer's root
+   store, an issuing CA into the intermediate store. `GetCACert` publishes the root as well, and
+   Windows compares it with the root of its Intune profile before it sends a request.
+4. **SCEP certificate profile in Intune.** SCEP server URL `https://pki.example.com/scep` (or
+   `…/scep/{profile}`) **without a trailing slash** - Windows appends `/pkiclient.exe`. Subject name
+   format e.g. `CN={{UserPrincipalName}}` with the UPN as subjectAltName; key usage, extended key
+   usage and validity as the profile of the CA expects them; the trusted certificate profile from
+   step 3 as root. Intune adds the device as an `IntuneDeviceId://` URI.
+5. **A reverse proxy or WAF in front** has to pass `application/x-pki-message` in both directions
+   on `/scep`; rule sets that restrict request content types block `PKIOperation` otherwise.
+6. **Revocation sync.** Call `POST /scep/intune/sync?dryRun=true` with a client that holds the
+   `ca_admin` role, read the report, then schedule the run without `dryRun` - once a day is a
+   reasonable start. It revokes certificates of disabled or deleted users and of retired devices,
+   and never revokes when Graph is unreachable.
+
+**Renewal on Windows.** Windows renews by enrolling again with a fresh Intune challenge, not with a
+`RenewalReq`. The previous certificate stays valid at the CA until it expires; see
+[Implemented standards → SCEP](standards.md#scep--rfc-8894) for what that means and what an
+operator can do about it.
+
+---
+
 ## Next steps
 
 * [Implemented standards](standards.md) — every RFC, what OpenCertServer does, and the tests that prove it.
