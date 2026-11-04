@@ -322,6 +322,35 @@ ACME endpoints are mounted by `UseAcmeServer()` and protected by RFC 8555 accoun
 authentication. Requests are signed with compact JWS ([RFC 7515](https://www.rfc-editor.org/rfc/rfc7515));
 every error response is `application/problem+json` ([RFC 7807](https://www.rfc-editor.org/rfc/rfc7807)).
 
+### ACME DNS validation configuration
+
+Issuance-critical DNS lookups for `http-01`, `dns-01`, and CAA are made through the list of
+DNS-over-HTTPS resolvers in `AcmeServer:DohServers`. Each resolver is queried independently as one
+Network Perspective under CA/Browser Forum TLS Baseline Requirements §3.2.2.9. The challenge is
+rejected with `urn:ietf:params:acme:error:dns` when any perspective fails or when their canonical
+answer sets differ.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `AcmeServer:DohServers` | `string[]` | `[]` | Absolute DoH URLs (for example `https://dns.google/dns-query`) or `DnsEndpoint` names (for example `Cloudflare`). Configure at least three distinct perspectives in different RIR service regions. |
+| `AcmeServer:DnsQueryTimeout` | `TimeSpan` | `00:00:10` | Per-perspective query timeout. |
+| `AcmeServer:DnsEndpoint` | `DnsEndpoint` | `Cloudflare` | Legacy single-perspective resolver, used only when `DohServers` is empty. Single-perspective operation does not meet §3.2.2.9 for a public CA. |
+
+```json
+{
+  "AcmeServer": {
+    "DohServers": [
+      "https://cloudflare-dns.com/dns-query",
+      "https://dns.google/dns-query",
+      "https://dns.quad9.net/dns-query"
+    ],
+    "DnsQueryTimeout": "00:00:10"
+  }
+}
+```
+
+In the environment, use `AcmeServer__DohServers__0`, `AcmeServer__DohServers__1`, … for the list.
+
 ### GET /directory
 
 - Description: The ACME directory. Advertises `newNonce`, `newAccount`, `newOrder`, `keyChange`,

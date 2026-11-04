@@ -95,6 +95,12 @@ ACME behaviour is driven by the `AcmeServer` section of `appsettings.json`:
   "AcmeServer": {
     "WebsiteUrl": "https://pki.example.com",
     "UrlRetrievalTimeout": "00:01:40",
+    "DohServers": [
+      "https://cloudflare-dns.com/dns-query",
+      "https://dns.google/dns-query",
+      "https://dns.quad9.net/dns-query"
+    ],
+    "DnsQueryTimeout": "00:00:10",
     "TOS": {
       "RequireAgreement": false,
       "Url": "https://pki.example.com/tos",
@@ -115,6 +121,15 @@ ACME behaviour is driven by the `AcmeServer` section of `appsettings.json`:
 
 The server registers a background `HostedValidationService` that processes pending `http-01` /
 `dns-01` challenge validations asynchronously, and (optionally) an issuance worker.
+
+`DohServers` is the list of DNS-over-HTTPS resolvers used as independent **Network Perspectives**
+for CA/Browser Forum TLS Baseline Requirements §3.2.2.9. Every entry is queried separately for
+`dns-01` TXT records, `http-01` address records, and CAA records; a challenge is rejected with a
+`dns` error when any perspective fails or when the answers differ. Entries may be absolute DoH URLs
+or `DnsEndpoint` names such as `Cloudflare`. Configure at least three perspectives in different RIR
+service regions for a production CA. When `DohServers` is empty, the legacy single
+`AcmeServer:DnsEndpoint` value (default `Cloudflare`) is used, which preserves single-perspective
+deployments but does **not** satisfy the multi-perspective requirement.
 
 ---
 

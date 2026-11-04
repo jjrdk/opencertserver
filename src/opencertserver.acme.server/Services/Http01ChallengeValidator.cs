@@ -53,6 +53,16 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
                 .ResolveIpAddressesAsync(challenge.Authorization.Identifier.Value, cancellationToken)
                 .ConfigureAwait(false);
         }
+        catch (DnsPerspectiveMismatchException ex)
+        {
+            return (null,
+                new AcmeError
+                {
+                    Type = "dns",
+                    Detail = ex.Message,
+                    Identifier = challenge.Authorization.Identifier
+                });
+        }
         catch (DnsClientException)
         {
             return (null,
