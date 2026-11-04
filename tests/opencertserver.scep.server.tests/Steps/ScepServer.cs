@@ -119,6 +119,15 @@ public sealed class ScepServer : IDisposable
                                     CrlNumber = BigInteger.Zero,
                                     PrivateKey = rsaCa.GetRSAPrivateKey()!
                                 },
+                                // Same CA certificate and key as "rsa": profiles may share an issuer.
+                                new CaProfile
+                                {
+                                    CertificateChain = [X509Certificate2.CreateFromPem(rsaCa.ExportCertificatePem())],
+                                    Name = "rsa-shared",
+                                    CertificateValidity = TimeSpan.FromDays(90),
+                                    CrlNumber = BigInteger.Zero,
+                                    PrivateKey = rsaCa.GetRSAPrivateKey()!
+                                },
                                 new CaProfile
                                 {
                                     CertificateChain = [X509Certificate2.CreateFromPem(ecdsaCa.ExportCertificatePem())],
@@ -266,6 +275,9 @@ public sealed class ScepServer : IDisposable
     [When("the client renews it with the UPN {string}")]
     public Task WhenRenewUpn(string upn) => Renew(Subject, _held!, upn);
 
+    [When("the client renews it through the {string} profile")]
+    public Task WhenRenewThroughProfile(string profile) => Renew(Subject, _held!, profile: profile);
+
     [When("the client renews it without a subject alternative name")]
     public Task WhenRenewWithoutSan() => Renew(Subject, _held!);
 
@@ -297,7 +309,7 @@ public sealed class ScepServer : IDisposable
         await ReadCertRep().ConfigureAwait(false);
     }
 
-    private async Task Renew(string subject, X509Certificate2 signer, string? upn = null)
+    private async Task Renew(string subject, X509Certificate2 signer, string? upn = null, string profile = "rsa")
     {
         _newKey = RSA.Create(2048);
         _clientSigner = signer;
@@ -307,7 +319,7 @@ public sealed class ScepServer : IDisposable
             csr.CertificateExtensions.Add(Upn(upn));
         }
 
-        var client = new ScepTestClient(_host.GetTestClient(), "/scep/rsa");
+        var client = new ScepTestClient(_host.GetTestClient(), "/scep/" + profile);
         _response = await client.Enroll(
             csr,
             signer, _ra, Convert.ToHexString(RandomNumberGenerator.GetBytes(8)), RandomNumberGenerator.GetBytes(16),

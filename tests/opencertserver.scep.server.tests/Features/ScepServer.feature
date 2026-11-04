@@ -92,11 +92,20 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
         And the renewed certificate has the same subject and a new key
         And the previous certificate is revoked
 
-    # The CA core accepts reenrollingFrom by issuer name alone (#96). A certificate signed
-    # by another key under the same CA name must not pass as proof.
+    # Before #96 the CA core accepted reenrollingFrom by issuer name alone. A certificate
+    # signed by another key under the same CA name must not pass as proof.
     Scenario: A renewal signed with a look-alike certificate is refused
         Given a certificate server that complies with SCEP (RFC 8894)
         When a client renews with a certificate from a look-alike CA of the same name
+        Then the server answers FAILURE with failInfo badRequest
+        And no certificate is returned
+
+    # Profiles may share one CA key (#140): a certificate renews through the profile that
+    # issued it, as with EST.
+    Scenario: A renewal through another profile of the same CA is refused
+        Given a certificate server that complies with SCEP (RFC 8894)
+        And a client holding a certificate from the "rsa" profile
+        When the client renews it through the "rsa-shared" profile
         Then the server answers FAILURE with failInfo badRequest
         And no certificate is returned
 

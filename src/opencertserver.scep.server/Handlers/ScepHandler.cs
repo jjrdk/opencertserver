@@ -185,7 +185,8 @@ internal static class ScepHandler
             return Failure(request, ScepFailInfo.BadRequest, options);
         }
 
-        // For a renewal the CA supersedes the previous certificate once the new one is issued.
+        // For a renewal the CA supersedes the previous certificate once the new one is issued,
+        // and refuses it when the previous certificate was issued under another profile (#140).
         var response = await ca.SignCertificateRequest(
                 csr, profile, decision.Requestor, previous, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
@@ -210,9 +211,10 @@ internal static class ScepHandler
     /// certificate is the proof, so it is checked cryptographically here: it must chain to
     /// this profile's CA, be valid now, not be revoked, and carry the same subject and the
     /// same subjectAltName as the request - as EST requires for simplereenroll (RFC 7030,
-    /// 4.2.2); the profile copies the subjectAltName from the request. The CA core compares
-    /// only the issuer name of <c>reenrollingFrom</c>, which a self-signed certificate can
-    /// imitate (#96). Returns the reason for a refusal, or null.
+    /// 4.2.2); the profile copies the subjectAltName from the request. The CA core checks
+    /// <c>reenrollingFrom</c> again when it signs - the issuer signature (#96), the issuing
+    /// profile (#140) and revocation - but not the names, so those stay here. Returns the
+    /// reason for a refusal, or null.
     /// </summary>
     private static async Task<string?> CheckRenewal(
         X509Certificate2 previous,
