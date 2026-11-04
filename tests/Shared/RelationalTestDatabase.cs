@@ -52,8 +52,10 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
                     .WithEnvironment("MSSQL_SA_PASSWORD", password)
                     .WithPortBinding(1433, true)
                     .WithWaitStrategy(Wait.ForUnixContainer().UntilCommandIsCompleted(
-                        ["/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa",
-                            "-P", password, "-C", "-Q", "SELECT 1"],
+                        [
+                            "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa",
+                            "-P", password, "-C", "-Q", "SELECT 1"
+                        ],
                         strategy => strategy.WithTimeout(TimeSpan.FromMinutes(3))))
                     .Build();
                 await _container.StartAsync(cancellationToken);
@@ -67,6 +69,7 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
             default:
                 throw new NotSupportedException($"No relational test database factory is registered for '{database}'.");
         }
+
         await MigrateAsync(cancellationToken);
     }
 

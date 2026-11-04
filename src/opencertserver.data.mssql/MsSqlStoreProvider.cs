@@ -34,13 +34,19 @@ public sealed class MsSqlStoreProvider : IRelationalStoreProvider
              """, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<bool> TryRemoveNonceAsync(CaDbContext context, Nonce nonce, CancellationToken cancellationToken) =>
+    public async Task<bool> TryRemoveNonceAsync(
+        CaDbContext context,
+        Nonce nonce,
+        CancellationToken cancellationToken) =>
         await context.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM [Nonces] WHERE [Token] = {nonce.Token}", cancellationToken) == 1;
 
     /// <inheritdoc />
-    public async Task<bool> RevokeCertificateAsync(CaDbContext context, string serialNumber,
-        X509RevocationReason reason, CancellationToken cancellationToken) =>
+    public async Task<bool> RevokeCertificateAsync(
+        CaDbContext context,
+        string serialNumber,
+        X509RevocationReason reason,
+        CancellationToken cancellationToken) =>
         await context.Database.ExecuteSqlInterpolatedAsync(
             $"""
              UPDATE [Certificates] SET [RevocationReason] = {(int)reason}, [RevocationDate] = {DateTimeOffset.UtcNow}
@@ -48,14 +54,20 @@ public sealed class MsSqlStoreProvider : IRelationalStoreProvider
              """, cancellationToken) == 1;
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<CertificateItemInfo> ReadCertificatePage(CaDbContext context,
-        int page, int pageSize, bool revokedOnly, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<CertificateItemInfo> ReadCertificatePage(
+        CaDbContext context,
+        string? profileName,
+        int page,
+        int pageSize,
+        bool revokedOnly,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var query = context.Certificates.AsNoTracking();
         if (revokedOnly)
         {
-            query = query.Where(c => c.RevocationReason != null);
+            query = query.Where(c => c.ProfileName == profileName && c.RevocationReason != null);
         }
+
         var items = query.OrderBy(c => c.SerialNumber).Skip(checked(page * pageSize)).Take(pageSize)
             .Select(c => new CertificateItemInfo
             {

@@ -12,7 +12,7 @@ using OpenCertServer.Data;
 namespace OpenCertServer.Data.PostgreSql.Migrations
 {
     [DbContext(typeof(CaDbContext))]
-    [Migration("20261030071225_InitialCreate")]
+    [Migration("20261104164901_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,7 +20,7 @@ namespace OpenCertServer.Data.PostgreSql.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -46,8 +46,8 @@ namespace OpenCertServer.Data.PostgreSql.Migrations
                         .HasColumnType("text");
 
                     b.Property<long>("Version")
-                        .HasColumnType("bigint")
-                        .IsConcurrencyToken();
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
 
                     b.HasKey("AccountId");
 
@@ -71,11 +71,14 @@ namespace OpenCertServer.Data.PostgreSql.Migrations
                     b.Property<string>("Issuer")
                         .HasColumnType("text");
 
-                    b.Property<DateTime>("NotAfter")
+                    b.Property<DateTimeOffset>("NotAfter")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("NotBefore")
+                    b.Property<DateTimeOffset>("NotBefore")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProfileName")
+                        .HasColumnType("text");
 
                     b.Property<string>("PublicKeyPem")
                         .IsRequired()
@@ -123,8 +126,8 @@ namespace OpenCertServer.Data.PostgreSql.Migrations
                         .HasColumnType("text");
 
                     b.Property<long>("Version")
-                        .HasColumnType("bigint")
-                        .IsConcurrencyToken();
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
 
                     b.HasKey("KeyId");
 
@@ -167,8 +170,8 @@ namespace OpenCertServer.Data.PostgreSql.Migrations
                         .HasColumnType("text");
 
                     b.Property<long>("Version")
-                        .HasColumnType("bigint")
-                        .IsConcurrencyToken();
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
 
                     b.HasKey("OrderId");
 

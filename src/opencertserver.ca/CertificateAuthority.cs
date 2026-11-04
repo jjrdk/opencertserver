@@ -65,7 +65,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             :
             [
                 new CaExtensionValidation(_config.Profiles, NullLogger<CaExtensionValidation>.Instance),
-                new OwnCertificateValidation(_config.Profiles, _certificateStore, NullLogger<OwnCertificateValidation>.Instance),
+                new OwnCertificateValidation(_config.Profiles, _certificateStore,
+                    NullLogger<OwnCertificateValidation>.Instance),
                 new DistinguishedNameValidation(NullLogger<DistinguishedNameValidation>.Instance),
                 new KeyCrlSignatureValidation(_config.Profiles, NullLogger<KeyCrlSignatureValidation>.Instance),
                 new AuthenticatedSubjectValidation(NullLogger<AuthenticatedSubjectValidation>.Instance),
@@ -221,11 +222,11 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         // even if the caller listed them in AllowedCsrExtensions.
         var serverManagedOids = new HashSet<string>(StringComparer.Ordinal)
         {
-            Oids.SubjectKeyIdentifier,         // 2.5.29.14 — fresh SKI always generated from public key
-            Oids.AuthorityInformationAccess,   // 1.3.6.1.5.5.7.1.1 — added from config (OCSP/CA issuers)
-            Oids.CrlDistributionPoints,        // 2.5.29.31 — added from config (CRL URLs)
-            Oids.AuthorityKeyIdentifier,       // 2.5.29.35 — added from issuer certificate
-            Oids.CertPolicies,                 // 2.5.29.32 — the CA's assertion, from the profile; never from the CSR
+            Oids.SubjectKeyIdentifier, // 2.5.29.14 — fresh SKI always generated from public key
+            Oids.AuthorityInformationAccess, // 1.3.6.1.5.5.7.1.1 — added from config (OCSP/CA issuers)
+            Oids.CrlDistributionPoints, // 2.5.29.31 — added from config (CRL URLs)
+            Oids.AuthorityKeyIdentifier, // 2.5.29.35 — added from issuer certificate
+            Oids.CertPolicies, // 2.5.29.32 — the CA's assertion, from the profile; never from the CSR
         };
         var serverManaged = request.CertificateExtensions
             .Where(ext => ext.Oid?.Value is not null && serverManagedOids.Contains(ext.Oid.Value))
@@ -284,7 +285,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         if (!request.SubjectName.EnumerateRelativeDistinguishedNames().Any())
         {
             foreach (var san in request.CertificateExtensions
-                         .Where(ext => ext.Oid?.Value == Oids.SubjectAltName && !ext.Critical).ToArray())
+                .Where(ext => ext.Oid?.Value == Oids.SubjectAltName && !ext.Critical).ToArray())
             {
                 request.CertificateExtensions.Remove(san);
                 request.CertificateExtensions.Add(new X509Extension(san.Oid!, san.RawData, true));
@@ -435,8 +436,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             revoked.AddRange(batch);
             batchCount = batch.Count;
             page++;
-        }
-        while (batchCount == pageSize);
+        } while (batchCount == pageSize);
+
         var nextCrlNumber = profile.GetNextCrlNumber();
         var crlExtensions = new List<X509Extension> { new X509CrlNumberExtension(nextCrlNumber, false) };
         var profileCrlUrls = _config.GetCrlUrls(profile.Name);
@@ -465,17 +466,17 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     {
         var writer = new AsnWriter(AsnEncodingRules.DER);
         using (writer.PushSequence())
-        using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
-        using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
-        {
-            foreach (var uri in uris)
-            {
-                writer.WriteCharacterString(
-                    UniversalTagNumber.IA5String,
-                    uri,
-                    new Asn1Tag(TagClass.ContextSpecific, 6));
-            }
-        }
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+                {
+                    foreach (var uri in uris)
+                    {
+                        writer.WriteCharacterString(
+                            UniversalTagNumber.IA5String,
+                            uri,
+                            new Asn1Tag(TagClass.ContextSpecific, 6));
+                    }
+                }
 
         return new X509Extension(Oids.IssuingDistributionPoint, writer.Encode(), true);
     }
@@ -514,7 +515,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     /// Midnight of the current UTC day, with a zero offset.
     /// </summary>
     /// <remarks>
-    /// <c>DateTimeOffset.UtcNow.Date</c> is a <see cref="DateTime"/> with <see cref="DateTimeKind.Unspecified"/>;
+    /// <c>DateTimeOffset.UtcNow.Date</c> is a <see cref="DateTimeOffset"/> with <see cref="DateTimeKind.Unspecified"/>;
     /// converting it back to <see cref="DateTimeOffset"/> applies the local offset of the server, so a
     /// certificate issued west of UTC would only become valid hours later. See issue #81.
     /// </remarks>
@@ -697,7 +698,8 @@ public sealed partial class KeyCrlSignatureValidation : IValidateCertificateRequ
                 if (basicConstraints?.CertificateAuthority != true)
                 {
                     LogCsrRequestsKeyCertSignWithoutCaTrue();
-                    return "CSR requests keyCertSign but does not assert CA:TRUE in basicConstraints (RFC 5280 §4.2.1.3)";
+                    return
+                        "CSR requests keyCertSign but does not assert CA:TRUE in basicConstraints (RFC 5280 §4.2.1.3)";
                 }
             }
 
@@ -763,7 +765,6 @@ public sealed partial class CaExtensionValidation : IValidateCertificateRequests
 
     [LoggerMessage(LogLevel.Error, "CSR requests CA:TRUE in basicConstraints")]
     partial void LogCsrRequestsCaCertificate();
-
 }
 
 public sealed partial class DistinguishedNameValidation : IValidateCertificateRequests
@@ -792,7 +793,7 @@ public sealed partial class DistinguishedNameValidation : IValidateCertificateRe
         // RFC 5280 §4.1.2.6: the subject MAY be empty when the identity is carried in subjectAltName
         // (ACME clients such as certbot send SAN-only CSRs).
         if (request.SubjectName.EnumerateRelativeDistinguishedNames().Any() == false
-            && request.CertificateExtensions.Any(ext => ext.Oid?.Value == Oids.SubjectAltName))
+         && request.CertificateExtensions.Any(ext => ext.Oid?.Value == Oids.SubjectAltName))
         {
             return Task.FromResult<string?>(null);
         }
@@ -844,9 +845,15 @@ public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertifi
                 // extension rules govern those.
                 var sanValue = name switch
                 {
-                    { Type: GeneralName.GeneralNameType.Rfc822Name or GeneralName.GeneralNameType.DnsName, Value: AsnString asnString }
+                    {
+                            Type: GeneralName.GeneralNameType.Rfc822Name or GeneralName.GeneralNameType.DnsName,
+                            Value: AsnString asnString
+                        }
                         => asnString.Value,
-                    { Type: GeneralName.GeneralNameType.OtherName, Value: OtherName { TypeId: Oids.UserPrincipalName } otherName }
+                    {
+                            Type: GeneralName.GeneralNameType.OtherName,
+                            Value: OtherName { TypeId: Oids.UserPrincipalName } otherName
+                        }
                         => otherName.StringValue,
                     _ => null
                 };

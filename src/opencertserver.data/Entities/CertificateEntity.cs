@@ -8,6 +8,9 @@ namespace OpenCertServer.Data.Entities;
 /// </summary>
 public class CertificateEntity
 {
+    /// <summary>Optional profile name, if the CA supports multiple profiles.</summary>
+    public string? ProfileName { get; set; }
+
     /// <summary>Hex-encoded X.509 serial number, and the primary key.</summary>
     public required string SerialNumber { get; set; }
 
@@ -18,10 +21,10 @@ public class CertificateEntity
     public string? Issuer { get; set; }
 
     /// <summary>Certificate validity start.</summary>
-    public DateTime NotBefore { get; set; }
+    public DateTimeOffset NotBefore { get; set; }
 
     /// <summary>Certificate validity end.</summary>
-    public DateTime NotAfter { get; set; }
+    public DateTimeOffset NotAfter { get; set; }
 
     /// <summary>Certificate thumbprint, indexed for <c>GetCertificatesByThumbprint</c>.</summary>
     public required string Thumbprint { get; set; }

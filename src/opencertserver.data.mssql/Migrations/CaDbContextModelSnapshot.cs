@@ -17,7 +17,7 @@ namespace OpenCertServer.Data.MsSql.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -76,11 +76,15 @@ namespace OpenCertServer.Data.MsSql.Migrations
                         .HasColumnType("nvarchar(max)")
                         .UseCollation("Latin1_General_100_BIN2");
 
-                    b.Property<DateTime>("NotAfter")
+                    b.Property<DateTimeOffset>("NotAfter")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("NotBefore")
+                    b.Property<DateTimeOffset>("NotBefore")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("ProfileName")
+                        .HasColumnType("nvarchar(max)")
+                        .UseCollation("Latin1_General_100_BIN2");
 
                     b.Property<string>("PublicKeyPem")
                         .IsRequired()

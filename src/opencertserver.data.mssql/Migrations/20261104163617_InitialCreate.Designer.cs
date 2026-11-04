@@ -12,7 +12,7 @@ using OpenCertServer.Data;
 namespace OpenCertServer.Data.MsSql.Migrations
 {
     [DbContext(typeof(CaDbContext))]
-    [Migration("20261030115158_InitialCreate")]
+    [Migration("20261104163617_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,7 +20,7 @@ namespace OpenCertServer.Data.MsSql.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -84,6 +84,10 @@ namespace OpenCertServer.Data.MsSql.Migrations
 
                     b.Property<DateTime>("NotBefore")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("ProfileName")
+                        .HasColumnType("nvarchar(max)")
+                        .UseCollation("Latin1_General_100_BIN2");
 
                     b.Property<string>("PublicKeyPem")
                         .IsRequired()

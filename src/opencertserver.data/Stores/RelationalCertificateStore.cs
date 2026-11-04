@@ -27,12 +27,20 @@ public sealed class RelationalCertificateStore : IStoreCertificates
     }
 
     /// <inheritdoc />
-    public async Task AddCertificate(X509Certificate2 certificate, CancellationToken cancellationToken = default)
+    public Task AddCertificate(X509Certificate2 certificate, CancellationToken cancellationToken = default) =>
+        AddCertificate(certificate, null!, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task AddCertificate(
+        X509Certificate2 certificate,
+        string issuingProfile,
+        CancellationToken cancellationToken = default)
     {
         var item = CertificateItem.FromX509Certificate2(certificate);
         var entity = new CertificateEntity
         {
             SerialNumber = item.SerialNumber,
+            ProfileName = issuingProfile,
             DistinguishedName = item.DistinguishedName,
             Issuer = item.Issuer,
             NotBefore = item.NotBefore.ToUniversalTime(),
@@ -48,6 +56,17 @@ public sealed class RelationalCertificateStore : IStoreCertificates
     }
 
     /// <inheritdoc />
+    public async Task<string?> GetIssuingProfile(string thumbprint, CancellationToken cancellationToken = default)
+    {
+        var key = thumbprint.ToUpperInvariant();
+        using var scope = _scopeFactory.CreateScope();
+        await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
+        var entity = await db.Certificates.AsNoTrackingWithIdentityResolution()
+            .FirstOrDefaultAsync(c => c.Thumbprint == key, cancellationToken);
+        return entity?.ProfileName;
+    }
+
+    /// <inheritdoc />
     public async Task<bool> RemoveCertificate(string serialNumber, X509RevocationReason reason, CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -58,10 +77,11 @@ public sealed class RelationalCertificateStore : IStoreCertificates
 
     /// <inheritdoc />
     public IAsyncEnumerable<CertificateItemInfo> GetRevocationList(
+        string? profileName,
         int page = 0,
         int pageSize = 100,
         CancellationToken cancellationToken = default) =>
-        ReadPage(page, pageSize, revokedOnly: true, cancellationToken);
+        ReadPage(profileName, page, pageSize, revokedOnly: true, cancellationToken);
 
     /// <inheritdoc />
     public async Task<(CertId, CertificateStatus, RevokedInfo?)> GetCertificateStatus(
@@ -90,16 +110,17 @@ public sealed class RelationalCertificateStore : IStoreCertificates
         int page = 0,
         int pageSize = 100,
         CancellationToken cancellationToken = default) =>
-        ReadPage(page, pageSize, revokedOnly: false, cancellationToken);
+        ReadPage(null, page, pageSize, revokedOnly: false, cancellationToken);
 
     private async IAsyncEnumerable<CertificateItemInfo> ReadPage(
+        string? profileName,
         int page, int pageSize, bool revokedOnly,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
         var provider = scope.ServiceProvider.GetRequiredService<IRelationalStoreProvider>();
-        await foreach (var item in provider.ReadCertificatePage(db, page, pageSize, revokedOnly, cancellationToken))
+        await foreach (var item in provider.ReadCertificatePage(db, profileName, page, pageSize, revokedOnly, cancellationToken))
         {
             yield return item;
         }

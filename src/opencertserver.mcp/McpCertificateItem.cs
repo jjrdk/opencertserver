@@ -23,10 +23,10 @@ public class McpCertificateItem
     public required string Thumbprint { get; set; }
 
     /// <summary>Not-before validity date (UTC).</summary>
-    public DateTime NotBefore { get; set; }
+    public DateTimeOffset NotBefore { get; set; }
 
     /// <summary>Not-after validity date (UTC).</summary>
-    public DateTime NotAfter { get; set; }
+    public DateTimeOffset NotAfter { get; set; }
 
     /// <summary>
     /// Public key algorithm OID string.

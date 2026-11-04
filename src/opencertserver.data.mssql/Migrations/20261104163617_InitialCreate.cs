@@ -32,10 +32,11 @@ namespace OpenCertServer.Data.MsSql.Migrations
                 columns: table => new
                 {
                     SerialNumber = table.Column<string>(type: "nvarchar(450)", nullable: false, collation: "Latin1_General_100_BIN2"),
+                    ProfileName = table.Column<string>(type: "nvarchar(max)", nullable: true, collation: "Latin1_General_100_BIN2"),
                     DistinguishedName = table.Column<string>(type: "nvarchar(max)", nullable: false, collation: "Latin1_General_100_BIN2"),
                     Issuer = table.Column<string>(type: "nvarchar(max)", nullable: true, collation: "Latin1_General_100_BIN2"),
-                    NotBefore = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    NotAfter = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    NotBefore = table.Column<DateTimeOffset>(type: "datetime2", nullable: false),
+                    NotAfter = table.Column<DateTimeOffset>(type: "datetime2", nullable: false),
                     Thumbprint = table.Column<string>(type: "nvarchar(450)", nullable: false, collation: "Latin1_General_100_BIN2"),
                     PublicKeyPem = table.Column<string>(type: "nvarchar(max)", nullable: false, collation: "Latin1_General_100_BIN2"),
                     RevocationReason = table.Column<int>(type: "int", nullable: true),

@@ -28,7 +28,7 @@ public sealed class CertificateValidator : IValidateCertificates
                 return false;
             }
 
-            var now = DateTime.Now;
+            var now = DateTimeOffset.Now;
 
             _logger.LogTrace("Validating cert UntilExpiry {UntilExpiry}, AfterIssue {AfterIssue} - {Certificate}",
                 _options.TimeUntilExpiryBeforeRenewal, _options.TimeAfterIssueDateBeforeRenewal, certificate);
