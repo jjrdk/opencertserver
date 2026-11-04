@@ -183,8 +183,8 @@ public sealed class ReEnrollmentProfileSteps
             _inner.RemoveCertificate(serialNumber, reason, cancellationToken);
 
         public IAsyncEnumerable<CertificateItemInfo> GetRevocationList(
-            int page = 0, int pageSize = 100, CancellationToken cancellationToken = default) =>
-            _inner.GetRevocationList(page, pageSize, cancellationToken);
+            string? issuingProfile, int page = 0, int pageSize = 100, CancellationToken cancellationToken = default) =>
+            _inner.GetRevocationList(issuingProfile, page, pageSize, cancellationToken);
 
         public Task<(CertId, CertificateStatus, RevokedInfo?)> GetCertificateStatus(
             CertId certId, CancellationToken cancellationToken = default) =>

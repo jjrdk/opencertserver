@@ -216,3 +216,10 @@ They are intentionally written before adding step implementations so they can dr
             When 105 certificates have been issued and revoked
             Then the CRL MUST contain exactly 105 revoked certificate entries
 
+
+    Rule: CRL scoping per issuing CA profile
+
+        Scenario: A certificate revoked under one CA profile is only listed in that profile's CRL
+            When a certificate issued under the rsa profile is revoked
+            Then the rsa profile CRL MUST list the revoked certificate serial number
+            And the ecdsa profile CRL MUST NOT list the revoked certificate serial number

@@ -467,6 +467,10 @@ fetch it by CA or by profile.
 **What OpenCertServer implements:**
 
 * `GET /ca/crl` and `GET /ca/{profile}/crl` return `application/pkix-crl` bodies, cached for 12 hours.
+  Each CRL is scoped to its issuing CA profile: it lists only certificates whose stored issuing
+  profile matches (ordinal comparison), so one profile's (tenant's) revocations are never published
+  in another profile's CRL. Certificates stored without an issuing profile appear in no CRL; OCSP
+  still reports them as revoked.
 * `DELETE /ca/revoke` is authenticated and authorized. The caller must:
    1. Present a TLS client certificate.
    2. Supply a SHA-256 signature of `serialNumber + reason` made with that certificate's private key
@@ -492,7 +496,7 @@ fetch it by CA or by profile.
 
 **Tests that prove it.**
 * [CrlConformance.feature](../tests/opencertserver.certserver.tests/Features/CrlConformance.feature) —
-   CRL generation, caching (`Expire(12h)`), per-profile paths, and revocation flows.
+   CRL generation, caching (`Expire(12h)`), per-profile paths, per-profile revocation scoping, and revocation flows.
 * [CertificateAuthority.feature](../tests/opencertserver.certserver.tests/Features/CertificateAuthority.feature) —
    the CA's inventory + lifecycle.
 * [CrlRevocation.feature](../tests/opencertserver.iq.tests/Features/CrlRevocation.feature) —

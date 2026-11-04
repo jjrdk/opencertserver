@@ -102,6 +102,7 @@ algorithm of the profile's CA key
 - Description: Retrieve the current Certificate Revocation List for the CA (or a profile).
 - Paths: `/ca/crl` and `/ca/{profile}/crl`.
 - Response: `application/pkix-crl` (DER). Cached for 12 hours.
+- Scope: each profile's CRL lists only certificates issued under that profile; revocations from other profiles are never included.
 
 ### DELETE /ca/revoke
 

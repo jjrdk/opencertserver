@@ -410,7 +410,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         do
         {
             var batch = await _certificateStore
-                .GetRevocationList(page, pageSize, cancellationToken)
+                .GetRevocationList(profile.Name, page, pageSize, cancellationToken)
                 .Select(c =>
                 {
                     if (!c.RevocationReason.HasValue || c.RevocationReason.Value == X509RevocationReason.Unspecified)
