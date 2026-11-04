@@ -58,13 +58,15 @@ public class InMemoryCertificateStore : IStoreCertificates
 
     /// <inheritdoc />
     public IAsyncEnumerable<CertificateItemInfo> GetRevocationList(
+        string? issuingProfile,
         int page = 0,
         int pageSize = 100,
         CancellationToken cancellationToken = default)
     {
         return _certificates
             .OrderBy(x => x.Key)
-            .Where(x => x.Value.IsRevoked)
+            .Where(x => x.Value.IsRevoked
+             && string.Equals(x.Value.IssuingProfile, issuingProfile, StringComparison.Ordinal))
             .Skip(page * pageSize)
             .Take(pageSize)
             .Select(x => x.Value.AsInfo())

@@ -1471,6 +1471,35 @@ public partial class CertificateServerFeatures
         var crl = CertificateRevocationList.Load(CrlState.LastCrlBytes!);
         Assert.Equal(expectedCount, crl.RevokedCertificates.Count);
     }
+
+    [When("a certificate issued under the rsa profile is revoked")]
+    public async Task WhenACertificateIssuedUnderTheRsaProfileIsRevoked()
+    {
+        await WhenIEnrollWithAValidJwt().ConfigureAwait(false);
+        CrlState.IssuedCert = _certCollection[0];
+        await WhenIRevokeTheCertificate().ConfigureAwait(false);
+        CrlState.FirstCrlBytes = await FetchCrlBytesAsync("ca/rsa/crl").ConfigureAwait(false);
+        CrlState.SecondCrlBytes = await FetchCrlBytesAsync("ca/ecdsa/crl").ConfigureAwait(false);
+    }
+
+    [Then("the rsa profile CRL MUST list the revoked certificate serial number")]
+    public void ThenTheRsaProfileCrlMustListTheRevokedSerial()
+    {
+        Assert.True(CrlListsIssuedCertificate(CrlState.FirstCrlBytes!));
+    }
+
+    [Then("the ecdsa profile CRL MUST NOT list the revoked certificate serial number")]
+    public void ThenTheEcdsaProfileCrlMustNotListTheRevokedSerial()
+    {
+        Assert.False(CrlListsIssuedCertificate(CrlState.SecondCrlBytes!));
+    }
+
+    private bool CrlListsIssuedCertificate(byte[] crlBytes)
+    {
+        var expected = Convert.FromHexString(CrlState.IssuedCert!.GetSerialNumberString());
+        var crl = CertificateRevocationList.Load(crlBytes);
+        return crl.RevokedCertificates.Any(e => e.Serial.AsSpan().SequenceEqual(expected));
+    }
 }
 
 internal sealed class CrlConformanceState
