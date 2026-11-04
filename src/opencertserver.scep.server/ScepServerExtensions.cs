@@ -48,14 +48,24 @@ public static class ScepServerExtensions
         /// Maps the SCEP endpoint at <c>/scep</c> and <c>/scep/{profileName}</c>, GET and POST.
         /// SCEP clients authenticate through the challenge, not through HTTP, so the
         /// endpoint allows anonymous access.
+        /// <para>
+        /// Windows appends <c>/pkiclient.exe</c> to the configured server URL, as it does for
+        /// NDES. Both forms are mapped explicitly, so <c>/scep/pkiclient.exe</c> reaches the
+        /// default profile without being taken for a profile name, and
+        /// <c>/scep/{profileName}/pkiclient.exe</c> reaches the named profile.
+        /// </para>
         /// </summary>
         public IEndpointRouteBuilder MapScepServer(string path = "/scep")
         {
             var group = endpoints.MapGroup(path).AllowAnonymous();
             group.MapGet("/", ScepHandler.Get);
             group.MapPost("/", ScepHandler.Get);
+            group.MapGet("/pkiclient.exe", ScepHandler.Get);
+            group.MapPost("/pkiclient.exe", ScepHandler.Get);
             group.MapGet("/{profileName}", ScepHandler.GetProfile);
             group.MapPost("/{profileName}", ScepHandler.GetProfile);
+            group.MapGet("/{profileName}/pkiclient.exe", ScepHandler.GetProfile);
+            group.MapPost("/{profileName}/pkiclient.exe", ScepHandler.GetProfile);
             return endpoints;
         }
     }

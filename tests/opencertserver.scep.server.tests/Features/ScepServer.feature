@@ -42,6 +42,19 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
         Then the server answers SUCCESS
         And the issued certificate is issued by the "ecdsa" CA
 
+    # Windows appends /pkiclient.exe to the SCEP server URL configured in Intune, with or
+    # without a profile in it.
+    Scenario Outline: A Windows client reaches the profile of the configured URL
+        Given a certificate server that complies with SCEP (RFC 8894)
+        When a client enrolls with the challenge password "geheim" at "<path>"
+        Then the server answers SUCCESS
+        And the issued certificate is issued by the "<profile>" CA
+
+        Examples:
+          | path                      | profile |
+          | /scep/pkiclient.exe       | rsa     |
+          | /scep/ecdsa/pkiclient.exe | ecdsa   |
+
     Scenario: Enrollment through GET
         Given a certificate server that complies with SCEP (RFC 8894)
         When a client enrolls through GET with the challenge password "geheim"

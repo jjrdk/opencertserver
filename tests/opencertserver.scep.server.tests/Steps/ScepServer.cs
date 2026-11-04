@@ -354,14 +354,18 @@ public sealed class ScepServer : IDisposable
             "The renewed certificate is not on the revocation list.");
     }
 
+    [When("a client enrolls with the challenge password {string} at {string}")]
+    public Task WhenEnrollAtPath(string challenge, string path) =>
+        Enroll(challenge, profile: "", useGet: false, path: path);
+
     private async Task Enroll(
         string? challenge, string profile, bool useGet,
         string encryptionOid = OpenCertServer.Ca.Utils.Oids.Aes128Cbc, byte[]? senderNonce = null,
-        bool readReply = true)
+        bool readReply = true, string? path = null)
     {
         _clientKey = RSA.Create(2048);
         _clientSigner = ScepTestClient.CreateTransientSigner(_clientKey);
-        var client = new ScepTestClient(_host.GetTestClient(), $"/scep/{profile}");
+        var client = new ScepTestClient(_host.GetTestClient(), path ?? $"/scep/{profile}");
         _response = await client.Enroll(
             ScepTestClient.CreateCsr(_clientKey, Subject, challenge),
             _clientSigner, _ra, _transactionId, senderNonce ?? _senderNonce, useGet,
