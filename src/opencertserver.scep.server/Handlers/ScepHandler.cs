@@ -127,15 +127,6 @@ internal static class ScepHandler
             return Failure(request, ScepFailInfo.BadRequest, options);
         }
 
-        // A request is accepted once per window: a captured request, replayed, would otherwise
-        // have the CA issue again. A new request under the same transaction ID carries a new nonce.
-        if (!transactions.TryClaim(request.TransactionId, request.SenderNonce))
-        {
-            logger.LogWarning("SCEP transaction {TransactionId} refused: request already seen (replay)",
-                request.TransactionId);
-            return Failure(request, ScepFailInfo.BadRequest, options);
-        }
-
         CertificateRequest csr;
         try
         {
@@ -148,7 +139,16 @@ internal static class ScepHandler
         catch (CryptographicException ex)
         {
             logger.LogWarning(ex, "SCEP transaction {TransactionId}: unreadable CSR", request.TransactionId);
-            return Failure(request, ScepFailInfo.BadMessageCheck, options);
+            return Results.BadRequest("The PKIOperation does not contain a valid certificate request.");
+        }
+
+        // A request is accepted once per window: a captured request, replayed, would otherwise
+        // have the CA issue again. A new request under the same transaction ID carries a new nonce.
+        if (!transactions.TryClaim(request.TransactionId, request.SenderNonce))
+        {
+            logger.LogWarning("SCEP transaction {TransactionId} refused: request already seen (replay)",
+                request.TransactionId);
+            return Failure(request, ScepFailInfo.BadRequest, options);
         }
 
         X509Certificate2? previous = null;

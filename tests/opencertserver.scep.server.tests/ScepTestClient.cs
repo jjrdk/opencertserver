@@ -39,23 +39,29 @@ public sealed class ScepTestClient(HttpClient http, string path = "/scep")
         byte[] senderNonce,
         bool useGet = false,
         string messageType = "19",
-        string encryptionOid = OpenCertServer.Ca.Utils.Oids.Aes128Cbc)
+        string encryptionOid = OpenCertServer.Ca.Utils.Oids.Aes128Cbc,
+        byte[]? innerContent = null,
+        IReadOnlyList<X509Certificate2>? additionalSigners = null)
     {
-        var csrDer = csr.CreateSigningRequest();
+        var csrDer = innerContent ?? csr.CreateSigningRequest();
         var enveloped = new EnvelopedCms(
             new ContentInfo(csrDer),
             new AlgorithmIdentifier(new System.Security.Cryptography.Oid(encryptionOid)));
         enveloped.Encrypt(new CmsRecipient(SubjectIdentifierType.IssuerAndSerialNumber, recipient));
 
         var signed = new SignedCms(new ContentInfo(enveloped.Encode()));
-        var cmsSigner = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, signer)
+        foreach (var signingCertificate in new[] { signer }.Concat(additionalSigners ?? []))
         {
-            DigestAlgorithm = new System.Security.Cryptography.Oid("2.16.840.1.101.3.4.2.1")
-        };
-        cmsSigner.SignedAttributes.Add(Printable(ScepOids.MessageType, messageType));
-        cmsSigner.SignedAttributes.Add(Printable(ScepOids.TransactionId, transactionId));
-        cmsSigner.SignedAttributes.Add(Octets(ScepOids.SenderNonce, senderNonce));
-        signed.ComputeSignature(cmsSigner);
+            var cmsSigner = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, signingCertificate)
+            {
+                DigestAlgorithm = new System.Security.Cryptography.Oid("2.16.840.1.101.3.4.2.1")
+            };
+            cmsSigner.SignedAttributes.Add(Printable(ScepOids.MessageType, messageType));
+            cmsSigner.SignedAttributes.Add(Printable(ScepOids.TransactionId, transactionId));
+            cmsSigner.SignedAttributes.Add(Octets(ScepOids.SenderNonce, senderNonce));
+            signed.ComputeSignature(cmsSigner);
+        }
+
         var message = signed.Encode();
 
         if (useGet)

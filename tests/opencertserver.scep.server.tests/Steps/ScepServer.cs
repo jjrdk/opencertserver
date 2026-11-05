@@ -29,6 +29,8 @@ public sealed class ScepServer : IDisposable
     private X509Certificate2 _ecdsaCa = null!;
     private X509Certificate2 _ra = null!;
     private X509Certificate2? _root;
+    private MutableTimeProvider _time = null!;
+    private readonly TimeSpan _replayWindow = TimeSpan.FromMinutes(5);
 
     private string? _caps;
     private string _caCertContentType = "";
@@ -95,6 +97,7 @@ public sealed class ScepServer : IDisposable
         var rsaCa = _rsaCa;
         var ecdsaCa = _ecdsaCa;
         var ra = _ra;
+        _time = new MutableTimeProvider();
         // The issuing CA signs; the root is only published (EST /cacerts and SCEP GetCACert).
         X509Certificate2Collection published = _root is null
             ? []
@@ -106,6 +109,7 @@ public sealed class ScepServer : IDisposable
                 {
                     services.AddRouting();
                     services.AddAuthorization();
+                    services.AddSingleton<TimeProvider>(_time);
                     services = services.AddInMemoryCertificateStore()
                         .AddCertificateAuthority(new CaConfiguration(
                             new CaProfileSet(
@@ -139,7 +143,12 @@ public sealed class ScepServer : IDisposable
                             ["http://localhost/crl"],
                             [],
                             []));
-                    var options = new ScepServerOptions { RaCertificate = ra, DefaultProfile = "rsa" };
+                    var options = new ScepServerOptions
+                    {
+                        RaCertificate = ra,
+                        DefaultProfile = "rsa",
+                        TransactionIdWindow = _replayWindow
+                    };
                     _ = withChallenge
                         ? services.AddScepServer(options, new SharedSecretChallengeValidator(Challenge))
                         : services.AddScepServer(options);
@@ -188,6 +197,41 @@ public sealed class ScepServer : IDisposable
 
     [When("a client enrolls without a challenge password")]
     public Task WhenEnrollWithout() => Enroll(null, "rsa", useGet: false);
+
+    [When("a client enrolls with an unsupported messageType {string}")]
+    public Task WhenEnrollWithUnsupportedMessageType(string messageType) =>
+        Enroll(Challenge, "rsa", useGet: false, messageType: messageType, readReply: messageType == "20");
+
+    [When("a Windows client asks for the capabilities at {string}")]
+    public async Task WhenWindowsClientAsksForCapabilities(string path) =>
+        _caps = await new ScepTestClient(_host.GetTestClient(), path).GetCaCaps().ConfigureAwait(false);
+
+    [When("a client enrolls with a request that two signers have signed")]
+    public async Task WhenEnrollWithTwoSigners()
+    {
+        using var secondKey = RSA.Create(2048);
+        using var secondSigner = ScepTestClient.CreateTransientSigner(secondKey);
+        _clientKey = RSA.Create(2048);
+        _clientSigner = ScepTestClient.CreateTransientSigner(_clientKey);
+        var client = new ScepTestClient(_host.GetTestClient(), "/scep/rsa");
+        _response = await client.Enroll(
+            ScepTestClient.CreateCsr(_clientKey, Subject, Challenge),
+            _clientSigner, _ra, _transactionId, _senderNonce,
+            additionalSigners: [secondSigner]).ConfigureAwait(false);
+    }
+
+    [When("a client enrolls with a request whose content is not a certificate request")]
+    public async Task WhenEnrollWithInvalidCsr()
+    {
+        _clientKey = RSA.Create(2048);
+        _clientSigner = ScepTestClient.CreateTransientSigner(_clientKey);
+        var client = new ScepTestClient(_host.GetTestClient(), "/scep/rsa");
+        _response = await client.Enroll(
+            ScepTestClient.CreateCsr(_clientKey, Subject, Challenge),
+            _clientSigner, _ra, _transactionId, _senderNonce,
+            innerContent: System.Text.Encoding.ASCII.GetBytes("not a certificate request"))
+            .ConfigureAwait(false);
+    }
 
     [When("a client enrolls with a request encrypted to a foreign certificate")]
     public async Task WhenEnrollForeign()
@@ -320,6 +364,9 @@ public sealed class ScepServer : IDisposable
         await ReadCertRep().ConfigureAwait(false);
     }
 
+    [When("the replay window has elapsed")]
+    public void WhenReplayWindowElapsed() => _time.Advance(_replayWindow);
+
     private async Task Renew(string subject, X509Certificate2 signer, string? upn = null, string profile = "rsa")
     {
         _newKey = RSA.Create(2048);
@@ -372,7 +419,7 @@ public sealed class ScepServer : IDisposable
     private async Task Enroll(
         string? challenge, string profile, bool useGet,
         string encryptionOid = OpenCertServer.Ca.Utils.Oids.Aes128Cbc, byte[]? senderNonce = null,
-        bool readReply = true, string? path = null)
+        bool readReply = true, string? path = null, string messageType = "19")
     {
         _clientKey = RSA.Create(2048);
         _clientSigner = ScepTestClient.CreateTransientSigner(_clientKey);
@@ -380,7 +427,7 @@ public sealed class ScepServer : IDisposable
         _response = await client.Enroll(
             ScepTestClient.CreateCsr(_clientKey, Subject, challenge),
             _clientSigner, _ra, _transactionId, senderNonce ?? _senderNonce, useGet,
-            encryptionOid: encryptionOid).ConfigureAwait(false);
+            messageType: messageType, encryptionOid: encryptionOid).ConfigureAwait(false);
         if (readReply)
         {
             await ReadCertRep().ConfigureAwait(false);
@@ -484,5 +531,14 @@ public sealed class ScepServer : IDisposable
         _clientSigner?.Dispose();
         _root?.Dispose();
         _response?.Dispose();
+    }
+
+    private sealed class MutableTimeProvider : TimeProvider
+    {
+        private DateTimeOffset _utcNow = DateTimeOffset.UtcNow;
+
+        public override DateTimeOffset GetUtcNow() => _utcNow;
+
+        public void Advance(TimeSpan amount) => _utcNow += amount;
     }
 }
