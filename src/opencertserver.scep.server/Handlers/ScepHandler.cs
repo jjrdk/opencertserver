@@ -157,8 +157,13 @@ internal static class ScepHandler
         }
         catch (CryptographicException ex)
         {
+            // The message is verified and decrypted at this point, so the server knows the requester,
+            // the transaction ID and the nonce: RFC 8894, 3.2.1.4, a request it can read but not
+            // process is badRequest in a signed CertRep. HTTP errors stay for messages it cannot
+            // answer in SCEP at all. The replay slot is not claimed - that happens right before
+            // issuing.
             logger.LogWarning(ex, "SCEP transaction {TransactionId}: unreadable CSR", request.TransactionId);
-            return Results.BadRequest("The PKIOperation does not contain a valid certificate request.");
+            return Failure(request, ScepFailInfo.BadRequest, options);
         }
 
         X509Certificate2? previous = null;
