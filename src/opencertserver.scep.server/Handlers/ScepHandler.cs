@@ -149,7 +149,7 @@ internal static class ScepHandler
         catch (CryptographicException ex)
         {
             logger.LogWarning(ex, "SCEP transaction {TransactionId}: unreadable CSR", request.TransactionId);
-            return Failure(request, ScepFailInfo.BadMessageCheck, options);
+            return Results.BadRequest("The PKIOperation does not contain a valid certificate request.");
         }
 
         X509Certificate2? previous = null;

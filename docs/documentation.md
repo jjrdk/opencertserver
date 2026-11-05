@@ -333,6 +333,11 @@ renewal rules and what Windows does differently are in
 | `/scep/{profile}` | The same for a named CA profile; `/scep` is the default profile. |
 | `/scep/pkiclient.exe`, `/scep/{profile}/pkiclient.exe` | The same - Windows appends `/pkiclient.exe` to the configured URL. |
 
+Malformed CMS messages, requests with an invalid `senderNonce`, unsupported message types, and
+requests whose decrypted payload is not a certificate request receive HTTP 400. A valid `CertPoll`
+request (message type `20`) receives a signed `FAILURE` `CertRep` with `failInfo=badRequest`;
+pending requests are not stored.
+
 `PKIOperation` issues nothing until a challenge validator is configured; `GetCACaps` and
 `GetCACert` return public information only.
 
