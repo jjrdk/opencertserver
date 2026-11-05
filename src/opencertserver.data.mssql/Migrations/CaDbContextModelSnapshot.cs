@@ -77,10 +77,10 @@ namespace OpenCertServer.Data.MsSql.Migrations
                         .UseCollation("Latin1_General_100_BIN2");
 
                     b.Property<DateTimeOffset>("NotAfter")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<DateTimeOffset>("NotBefore")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("ProfileName")
                         .HasColumnType("nvarchar(max)")

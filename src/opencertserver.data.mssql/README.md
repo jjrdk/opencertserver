@@ -38,9 +38,11 @@ Use an EF CLI matching the centrally pinned EF Core version. Give schema permiss
 to the migration identity, and back up the database before upgrades.
 
 String columns use `Latin1_General_100_BIN2` collation to preserve case-sensitive ACME
-identifiers/nonces regardless of the database default. Certificate validity dates restore
-UTC kind when read from SQL Server `datetime2`. Accounts, orders and EAB keys retain the
-shared optimistic-concurrency policy; nonce insertion is idempotent and consumption is atomic.
+identifiers/nonces regardless of the database default. Certificate validity dates use
+`DateTimeOffset` mapped to SQL Server `datetimeoffset` and are stored with a UTC offset.
+The initial migration, its target model and the model snapshot use the same mapping.
+Accounts, orders and EAB keys retain the shared optimistic-concurrency policy;
+nonce insertion is idempotent and consumption is atomic.
 
 ## Qualification
 
