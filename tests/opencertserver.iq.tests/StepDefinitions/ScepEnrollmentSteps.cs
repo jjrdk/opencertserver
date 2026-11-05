@@ -5,7 +5,7 @@ using OpenCertServer.Iq.Tests.Support;
 using Reqnroll;
 using Xunit;
 
-/// <summary>Qualifies SCEP using micromdm's scepclient and independent openssl checks on Linux.</summary>
+/// <summary>Qualifies SCEP using sscep and independent openssl checks on Linux.</summary>
 [Binding]
 [Scope(Feature = FeatureTitle)]
 public sealed class ScepEnrollmentSteps
@@ -26,6 +26,8 @@ public sealed class ScepEnrollmentSteps
         _state = state;
         _environment = scenario.Get<IqAcmeEnvironment>();
     }
+
+    private const int BridgePort = 8089;
 
     private static string Server => $"https://{IqAcmeEnvironment.ServerAlias}:{IqAcmeEnvironment.ServerPort}";
 
@@ -78,21 +80,25 @@ public sealed class ScepEnrollmentSteps
             """).ConfigureAwait(false);
     }
 
-    [When("^scepclient enrolls \"([^\"]+)\" with the right challenge$")]
+    [When("^sscep enrolls \"([^\"]+)\" with the right challenge$")]
     public Task EnrollWithChallenge(string device) => Enroll(device, Challenge, "/scep");
 
-    [When("^scepclient enrolls \"([^\"]+)\" with the challenge \"([^\"]+)\"$")]
+    [When("^sscep enrolls \"([^\"]+)\" with the challenge \"([^\"]+)\"$")]
     public Task EnrollWithOtherChallenge(string device, string challenge) => Enroll(device, challenge, "/scep");
 
-    [When("^scepclient enrolls \"([^\"]+)\" with the right challenge at \"([^\"]+)\"$")]
+    [When("^sscep enrolls \"([^\"]+)\" with the right challenge at \"([^\"]+)\"$")]
     public Task EnrollAtPath(string device, string path) => Enroll(device, Challenge, path);
 
-    [Then("^scepclient exits with code 0$")]
+    [When("^sscep enrolls \"([^\"]+)\" with the right challenge and the request encrypted with \"([^\"]+)\"$")]
+    public Task EnrollEncrypted(string device, string encryption) =>
+        Enroll(device, Challenge, "/scep", encryption);
+
+    [Then("^sscep exits with code 0$")]
     public void AssertSuccess()
     {
-        Assert.True(_operation.HasValue, "scepclient was not run.");
+        Assert.True(_operation.HasValue, "sscep was not run.");
         Assert.True(_operation.Value.ExitCode == 0,
-            $"scepclient exited {_operation.Value.ExitCode}:\n{_operation.Value.Stdout}\n{_operation.Value.Stderr}");
+            $"sscep exited {_operation.Value.ExitCode}:\n{_operation.Value.Stdout}\n{_operation.Value.Stderr}");
     }
 
     [Then("^the certificate names \"([^\"]+)\" and chains to the published CA with \"openssl verify\"$")]
@@ -104,22 +110,24 @@ public sealed class ScepEnrollmentSteps
         await VerifyChain().ConfigureAwait(false);
     }
 
-    [Then("^scepclient fails with a SCEP FAILURE$")]
-    public void AssertFailure()
+    [Then("^sscep fails with a SCEP FAILURE \"(badRequest|badAlg)\"$")]
+    public void AssertFailure(string failInfo)
     {
-        Assert.True(_operation.HasValue, "scepclient was not run.");
+        Assert.True(_operation.HasValue, "sscep was not run.");
         var operation = _operation.Value;
-        Assert.NotEqual(0, operation.ExitCode);
-        // scepclient reports a CertRep FAILURE as "PKCSReq request failed, failInfo: …" - not a
-        // transport or TLS error, which would mean the server was never asked.
-        Assert.Contains("request failed, failInfo", operation.Stdout + operation.Stderr, StringComparison.Ordinal);
+        // sscep reads the signed CertRep and exits with 70 + failInfo (badAlg 70, badRequest 72) -
+        // not with a transport or TLS error, which would mean the server was never asked.
+        var expected = failInfo == "badAlg" ? 70 : 72;
+        Assert.True(operation.ExitCode == expected,
+            $"sscep exited {operation.ExitCode}, expected {expected}:\n{operation.Stdout}\n{operation.Stderr}");
+        Assert.Contains("pkistatus: FAILURE", operation.Stdout + operation.Stderr, StringComparison.Ordinal);
     }
 
     [Then("^no certificate is written$")]
     public async Task AssertNoCertificate() =>
         await Run($"test ! -e '{Device}/cert.pem'").ConfigureAwait(false);
 
-    [Given("^scepclient holds a certificate for \"([^\"]+)\"$")]
+    [Given("^sscep holds a certificate for \"([^\"]+)\"$")]
     public async Task HoldCertificate(string device)
     {
         await CheckHealth().ConfigureAwait(false);
@@ -129,11 +137,12 @@ public sealed class ScepEnrollmentSteps
             .Stdout.Trim();
     }
 
-    [When("^scepclient runs again with that certificate$")]
-    public async Task RunAgain()
+    [When("^sscep enrolls again with a new key, signing with that certificate$")]
+    public async Task EnrollAgain()
     {
-        // With cert.pem present, scepclient sends a RenewalReq signed with it and no challenge.
-        _operation = await ScepClient("/scep", challenge: null).ConfigureAwait(false);
+        // sscep has no RenewalReq: it signs a new PKCSReq with the certificate it holds (-K/-O).
+        await Run($"cd '{Device}' && mv key.pem old-key.pem && mv cert.pem old-cert.pem").ConfigureAwait(false);
+        _operation = await Sscep("/scep", Challenge, "aes", signWithHeld: true).ConfigureAwait(false);
     }
 
     [Then("^the renewed certificate has a new serial number and chains to the published CA$")]
@@ -145,24 +154,51 @@ public sealed class ScepEnrollmentSteps
         await VerifyChain().ConfigureAwait(false);
     }
 
-    private async Task Enroll(string device, string challenge, string path)
+    private async Task Enroll(string device, string challenge, string path, string encryption = "aes")
     {
         _device = device;
-        _operation = await ScepClient(path, challenge).ConfigureAwait(false);
+        _operation = await Sscep(path, challenge, encryption).ConfigureAwait(false);
     }
 
-    private async Task<ExecResult> ScepClient(string path, string? challenge)
+    private async Task<ExecResult> Sscep(string path, string challenge, string encryption, bool signWithHeld = false)
     {
-        var challengeArgument = challenge is null ? "" : $" -challenge '{challenge}'";
-        // scepclient keeps its key, CSR and self-signed signer next to the key file.
+        await StartBridge().ConfigureAwait(false);
+        var url = $"http://127.0.0.1:{BridgePort}{path}";
+        var signer = signWithHeld ? " -K old-key.pem -O old-cert.pem" : "";
+        // The RA from GetCACert (key encipherment, not a CA) decrypts the request and signs the reply.
+        // The CSR carries the challenge as challengePassword (RFC 8894, 2.2).
         var result = await _environment.ExecClientAsync(
-            $"set -uo pipefail; mkdir -p '{Device}'; cd '{Device}'; "
-            + $"scepclient -server-url '{Server}{path}'{challengeArgument} -cn '{_device}'"
-            + $" -private-key '{Device}/key.pem' -certificate '{Device}/cert.pem' -key-encipherment-selector")
+            $$"""
+            set -uo pipefail; mkdir -p '{{Device}}'; cd '{{Device}}'
+            rm -f ca.crt-*
+            sscep getca -u '{{url}}' -c ca.crt >getca.log 2>&1 || { cat getca.log; exit 90; }
+            for c in ca.crt-*; do
+                text=$(openssl x509 -in "$c" -noout -text)
+                if ! grep -qF 'CA:TRUE' <<<"$text" && grep -qF 'Key Encipherment' <<<"$text"; then cp "$c" ra.pem; fi
+            done
+            test -s ra.pem || { echo 'no RA certificate in GetCACert'; exit 91; }
+            printf '[req]\nprompt = no\ndistinguished_name = dn\nattributes = attrs\n[dn]\nCN = %s\n[attrs]\nchallengePassword = %s\n' \
+                '{{_device}}' '{{challenge}}' > req.cnf
+            openssl req -new -newkey rsa:2048 -nodes -keyout key.pem -out req.pem -config req.cnf 2>/dev/null
+            sscep enroll -u '{{url}}' -c ra.pem -k key.pem -r req.pem -l cert.pem -E {{encryption}} -S sha256{{signer}}
+            """)
             .ConfigureAwait(false);
         _state.LastExec = result;
         return result;
     }
+
+    // sscep speaks plain HTTP. socat carries it to the hardened server over TLS and verifies the
+    // server certificate against the system bundle - the same trust every other client here uses.
+    private async Task StartBridge() =>
+        await Run($"""
+            if ! (exec 3<>/dev/tcp/127.0.0.1/{BridgePort}) 2>/dev/null; then
+                setsid nohup socat TCP-LISTEN:{BridgePort},bind=127.0.0.1,reuseaddr,fork \
+                    OPENSSL:{IqAcmeEnvironment.ServerAlias}:{IqAcmeEnvironment.ServerPort},cafile=/etc/ssl/certs/ca-certificates.crt,verify=1 \
+                    >/tmp/socat-scep.log 2>&1 </dev/null &
+                for _ in $(seq 1 50); do (exec 3<>/dev/tcp/127.0.0.1/{BridgePort}) 2>/dev/null && break; sleep 0.1; done
+            fi
+            (exec 3<>/dev/tcp/127.0.0.1/{BridgePort})
+            """).ConfigureAwait(false);
 
     private async Task FetchBundle()
     {

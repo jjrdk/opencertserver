@@ -15,7 +15,7 @@ harness the conformance and correctness suites use.
 |---|---|---|
 | `opencertserver.certserver.tests`, `opencertserver.<proto>.tests` | in-process `WebApplicationFactory`/`TestServer` | .NET `EstClient`, `AcmeContext`, direct handler calls |
 | `opencertserver.mcp.tests` | in-process MCP host | .NET tool invocations |
-| **`opencertserver.iq.tests` (this project)** | **a running OpenCertServer container over HTTP/TLS** | **a Linux container running `estclient`, `scepclient`, `openssl`, `curl`, `acme.sh`, `certbot`, `jq`, and the `opencert` CLI** |
+| **`opencertserver.iq.tests` (this project)** | **a running OpenCertServer container over HTTP/TLS** | **a Linux container running `estclient`, `sscep`, `openssl`, `curl`, `acme.sh`, `certbot`, `jq`, and the `opencert` CLI** |
 | **MCP IQ feature** | **the published standalone MCP executable, launched in Linux** | **JSON-RPC over subprocess stdin/stdout, with independent OpenSSL checks** |
 
 The goal is **complementarity, not duplication**: the RFC-conformance and
@@ -42,7 +42,7 @@ Two TestContainers images are orchestrated by the step definitions:
    built from the Ubuntu package sources, the ACME client
    `acme.sh` (fetched over curl, the canonical ACME client), EFF `certbot` (from `apt`)
    and the project's own `opencert` CLI. Every scenario's Given/When/Then is something
-   this image can execute: `estclient`, `scepclient`, `curl`, `openssl`, `acme.sh`, `certbot`, `jq`, `opencert`.
+   this image can execute: `estclient`, `sscep`, `curl`, `openssl`, `acme.sh`, `certbot`, `jq`, `opencert`.
 
 A [`docker-compose.yml`](./docker-compose.yml) provides a manual equivalent of the
 same two-container topology for hands-on runs; TestContainers performs the same
@@ -477,32 +477,42 @@ client images need no rebuild to pick up helper changes. Prebuilt images must in
 
 ### SCEP-enrollment scenarios
 
-Run all six SCEP scenarios (requires Docker):
+Run all seven SCEP scenarios (requires Docker):
 
 ```sh
 dotnet test --project tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj \
   --filter-class "OpenCertServer.Iq.Tests.Features.RFC8894SCEPEnrollmentWorksForALinuxDeviceClientFeature"
 ```
 
-The client is micromdm's [`scepclient`](https://github.com/micromdm/scep) (MIT), an independent
-SCEP implementation in Go. The image downloads the pinned release and checks its SHA-256. It trusts
-the disposable TLS root through the system bundle; TLS verification stays enabled. The server of
-this feature is started with a shared challenge (`Scep__Challenge`); without one it issues nothing.
-Each scenario has its own directory for the key, the CSR and the certificate.
+The client is [`sscep`](https://github.com/certnanny/sscep) 0.10.0 (BSD-style licence by Jarkko
+Turkulainen, with parts under the OpenSSL License - see its `COPYING`), an independent SCEP
+implementation in C. No Debian or Ubuntu release packages it, so the client image builds the pinned
+release from source and checks its SHA-256. sscep speaks plain HTTP only: a `socat` bridge in the
+client carries it to the server over TLS and verifies the server certificate against the system
+bundle, which holds the disposable TLS root - TLS verification stays enabled. The server of this
+feature is started with a shared challenge (`Scep__Challenge`); without one it issues nothing. Each
+scenario has its own directory for the key, the CSR and the certificate.
 
 - `curl ?operation=GetCACaps` must list `POSTPKIOperation`, `SHA-256`, `AES` and `Renewal`.
 - `curl ?operation=GetCACert` is decoded with `openssl pkcs7`; the bundle must hold an RA certificate
   for key encipherment and a `CA:TRUE` certificate, each checked on its own.
-- `scepclient -challenge … -key-encipherment-selector` enrolls with a `PKCSReq`. The certificate must
-  name the requested common name and verify with `openssl verify` against the `CA:TRUE`
-  certificates of `GetCACert` - not the RA.
-- A wrong challenge must end in a SCEP `FAILURE` (`request failed, failInfo`), not a transport
-  error, and leave no certificate.
+- `sscep getca`, then `sscep enroll -E aes -S sha256` with a CSR that carries the challenge as
+  `challengePassword`, encrypted to the RA certificate from `GetCACert`. The certificate must name
+  the requested common name and verify with `openssl verify` against the `CA:TRUE` certificates of
+  `GetCACert` - not the RA.
+- A wrong challenge must end in a SCEP `FAILURE` with `failInfo=badRequest` (sscep exits 72), not a
+  transport error, and leave no certificate.
 - The same enrollment through `/scep/pkiclient.exe`, the path Windows uses.
-- Run again with the certificate it holds, `scepclient` sends a `RenewalReq` signed with it and
-  without a challenge. The new certificate must have a new serial and verify. `scepclient` renews
-  with the same key and therefore the same transaction ID (it derives it from the key) - this
-  scenario found that replay protection must remember the nonce, not the transaction ID alone.
+- The same enrollment with `-E 3des` must end in a `FAILURE` with `failInfo=badAlg` (sscep exits 70):
+  the capabilities offer AES only, and anything else is refused, not decrypted.
+- sscep then enrolls again with a new key, signing the request with the certificate it holds
+  (`-K`/`-O`). sscep has no `RenewalReq` - it sends a `PKCSReq` with the challenge - so `RenewalReq`
+  is covered in-process ([ScepServer.feature](../opencertserver.scep.server.tests/Features/ScepServer.feature)).
+  The new certificate must have a new serial and verify.
+
+Until 05.11.2026 the client was micromdm's `scepclient` v2.3.0. It sends `RenewalReq`, but always
+encrypts with single DES (the default of `smallstep/pkcs7`, which it never changes), and the server
+accepts AES only.
 
 ### Profile-controlled issuance scenarios
 

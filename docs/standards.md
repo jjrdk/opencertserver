@@ -200,10 +200,11 @@ remembered, a full replay store, a malformed signed attribute, no validator, the
 algorithm, and the `senderNonce` length. The test client builds real SCEP messages with `SignedCms` and
 `EnvelopedCms`, so the server is exercised over HTTP the way a device would.
 * [IQ ScepEnrollment.feature](../tests/opencertserver.iq.tests/Features/ScepEnrollment.feature) —
-micromdm's `scepclient` against the deployed, hardened container: capabilities, the RA and CA
-bundle, enrollment with the challenge, a wrong challenge refused, the `/pkiclient.exe` path, and
-renewal with a `RenewalReq` signed by the certificate the client holds; `openssl` verifies what it
-receives. See the [IQ README](../tests/opencertserver.iq.tests/README.md#scep-enrollment-scenarios).
+`sscep` (AES) against the deployed, hardened container: capabilities, the RA and CA bundle,
+enrollment with the challenge, a wrong challenge refused, the `/pkiclient.exe` path, triple DES
+refused with `badAlg`, and a new enrollment signed with the certificate the client holds;
+`openssl` verifies what it receives. `RenewalReq` is covered in-process, since sscep does not send
+one. See the [IQ README](../tests/opencertserver.iq.tests/README.md#scep-enrollment-scenarios).
 
 ### Intune challenge validation and revocation sync (`opencertserver.contrib.intune`)
 
