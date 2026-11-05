@@ -249,6 +249,9 @@ internal static class ScepHandler
         chain.ChainPolicy.ExtraStore.AddRange(published);
         // Revocation is checked against this CA's own list below, not over the network.
         chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        // No flags: a certificate outside its validity period fails the chain (NotTimeValid), so
+        // an expired certificate cannot renew.
+        chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
         if (!chain.Build(previous))
         {
             return "the signing certificate is not a valid certificate of this CA: "

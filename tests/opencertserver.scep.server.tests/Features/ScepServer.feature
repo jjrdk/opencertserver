@@ -113,6 +113,14 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
         Then the server answers FAILURE with failInfo badRequest
         And no certificate is returned
 
+    # The certificate that signs a RenewalReq is the proof, and an expired certificate proves
+    # nothing: the chain check treats a certificate outside its validity period as an error.
+    Scenario: A renewal signed with an expired certificate of this CA is refused
+        Given a certificate server that complies with SCEP (RFC 8894)
+        When a client renews with an expired certificate from this CA
+        Then the server answers FAILURE with failInfo badRequest
+        And no certificate is returned
+
     # Profiles may share one CA key (#140): a certificate renews through the profile that
     # issued it, as with EST.
     Scenario: A renewal through another profile of the same CA is refused

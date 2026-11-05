@@ -349,6 +349,21 @@ public sealed class ScepServer : IDisposable
         return Renew(Subject, lookAlike);
     }
 
+    [When("a client renews with an expired certificate from this CA")]
+    public async Task WhenRenewExpired()
+    {
+        // Issued and stored by the CA under the "rsa" profile, so issuer, issuing profile,
+        // revocation status and names all match - only the validity period has passed.
+        var deviceKey = RSA.Create(2048);
+        var deviceReq = new CertificateRequest(Subject, deviceKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        var ca = _host.Services.GetRequiredService<ICertificateAuthority>();
+        var issued = await ca.SignCertificateRequest(deviceReq, "rsa",
+            notBefore: DateTimeOffset.UtcNow.AddHours(-12), notAfter: DateTimeOffset.UtcNow.AddMinutes(-5)).ConfigureAwait(false);
+        var expired = Assert.IsType<SignCertificateResponse.Success>(issued).Certificate.CopyWithPrivateKey(deviceKey);
+        Assert.True(expired.NotAfter < DateTime.Now);
+        await Renew(Subject, expired).ConfigureAwait(false);
+    }
+
     [When("the client tries again with the challenge password {string}, the same transaction ID and a new nonce")]
     public async Task WhenRetrySameTransaction(string challenge)
     {
