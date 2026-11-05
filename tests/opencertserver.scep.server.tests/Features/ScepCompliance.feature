@@ -49,6 +49,8 @@ Scenario: A PKCSReq whose content is not a certificate request is refused
   Given a certificate server that complies with SCEP (RFC 8894)
   When a client enrolls with a request whose content is not a certificate request
   Then the server answers HTTP 400
+  When a client enrolls with the challenge password "geheim" using the "rsa" profile
+  Then the server answers SUCCESS
 
 Scenario: A request under an older transaction id is accepted once the window has elapsed
   RFC 8894, 3.2.1.5: the replay guard is time-bounded. The same request that was refused while the
