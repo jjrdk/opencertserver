@@ -152,15 +152,6 @@ internal static class ScepHandler
             return Results.BadRequest("The PKIOperation does not contain a valid certificate request.");
         }
 
-        // A request is accepted once per window: a captured request, replayed, would otherwise
-        // have the CA issue again. A new request under the same transaction ID carries a new nonce.
-        if (!transactions.TryClaim(request.TransactionId, request.SenderNonce))
-        {
-            logger.LogWarning("SCEP transaction {TransactionId} refused: request already seen (replay)",
-                request.TransactionId);
-            return Failure(request, ScepFailInfo.BadRequest, options);
-        }
-
         X509Certificate2? previous = null;
         if (request.MessageType == ScepMessageType.RenewalReq)
         {

@@ -42,7 +42,6 @@ public sealed class ScepTestClient(HttpClient http, string path = "/scep")
         string encryptionOid = OpenCertServer.Ca.Utils.Oids.Aes128Cbc,
         byte[]? innerContent = null,
         IReadOnlyList<X509Certificate2>? additionalSigners = null,
-        string encryptionOid = OpenCertServer.Ca.Utils.Oids.Aes128Cbc,
         bool senderNonceAsInteger = false)
     {
         var csrDer = innerContent ?? csr.CreateSigningRequest();
