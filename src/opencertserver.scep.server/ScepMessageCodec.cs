@@ -20,7 +20,9 @@ using CmsContentInfoPkcs = System.Security.Cryptography.Pkcs.ContentInfo;
 /// <param name="CsrDer">The decrypted PKCS#10 request, if the message carried one.</param>
 /// <param name="ContentEncryptionAlgorithm">The OID of the algorithm the client encrypted its
 /// envelope with - the reply is encrypted with the same one (see <see cref="ScepMessageCodec.ReplyEncryption"/>).
-/// Null when the message carried no envelope.</param>
+/// Null when the message carried no envelope. When it is not one the server accepts
+/// (<see cref="ScepMessageCodec.IsAcceptedEncryption"/>), the envelope is left encrypted and
+/// <paramref name="CsrDer"/> is null.</param>
 public sealed record ScepRequest(
     ScepMessageType MessageType,
     string TransactionId,
@@ -141,8 +143,13 @@ public static class ScepMessageCodec
                 var enveloped = new EnvelopedCms();
                 enveloped.Decode(content);
                 encryption = enveloped.ContentEncryptionAlgorithm.Oid.Value;
-                enveloped.Decrypt(new X509Certificate2Collection(raCertificate));
-                csr = enveloped.ContentInfo.Content;
+                // Only what the capabilities promise is decrypted at all; the handler refuses
+                // the rest with failInfo badAlg in a signed CertRep.
+                if (IsAcceptedEncryption(encryption))
+                {
+                    enveloped.Decrypt(new X509Certificate2Collection(raCertificate));
+                    csr = enveloped.ContentInfo.Content;
+                }
             }
             catch (CryptographicException ex)
             {
@@ -170,19 +177,24 @@ public static class ScepMessageCodec
     }
 
     /// <summary>
-    /// The algorithm the reply is encrypted with: the one the client used for its request,
-    /// as long as it is one RFC 8894 names - AES128-CBC, which the capability "AES" promises
-    /// (section 3.5.2) and section 2.9 makes mandatory, the larger AES sizes, or
-    /// triple DES, which older clients may still use. Anything else, or a request without an
-    /// envelope, gets AES128-CBC. The reply used to be AES-256 regardless of the request; a
-    /// client that can do exactly what was promised could not have read it.
+    /// Whether a request encrypted with <paramref name="oid"/> is accepted: AES-CBC only -
+    /// AES128-CBC, which the capability "AES" promises (RFC 8894, section 3.5.2) and section
+    /// 2.9 makes mandatory, and the larger AES sizes. Triple DES, DES and RC2 are not offered
+    /// in the capabilities and are refused rather than decrypted.
+    /// </summary>
+    public static bool IsAcceptedEncryption(string? oid) =>
+        oid is Oids.Aes128Cbc or Oids.Aes192Cbc or Oids.Aes256Cbc;
+
+    /// <summary>
+    /// The algorithm the reply is encrypted with: the one the client used for its request
+    /// (<see cref="IsAcceptedEncryption"/>); a request without an envelope gets AES128-CBC.
+    /// The reply used to be AES-256 regardless of the request; a client that can do exactly
+    /// what was promised could not have read it.
     /// </summary>
     internal static string ReplyEncryption(ScepRequest request) =>
-        request.ContentEncryptionAlgorithm switch
-        {
-            Oids.Aes128Cbc or Oids.Aes192Cbc or Oids.Aes256Cbc or Oids.TripleDesCbc => request.ContentEncryptionAlgorithm,
-            _ => Oids.Aes128Cbc,
-        };
+        IsAcceptedEncryption(request.ContentEncryptionAlgorithm)
+            ? request.ContentEncryptionAlgorithm!
+            : Oids.Aes128Cbc;
 
     /// <summary>
     /// Builds a failed <c>CertRep</c> with the given failInfo, signed by the RA.

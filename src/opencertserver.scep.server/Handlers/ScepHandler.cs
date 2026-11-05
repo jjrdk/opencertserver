@@ -121,6 +121,15 @@ internal static class ScepHandler
             return Results.BadRequest(ex.Message);
         }
 
+        // RFC 8894, 3.2.1.4: an algorithm the server does not support is badAlg. The request is
+        // signed and carries its nonce, so the refusal is a CertRep the client can match.
+        if (request.ContentEncryptionAlgorithm is { } algorithm && !ScepMessageCodec.IsAcceptedEncryption(algorithm))
+        {
+            logger.LogWarning("SCEP transaction {TransactionId} refused: content encryption {Algorithm} is not supported",
+                request.TransactionId, algorithm);
+            return Failure(request, ScepFailInfo.BadAlg, options);
+        }
+
         if (request.MessageType is not (ScepMessageType.PkcsReq or ScepMessageType.RenewalReq)
             || request.CsrDer is null)
         {

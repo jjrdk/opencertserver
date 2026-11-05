@@ -226,7 +226,7 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
 
     # RFC 8894, 3.5.2: the capability "AES" promises AES128-CBC, and 2.9 makes it
     # mandatory. The reply is encrypted with the algorithm the request used, so a
-    # client always gets back what it can read - including an old one on triple DES.
+    # client always gets back what it can read.
     Scenario Outline: The reply is encrypted with the algorithm of the request
         Given a certificate server that complies with SCEP (RFC 8894)
         When a client enrolls with the challenge password "geheim" and the request encrypted with "<algorithm>"
@@ -236,8 +236,21 @@ Feature: Certificate server compliance with SCEP (RFC 8894)
         Examples:
           | algorithm   |
           | AES-128-CBC |
+          | AES-192-CBC |
           | AES-256-CBC |
-          | 3DES-CBC    |
+
+    # The capabilities offer AES only. A request in anything else is refused, not decrypted:
+    # RFC 8894, 3.2.1.4, failInfo badAlg, in a signed CertRep the client can match.
+    Scenario Outline: A request encrypted with an algorithm the capabilities do not offer is refused
+        Given a certificate server that complies with SCEP (RFC 8894)
+        When a client enrolls with the challenge password "geheim" and the request encrypted with "<algorithm>"
+        Then the server answers FAILURE with failInfo badAlg
+        And no certificate is returned
+
+        Examples:
+          | algorithm |
+          | 3DES-CBC  |
+          | DES-CBC   |
 
     # RFC 8894, 3.2.1: senderNonce is a 16-byte random number.
     Scenario: A senderNonce that is not 16 bytes is refused

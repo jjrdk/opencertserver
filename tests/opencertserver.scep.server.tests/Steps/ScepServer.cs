@@ -485,8 +485,10 @@ public sealed class ScepServer : IDisposable
     private static readonly Dictionary<string, string> Algorithmen = new()
     {
         ["AES-128-CBC"] = OpenCertServer.Ca.Utils.Oids.Aes128Cbc,
+        ["AES-192-CBC"] = OpenCertServer.Ca.Utils.Oids.Aes192Cbc,
         ["AES-256-CBC"] = OpenCertServer.Ca.Utils.Oids.Aes256Cbc,
         ["3DES-CBC"] = OpenCertServer.Ca.Utils.Oids.TripleDesCbc,
+        ["DES-CBC"] = OpenCertServer.Ca.Utils.Oids.DesCbc,
     };
 
     [When("a client enrolls with the challenge password {string} and the request encrypted with {string}")]
@@ -548,6 +550,13 @@ public sealed class ScepServer : IDisposable
     {
         Assert.Equal("2", _certRep!.PkiStatus);
         Assert.Equal("2", _certRep.FailInfo);
+    }
+
+    [Then("the server answers FAILURE with failInfo badAlg")]
+    public void ThenFailureBadAlg()
+    {
+        Assert.Equal("2", _certRep!.PkiStatus);
+        Assert.Equal("0", _certRep.FailInfo);
     }
 
     [Then("no certificate is returned")]
