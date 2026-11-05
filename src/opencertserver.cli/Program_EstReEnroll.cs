@@ -151,8 +151,16 @@ internal static partial class Program
                     options.ExplicitTrustAnchors.Add(X509CertificateLoader.LoadCertificateFromFile(path));
                 }
 
+                var messageHandler = MessageHandlerFactory();
+                if (messageHandler is HttpClientHandler or SocketsHttpHandler)
+                {
+                    // Let EstClient own TLS identity changes and connection pools for real transports.
+                    messageHandler.Dispose();
+                    messageHandler = null;
+                }
+
                 using var estClient =
-                    new EstClient(baseUri, options, messageHandler: MessageHandlerFactory(), profileName: profile);
+                    new EstClient(baseUri, options, messageHandler: messageHandler, profileName: profile);
                 var (errors, collection) = await estClient.ReEnroll(key, currentCert).ConfigureAwait(false);
 
                 if (errors != null)

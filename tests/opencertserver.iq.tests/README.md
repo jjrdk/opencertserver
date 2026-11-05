@@ -149,6 +149,7 @@ remote deployment.
 | HTTP-08 | Conflicting Content-Length/Transfer-Encoding and duplicate Content-Length are rejected with connection close and no appended response; valid framing still reaches authentication |
 | HTTP-09 | Scanner paths, `.git/config` and `appsettings.json` receive 403/404 |
 | HTTP-10 | A 64 KiB header receives 400/431 |
+| HTTP-11 | A valid CA-issued client certificate's public DER bytes in `X-Client-Cert` alone cannot authorize EST simpleenroll, simplereenroll or `/ca/csr`; the requests send no TLS client certificate/private key, and the victim remains unrevoked |
 
 YARP-specific tenant-cache authorization becomes CA/EST authorization; proxy certificate
 stripping becomes denial of forged certificate identity; scanner-path checks assert no
@@ -176,8 +177,8 @@ Empty inventories, timeouts, missing tools and invalid TLS identity fail explici
 There is no report-only mode, skipped finding, or test-only server-policy override.
 Scenario output and the XML report retain observations and failed-server diagnostics.
 
-**Verified local result (2026-10-19): all 16 pentests and all 69 other IQ scenarios pass
-together, with no skips.** The production host now restricts Linux/OpenSSL ciphers to
+**Previously verified local baseline (2026-10-19, before HTTP-11): all 16 pentests and all
+69 other IQ scenarios passed together, with no skips.** The production host restricts Linux/OpenSSL ciphers to
 AEAD suites, publishes 180-day HSTS, filters Host values before redirects, rejects
 ambiguous framing before authentication, and selects JWT/mTLS authentication with a
 defined challenge scheme. The shared environment supplies its exact Docker host aliases
@@ -322,10 +323,10 @@ No new image, server substitute or production project reference is needed.
   compares the complete set of DER fingerprints with the separately retrieved `/cacerts` bundle.
 - `est-reenroll` receives the original certificate and matching private key, with no JWT.
   The renewed leaf must verify, match the same key and subject, and have a different serial.
-  The current EST client sends `X-Client-Cert`, which the standalone server's certificate-forwarding
-  middleware accepts. This qualifies that existing renewal path, **not TLS client-key possession**;
-  the separate estclient feature exercises real mTLS. Online server-side certificate revocation
-  checking remains enabled through the existing CRL relay.
+  Re-enrollment authenticates with the matching TLS client certificate and private key; a
+  certificate copied into `X-Client-Cert` is not a substitute. The separate estclient scenario
+  also exercises real mTLS. Online server-side certificate revocation checking remains enabled
+  through the existing CRL relay.
 
 Success assertions require usable, independently verified output and explicit success messages for
 enrollment/renewal, not only exit zero: several CLI commands currently print errors without setting

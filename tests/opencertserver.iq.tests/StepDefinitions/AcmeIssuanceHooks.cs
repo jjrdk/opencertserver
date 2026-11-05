@@ -49,14 +49,16 @@ public sealed class AcmeIssuanceHooks
         var isCli = featureContext.FeatureInfo.Title == OpenCertCliSteps.FeatureTitle;
         var isTelemetry = featureContext.FeatureInfo.Title == OpenTelemetrySteps.FeatureTitle;
         var isProfile = featureContext.FeatureInfo.Title == ProfileIssuanceSteps.FeatureTitle;
-        if (featureContext.FeatureInfo.Title == CrlRevocationSteps.FeatureTitle || isEst || isOcsp || isCli || isTelemetry)
+        var isPenetration = featureContext.FeatureInfo.Title == PenetrationSteps.FeatureTitle;
+        if (featureContext.FeatureInfo.Title == CrlRevocationSteps.FeatureTitle
+            || isEst || isOcsp || isCli || isTelemetry || isPenetration)
         {
             revocationConfiguration = new IqRevocationConfiguration();
             featureContext.Set(revocationConfiguration);
         }
 
         if (featureContext.FeatureInfo.Title is AuthorityInformationSteps.FeatureTitle or CrlRevocationSteps.FeatureTitle
-            || isEst || isOcsp || isCli || isTelemetry || isProfile)
+            || isEst || isOcsp || isCli || isTelemetry || isProfile || isPenetration)
         {
             authorityConfiguration = new IqAuthorityConfiguration(
                 revocationConfiguration is null ? "https://iq.test" : IqRevocationConfiguration.IssuerUrl,

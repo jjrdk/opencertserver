@@ -13,7 +13,7 @@ using Xunit;
 [Binding]
 [Scope(Feature = FeatureTitle)]
 public sealed class PenetrationSteps(
-    ScenarioContext context, AcmeScenarioState state, IReqnrollOutputHelper output)
+    ScenarioContext context, FeatureContext feature, AcmeScenarioState state, IReqnrollOutputHelper output)
 {
     public const string FeatureTitle = "Certificate server perimeter security from a Linux scanner";
 
@@ -21,6 +21,7 @@ public sealed class PenetrationSteps(
     private const string Host = IqAcmeEnvironment.ServerAlias;
     private const int Port = IqAcmeEnvironment.ServerPort;
     private readonly IqAcmeEnvironment _environment = context.Get<IqAcmeEnvironment>();
+    private readonly IqAuthorityConfiguration _authorityConfiguration = feature.Get<IqAuthorityConfiguration>();
     private readonly List<(bool Secure, string Requirement, string Evidence)> _observations = [];
 
     [When("the Linux scanner runs certificate server penetration probe {string}")]
@@ -44,6 +45,7 @@ public sealed class PenetrationSteps(
             case "HTTP-08": await AmbiguousFraming().ConfigureAwait(false); break;
             case "HTTP-09": await RejectedPaths().ConfigureAwait(false); break;
             case "HTTP-10": await HeaderLimit().ConfigureAwait(false); break;
+            case "HTTP-11": await TrustedCertificateHeaderImpersonation().ConfigureAwait(false); break;
             default: throw new ArgumentOutOfRangeException(nameof(id), id, "Unknown penetration probe.");
         }
     }
@@ -258,6 +260,149 @@ public sealed class PenetrationSteps(
             "--header", $"X-SSL-CERT: {encoded.Stdout}",
             "--header", "X-Forwarded-Client-Cert: By=pentest;Subject=\"CN=pentest-forged-identity\"",
             "--header", "X-Forwarded-User: ca_admin").ConfigureAwait(false);
+    }
+
+    private async Task TrustedCertificateHeaderImpersonation()
+    {
+        var work = state.WorkDir;
+        var prepare = await Tool("mkdir", "-p", work).ConfigureAwait(false);
+        Assert.Equal(0, prepare.ExitCode);
+
+        var createVictimCsr = await Tool("openssl", "req", "-new", "-newkey", "rsa:2048", "-nodes",
+            "-subj", $"/CN={IqAuthorityConfiguration.EstIdentity}",
+            "-addext", $"subjectAltName=DNS:{IqAuthorityConfiguration.EstIdentity}",
+            "-addext", "keyUsage=digitalSignature,keyEncipherment",
+            "-addext", "extendedKeyUsage=clientAuth",
+            "-keyout", $"{work}/victim.key", "-out", $"{work}/victim.csr").ConfigureAwait(false);
+        Assert.True(createVictimCsr.ExitCode == 0,
+            $"Could not create the initial enrollment CSR:\n{createVictimCsr.Stderr}");
+
+        var encodeVictimCsr = await Tool("openssl", "req", "-in", $"{work}/victim.csr",
+            "-outform", "DER", "-out", $"{work}/victim.csr.der").ConfigureAwait(false);
+        Assert.Equal(0, encodeVictimCsr.ExitCode);
+        var encodedVictimCsr = await Tool("base64", "-w0", $"{work}/victim.csr.der").ConfigureAwait(false);
+        Assert.Equal(0, encodedVictimCsr.ExitCode);
+
+        var downloadCa = await Tool("curl", "--silent", "--show-error", "--fail", "--http1.1",
+            "--cacert", TrustRoot, "--output", $"{work}/ca.b64",
+            $"https://{Host}:{Port}/.well-known/est/rsa/cacerts").ConfigureAwait(false);
+        Assert.True(downloadCa.ExitCode == 0, $"Could not fetch the issuing CA:\n{downloadCa.Stderr}");
+        var decodeCa = await Tool("openssl", "base64", "-d", "-A", "-in", $"{work}/ca.b64",
+            "-out", $"{work}/ca.der").ConfigureAwait(false);
+        Assert.True(decodeCa.ExitCode == 0, decodeCa.Stderr);
+        var extractCa = await Tool("openssl", "pkcs7", "-inform", "DER", "-in", $"{work}/ca.der",
+            "-print_certs", "-out", $"{work}/issuer.pem").ConfigureAwait(false);
+        Assert.True(extractCa.ExitCode == 0, extractCa.Stderr);
+
+        var enroll = await Tool("curl", "--silent", "--show-error", "--fail", "--http1.1",
+            "--cacert", TrustRoot, "--user",
+            $"{IqAuthorityConfiguration.EstIdentity}:{_authorityConfiguration.EstPassword}",
+            "--header", "Content-Type: application/pkcs10",
+            "--header", "Accept: application/pkcs7-mime",
+            "--data-binary", encodedVictimCsr.Stdout,
+            "--output", $"{work}/issued.b64",
+            $"https://{Host}:{Port}/.well-known/est/rsa/simpleenroll").ConfigureAwait(false);
+        Assert.True(enroll.ExitCode == 0,
+            $"Could not issue the test client certificate through EST:\n{enroll.Stdout}\n{enroll.Stderr}");
+
+        var decodeIssued = await Tool("openssl", "base64", "-d", "-A", "-in", $"{work}/issued.b64",
+            "-out", $"{work}/issued.p7").ConfigureAwait(false);
+        Assert.True(decodeIssued.ExitCode == 0, decodeIssued.Stderr);
+        var extractIssued = await Tool("openssl", "pkcs7", "-inform", "DER", "-in", $"{work}/issued.p7",
+            "-print_certs", "-out", $"{work}/issued-chain.pem").ConfigureAwait(false);
+        Assert.True(extractIssued.ExitCode == 0, extractIssued.Stderr);
+        var isolateLeaf = await Tool("python3", "-c", """
+            import pathlib, re, subprocess, sys
+            bundle = pathlib.Path(sys.argv[1]).read_text()
+            certificates = re.findall(
+                r"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----", bundle, re.S)
+            for certificate in certificates:
+                details = subprocess.run(
+                    ["openssl", "x509", "-noout", "-text"],
+                    input=certificate, text=True, capture_output=True, check=True).stdout
+                if "CA:FALSE" in details:
+                    pathlib.Path(sys.argv[2]).write_text(certificate + "\n")
+                    break
+            else:
+                raise SystemExit("EST response contains no non-CA client certificate")
+            """, $"{work}/issued-chain.pem", $"{work}/victim.pem").ConfigureAwait(false);
+        Assert.True(isolateLeaf.ExitCode == 0, isolateLeaf.Stderr);
+        var verifyIssued = await Tool("openssl", "verify", "-CAfile", $"{work}/issuer.pem",
+            "-purpose", "sslclient", $"{work}/victim.pem").ConfigureAwait(false);
+        Assert.True(verifyIssued.ExitCode == 0 && verifyIssued.Stdout.Contains(": OK", StringComparison.Ordinal),
+            $"The EST-issued certificate was not a valid client certificate:\n{verifyIssued.Stdout}\n{verifyIssued.Stderr}");
+
+        var createAttackerCsr = await Tool("openssl", "req", "-new", "-newkey", "rsa:2048", "-nodes",
+            "-subj", $"/CN={IqAuthorityConfiguration.EstIdentity}",
+            "-addext", $"subjectAltName=DNS:{IqAuthorityConfiguration.EstIdentity}",
+            "-addext", "keyUsage=digitalSignature,keyEncipherment",
+            "-addext", "extendedKeyUsage=clientAuth",
+            "-keyout", $"{work}/attacker.key", "-out", $"{work}/attacker.csr").ConfigureAwait(false);
+        Assert.True(createAttackerCsr.ExitCode == 0,
+            $"Could not create the separate attacker CSR:\n{createAttackerCsr.Stderr}");
+        var encodeAttackerCsr = await Tool("openssl", "req", "-in", $"{work}/attacker.csr",
+            "-outform", "DER", "-out", $"{work}/attacker.csr.der").ConfigureAwait(false);
+        Assert.Equal(0, encodeAttackerCsr.ExitCode);
+        var encodedAttackerCsr = await Tool("base64", "-w0", $"{work}/attacker.csr.der").ConfigureAwait(false);
+        Assert.Equal(0, encodedAttackerCsr.ExitCode);
+
+        var toDer = await Tool("openssl", "x509", "-in", $"{work}/victim.pem", "-outform", "DER",
+            "-out", $"{work}/victim.der").ConfigureAwait(false);
+        Assert.True(toDer.ExitCode == 0, toDer.Stderr);
+        var encodedCertificate = await Tool("base64", "-w0", $"{work}/victim.der").ConfigureAwait(false);
+        Assert.Equal(0, encodedCertificate.ExitCode);
+        Assert.NotEmpty(encodedCertificate.Stdout);
+
+        var serialResult = await Tool("openssl", "x509", "-in", $"{work}/victim.pem",
+            "-noout", "-serial").ConfigureAwait(false);
+        Assert.Equal(0, serialResult.ExitCode);
+        var serial = Regex.Match(serialResult.Stdout, @"serial=([0-9A-Fa-f]+)").Groups[1].Value;
+        Assert.NotEmpty(serial);
+
+        await AssertVictimNotRevoked(serial, work).ConfigureAwait(false);
+
+        foreach (var (path, body, fromFile) in new[]
+        {
+            ("/.well-known/est/rsa/simpleenroll", encodedAttackerCsr.Stdout, false),
+            ("/.well-known/est/rsa/simplereenroll", encodedAttackerCsr.Stdout, false),
+            ("/ca/csr", $"{work}/attacker.csr", true)
+        })
+        {
+            // curl is intentionally given no --cert or --key option: only the victim's public DER
+            // bytes are sent in X-Client-Cert, alongside a separately signed request body.
+            var reply = await Request(path, "https",
+                "--request", "POST",
+                "--header", "Content-Type: application/pkcs10",
+                "--header", "Accept: application/pkcs7-mime",
+                "--header", $"X-Client-Cert: {encodedCertificate.Stdout}",
+                "--data-binary", fromFile ? $"@{body}" : body).ConfigureAwait(false);
+            Observe(reply.Status == 401 && !reply.Body.Contains("BEGIN CERTIFICATE", StringComparison.Ordinal),
+                $"POST {path} must reject a genuine CA-issued certificate sent only in X-Client-Cert",
+                $"HTTP {reply.Status}\n{reply.Headers}\n{reply.Body}");
+        }
+
+        await AssertVictimNotRevoked(serial, work).ConfigureAwait(false);
+    }
+
+    private async Task AssertVictimNotRevoked(string serial, string work)
+    {
+        var fetch = await Tool("curl", "--silent", "--show-error", "--fail", "--http1.1",
+            "--cacert", TrustRoot, "--output", $"{work}/crl.der",
+            $"https://{Host}:{Port}/ca/rsa/crl").ConfigureAwait(false);
+        Assert.True(fetch.ExitCode == 0, $"Could not fetch the normal published CRL:\n{fetch.Stderr}");
+        var crl = await Tool("openssl", "crl", "-inform", "DER", "-in", $"{work}/crl.der",
+            "-noout", "-text", "-verify", "-CAfile", $"{work}/issuer.pem").ConfigureAwait(false);
+        Assert.Contains("verify OK", crl.Stdout + crl.Stderr, StringComparison.Ordinal);
+        var revokedSerials = Regex.Matches(crl.Stdout, @"Serial Number:\s*([0-9A-Fa-f]+)")
+            .Select(match => match.Groups[1].Value.TrimStart('0'))
+            .ToArray();
+        Assert.DoesNotContain(serial.TrimStart('0'), revokedSerials);
+
+        var verify = await Tool("openssl", "verify", "-CAfile", $"{work}/issuer.pem",
+            "-CRLfile", $"{work}/crl.der", "-crl_check", "-purpose", "sslclient",
+            $"{work}/victim.pem").ConfigureAwait(false);
+        Assert.True(verify.ExitCode == 0 && verify.Stdout.Contains(": OK", StringComparison.Ordinal),
+            $"Victim certificate did not pass the normal CRL check:\n{verify.Stdout}\n{verify.Stderr}");
     }
 
     private async Task AmbiguousFraming()

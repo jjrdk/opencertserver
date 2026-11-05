@@ -301,7 +301,13 @@ internal static class Program
                 });
             })
             .UseUrls($"https://*:{port}");
+        var certificateForwardingEnabled = ConfigureCertificateForwarding(builder.Services, builder.Configuration);
         var app = builder.Build();
+        if (certificateForwardingEnabled)
+        {
+            app.UseTrustedCertificateForwarding();
+        }
+
         if (!OperatingSystem.IsLinux())
         {
             app.Logger.LogWarning("The TLS cipher allow-list requires Linux/OpenSSL; this host uses the operating system cipher policy.");
@@ -333,7 +339,6 @@ internal static class Program
             .UseCors("TrustedClients")
             .UseForwardedHeaders(forwardedHeadersOptions)
             .UseHealthChecks("/health")
-            .UseCertificateForwarding()
             .UseRouting()
             .UseAuthentication()
             .UseAuthorization()
@@ -606,6 +611,34 @@ internal static class Program
             DateTimeOffset.UtcNow.AddYears(1));
         // Round-trip through PKCS#12 so the key outlives the RSA instance above on every platform.
         return X509CertificateLoader.LoadPkcs12(certificate.Export(X509ContentType.Pkcs12), null);
+    }
+
+    internal static bool ConfigureCertificateForwarding(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var section = configuration.GetSection("CertificateForwarding");
+        if (!section.GetValue<bool>("Enabled"))
+        {
+            return false;
+        }
+
+        var header = section["CertificateHeader"]
+         ?? throw new InvalidOperationException(
+                "CertificateForwarding:CertificateHeader is required when forwarding is enabled.");
+        services.AddTrustedCertificateForwarding(header, options =>
+        {
+            foreach (var address in ListConfigValues(section.GetSection("KnownProxies")))
+            {
+                options.KnownProxies.Add(System.Net.IPAddress.Parse(address));
+            }
+
+            foreach (var network in ListConfigValues(section.GetSection("KnownNetworks")))
+            {
+                options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+            }
+        });
+        return true;
     }
 
     private static ForwardedHeadersOptions CreateForwardedHeaderOptions()
