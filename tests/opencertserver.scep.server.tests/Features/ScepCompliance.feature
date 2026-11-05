@@ -45,10 +45,13 @@ Scenario: A request that two signers have signed is refused
   Then the server answers HTTP 400
 
 Scenario: A PKCSReq whose content is not a certificate request is refused
-  A PKCSReq carrying bytes that are not a CSR is malformed; the server must refuse it, not crash.
+  A PKCSReq carrying bytes that are not a CSR cannot be processed; the server must refuse it, not crash.
+  The message itself is verified and decrypted, so the refusal is a signed CertRep with badRequest
+  (RFC 8894, 3.2.1.4) the client can match to its transaction, not an HTTP error.
   Given a certificate server that complies with SCEP (RFC 8894)
   When a client enrolls with a request whose content is not a certificate request
-  Then the server answers HTTP 400
+  Then the server answers FAILURE with failInfo badRequest
+  And no certificate is returned
   When a client enrolls with the challenge password "geheim" using the "rsa" profile
   Then the server answers SUCCESS
 

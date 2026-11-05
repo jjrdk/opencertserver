@@ -238,6 +238,7 @@ public sealed class ScepServer : IDisposable
             _clientSigner, _ra, _transactionId, _senderNonce,
             innerContent: System.Text.Encoding.ASCII.GetBytes("not a certificate request"))
             .ConfigureAwait(false);
+        await ReadCertRep().ConfigureAwait(false);
     }
 
     [When("a client enrolls with a request encrypted to a foreign certificate")]
