@@ -60,8 +60,51 @@ The CA endpoints are mounted by the `ca.server` handlers under `/ca` in the `cer
 are secured by TLS client-certificate authentication: Kestrel accepts a client certificate
 (`ClientCertificateMode.AllowCertificate`, any certificate at the TLS layer) and the certificate
 authentication handler (`CertificateAuthenticationDefaults.AuthenticationScheme` = `"Certificate"`)
-validates it against the CA's own certificates. Behind a reverse proxy the certificate arrives in
-the `X-Client-Cert` header instead (`UseCertificateForwarding`).
+validates it against the CA's own certificates. The TLS handshake proves possession of the
+client's private key. Certificate headers, including `X-Client-Cert`, are ignored by default,
+both in `certserver` and applications embedding `UseEstServer()`.
+
+### Trusted client certificate forwarding
+
+Forwarding is only appropriate for a TLS-terminating proxy that verifies the client's TLS
+certificate and removes and replaces the certificate header on **every** incoming request.
+A public certificate in an HTTP header is not proof of possession of its private key.
+Prefer direct mTLS or TLS passthrough whenever possible.
+
+The standalone host accepts forwarding only with explicit configuration:
+
+```json
+{
+  "CertificateForwarding": {
+    "Enabled": true,
+    "CertificateHeader": "X-Client-Cert",
+    "KnownProxies": ["192.0.2.10"],
+    "KnownNetworks": []
+  }
+}
+```
+
+`Enabled` defaults to false. When enabled, a header name and at least one trusted proxy IP
+or CIDR network are required; missing or malformed configuration fails at startup.
+Environment equivalents include `CertificateForwarding__Enabled=true`,
+`CertificateForwarding__CertificateHeader=X-Client-Cert`, and
+`CertificateForwarding__KnownProxies__0=192.0.2.10`.
+Keep allowed networks as narrow as possible: every host in them is trusted to assert identities.
+
+Embedded hosts opt in with `AddTrustedCertificateForwarding(header, configureTrustedProxies)`
+and `UseTrustedCertificateForwarding()`. The configure action uses
+`ForwardedHeadersOptions.KnownProxies` / `KnownIPNetworks` (the .NET 10 network API).
+This middleware must precede address forwarding and authentication: it checks the **original
+connection peer**, not an attacker-controlled `X-Forwarded-For` value, and strips the configured
+certificate header on untrusted requests without replacing a genuine TLS client certificate.
+The ordinary forwarded-address configuration does not grant certificate-forwarding trust.
+
+**Upgrade requirement.** Remove unconditional `UseCertificateForwarding()` from custom host
+pipelines. Direct EST clients must present their certificate **and private key** through mTLS.
+`EstClient` no longer sends `X-Client-Cert` during renewal. The default transport creates a fresh
+TLS session when switching client identity, including from anonymous enrollment to renewal.
+If supplying a custom `HttpMessageHandler`, the caller must configure mTLS and isolate its
+connections by client identity; `EstClient` cannot configure an arbitrary external transport.
 
 **Validity window.** When the caller does not request a `notBefore` - EST never does, ACME only when
 the order carries one - an issued certificate is valid from midnight UTC of the day it is issued, for
@@ -250,11 +293,13 @@ returning no requirements. Embedded hosts can still supply their own `ICsrTempla
 ### POST /.well-known/est/simplereenroll
 
 - Description: Re-enroll using an existing certificate or the server-key-generated key.
-- Authentication: the existing client certificate (mTLS) or a JWT.
+- Authentication: an accepted EST scheme (certificate, JWT or configured Basic), with the
+   certificate being renewed supplied through mTLS or explicitly trusted-proxy forwarding.
 - The certificate being renewed must have been signed by one of the profile's CA certificates
    (`OwnCertificateValidation` verifies the signature; a matching issuer name alone is not enough), and
-   must not have been revoked by this CA (the store is asked by serial number). An expired
-   certificate may still renew - RFC 7030 §4.2.2 leaves that to the CA's policy.
+   must not have been revoked by this CA (the store is asked by serial number). The CA also
+   requires the certificate's current validity window, independently of JWT/Basic authentication:
+   expired and not-yet-valid certificates cannot renew. Use fresh enrollment instead.
    A profile that holds only its issuing intermediate, without the root, works.
 - **Profile binding:** the CA records the resolved issuing profile with each issued certificate.
    `OwnCertificateValidation` looks up that provenance by the exact certificate thumbprint and
@@ -271,7 +316,7 @@ returning no requirements. Embedded hosts can still supply their own `ICsrTempla
    EKUs/policies are not a substitute: different profiles can have identical extensions but different
    validity or enrollment requirements. Hosts intentionally allowing transitions or legacy renewal
    must replace `OwnCertificateValidation` with an explicit validator (retaining issuer-signature
-   and revocation checks); adding a permissive validator alongside it does not override its rejection.
+   validity and revocation checks); adding a permissive validator alongside it does not override its rejection.
 - Response: as `simpleenroll`.
 
 ### POST /.well-known/est/serverkeygen

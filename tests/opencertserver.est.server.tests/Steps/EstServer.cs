@@ -60,7 +60,12 @@ public partial class EstServer
         var response = await ca.SignCertificateRequest(csr, profile).ConfigureAwait(false);
         return response switch
         {
-            SignCertificateResponse.Success success => success.Certificate,
+            SignCertificateResponse.Success success => key switch
+            {
+                RSA rsa => success.Certificate.CopyWithPrivateKey(rsa),
+                ECDsa ecdsa => success.Certificate.CopyWithPrivateKey(ecdsa),
+                _ => throw new ArgumentOutOfRangeException(nameof(key))
+            },
             _ => throw new Exception($"Certificate error: {response}")
         };
     }
@@ -136,7 +141,9 @@ public partial class EstServer
         X509Certificate2Collection? estTrustAnchors = null,
         X509Certificate2Collection? profileTrustAnchors = null,
         X509Certificate2Collection? profileChainCertificates = null,
-        X509Certificate2Collection? estChainCertificates = null)
+        X509Certificate2Collection? estChainCertificates = null,
+        bool realTls = false,
+        Action<HttpContext>? observeRequest = null)
     {
         var caProfiles = new CaProfileSet(
             "rsa",
@@ -170,8 +177,21 @@ public partial class EstServer
 
         var webBuilder = new HostBuilder().ConfigureWebHost(builder =>
         {
-            builder.UseTestServer()
-                .ConfigureAppConfiguration(b => { b.AddEnvironmentVariables(); });
+            if (realTls)
+            {
+                builder.UseKestrel(options => options.Listen(System.Net.IPAddress.Loopback, 0,
+                    listen => listen.UseHttps(webCert, https =>
+                    {
+                        https.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
+                        https.AllowAnyClientCertificate();
+                    })));
+            }
+            else
+            {
+                builder.UseTestServer();
+            }
+
+            builder.ConfigureAppConfiguration(b => { b.AddEnvironmentVariables(); });
             builder.ConfigureServices(sc =>
                 {
                     sc.AddCors(o => o.AddPolicy("AllowAll", b =>
@@ -211,7 +231,11 @@ public partial class EstServer
                         .ConfigureOptions<ConfigureOauthOptions>();
                 })
                 .Configure(app =>
-                    app.UseCors("AllowAll").UseEstServer(
+                    app.Use(async (context, next) =>
+                    {
+                        observeRequest?.Invoke(context);
+                        await next().ConfigureAwait(false);
+                    }).UseCors("AllowAll").UseEstServer(
                         enrollPolicy: EstPolicy(),
                         reEnrollPolicy: EstPolicy(),
                         serverKeyGenPolicy: EstPolicy())
@@ -611,7 +635,7 @@ public partial class EstServer
             new Uri("https://localhost/"),
             options: null,
             profileName: keytype.ToLowerInvariant(),
-            messageHandler: new TestMessageHandler(_server));
+            messageHandler: new TestMessageHandler(_server, cert[0]));
         var privateKey = (byte[])_context["privateKey"]!;
         var publicKey = (byte[])_context["publicKey"]!;
         switch (keytype)

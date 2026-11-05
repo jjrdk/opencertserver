@@ -1,6 +1,7 @@
 namespace opencertserver.cli.tests.StepDefinitions;
 
 using System;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -19,6 +20,74 @@ using Reqnroll;
 public partial class OpenCertServerCliStepDefinitions
 {
     private TestServer? _server;
+
+    private HttpMessageHandler CreateReEnrollmentTlsHandler(string certificatePath, string keyPath)
+    {
+        using var certificate = X509CertificateLoader.LoadCertificateFromFile(certificatePath);
+        using AsymmetricAlgorithm key = certificate.GetKeyAlgorithm() == "1.2.840.113549.1.1.1"
+            ? RSA.Create()
+            : ECDsa.Create();
+        key.ImportFromPem(File.ReadAllText(keyPath));
+        var identity = key switch
+        {
+            RSA rsa => certificate.CopyWithPrivateKey(rsa),
+            ECDsa ecdsa => certificate.CopyWithPrivateKey(ecdsa),
+            _ => throw new NotSupportedException()
+        };
+        return new CliEnrollmentTlsHandler(_server!, identity);
+    }
+
+    private sealed class CliEnrollmentTlsHandler(TestServer server, X509Certificate2 certificate) : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            Xunit.Assert.False(request.Headers.Contains("X-Client-Cert"));
+            Xunit.Assert.True(certificate.HasPrivateKey);
+            var context = await server.SendAsync(async context =>
+            {
+                context.Connection.ClientCertificate = certificate;
+                context.Request.Scheme = "https";
+                context.Request.Method = request.Method.Method;
+                context.Request.Path = request.RequestUri!.AbsolutePath;
+                foreach (var header in request.Headers)
+                {
+                    context.Request.Headers[header.Key] = header.Value.ToArray();
+                }
+
+                if (request.Content != null)
+                {
+                    context.Request.Body = await request.Content.ReadAsStreamAsync(cancellationToken);
+                    foreach (var header in request.Content.Headers)
+                    {
+                        context.Request.Headers[header.Key] = header.Value.ToArray();
+                    }
+                }
+            }, cancellationToken);
+            var content = new StreamContent(context.Response.Body);
+            var response = new HttpResponseMessage((System.Net.HttpStatusCode)context.Response.StatusCode)
+                { Content = content, RequestMessage = request };
+            foreach (var header in context.Response.Headers)
+            {
+                if (!response.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()))
+                {
+                    content.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
+                }
+            }
+
+            return response;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                certificate.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+    }
 
     [Given("an EST server")]
     public async Task GivenAnEstServer()
@@ -63,4 +132,3 @@ public partial class OpenCertServerCliStepDefinitions
         GC.SuppressFinalize(this);
     }
 }
-

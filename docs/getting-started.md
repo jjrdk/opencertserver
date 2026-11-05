@@ -398,7 +398,6 @@ for PEM and environment configuration and the distinction from `/cacerts` public
 ```csharp
 app.UseHttpsRedirection()
     .UseForwardedHeaders()
-    .UseCertificateForwarding()
     .UseRouting()
     .UseAuthentication()      // must run before any UseEndpoints-based Use…Server()
     .UseAuthorization()
@@ -413,8 +412,8 @@ app.UseHttpsRedirection()
 > carry authorization metadata. If `UseAuthentication()`/`UseAuthorization()` have not run by then,
 > requests fail with `InvalidOperationException: Endpoint … contains authorization metadata, but a
 > middleware was not found that supports authorization` (HTTP 500). Always place
-> `UseRouting()`, `UseAuthentication()` and `UseAuthorization()` (plus `UseCertificateForwarding()`
-> for mTLS) **before** the first `Use…Server()` call, and never put endpoint-executing middleware
+> `UseRouting()`, `UseAuthentication()` and `UseAuthorization()`
+> **before** the first `Use…Server()` call, and never put endpoint-executing middleware
 > ahead of them. When composing your own pipeline, you can alternatively call
 > `MapEstServer()` / `MapCertificateAuthorityServer()` inside a single `app.UseEndpoints(...)` placed
 > after `UseAuthorization()`.
@@ -422,6 +421,24 @@ app.UseHttpsRedirection()
 > ACME endpoints are explicitly `AllowAnonymous()`: ACME clients authenticate with RFC 8555 JWS
 > signatures, not ASP.NET credentials, so they remain reachable even if you configure a
 > `FallbackPolicy` requiring authenticated users.
+
+**Client certificate transport.** Direct connections use mTLS, not certificate headers.
+Configure Kestrel to request client certificates (`ClientCertificateMode.AllowCertificate`);
+the certificate authentication handler validates the certificate after the TLS handshake
+proves possession of its private key. `UseEstServer()` does not enable certificate forwarding.
+`EstClient.ReEnroll(key, certificate)` uses the certificate's private key for mTLS; when
+the certificate is public-only, `key` must match it. To renew with a new key, supply the
+old certificate with its old private key attached and pass the new key as `key`.
+
+For a TLS-terminating proxy, explicitly register
+`services.AddTrustedCertificateForwarding("X-Client-Cert", options =>
+options.KnownProxies.Add(IPAddress.Parse("192.0.2.10")))` and call
+`app.UseTrustedCertificateForwarding()` **before** `UseForwardedHeaders()` and authentication.
+Only use this when the proxy verifies mTLS and strips and replaces the header on every request.
+Never add an unconditional `UseCertificateForwarding()`: certificates are public data,
+and a header alone does not prove private-key possession.
+See [trusted proxy configuration](documentation.md#trusted-client-certificate-forwarding) for the
+standalone host's opt-in settings.
 
 **Endpoint summary**
 

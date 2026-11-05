@@ -1,6 +1,7 @@
 namespace OpenCertServer.Est.Tests.Steps;
 
 using System.Net;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication.Certificate;
@@ -88,6 +89,19 @@ public sealed class ReEnrollmentProfileSteps
         var issued = Assert.IsType<SignCertificateResponse.Success>(
             await issuingAuthority.SignCertificateRequest(Request(), source == "default" ? null : source));
         _original = issued.Certificate;
+        if (records is "expired" or "not yet valid")
+        {
+            using var issuedCertificate = _original;
+            var profile = await _profiles.GetProfile(source);
+            var now = DateTimeOffset.UtcNow;
+            var notBefore = records == "expired" ? now.AddDays(-2) : now.AddDays(1);
+            var notAfter = records == "expired" ? now.AddDays(-1) : now.AddDays(2);
+            _original = Request().Create(profile.CertificateChain[0].SubjectName,
+                X509SignatureGenerator.CreateForRSA((RSA)profile.PrivateKey, RSASignaturePadding.Pkcs1),
+                notBefore, notAfter, RandomNumberGenerator.GetBytes(16));
+            await _store.AddCertificate(_original, profile.Name);
+        }
+
         if (records == "imported")
         {
             await _store.AddCertificate(_original);
@@ -125,7 +139,11 @@ public sealed class ReEnrollmentProfileSteps
         else
         {
             var result = await authority.SignCertificateRequest(
-                Request(), target == "default" ? null : target, reenrollingFrom: _original);
+                Request(), target == "default" ? null : target,
+                requestor: records is "expired" or "not yet valid"
+                    ? new ClaimsIdentity([new Claim(ClaimTypes.Name, "test")], "JWT")
+                    : null,
+                reenrollingFrom: _original);
             _status = result is SignCertificateResponse.Success ? HttpStatusCode.OK : HttpStatusCode.BadRequest;
             _body = result is SignCertificateResponse.Error error ? string.Join("\n", error.Errors) : "";
         }
@@ -137,7 +155,12 @@ public sealed class ReEnrollmentProfileSteps
         Assert.Equal(outcome == "accepted" ? HttpStatusCode.OK : HttpStatusCode.BadRequest, _status);
         if (outcome != "accepted")
         {
-            Assert.Contains(outcome == "revoked" ? "revoked" : "issuing profile", _body);
+            Assert.Contains(outcome switch
+            {
+                "revoked" => "revoked",
+                "invalid validity" => "validity period",
+                _ => "issuing profile"
+            }, _body);
             Assert.Equal(_inventoryCount, await _store.GetInventory().CountAsync());
             var (_, status, _) = await _store.GetCertificateStatus(
                 CertId.Create(_original, HashAlgorithmName.SHA256));

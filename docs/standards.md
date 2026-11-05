@@ -48,7 +48,7 @@ the one OpenCertServer's `est-enroll` CLI and `EstClient` wrap.
 | `POST /.well-known/est/simpleenroll` | §4.2 | Accepts PEM/DER PKCS#10; returns leaf+chain in `application/pkix-cert` or `application/pem-certificate-chain` via `Accept`. |
 | HTTP Basic authentication | §3.2.3 | Opt-in (`AddEstBasicAuthentication`): a user name and password over TLS, next to certificates and tokens. Off until users are configured; the identity is the user name; passwords are held as PBKDF2-SHA256 hashes. Tested in [EstBasicAuthentication.feature](../tests/opencertserver.est.server.tests/Features/EstBasicAuthentication.feature). |
 | Explicit client trust anchors | §3.3.2 | `CaProfile.TrustAnchors` and `AdditionalChainCertificates` scope client authentication to the selected profile. `IEstTrustAnchorProvider` adds only server-wide trust. Intermediates alone never establish trust; external anchors are not accepted on non-EST endpoints. |
-| `POST /.well-known/est/simplereenroll` | §4.2.3 | Re-enrolls using the current cert (mTLS) or a JWT. |
+| `POST /.well-known/est/simplereenroll` | §4.2.3 | Requires the current certificate over mTLS (or explicit trusted-proxy forwarding), plus an accepted authentication scheme. The CA rejects expired and not-yet-valid renewal certificates independently of the scheme. |
 | `POST /.well-known/est/serverkeygen` | §4.4 | Server generates the key on the client's behalf; returns a `multipart/mixed` bundle with the private key, optionally encrypted (see below). |
 | `/{profile}/…` | §3.2.2 | Per-profile variants of the above let one server act as multiple logical CAs. |
 | `Content-Transfer-Encoding` / whitespace | [RFC 8951](#rst-8951--est-clarifications) §3.2/§3.3 | Tolerated, per the EST clarifications. |
@@ -86,6 +86,9 @@ full RFC 7030 conformance: `/cacerts`, `csrattrs`, `serverkeygen`, `simpleenroll
 JWT), `Accept` negotiation, and RFC 9908 `CsrAttributes` responses.
 * [EstEnrollment.feature](../tests/opencertserver.certserver.tests/Features/EstEnrollment.feature) —
 client-side enrollment against a live EST server (drives `EstClient.Enroll`).
+* [EstClientTls.feature](../tests/opencertserver.est.server.tests/Features/EstClientTls.feature) —
+real mTLS with the default EST client transport, including anonymous-to-certificate transitions
+and renewal-key rotation without certificate headers.
 * [EstServer.feature](../tests/opencertserver.est.server.tests/Features/EstServer.feature) —
 endpoint-level server tests, including acceptance of a configured external client CA and refusal
 when that CA is not configured; profile/default-profile isolation, server-wide client trust,
@@ -96,6 +99,14 @@ re-enrollment stays within its recorded issuing profile even when profiles share
 or identical permissions. Covers named/default EST routes, direct CA calls, revoked certificates,
 missing/imported provenance, and serial-number collisions. Missing provenance fails closed;
 see [re-enrollment upgrade and custom-store requirements](documentation.md#post-well-knownestsimplereenroll).
+* [TrustedCertificateForwarding.feature](../tests/opencertserver.certserver.tests/Features/TrustedCertificateForwarding.feature) —
+genuine public certificates in headers do not authenticate direct EST requests; explicit
+trusted-proxy and CIDR forwarding, IPv4-mapped addresses, forged forwarded-address rejection,
+and fail-closed startup configuration.
+* [IQ CertificateServerSecurity.feature](../tests/opencertserver.iq.tests/Features/CertificateServerSecurity.feature) —
+HTTP-11 presents a genuine issued client certificate in a header without a TLS client key:
+`simpleenroll`, `simplereenroll` and `/ca/csr` refuse impersonation, and the victim's certificate
+remains unrevoked.
 * [IQ EstEnrollment.feature](../tests/opencertserver.iq.tests/Features/EstEnrollment.feature) —
 all six Cisco `estclient` scenarios against the deployed container: published CA verification,
 signed-JWT enrollment, same-key mTLS re-enrollment, retrieval and independent inspection of a

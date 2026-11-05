@@ -382,7 +382,11 @@ public partial class CertificateServerFeatures
         var cert = await EnsureIssuedCertificateAsync().ConfigureAwait(false);
         var currentKey = _key;
         Assert.NotNull(currentKey);
-        var (_, renewed) = await _estClient.ReEnroll(currentKey, cert).ConfigureAwait(false);
+        using var identity = cert.CopyWithPrivateKey(currentKey);
+        using var client = new EstClient(new Uri("https://localhost"), null, profileName: "rsa",
+            messageHandler: new EnrollmentTlsHandler(_server, identity));
+        var (error, renewed) = await client.ReEnroll(currentKey, identity).ConfigureAwait(false);
+        Assert.Null(error);
         ConformanceState.CurrentCertificate = cert;
         ConformanceState.ReenrolledCertificates = renewed;
     }
@@ -395,8 +399,12 @@ public partial class CertificateServerFeatures
         var cert = ConformanceState.ReenrolledCertificates is { Count: > 0 } renewedBefore
             ? renewedBefore[0]
             : await EnsureIssuedCertificateAsync().ConfigureAwait(false);
+        using var identity = cert.CopyWithPrivateKey(_key);
+        using var client = new EstClient(new Uri("https://localhost"), null, profileName: "rsa",
+            messageHandler: new EnrollmentTlsHandler(_server, identity));
         using var replacement = RSA.Create();
-        var (_, renewed) = await _estClient.ReEnroll(replacement, cert).ConfigureAwait(false);
+        var (error, renewed) = await client.ReEnroll(replacement, identity).ConfigureAwait(false);
+        Assert.Null(error);
         ConformanceState.CurrentCertificate = cert;
         ConformanceState.ReenrolledCertificates = renewed;
         ConformanceState.GeneratedPublicKey = replacement.ExportSubjectPublicKeyInfo();
@@ -1785,7 +1793,10 @@ public partial class CertificateServerFeatures
         string? accept = null,
         Action<HttpRequestMessage>? configureMessage = null)
     {
-        using var client = _server.CreateClient();
+        using var client = new HttpClient(new EnrollmentTlsHandler(_server, clientCertificate))
+        {
+            BaseAddress = new Uri("https://localhost")
+        };
         var message = new HttpRequestMessage(method, path) { Content = content };
         if (authHeader != null)
         {
@@ -1795,12 +1806,6 @@ public partial class CertificateServerFeatures
         if (accept != null)
         {
             message.Headers.Accept.Add(MediaTypeWithQualityHeaderValue.Parse(accept));
-        }
-
-        if (clientCertificate != null)
-        {
-            message.Headers.Add("X-Client-Cert",
-                Convert.ToBase64String(clientCertificate.Export(X509ContentType.Cert)));
         }
 
         configureMessage?.Invoke(message);
@@ -1947,8 +1952,9 @@ public partial class CertificateServerFeatures
             messageHandler: handler);
         if (includeDifferentKey)
         {
+            using var identity = cert.CopyWithPrivateKey(_key);
             using var replacement = RSA.Create();
-            await client.ReEnroll(replacement, cert).ConfigureAwait(false);
+            await client.ReEnroll(replacement, identity).ConfigureAwait(false);
         }
         else
         {

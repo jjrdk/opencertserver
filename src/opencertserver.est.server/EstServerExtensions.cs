@@ -105,6 +105,7 @@ public static class EstServerExtensions
     {
         /// <summary>
         /// Registers the EST server middleware.
+        /// Client certificates come from TLS; proxy certificate forwarding requires explicit host configuration.
         /// </summary>
         /// <param name="enrollPolicy">The <see cref="AuthorizationPolicy"/> to apply to enrollment requests.</param>
         /// <param name="reEnrollPolicy">The <see cref="AuthorizationPolicy"/> to apply to re-enrollment requests.</param>
@@ -117,8 +118,7 @@ public static class EstServerExtensions
             AuthorizationPolicy? csrAttrsPolicy = null,
             AuthorizationPolicy? serverKeyGenPolicy = null)
         {
-            return app.UseCertificateForwarding()
-                .UseRouting()
+            return app.UseRouting()
                 .UseAuthentication()
                 .UseAuthorization()
                 .UseEndpoints(e =>

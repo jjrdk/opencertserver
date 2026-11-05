@@ -30,6 +30,8 @@ public sealed class EstClient : IDisposable
     private HttpMessageHandler _messageHandler;
     private HttpClient _messageClient;
     private readonly AsyncLocal<HttpRequestMessage?> _activeRequest = new();
+    private readonly SemaphoreSlim _transportLock = new(1, 1);
+    private X509Certificate2? _transportCertificate;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EstClient"/> class.
@@ -37,7 +39,9 @@ public sealed class EstClient : IDisposable
     /// <param name="estHost">The <see cref="Uri"/> of the EST server.</param>
     /// <param name="options">The client options.</param>
     /// <param name="profileName">The optional profile name to use for the EST server.</param>
-    /// <param name="messageHandler">The optional <see cref="HttpMessageHandler"/> for handling server requests.</param>
+    /// <param name="messageHandler">The optional <see cref="HttpMessageHandler"/> for handling server requests.
+    /// Externally supplied transports must be preconfigured for TLS client authentication and connection isolation;
+    /// the client never forwards a certificate in an HTTP header.</param>
     /// <exception cref="ArgumentException">Thrown if the <see cref="Uri"/> scheme of the server is not HTTPS.</exception>
     public EstClient(
         Uri estHost,
@@ -99,7 +103,8 @@ public sealed class EstClient : IDisposable
     /// <param name="key">The <see cref="AsymmetricAlgorithm"/> to enroll.</param>
     /// <param name="usageFlags">The certificate <see cref="X509KeyUsageFlags"/>.</param>
     /// <param name="authenticationHeader">The authentication value to pass to the server.</param>
-    /// <param name="certificate">The <see cref="X509Certificate2"/> to use if enrolling or authenticating with certificate.</param>
+    /// <param name="certificate">The <see cref="X509Certificate2"/> with its private key to present for TLS
+    /// client authentication. Omit it for enrollment without a TLS client identity.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use for the async operation.</param>
     /// <typeparam name="TAlgorithm">The <see cref="Type"/> of asymmetric key algorithm. The algorithm must be either <see cref="RSA"/> or <see cref="ECDsa"/>.</typeparam>
     /// <returns></returns>
@@ -118,13 +123,15 @@ public sealed class EstClient : IDisposable
     /// <summary>
     /// Re-enrolls, i.e., renews, a certificate from the EST server.
     /// </summary>
-    /// <param name="key">The <see cref="AsymmetricAlgorithm"/> key to sign the request.</param>
-    /// <param name="certificate">The <see cref="X509Certificate2"/> to re-enroll.</param>
+    /// <param name="key">The <see cref="AsymmetricAlgorithm"/> renewal key to sign the request.</param>
+    /// <param name="certificate">The <see cref="X509Certificate2"/> to re-enroll and authenticate over TLS.
+    /// Its existing private key is used for authentication, allowing a different renewal key.
+    /// For a public-only certificate, <paramref name="key"/> must match its public key.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use for the async operation.</param>
     /// <typeparam name="TAlgorithm">The <see cref="Type"/> of asymmetric key algorithm. The algorithm must be either <see cref="RSA"/> or <see cref="ECDsa"/>.</typeparam>
     /// <returns>An updated <see cref="X509Certificate2Collection"/> with the renewed certificate and issuer chain.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the re-enroll request to the server fails.</exception>
-    public Task<(string?, X509Certificate2Collection?)> ReEnroll<TAlgorithm>(
+    public async Task<(string?, X509Certificate2Collection?)> ReEnroll<TAlgorithm>(
         TAlgorithm key,
         X509Certificate2 certificate,
         CancellationToken cancellationToken = default) where TAlgorithm : AsymmetricAlgorithm
@@ -136,7 +143,14 @@ public sealed class EstClient : IDisposable
                 .Aggregate(X509KeyUsageFlags.None, (flags, ext) => flags | ext.KeyUsages));
         CopyReEnrollmentIdentityExtensions(certificate, certRequest);
 
-        return RequestReEnrollCerts(certificate, certRequest, cancellationToken);
+        using var attachedCertificate = certificate.HasPrivateKey ? null : key switch
+        {
+            RSA rsa => certificate.CopyWithPrivateKey(rsa),
+            ECDsa ecdsa => certificate.CopyWithPrivateKey(ecdsa),
+            _ => throw new NotSupportedException($"{typeof(TAlgorithm).FullName} is not supported")
+        };
+        return await RequestReEnrollCerts(attachedCertificate ?? certificate, certRequest, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async Task<X509Certificate2Collection> ServerCertificates(CancellationToken cancellationToken = default)
@@ -203,7 +217,7 @@ public sealed class EstClient : IDisposable
         request.Headers.Authorization = authenticationHeader;
         EnsureBootstrapRequestAllowed(request, authenticationHeader, clientCertificate: null);
         var response =
-            await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseHeadersRead,
+            await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseContentRead,
                     CancellationToken.None)
                 .ConfigureAwait(false);
         if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound)
@@ -539,25 +553,16 @@ public sealed class EstClient : IDisposable
             Content = content
         };
 
-        request.Headers.Add("X-Client-Cert", Convert.ToBase64String(certificate.Export(X509ContentType.Cert)));
         EnsureBootstrapRequestAllowed(request, authenticationHeader: null, clientCertificate: certificate);
-        if (_messageHandler is HttpClientHandler clientHandler)
-        {
-            clientHandler.ClientCertificates.Clear();
-            clientHandler.ClientCertificates.Add(certificate);
-        }
 
         var response =
-            await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken)
+            await SendWithRedirectHandlingAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken,
+                    certificate)
                 .ConfigureAwait(false);
-        if (_messageHandler is HttpClientHandler ch)
-        {
-            ch.ClientCertificates.Clear();
-        }
 
-        if (response is { IsSuccessStatusCode: false, Content.Headers.ContentType: not null })
+        if (!response.IsSuccessStatusCode)
         {
-            if (response.Content.Headers.ContentType.MediaType?.Equals("text/plain",
+            if (response.Content.Headers.ContentType?.MediaType?.Equals("text/plain",
                 StringComparison.OrdinalIgnoreCase) == true)
             {
                 return (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false), null);
@@ -611,21 +616,9 @@ public sealed class EstClient : IDisposable
 
         EnsureBootstrapRequestAllowed(requestMessage, authenticationHeader, certificate);
 
-        if (_messageHandler is HttpClientHandler clientHandler && certificate != null)
-        {
-            clientHandler.ClientCertificateOptions = ClientCertificateOption.Manual;
-            clientHandler.ClientCertificates.Clear();
-            clientHandler.ClientCertificates.Add(certificate);
-        }
-
         var response = await SendWithRedirectHandlingAsync(requestMessage, HttpCompletionOption.ResponseContentRead,
-                cancellationToken)
+                cancellationToken, certificate)
             .ConfigureAwait(false);
-
-        if (_messageHandler is HttpClientHandler ch)
-        {
-            ch.ClientCertificates.Clear();
-        }
 
         if (!response.IsSuccessStatusCode)
         {
@@ -653,6 +646,49 @@ public sealed class EstClient : IDisposable
     }
 
     private async Task<HttpResponseMessage> SendWithRedirectHandlingAsync(
+        HttpRequestMessage request,
+        HttpCompletionOption completionOption,
+        CancellationToken cancellationToken,
+        X509Certificate2? clientCertificate = null)
+    {
+        if (clientCertificate is { HasPrivateKey: false })
+        {
+            throw new ArgumentException("TLS client authentication requires a certificate with a private key.",
+                nameof(clientCertificate));
+        }
+
+        await _transportLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_ownsMessageHandler && !ReferenceEquals(_transportCertificate, clientCertificate))
+            {
+                _transportCertificate = clientCertificate;
+                ResetTransportSession();
+            }
+
+            return await SendRedirectsAsync(request, completionOption, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _activeRequest.Value = null;
+            try
+            {
+                if (_ownsMessageHandler && _transportCertificate != null)
+                {
+                    // A re-enrollment key attachment can be disposed as soon as this request returns.
+                    // Retire its TLS pool before that happens, including cancellation and failure paths.
+                    _transportCertificate = null;
+                    ResetTransportSession();
+                }
+            }
+            finally
+            {
+                _transportLock.Release();
+            }
+        }
+    }
+
+    private async Task<HttpResponseMessage> SendRedirectsAsync(
         HttpRequestMessage request,
         HttpCompletionOption completionOption,
         CancellationToken cancellationToken)
@@ -781,7 +817,16 @@ public sealed class EstClient : IDisposable
         if (_messageHandler is SocketsHttpHandler)
         {
             _messageHandler.Dispose();
-            _messageHandler = new SocketsHttpHandler();
+            _messageHandler = new SocketsHttpHandler
+            {
+                SslOptions =
+                {
+                    ClientCertificates = _transportCertificate == null
+                        ? null
+                        : new X509CertificateCollection { _transportCertificate },
+                    AllowTlsResume = false
+                }
+            };
         }
         else if (_messageHandler is HttpClientHandler)
         {
