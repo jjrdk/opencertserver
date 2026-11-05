@@ -16,6 +16,7 @@ Start elsewhere:
 | See the metrics/traces the server emits | [OpenTelemetry metrics & traces](../OpenTelemetryMetricsTraces.md) |
 | Integrate the CA into YARP | [opencertserver.acme.yarp/README.md](../src/opencertserver.acme.yarp/README.md) |
 | Feed the CA to an AI agent | [opencertserver.mcp/README.md](../src/opencertserver.mcp/README.md) |
+| Issue certificates to Intune-managed devices | [SCEP with Intune](#scep-with-intune), [opencertserver.contrib.intune/README.md](../src/opencertserver.contrib.intune/README.md) |
 | Wire device attestation | [opencertserver.attestation/README.md](../src/opencertserver.attestation/README.md) |
 
 This page keeps the concrete HTTP surface — methods, paths, content types, and authentication — so
@@ -315,6 +316,67 @@ lists `EstBasicAuthenticationDefaults.AuthenticationScheme` in the policies it p
 
 Clients: `opencert est-enroll --user name:password …`, or any EST client that sends
 `Authorization: Basic` - strongSwan's `pki --est --userpass name:password`, for example.
+
+## SCEP endpoints
+
+The SCEP server (RFC 8894) is mapped by `MapScepServer()` under `/scep`. Every operation is one
+request to the same path with `?operation=`; SCEP clients authenticate with the challenge password
+inside the request, not over HTTP, so the endpoint allows anonymous access. The reasoning, the
+renewal rules and what Windows does differently are in
+[Implemented standards → SCEP](standards.md#scep--rfc-8894).
+
+| Method and path | Operation |
+|---|---|
+| `GET /scep?operation=GetCACaps` | Capabilities, `text/plain`. |
+| `GET /scep?operation=GetCACert` | RA certificate and the profile's published chain, `application/x-x509-ca-ra-cert`. |
+| `POST /scep?operation=PKIOperation` (or `GET …&message=`) | `PKCSReq` or `RenewalReq` in `application/x-pki-message`; the reply is a `CertRep` of the same type. |
+| `/scep/{profile}` | The same for a named CA profile; `/scep` is the default profile. |
+| `/scep/pkiclient.exe`, `/scep/{profile}/pkiclient.exe` | The same - Windows appends `/pkiclient.exe` to the configured URL. |
+
+Malformed CMS messages, requests with an invalid `senderNonce`, unsupported message types, and
+requests whose decrypted payload is not a certificate request receive HTTP 400. A valid `CertPoll`
+request (message type `20`) receives a signed `FAILURE` `CertRep` with `failInfo=badRequest`;
+pending requests are not stored.
+
+`PKIOperation` issues nothing until a challenge validator is configured; `GetCACaps` and
+`GetCACert` return public information only.
+
+### SCEP configuration (certserver)
+
+| Key or argument | Meaning |
+|---|---|
+| `Scep:Challenge` | A shared challenge password for every request (`Scep__Challenge` in the environment - not a command-line argument, where it would show in the process list). Without it, and without `Scep:Intune`, nothing is issued. |
+| `Scep:DefaultProfile` | The CA profile for `/scep` and `/scep/pkiclient.exe`. Default: the CA's default profile. |
+| `--scep-ra <pem>` / `--scep-ra-key <pem>` | The RA certificate and its **RSA** private key. Without them a self-signed RA is created at start-up and changes with every restart; clients fetch `GetCACert` before each enrollment and tolerate that, but a deployment that pins the RA configures one. |
+
+A host that embeds the server calls `AddScepServer(new ScepServerOptions { RaCertificate = … },
+validator)` and `MapScepServer()`. `ScepServerOptions.TransactionIdWindow` (default 24 hours) is how
+long an accepted request (transaction ID and senderNonce) is remembered for replay protection;
+`MaxRememberedRequests` (default 100,000) bounds that store - only requests that passed their
+checks are remembered, and when it is full a new request is refused.
+
+### SCEP with Intune
+
+With a `Scep:Intune` section, `certserver` validates every request with Intune instead of a shared
+secret (`opencertserver.contrib.intune`) and maps the revocation sync:
+
+| Key | Meaning |
+|---|---|
+| `Scep:Intune:TenantId` | The Entra tenant (GUID or domain). |
+| `Scep:Intune:ClientId` | An app registration with the Intune application permission `scep_challenge_provider` and, for the sync, the Graph application permissions `User.Read.All`, `Device.Read.All` and `DeviceManagementManagedDevices.Read.All` - all with admin consent. |
+| `Scep:Intune:ClientCertificateFile` + `ClientCertificateKeyFile` | The app's certificate credential (PEM, RSA key); only the public half goes to Entra. Preferred over a secret. |
+| `Scep:Intune:ClientSecret` / `ClientSecretFile` | Alternatively the secret, or a file whose first line holds it. |
+| `Scep:Intune:CallerInfo` | Shown in Intune's logs. Default `OpenCertServer`. |
+| `Scep:Intune:LoginBase`, `GraphBase`, `IntuneResource` | Override for national clouds. |
+| `Scep:Intune:ValidationEndpoint` | A fixed address of the validation service instead of Graph discovery. |
+| `Scep:Intune:Timeout` | Per request to Intune or Graph. Default 30 seconds. |
+| `Scep:Intune:MaxRevocationsPerSync` | A sync that would revoke more aborts. Default 25. |
+| `Scep:Intune:SyncProfiles` | The CA profiles Intune issues through; the sync judges only certificates the store recorded as issued from one of them. Array (`SyncProfiles__0`) or comma-separated. Empty: the sync checks nothing. |
+
+`POST /scep/intune/sync?dryRun=true|false` runs the revocation sync and returns its report (what
+was revoked and why, what could not be checked); 409 while a run is in progress. It requires the
+policy `scep_intune_sync`, which `certserver` grants to the `ca_admin` role over the same
+authentication schemes as the CA endpoints.
 
 ## ACME endpoints
 

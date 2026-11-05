@@ -16,7 +16,7 @@ When adding or changing features, update the relevant docs in the same PR.
 
 ### Big Picture Architecture
 
-- **OpenCertServer** is a modular CA platform supporting **EST (RFC 7030)**, **ACME (RFC 8555)**, device attestation (`device-attest-01`), CAA (RFC 8659/8657), OCSP (RFC 6960), and CRL (RFC 5280).
+- **OpenCertServer** is a modular CA platform supporting **EST (RFC 7030)**, **ACME (RFC 8555)**, **SCEP (RFC 8894)**, device attestation (`device-attest-01`), CAA (RFC 8659/8657), OCSP (RFC 6960), and CRL (RFC 5280).
 - Major components:
 
 | Project | Role |
@@ -31,6 +31,8 @@ When adding or changing features, update the relevant docs in the same PR.
 | `opencertserver.ca.utils` | Shared X.509/PKI helpers, CSR templates, OCSP/CRL builders, print helpers. |
 | `opencertserver.est.server` | EST server: `cacerts`, `csrattrs` (RFC 9908), `simpleenroll`, `simplereenroll`, `serverkeygen`. |
 | `opencertserver.est.client` | EST client; enrollment, re-enrollment, and bootstrap trust negotiation. |
+| `opencertserver.scep.server` | SCEP server (RFC 8894): `GetCACaps`, `GetCACert`, `PKIOperation` (`PKCSReq`, `RenewalReq`); the challenge goes through `IScepChallengeValidator`. Knows nothing about Intune. |
+| `opencertserver.contrib.intune` | Optional Intune integration: `IntuneChallengeValidator` for the SCEP challenge, `IntuneRevocationSync` behind `POST /scep/intune/sync`. Depends on `scep.server` only for the validator contract. |
 | `opencertserver.attestation` | Attestation layer: AMD SEV-SNP, Intel SGX, Apple Secure Element behind `IAttestationTrustProvider`. |
 | `OpenCertServer.Amd.Native` / `OpenCertServer.Sgx.Native` | Platform-specific native attestation runtimes. |
 | `opencertserver.mcp` | MCP (Model Context Protocol) server exposing CA operations to AI agents over stdio. |
@@ -43,6 +45,7 @@ When adding or changing features, update the relevant docs in the same PR.
 
 ### Service Boundaries & Data Flows
 
+- SCEP is mapped with `app.MapScepServer()` next to them (`/scep`, `/scep/{profile}`, and the `/pkiclient.exe` forms Windows uses); `certserver` maps `MapIntuneSync()` only when `Scep:Intune` is configured.
 - EST, ACME, and CA endpoints are exposed on the same host via `.NET minimal hosting` — `WebApplication.CreateBuilder` → `app.UseHttpsRedirection().UseAcmeServer().UseEstServer().UseCertificateAuthorityServer()`. See `docs/getting-started.md` §6 for a minimal wiring example.
 - Authentication uses JWT bearer or mTLS (client certificate); `cacerts` and `csrattrs` are anonymous by default.
 - CA logic is centralized in `opencertserver.ca` and consumed by `ca.server` and `acme.server` via DI.

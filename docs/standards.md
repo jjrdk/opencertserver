@@ -21,6 +21,8 @@ feature, so you can verify it rather than take it on trust.
 | [RFC 7030](https://www.rfc-editor.org/rfc/rfc7030) | **EST** (Enrollment over Secure Transport) | `opencertserver.est.server`, `opencertserver.est.client` | Enroll/renew/peek certificates over TLS with mTLS or a JWT |
 | [RFC 8951](https://www.rfc-editor.org/rfc/rfc8951) | EST clarifications | `opencertserver.est.server` | Whitespace + `Content-Transfer-Encoding` tolerance |
 | [RFC 9908](https://www.rfc-editor.org/rfc/rfc9908) | `CsrAttributes` response | `opencertserver.est.server` | Server hands back a CSR template the client must fill in |
+| [RFC 8894](https://www.rfc-editor.org/rfc/rfc8894) | **SCEP** (Simple Certificate Enrolment Protocol) | `opencertserver.scep.server` | Enroll/renew with a challenge password; the protocol Intune and MDM systems speak |
+| Intune SCEP challenge | Intune challenge validation and revocation sync | `opencertserver.contrib.intune` (optional) | Intune vouches for each request; certificates of disabled users and retired devices are revoked |
 | [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555) | **ACME** (Automated Certificate Management Environment) | `opencertserver.acme.server`, `CertesSlim`, `opencertserver.acme.aspnetclient` | Domain-validated issuance via `http-01` / `dns-01` |
 | [RFC 8659](https://www.rfc-editor.org/rfc/rfc8659) | CAA | `opencertserver.acme.server` | Domain owner's DNS "which CAs may issue for me?" list |
 | [RFC 8657](https://www.rfc-editor.org/rfc/rfc8657) | CAA `accounturi` / `validationmethods` | `opencertserver.acme.server` | Which ACME account / challenge types may bind a domain |
@@ -124,6 +126,122 @@ PKCS#10 is constrained before it leaves the device. OpenCertServer returns this 
 `CertificateSigningRequestTemplateResult.cs`.
 The standalone host can publish DER CsrAttrs using `Est:CsrAttributesFile`; without it,
 `/csrattrs` returns HTTP 204. See the [configuration reference](documentation.md#get-well-knownestcsrattrs).
+
+### SCEP — [RFC 8894](https://www.rfc-editor.org/rfc/rfc8894)
+
+**What it is.** The enrollment protocol of device management. A client that has no certificate
+proves itself with a challenge password, encrypts its PKCS#10 request to the CA's registration
+authority (RA) and receives the certificate in a signed, encrypted reply. Windows, macOS, iOS and
+Android all ship a SCEP client, and Microsoft Intune can deliver certificates to managed devices in
+exactly two ways: SCEP against a third-party CA, or PKCS through its own connector. For an Intune
+deployment without Microsoft's PKI, the CA has to speak SCEP.
+
+**What OpenCertServer implements:**
+
+| Operation / message | RFC section | Notes |
+|---|---|---|
+| `GET ?operation=GetCACaps` | §3.5.2 | `POSTPKIOperation`, `SHA-256`, `AES`, `SCEPStandard`, `Renewal`. |
+| `GET ?operation=GetCACert` | §4.2 | `application/x-x509-ca-ra-cert`: the RA certificate first, then the profile's published chain - including a root above an issuing CA, which Windows needs to match the trusted root of its Intune profile. |
+| `GET`/`POST ?operation=PKIOperation` | §4.3 | `PKCSReq` (initial enrollment) and `RenewalReq` (renewal); `CertRep` with `SUCCESS` or `FAILURE` and `failInfo`. |
+| Malformed request | §3.2.1 | Malformed CMS, a non-16-byte `senderNonce`, an undefined message type, or a decrypted payload that is not a certificate request is refused with HTTP 400. A valid `CertPoll` is refused in a signed `FAILURE` `CertRep` with `failInfo=badRequest`; pending requests are not stored. |
+| Message protection | §3.1, §3.2.1 | Requests are enveloped to the RA (RSA key transport) and signed by the requester. Only AES-128/192/256-CBC is accepted, as the capabilities promise; a request encrypted with anything else (3DES, DES, RC2) is not decrypted and is refused in a signed `FAILURE` `CertRep` with `failInfo=badAlg`. The reply is encrypted with the algorithm of the request and signed with SHA-256. A `senderNonce` must be 16 bytes. |
+| Challenge password | §2.2 | Read from the CSR and passed to an `IScepChallengeValidator`: a shared secret by default, Intune with `opencertserver.contrib.intune`. Without a validator, `PKIOperation` issues nothing. |
+| Replay protection | §3.2.1.5 | An accepted request is remembered for 24 hours by transaction ID and `senderNonce`; the same message again is refused. A new request under an earlier transaction ID - clients derive it from the key, so a renewal with the same key or a retry carries it - has a new nonce and is accepted. Only requests that passed the challenge or the renewal check are remembered, at most `MaxRememberedRequests` (100,000); when full, a new request is refused rather than risk a replay. |
+| `/scep/{profile}` | — | One endpoint per CA profile; `/scep` is the default profile. |
+
+**Not implemented:** `CertPoll` / `PENDING` (manual approval), `GetCert`, `GetCRL` (the CRL is
+served by `ca.server`), and DES or MD5/SHA-1.
+
+**The RA.** SCEP defines the envelope for RSA key transport only, so the RA certificate carries an
+RSA key even when the CA profile is ECDSA. The CA still signs requests of either key algorithm
+(an RSA request against an ECDSA profile is issued by the ECDSA CA).
+
+**Renewal (`RenewalReq`, §3.3.1.2).** A renewal is signed with the certificate it replaces; that
+certificate is the proof and no challenge is needed. It must chain to the profile's CA, be valid,
+not be revoked, and name the same subject and the same subjectAltName as the request - as EST
+requires for `simplereenroll`. The CA core checks it again when it signs (issuer signature, the
+issuing profile as for EST re-enrollment, revocation), and supersedes the previous certificate once
+the new one is issued.
+
+**Windows and Intune - what the device test showed.** Two points an operator should know:
+
+* *Windows appends `/pkiclient.exe`* to the SCEP server URL configured in Intune, as it does for
+  NDES. Both `/scep/pkiclient.exe` and `/scep/{profile}/pkiclient.exe` are mapped. Configure the URL
+  without a trailing slash, otherwise Windows asks for `//pkiclient.exe`.
+* *Windows does not renew with `RenewalReq`.* Intune hands the device a new challenge before the
+  certificate expires, and the device enrolls again with a `PKCSReq`. The previous certificate is
+  therefore **not superseded** and stays valid until it expires, so a device holds two valid
+  certificates for a while, and the CA does not know they belong together. (Whether Intune removes
+  the old certificate from the device was not confirmed in the test.) An operator who wants the old
+  certificate revoked at once has to do so outside the CA - for example by revoking the older
+  certificates that carry the same `IntuneDeviceId://` URI once the device has used the new one.
+  Seen on Windows 11 devices enrolled through Intune; `RenewalReq` is covered by the scenarios and
+  by other SCEP clients.
+
+**Where it lives.**
+Endpoints are mapped by `MapScepServer()` in
+[`src/opencertserver.scep.server/ScepServerExtensions.cs`](../src/opencertserver.scep.server/ScepServerExtensions.cs);
+the protocol is
+[`Handlers/ScepHandler.cs`](../src/opencertserver.scep.server/Handlers/ScepHandler.cs) and the
+CMS envelopes
+[`ScepMessageCodec.cs`](../src/opencertserver.scep.server/ScepMessageCodec.cs). Registration is
+`AddScepServer(ScepServerOptions, IScepChallengeValidator)`; the challenge contract is
+[`IScepChallengeValidator.cs`](../src/opencertserver.scep.server/IScepChallengeValidator.cs).
+
+**Tests that prove it.**
+* [ScepServer.feature](../tests/opencertserver.scep.server.tests/Features/ScepServer.feature) —
+capabilities, `GetCACert` with and without a root above the issuing CA, enrollment through POST and
+GET and through the `/pkiclient.exe` paths, wrong and missing challenge, a request encrypted to
+another key, the UPN carried into the certificate, a CA certificate refused, renewal with the
+previous certificate, a look-alike issuer, another subject or subjectAltName, a revoked certificate,
+renewal through another profile of the same CA key, renewal below a root that is only
+published, replay, a new request under an earlier transaction ID, a refused request not
+remembered, a full replay store, a malformed signed attribute, no validator, the reply
+algorithm, and the `senderNonce` length. The test client builds real SCEP messages with `SignedCms` and
+`EnvelopedCms`, so the server is exercised over HTTP the way a device would.
+* [IQ ScepEnrollment.feature](../tests/opencertserver.iq.tests/Features/ScepEnrollment.feature) —
+`sscep` (AES) against the deployed, hardened container: capabilities, the RA and CA bundle,
+enrollment with the challenge, a wrong challenge refused, the `/pkiclient.exe` path, triple DES
+refused with `badAlg`, and a new enrollment signed with the certificate the client holds;
+`openssl` verifies what it receives. `RenewalReq` is covered in-process, since sscep does not send
+one. See the [IQ README](../tests/opencertserver.iq.tests/README.md#scep-enrollment-scenarios).
+
+### Intune challenge validation and revocation sync (`opencertserver.contrib.intune`)
+
+**What it is.** Intune issues every managed device a one-time challenge and expects the CA to ask
+Intune whether a request is genuine. It also never tells the CA when a user is disabled or a device
+is retired. This optional package covers both, outside the SCEP core: the core knows nothing about
+Intune.
+
+**What it does.**
+
+| Part | Behaviour |
+|---|---|
+| `IntuneChallengeValidator` | Sends each `PKCSReq` (transaction ID and CSR) to Intune's SCEP validation service (`validateRequest`, discovered through Microsoft Graph) and lets the CA issue only when Intune agrees. Refused, unreachable or throttled (429) all mean *deny*. After issuing it sends `successNotification`; when the CA refuses after Intune agreed, `failureNotification`. A `RenewalReq` signed with the previous certificate passes without Intune. |
+| `IntuneRevocationSync` | Walks the certificates issued through the configured profiles (`SyncProfiles`, by the issuing profile the store recorded) and asks Graph about the user (UPN from the subjectAltName), the Intune managed device (`IntuneDeviceId://` URI) and the Entra device. What is gone or disabled is revoked (`cessationOfOperation`); certificates from other profiles are never judged. Graph unreachable, throttled or answering in an unexpected shape means *unknown*, and unknown is never revoked; a run that would revoke more than `MaxRevocationsPerSync` aborts. |
+| `POST /scep/intune/sync?dryRun=` | Runs the sync and returns the report; 409 while a run is in progress. Requires the authorization policy `scep_intune_sync`. It is an operation, not a scheduler - the caller decides how often. |
+| `IIntuneClient.GetManagedDeviceName` | The name of a managed device, for an inventory that lists certificates by device. |
+
+**Where it lives.**
+[`src/opencertserver.contrib.intune`](../src/opencertserver.contrib.intune/README.md) - configuration
+under `Scep:Intune`, see the [configuration reference](documentation.md#scep-with-intune).
+
+**Tests that prove it.**
+* [IntuneChallenge.feature](../tests/opencertserver.contrib.intune.tests/Features/IntuneChallenge.feature) —
+allowed, refused, unreachable, throttled, the validation service not discoverable, refused by
+the CA after Intune allowed, two requests under one transaction ID, no challenge, discovery and
+token reuse, renewal without Intune, certificate credential instead of a secret.
+* [IntuneRevocationSync.feature](../tests/opencertserver.contrib.intune.tests/Features/IntuneRevocationSync.feature) —
+nothing to do, disabled and deleted users, a retired Intune device, a disabled Entra device, Graph
+throttled, unreachable or answering without a value list (nothing revoked), a certificate from
+another profile, no sync profiles, dry run, the revocation limit, a second run while one is in
+progress, and the endpoint's policy.
+* [IntuneDeviceName.feature](../tests/opencertserver.contrib.intune.tests/Features/IntuneDeviceName.feature).
+
+All three run against an in-process fake of Entra, Graph and the validation service. What a fake
+cannot say about the real service was checked against a real tenant: Windows 11 devices enrolled
+and renewed through Intune, with `validateRequest` and `successNotification` accepted by Intune,
+and the sync running daily.
 
 ### ACME — [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555)
 

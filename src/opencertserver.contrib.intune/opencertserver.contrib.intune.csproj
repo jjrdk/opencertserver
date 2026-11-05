@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Contrib.Intune</RootNamespace>
+        <AssemblyName>opencertserver.contrib.intune</AssemblyName>
+        <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+        <Description>Intune challenge validation and revocation sync for the OpenCertServer SCEP server</Description>
+        <IsPackable>true</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
+        <ProjectReference Include="..\opencertserver.scep.server\opencertserver.scep.server.csproj" />
+    </ItemGroup>
+
+</Project>

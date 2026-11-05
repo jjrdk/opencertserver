@@ -37,6 +37,8 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Contrib.Intune;
+using Scep.Server;
 
 internal static class Program
 {
@@ -178,6 +180,7 @@ internal static class Program
         }
 
         services = services.AddEstTrustAnchors(options => ReadEstTrustAnchors(builder.Configuration, options));
+        services = await AddScep(services, args, builder.Configuration).ConfigureAwait(false);
 
         var a = Array.IndexOf(args, "--authority");
         var authority = a >= 0
@@ -219,7 +222,14 @@ internal static class Program
             .AddSingleton<IIssueCertificates, DefaultIssuer>()
             .ConfigureOptions<ConfigureJwtBearerOptions>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
-            .AddAuthorization()
+            .AddAuthorization(options => options.AddPolicy(
+                ContribIntuneExtensions.SyncPolicyName,
+                policy => policy
+                    .AddAuthenticationSchemes(
+                        JwtBearerDefaults.AuthenticationScheme,
+                        CertificateAuthenticationDefaults.AuthenticationScheme)
+                    .RequireAuthenticatedUser()
+                    .RequireRole(RevocationAuthorizationConstants.CaAdminRole)))
             .AddCertificateAuthorityAuthorization(policy => policy.AddAuthenticationSchemes(
                 JwtBearerDefaults.AuthenticationScheme,
                 CertificateAuthenticationDefaults.AuthenticationScheme))
@@ -333,6 +343,12 @@ internal static class Program
                 reEnrollPolicy: EstPolicy(),
                 serverKeyGenPolicy: EstPolicy())
             .UseCertificateAuthorityServer();
+        app.MapScepServer();
+        if (builder.Configuration.GetSection(IntuneOptions.SectionName).Exists())
+        {
+            app.MapIntuneSync();
+        }
+
         await app.RunAsync().ConfigureAwait(false);
     }
 
@@ -532,6 +548,64 @@ internal static class Program
         }
 
         return values;
+    }
+
+    /// <summary>
+    /// Wires SCEP like EST and ACME. GetCACaps and GetCACert only publish public information;
+    /// PKIOperation issues nothing until a challenge is configured (<c>Scep:Challenge</c>,
+    /// e.g. the environment variable <c>Scep__Challenge</c> - not a command line argument,
+    /// where it would show in the process list).
+    /// </summary>
+    private static async Task<IServiceCollection> AddScep(
+        IServiceCollection services,
+        string[] args,
+        IConfiguration configuration)
+    {
+        // The RA decrypts requests and signs responses; SCEP defines the envelope for RSA
+        // key transport only, so the RA is RSA even for an ECDSA CA.
+        var raCertificate = GetArgumentValue(args, "--scep-ra") is not null
+            ? await CreateCert(args, "--scep-ra", "--scep-ra-key").ConfigureAwait(false)
+            : CreateTransientRaCertificate();
+        if (raCertificate.GetRSAPrivateKey() is null)
+        {
+            throw new InvalidOperationException("The SCEP RA certificate (--scep-ra) needs an RSA private key.");
+        }
+
+        var options = new ScepServerOptions
+        {
+            RaCertificate = raCertificate,
+            DefaultProfile = configuration["Scep:DefaultProfile"]
+        };
+        // Intune takes precedence over a shared secret: with <c>Scep:Intune</c> configured,
+        // every request is validated by Intune's SCEP validation service, and the revocation
+        // sync is mapped (see opencertserver.contrib.intune).
+        if (configuration.GetSection(IntuneOptions.SectionName).Exists())
+        {
+            return services.AddIntune(configuration).AddScepServer(options);
+        }
+
+        var challenge = configuration["Scep:Challenge"];
+        return string.IsNullOrEmpty(challenge)
+            ? services.AddScepServer(options)
+            : services.AddScepServer(options, new SharedSecretChallengeValidator(challenge));
+    }
+
+    /// <summary>
+    /// Without a configured RA, a self-signed one is created at start-up. It changes with
+    /// every restart, which SCEP clients tolerate because they fetch GetCACert before each
+    /// enrollment; a deployment that pins the RA configures <c>--scep-ra</c>.
+    /// </summary>
+    private static X509Certificate2 CreateTransientRaCertificate()
+    {
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest("CN=OpenCertServer SCEP RA", key, HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+        request.CertificateExtensions.Add(new X509KeyUsageExtension(
+            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, true));
+        using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5),
+            DateTimeOffset.UtcNow.AddYears(1));
+        // Round-trip through PKCS#12 so the key outlives the RSA instance above on every platform.
+        return X509CertificateLoader.LoadPkcs12(certificate.Export(X509ContentType.Pkcs12), null);
     }
 
     private static ForwardedHeadersOptions CreateForwardedHeaderOptions()
