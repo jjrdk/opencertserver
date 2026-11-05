@@ -288,8 +288,10 @@ public sealed class RelationalStoresSteps
         using var foundByThumbprint = Assert.Single(byThumbprint);
         Assert.Equal(certificate.RawData, foundByThumbprint.RawData);
         var inventory = Assert.Single(await Certificates.GetInventory(cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(DateTimeKind.Utc, inventory.NotBefore.DateTime.Kind);
-        Assert.Equal(DateTimeKind.Utc, inventory.NotAfter.DateTime.Kind);
+        Assert.Equal(certificate.NotBefore.ToUniversalTime(), inventory.NotBefore.UtcDateTime);
+        Assert.Equal(certificate.NotAfter.ToUniversalTime(), inventory.NotAfter.UtcDateTime);
+        Assert.Equal(TimeSpan.Zero, inventory.NotBefore.Offset);
+        Assert.Equal(TimeSpan.Zero, inventory.NotAfter.Offset);
         Assert.True(await Certificates.RemoveCertificate(certificate.SerialNumber, X509RevocationReason.KeyCompromise, TestContext.Current.CancellationToken));
         await Reload();
         var revoked = await Certificates.GetCertificateStatus(id, TestContext.Current.CancellationToken);

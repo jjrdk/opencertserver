@@ -1,3 +1,7 @@
+using OpenCertServer.Acme.Server.Extensions;
+using OpenCertServer.Ca.Server;
+using OpenCertServer.Data;
+
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Security.Cryptography.X509Certificates;
@@ -102,7 +106,7 @@ public sealed class RelationalStoreSteps
         var orderStore = services.GetRequiredService<IStoreOrders>();
         var order = await orderStore.LoadOrder(_orderId!, CancellationToken.None).ConfigureAwait(false);
         Assert.NotNull(order);
-        _accountId = order!.AccountId;
+        _accountId = order.AccountId;
 
         var orderIds = await orderStore.GetOrderIds(_accountId, CancellationToken.None).ConfigureAwait(false);
         Assert.Contains(_orderId, orderIds);
