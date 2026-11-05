@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using OpenCertServer.Ca;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Est.Client;
 using Reqnroll;
@@ -199,18 +198,18 @@ public partial class EstServer
     [AfterScenario("@est-client-tls")]
     public async Task CleanupTlsClient()
     {
-        _tlsClient?.Dispose();
+        _tlsClient.Dispose();
         if (_tlsHost != null)
         {
             await _tlsHost.StopAsync();
             _tlsHost.Dispose();
         }
 
-        _tlsIdentity?.Dispose();
-        _tlsKey?.Dispose();
+        _tlsIdentity.Dispose();
+        _tlsKey.Dispose();
         _renewalKey?.Dispose();
-        _tlsRoot?.Dispose();
-        _tlsEcRoot?.Dispose();
+        _tlsRoot.Dispose();
+        _tlsEcRoot.Dispose();
     }
 
     private AsymmetricAlgorithm CreateTlsKey() => _tlsProfile == "rsa"

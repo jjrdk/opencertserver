@@ -6,7 +6,6 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -182,9 +181,9 @@ public sealed class ReEnrollmentProfileSteps
     [AfterScenario("profile-bound-renewal")]
     public void Cleanup()
     {
-        _original?.Dispose();
-        _host?.Dispose();
-        _profiles?.Dispose();
+        _original.Dispose();
+        _host.Dispose();
+        _profiles.Dispose();
     }
 
     private sealed class AcceptTestChain : IValidateX509Chains

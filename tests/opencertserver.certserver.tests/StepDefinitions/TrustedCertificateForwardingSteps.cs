@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using OpenCertServer.Ca.Utils;
 using OpenCertServer.Est.Server;
 using Reqnroll;
 using Xunit;
