@@ -2,13 +2,11 @@ namespace OpenCertServer.Est.Server;
 
 using System.Net;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 /// <summary>Explicit certificate forwarding from trusted TLS-terminating proxies only.</summary>
-public static class TrustedCertificateForwardingExtensions
+public static partial class TrustedCertificateForwardingExtensions
 {
     public static IServiceCollection AddTrustedCertificateForwarding(
         this IServiceCollection services,
@@ -52,8 +50,7 @@ public static class TrustedCertificateForwardingExtensions
             if (!options.IsTrusted(context.Connection.RemoteIpAddress)
              && context.Request.Headers.Remove(options.CertificateHeader))
             {
-                logger.LogWarning("Removed untrusted client certificate header from peer {RemoteIpAddress}.",
-                    context.Connection.RemoteIpAddress);
+                logger.LogRemovedUntrustedClientCertificateHeaderFromPeerRemoteipaddress(context.Connection.RemoteIpAddress);
             }
 
             await next(context).ConfigureAwait(false);
@@ -79,4 +76,7 @@ public static class TrustedCertificateForwardingExtensions
         private bool Matches(IPAddress address) =>
             Proxies.KnownProxies.Contains(address) || Proxies.KnownIPNetworks.Any(network => network.Contains(address));
     }
+
+    [LoggerMessage(LogLevel.Warning, "Removed untrusted client certificate header from peer {RemoteIpAddress}")]
+    static partial void LogRemovedUntrustedClientCertificateHeaderFromPeerRemoteipaddress(this ILogger logger, IPAddress? remoteIpAddress);
 }

@@ -33,7 +33,6 @@ using Acme.Abstractions.Services;
 using Ca;
 using Ca.Server;
 using CertServer.Stores;
-using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -310,7 +309,7 @@ internal static class Program
 
         if (!OperatingSystem.IsLinux())
         {
-            app.Logger.LogWarning("The TLS cipher allow-list requires Linux/OpenSSL; this host uses the operating system cipher policy.");
+            app.Logger.LogWarning("The TLS cipher allow-list requires Linux/OpenSSL; this host uses the operating system cipher policy");
         }
 
         app.UseHsts()
@@ -318,22 +317,23 @@ internal static class Program
             .Use(next => context =>
             {
                 // Kestrel renames Content-Length to X-Content-Length when normalizing CL+TE.
-                if (context.Request.Headers.ContainsKey("X-Content-Length") ||
-                    (context.Request.Headers.ContainsKey("Content-Length") &&
-                     context.Request.Headers.ContainsKey("Transfer-Encoding")))
+                if (!context.Request.Headers.ContainsKey("X-Content-Length") &&
+                    (!context.Request.Headers.ContainsKey("Content-Length") ||
+                        !context.Request.Headers.ContainsKey("Transfer-Encoding")))
                 {
-                    app.Logger.LogWarning("Rejected ambiguous request framing on connection {ConnectionId}.",
-                        context.Connection.Id);
-                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                    if (context.Request.Protocol.StartsWith("HTTP/1.", StringComparison.Ordinal))
-                    {
-                        context.Response.Headers.Connection = "close";
-                    }
-
-                    return Task.CompletedTask;
+                    return next(context);
                 }
 
-                return next(context);
+                app.Logger.LogWarning("Rejected ambiguous request framing on connection {ConnectionId}",
+                    context.Connection.Id);
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                if (context.Request.Protocol.StartsWith("HTTP/1.", StringComparison.Ordinal))
+                {
+                    context.Response.Headers.Connection = "close";
+                }
+
+                return Task.CompletedTask;
+
             })
             .UseHttpsRedirection()
             .UseCors("TrustedClients")
@@ -502,7 +502,7 @@ internal static class Program
     private static IServiceCollection RegisterTelemetry(IServiceCollection services, IConfiguration configuration)
     {
         var telemetry = configuration.GetSection("Telemetry");
-        if (string.Equals(telemetry["Enabled"], "true", StringComparison.OrdinalIgnoreCase) != true)
+        if (!string.Equals(telemetry["Enabled"], "true", StringComparison.OrdinalIgnoreCase))
         {
             return services;
         }
