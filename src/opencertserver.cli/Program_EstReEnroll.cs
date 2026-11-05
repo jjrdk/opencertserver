@@ -151,7 +151,7 @@ internal static partial class Program
                     options.ExplicitTrustAnchors.Add(X509CertificateLoader.LoadCertificateFromFile(path));
                 }
 
-                var messageHandler = MessageHandlerFactory();
+HttpMessageHandler? messageHandler = MessageHandlerFactory();
                 if (messageHandler is HttpClientHandler or SocketsHttpHandler)
                 {
                     // Let EstClient own TLS identity changes and connection pools for real transports.
