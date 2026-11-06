@@ -233,6 +233,17 @@ public static class AccountEndpoints
                 throw new MalformedRequestException("Account creation requests must be signed with a JWK.");
             }
 
+            // RFC 8555 §7.3.1: a key that already identifies an account returns that account instead of a new one.
+            var existingAccount = await accountService.FindAccount(header.Jwk, cancellationToken).ConfigureAwait(false);
+            if (existingAccount != null)
+            {
+                context.Response.Headers.Location = GetAccountUrl(context, links, existingAccount.AccountId);
+                AcmeInstruments.NewAccountSuccesses.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                AcmeInstruments.NewAccountDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+                return Results.Ok(CreateAccountResponse(context, links, existingAccount));
+            }
+
             switch (payload.OnlyReturnExisting)
             {
                 case false when options.TOS.RequireAgreement && payload.TermsOfServiceAgreed != true:
@@ -252,17 +263,6 @@ public static class AccountEndpoints
                         var accountResponse = CreateAccountResponse(context, links, account);
                         return Results.Ok(accountResponse);
                     }
-            }
-
-            // RFC 8555 §7.3.1: a key that already identifies an account returns that account instead of a new one.
-            var existingAccount = await accountService.FindAccount(header.Jwk, cancellationToken).ConfigureAwait(false);
-            if (existingAccount != null)
-            {
-                context.Response.Headers.Location = GetAccountUrl(context, links, existingAccount.AccountId);
-                AcmeInstruments.NewAccountSuccesses.Add(1);
-                activity?.SetStatus(ActivityStatusCode.Ok);
-                AcmeInstruments.NewAccountDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
-                return Results.Ok(CreateAccountResponse(context, links, existingAccount));
             }
 
             // Validate EAB when present (required or voluntary)
