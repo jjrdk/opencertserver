@@ -4,16 +4,26 @@
         <IsPackable>false</IsPackable>
         <RootNamespace>OpenCertServer.Scep.Tests</RootNamespace>
         <OutputType>exe</OutputType>
+        <IsTrimmable>false</IsTrimmable>
+        <IsAotCompatible>false</IsAotCompatible>
+        <CollectionBehavior>DisableTestParallelization</CollectionBehavior>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.TestHost"/>
+        <PackageReference Include="Npgsql"/>
+        <PackageReference Include="Testcontainers"/>
+        <PackageReference Include="Testcontainers.MsSql"/>
+        <PackageReference Include="Testcontainers.PostgreSql"/>
         <PackageReference Include="Reqnroll.xUnit.v3"/>
         <PackageReference Include="xunit.v3.mtp-v2"/>
         <PackageReference Include="System.Security.Cryptography.Pkcs"/>
     </ItemGroup>
 
     <ItemGroup>
+        <Compile Include="../Shared/RelationalTestDatabase.cs" Link="Support/RelationalTestDatabase.cs"/>
+        <ProjectReference Include="../../src/opencertserver.data.mssql/opencertserver.data.mssql.csproj"/>
+        <ProjectReference Include="../../src/opencertserver.data.postgresql/opencertserver.data.postgresql.csproj"/>
         <ProjectReference Include="..\..\src\opencertserver.ca.server\opencertserver.ca.server.csproj"/>
         <ProjectReference Include="..\..\src\opencertserver.ca.utils\opencertserver.ca.utils.csproj"/>
         <ProjectReference Include="..\..\src\opencertserver.scep.server\opencertserver.scep.server.csproj"/>
