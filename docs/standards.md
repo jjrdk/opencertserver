@@ -49,6 +49,7 @@ See [PostgreSQL setup](getting-started.md#postgresql-persistence).
 | [RFC 8555](https://www.rfc-editor.org/rfc/rfc8555) | **ACME** (Automated Certificate Management Environment) | `opencertserver.acme.server`, `CertesSlim`, `opencertserver.acme.aspnetclient` | Domain-validated issuance via `http-01` / `dns-01` |
 | [RFC 8659](https://www.rfc-editor.org/rfc/rfc8659) | CAA | `opencertserver.acme.server` | Domain owner's DNS "which CAs may issue for me?" list |
 | [RFC 8657](https://www.rfc-editor.org/rfc/rfc8657) | CAA `accounturi` / `validationmethods` | `opencertserver.acme.server` | Which ACME account / challenge types may bind a domain |
+| CA/Browser Forum TLS BR §3.2.2.9 | Multi-Perspective Issuance Corroboration | `opencertserver.acme.server` | Corroborates `dns-01` / `http-01` / CAA answers across configured DoH perspectives |
 | `device-attest-01` | Hardware device challenge | `opencertserver.acme.server`, `opencertserver.attestation` | TPM/Apple-SE-backed identity instead of a domain |
 | [RFC 4648](https://www.rfc-editor.org/rfc/rfc4648) | Base16/32/64 | `CertesSlim` | Encodings used throughout ACME/EST |
 | [RFC 4211](https://www.rfc-editor.org/rfc/rfc4211) | PKCS#10 CSR | `opencertserver.ca.utils` | The request format enrollment accepts |
@@ -385,6 +386,70 @@ Setting `DisableCaaChecks` to `true` bypasses all CAA DNS lookups unconditionall
 runs issuance against a CAA-enabled domain; [AcmeConformance.feature](../tests/opencertserver.certserver.tests/Features/AcmeConformance.feature)
 asserts the CAA-gated issuance path; [AcmeCaaEnforcement.feature](../tests/opencertserver.certserver.tests/Features/AcmeCaaEnforcement.feature)
 covers the fail-closed default and the `DisableCaaChecks` opt-out.
+
+### Multi-Perspective Issuance Corroboration — CA/Browser Forum TLS Baseline Requirements §3.2.2.9
+
+**What it is.** [TLS Baseline Requirements §3.2.2.9](https://cabforum.org/working-groups/server/baseline-requirements/requirements/#3229-multi-perspective-issuance-corroboration)
+requires a public CA to corroborate domain validation and CAA determinations from multiple
+independent **Network Perspectives**, so that a BGP hijack, DNS cache poison, or resolver compromise
+visible from one network cannot cause mis-issuance. OpenCertServer implements the DNS portion of
+this requirement for the ACME `dns-01` and `http-01` validators, and for CAA processing.
+
+**How it works.** Each entry in `AcmeServer:DohServers` is an independent DNS-over-HTTPS resolver
+that acts as one Network Perspective. For every issuance-critical lookup
+(`dns-01` TXT, `http-01` A/AAAA, and CAA) the server:
+
+1. Queries every perspective independently and in parallel (no shared cache).
+2. Canonicalizes the answer sets (order-insensitive, duplicates and TTLs ignored).
+3. Returns the answer only when every perspective agrees.
+
+A lookup that fails in any perspective, or whose canonical answer sets differ, throws
+`DnsPerspectiveMismatchException` (or a `DnsClientException` for a perspective failure). Both
+challenge validators translate this into an ACME `urn:ietf:params:acme:error:dns` failure, so the
+challenge becomes `invalid` rather than being retried or silently accepted.
+
+For `http-01`, the corroborated A/AAAA set is pinned onto the challenge request. The connection
+handler connects only to those addresses — it never performs a second, ambient-DNS lookup — and
+re-checks each actual connection target against the prohibited address ranges before opening a
+socket. This prevents a poisoned local resolver from redirecting the HTTP fetch to an address that
+none of the Network Perspectives returned.
+
+**Configuration summary.**
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `AcmeServer:DohServers` | `string[]` | `[]` | DoH URLs or `DnsEndpoint` names used as Network Perspectives. All entries must be queried with no disagreement. |
+| `AcmeServer:DnsQueryTimeout` | `TimeSpan` | `00:00:10` | Timeout applied to each individual perspective query. |
+| `AcmeServer:DnsEndpoint` | `DnsEndpoint` | `Cloudflare` | Single-perspective fallback used only when `DohServers` is empty. Does **not** satisfy §3.2.2.9 for a public CA. |
+
+```json
+{
+  "AcmeServer": {
+    "DohServers": [
+      "https://cloudflare-dns.com/dns-query",
+      "https://dns.google/dns-query",
+      "https://dns.quad9.net/dns-query"
+    ],
+    "DnsQueryTimeout": "00:00:10"
+  }
+}
+```
+
+Configure at least three distinct perspectives in different RIR service regions. Using multiple
+resolver endpoints operated by the same provider or network does not count as distinct Network
+Perspectives under §3.2.2.9. Invalid entries (not an absolute URL and not a known `DnsEndpoint`)
+fail closed when the resolver is created rather than silently disabling corroboration.
+
+**Where it lives.** `src/opencertserver.acme.server/Services/MultiPerspectiveDnsResolver.cs`
+(fan-out and comparison), `DnsPerspectiveFactory.cs` (configuration parsing),
+`DnsPerspectiveMismatchException.cs` (disagreement signal), wired via
+`Extensions/ServiceCollectionExtensions.cs` as the DI `IDnsResolver`. The validators are
+`Dns01ChallengeValidator.cs` and `Http01ChallengeValidator.cs`.
+
+**Tests that prove it.**
+[AcmeMultiPerspectiveIssuanceCorroboration.feature](../tests/opencertserver.certserver.tests/Features/AcmeMultiPerspectiveIssuanceCorroboration.feature)
+covers configured perspectives, the single-endpoint fallback, matching and differing TXT records,
+matching and differing A records, an unavailable perspective, and differing CAA records.
 
 ### RST 8657 — CAA `accounturi` / `validationmethods`
 

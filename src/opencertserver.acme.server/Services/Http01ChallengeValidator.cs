@@ -53,6 +53,16 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
                 .ResolveIpAddressesAsync(challenge.Authorization.Identifier.Value, cancellationToken)
                 .ConfigureAwait(false);
         }
+        catch (DnsPerspectiveMismatchException ex)
+        {
+            return (null,
+                new AcmeError
+                {
+                    Type = "dns",
+                    Detail = ex.Message,
+                    Identifier = challenge.Authorization.Identifier
+                });
+        }
         catch (DnsClientException)
         {
             return (null,
@@ -97,11 +107,14 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
 
         try
         {
-            // The HttpClient is configured with SsrfBlockingSocketsHandler which:
-            //   • resolves the hostname once at connection time (prevents DNS rebinding)
-            //   • re-validates the IP at connection time (defence-in-depth)
+            // Pin the connection to the corroborated address set. SsrfBlockingSocketsHandler:
+            //   • connects only to these addresses instead of re-resolving through ambient DNS
+            //   • re-validates each actual connection target against prohibited ranges
             //   • does NOT follow redirects (AllowAutoRedirect = false)
-            var response = await _httpClient.GetAsync(new Uri(challengeUrl), cancellationToken)
+            using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(challengeUrl));
+            SsrfBlockingSocketsHandler.PinToCorroboratedAddresses(request, resolvedIps);
+
+            using var response = await _httpClient.SendAsync(request, cancellationToken)
                 .ConfigureAwait(false);
             if (response.StatusCode != HttpStatusCode.OK)
             {
