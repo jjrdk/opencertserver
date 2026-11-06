@@ -57,7 +57,14 @@ public abstract class TimedHostedService : IHostedService, IDisposable
         }
         finally
         {
-            _interlock.Release();
+            try
+            {
+                _interlock.Release();
+            }
+            catch(ObjectDisposedException)
+            {
+                // ignore, service is stopping
+            }
         }
     }
 
@@ -78,5 +85,6 @@ public abstract class TimedHostedService : IHostedService, IDisposable
         _timer?.Dispose();
         _interlock.Dispose();
         _cancellationTokenSource.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
