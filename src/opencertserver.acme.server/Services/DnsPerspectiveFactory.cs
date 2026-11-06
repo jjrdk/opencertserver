@@ -65,11 +65,10 @@ public static class DnsPerspectiveFactory
     {
         if (Uri.TryCreate(server, UriKind.Absolute, out var uri))
         {
-            if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException(
-                    $"AcmeServer:DohServers entry '{server}' must use the http or https scheme.");
+                    $"AcmeServer:DohServers entry '{server}' must use the https scheme.");
             }
 
             return new ClientX(
