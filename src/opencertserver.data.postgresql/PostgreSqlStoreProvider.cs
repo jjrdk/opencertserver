@@ -63,8 +63,19 @@ public sealed class PostgreSqlStoreProvider : IRelationalStoreProvider
                                    SELECT "SerialNumber", "DistinguishedName", "Issuer", "NotBefore", "NotAfter",
                                           "Thumbprint", "RevocationReason", "RevocationDate" FROM "Certificates"
                                    """;
-            command.CommandText = columns + (revokedOnly ? """ WHERE "RevocationReason" IS NOT NULL""" : "")
+            command.CommandText = columns
+              + (revokedOnly
+                    ? """ WHERE "RevocationReason" IS NOT NULL AND "ProfileName" IS NOT DISTINCT FROM @profile"""
+                    : "")
               + """ ORDER BY "SerialNumber" LIMIT @size OFFSET @offset""";
+            if (revokedOnly)
+            {
+                var profile = command.CreateParameter();
+                profile.ParameterName = "profile";
+                profile.DbType = System.Data.DbType.String;
+                profile.Value = (object?)profileName ?? DBNull.Value;
+                command.Parameters.Add(profile);
+            }
             var size = command.CreateParameter();
             size.ParameterName = "size";
             size.Value = pageSize;

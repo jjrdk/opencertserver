@@ -73,12 +73,28 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
         await MigrateAsync(cancellationToken);
     }
 
-    public async Task MigrateAsync(CancellationToken cancellationToken)
+    public Task MigrateAsync(CancellationToken cancellationToken) => MigrateAsync(ConnectionString, cancellationToken);
+
+    /// <summary>Creates and migrates a uniquely named database on the running server and returns its connection string.</summary>
+    public async Task<string> CreateIsolatedDatabaseAsync(CancellationToken cancellationToken)
+    {
+        var name = $"t_{Guid.NewGuid():N}";
+        var connectionString = database switch
+        {
+            "PostgreSQL" => new NpgsqlConnectionStringBuilder(ConnectionString) { Database = name }.ConnectionString,
+            "MSSQL" => new SqlConnectionStringBuilder(ConnectionString) { InitialCatalog = name }.ConnectionString,
+            _ => throw new NotSupportedException($"No relational test database factory is registered for '{database}'.")
+        };
+        await MigrateAsync(connectionString, cancellationToken);
+        return connectionString;
+    }
+
+    private async Task MigrateAsync(string connectionString, CancellationToken cancellationToken)
     {
         var services = RegisterProvider(new ServiceCollection());
         using var provider = services.BuildServiceProvider();
         var options = new DbContextOptionsBuilder<CaDbContext>();
-        provider.GetRequiredService<IRelationalStoreProvider>().Configure(options, ConnectionString);
+        provider.GetRequiredService<IRelationalStoreProvider>().Configure(options, connectionString);
         await using var context = new CaDbContext(options.Options);
         await context.Database.MigrateAsync(cancellationToken);
     }

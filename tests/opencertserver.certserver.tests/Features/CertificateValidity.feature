@@ -7,6 +7,7 @@ CA's own certificate is created the same way.
 
     Scenario Outline: Validity starts at midnight UTC in any server time zone
         Given the server time zone is <zone>
+        And the certificate server storage is "<Storage>"
         And a certificate server
         And an EST client
         When I enroll with a valid JWT
@@ -14,7 +15,13 @@ CA's own certificate is created the same way.
         And the CA certificate should be valid from midnight UTC today
 
         Examples:
-          | zone                |
-          | UTC                 |
-          | America/Los_Angeles |
-          | Asia/Tokyo          |
+          | zone                | Storage    |
+          | UTC                 | in-memory  |
+          | UTC                 | postgresql |
+          | UTC                 | mssql      |
+          | America/Los_Angeles | in-memory  |
+          | America/Los_Angeles | postgresql |
+          | America/Los_Angeles | mssql      |
+          | Asia/Tokyo          | in-memory  |
+          | Asia/Tokyo          | postgresql |
+          | Asia/Tokyo          | mssql      |
