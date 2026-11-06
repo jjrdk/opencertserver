@@ -91,6 +91,19 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
 
     private async Task MigrateAsync(string connectionString, CancellationToken cancellationToken)
     {
+        if (database == "MSSQL")
+        {
+            var sqlConnectionString = new SqlConnectionStringBuilder(connectionString);
+            var databaseName = sqlConnectionString.InitialCatalog;
+            sqlConnectionString.InitialCatalog = "master";
+            await using var connection = new SqlConnection(sqlConnectionString.ConnectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"IF DB_ID(@databaseName) IS NULL CREATE DATABASE [{databaseName.Replace("]", "]]", StringComparison.Ordinal)}]";
+            command.Parameters.Add("@databaseName", System.Data.SqlDbType.NVarChar, 128).Value = databaseName;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
         var services = RegisterProvider(new ServiceCollection());
         using var provider = services.BuildServiceProvider();
         var options = new DbContextOptionsBuilder<CaDbContext>();
