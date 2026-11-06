@@ -409,6 +409,12 @@ A lookup that fails in any perspective, or whose canonical answer sets differ, t
 challenge validators translate this into an ACME `urn:ietf:params:acme:error:dns` failure, so the
 challenge becomes `invalid` rather than being retried or silently accepted.
 
+For `http-01`, the corroborated A/AAAA set is pinned onto the challenge request. The connection
+handler connects only to those addresses — it never performs a second, ambient-DNS lookup — and
+re-checks each actual connection target against the prohibited address ranges before opening a
+socket. This prevents a poisoned local resolver from redirecting the HTTP fetch to an address that
+none of the Network Perspectives returned.
+
 **Configuration summary.**
 
 | Key | Type | Default | Effect |
