@@ -1,7 +1,9 @@
+using Testcontainers.MsSql;
+using Testcontainers.PostgreSql;
+
 namespace OpenCertServer.Testing;
 
 using System.Security.Cryptography;
-using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -29,41 +31,29 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
         switch (database)
         {
             case "PostgreSQL":
-                _container = new ContainerBuilder("postgres:17-alpine")
-                    .WithEnvironment("POSTGRES_PASSWORD", password)
-                    .WithEnvironment("POSTGRES_DB", "store_tests")
-                    .WithPortBinding(5432, true)
-                    .WithWaitStrategy(Wait.ForUnixContainer()
-                        .UntilMessageIsLogged("PostgreSQL init process complete")
-                        .UntilInternalTcpPortIsAvailable(5432))
+                var postgres = new PostgreSqlBuilder("postgres:alpine")
+                    .WithUsername("postgres")
+                    .WithPassword(password)
+                    .WithDatabase("store_tests")
                     .Build();
-                await _container.StartAsync(cancellationToken);
-                ConnectionString = new NpgsqlConnectionStringBuilder
+                _container = postgres;
+                await postgres.StartAsync(cancellationToken);
+                ConnectionString = new NpgsqlConnectionStringBuilder(postgres.GetConnectionString())
                 {
-                    Host = _container.Hostname, Port = _container.GetMappedPublicPort(5432),
-                    Database = "store_tests", Username = "postgres", Password = password,
                     Pooling = false
                 }.ConnectionString;
                 break;
             case "MSSQL":
-                _container = new ContainerBuilder("mcr.microsoft.com/mssql/server:2022-latest")
-                    .WithEnvironment("ACCEPT_EULA", "Y")
-                    .WithEnvironment("MSSQL_PID", "Developer")
-                    .WithEnvironment("MSSQL_SA_PASSWORD", password)
-                    .WithPortBinding(1433, true)
-                    .WithWaitStrategy(Wait.ForUnixContainer().UntilCommandIsCompleted(
-                        [
-                            "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa",
-                            "-P", password, "-C", "-Q", "SELECT 1"
-                        ],
-                        strategy => strategy.WithTimeout(TimeSpan.FromMinutes(3))))
+                // The module configures MSSQL_SA_PASSWORD and its sqlcmd readiness probe from WithPassword;
+                // overriding the env var or wait strategy makes the probe log in with the wrong password.
+                var msSql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
+                    .WithPassword(password)
                     .Build();
-                await _container.StartAsync(cancellationToken);
-                ConnectionString = new SqlConnectionStringBuilder
+                _container = msSql;
+                await msSql.StartAsync(cancellationToken);
+                ConnectionString = new SqlConnectionStringBuilder(msSql.GetConnectionString())
                 {
-                    DataSource = $"{_container.Hostname},{_container.GetMappedPublicPort(1433)}",
-                    InitialCatalog = "store_tests", UserID = "sa", Password = password,
-                    TrustServerCertificate = true, Pooling = false
+                    InitialCatalog = "store_tests", TrustServerCertificate = true, Pooling = false
                 }.ConnectionString;
                 break;
             default:
