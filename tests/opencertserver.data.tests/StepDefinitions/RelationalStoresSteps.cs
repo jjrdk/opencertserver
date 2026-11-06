@@ -244,7 +244,12 @@ public sealed class RelationalStoresSteps
         Assert.Null(await Keys.FindActiveKey(_key.KeyId, TestContext.Current.CancellationToken));
         var stored = Assert.IsType<ExternalAccountKey>(await Keys.LoadKey(_key.KeyId, TestContext.Current.CancellationToken));
         Assert.True(stored.IsUsed);
-        Assert.Equal(_key.BoundAt, stored.BoundAt);
+        var boundAt = Assert.IsType<DateTimeOffset>(_key.BoundAt);
+        // Npgsql truncates sub-microsecond ticks; Linux clocks can expose them, unlike macOS clocks.
+        var timestampPrecision = _services.GetRequiredService<IRelationalStoreProvider>() is PostgreSqlStoreProvider
+            ? TimeSpan.TicksPerMicrosecond
+            : 1;
+        Assert.Equal(boundAt.AddTicks(-(boundAt.Ticks % timestampPrecision)), stored.BoundAt);
         Assert.Equal(_key.BoundAccountId, stored.BoundAccountId);
         Assert.Equal(_key.MacKey, stored.MacKey);
         Assert.Equal(_key.MacAlgorithm, stored.MacAlgorithm);

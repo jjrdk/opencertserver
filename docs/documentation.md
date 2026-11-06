@@ -72,6 +72,10 @@ existing ACME `ConcurrencyException` for stale writes. Nonce consumption is one 
 SQL delete. Certificates are stored as public PEM only, with UTC validity/revocation dates;
 CA signing keys are **not** stored in this database.
 
+Relational timestamps retain the selected database's precision. PostgreSQL stores
+microseconds, so Npgsql truncates any sub-microsecond .NET ticks; the MSSQL adapter
+preserves 100-nanosecond ticks.
+
 See [the PostgreSQL setup guide](getting-started.md#postgresql-persistence) for schema
 deployment, operational boundaries and the provider-table BDD tests.
 
