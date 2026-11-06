@@ -92,8 +92,8 @@ public sealed class PostgreSqlStoreProvider : IRelationalStoreProvider
                     SerialNumber = reader.GetString(0),
                     DistinguishedName = reader.GetString(1),
                     Issuer = reader.IsDBNull(2) ? null : reader.GetString(2),
-                    NotBefore = reader.GetDateTime(3),
-                    NotAfter = reader.GetDateTime(4),
+                    NotBefore = reader.GetFieldValue<DateTimeOffset>(3),
+                    NotAfter = reader.GetFieldValue<DateTimeOffset>(4),
                     Thumbprint = reader.GetString(5),
                     RevocationReason = reader.IsDBNull(6) ? null : (X509RevocationReason)reader.GetInt32(6),
                     RevocationDate = reader.IsDBNull(7) ? null : reader.GetFieldValue<DateTimeOffset>(7)
