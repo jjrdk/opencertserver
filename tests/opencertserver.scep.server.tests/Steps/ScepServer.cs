@@ -41,6 +41,9 @@ public sealed class ScepServer : IDisposable
     private X509Certificate2? _clientSigner;
     private readonly string _transactionId = Convert.ToHexString(RandomNumberGenerator.GetBytes(8));
     private readonly byte[] _senderNonce = RandomNumberGenerator.GetBytes(16);
+    private readonly ScenarioContext _scenarioContext;
+
+    public ScepServer(ScenarioContext scenarioContext) => _scenarioContext = scenarioContext;
 
     [Given("a certificate server that complies with SCEP \\(RFC 8894\\)")]
     public Task GivenACertificateServer() => StartServer(withChallenge: true);
@@ -105,6 +108,7 @@ public sealed class ScepServer : IDisposable
         X509Certificate2Collection published = _root is null
             ? []
             : [X509Certificate2.CreateFromPem(rsaCa.ExportCertificatePem()), X509Certificate2.CreateFromPem(_root.ExportCertificatePem())];
+        var storage = await ScepServerStorage.Create(_scenarioContext, CancellationToken.None);
         _host = new HostBuilder()
             .ConfigureWebHost(web => web
                 .UseTestServer()
@@ -146,6 +150,7 @@ public sealed class ScepServer : IDisposable
                             ["http://localhost/crl"],
                             [],
                             []));
+                    storage.Register(services);
                     var options = new ScepServerOptions
                     {
                         RaCertificate = ra,
@@ -580,7 +585,7 @@ public sealed class ScepServer : IDisposable
 
     public void Dispose()
     {
-        _host?.Dispose();
+        _host.Dispose();
         _held?.Dispose();
         _newKey?.Dispose();
         _clientKey?.Dispose();
