@@ -254,6 +254,17 @@ public static class AccountEndpoints
                     }
             }
 
+            // RFC 8555 §7.3.1: a key that already identifies an account returns that account instead of a new one.
+            var existingAccount = await accountService.FindAccount(header.Jwk, cancellationToken).ConfigureAwait(false);
+            if (existingAccount != null)
+            {
+                context.Response.Headers.Location = GetAccountUrl(context, links, existingAccount.AccountId);
+                AcmeInstruments.NewAccountSuccesses.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                AcmeInstruments.NewAccountDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+                return Results.Ok(CreateAccountResponse(context, links, existingAccount));
+            }
+
             // Validate EAB when present (required or voluntary)
             string? externalAccountId = null;
             if (HasExternalAccountBinding(payload))

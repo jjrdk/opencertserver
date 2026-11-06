@@ -2128,11 +2128,12 @@ public partial class CertificateServerFeatures
 
         StoreExchange(exchange);
 
-        if (AcmeState.Response?.StatusCode != HttpStatusCode.Created)
+        // RFC 8555 Section 7.3.1: a key that is already registered yields 200 OK for the existing account.
+        if (AcmeState.Response?.StatusCode is not (HttpStatusCode.Created or HttpStatusCode.OK))
         {
             var body = Encoding.UTF8.GetString(AcmeState.ResponseBytes ?? []);
             throw new Xunit.Sdk.XunitException(
-                $"Expected 201 Created from /new-account but got {(int?)AcmeState.Response?.StatusCode} with body: {body}");
+                $"Expected 201 Created or 200 OK from /new-account but got {(int?)AcmeState.Response?.StatusCode} with body: {body}");
         }
 
         AcmeState.Context = CreateAcmeContext(_server.CreateClient(), AcmeState.Key!);

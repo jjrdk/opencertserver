@@ -32,6 +32,7 @@ using Xunit;
 public partial class CertificateServerFeatures
 {
     private TestServer _server = null!;
+    private IHost? _host;
     private IAcmeClient _acmeClient = null!;
     private bool _strictOcspHttpBinding;
     private TimeSpan _ocspFreshnessWindow = TimeSpan.FromHours(1);
@@ -42,8 +43,9 @@ public partial class CertificateServerFeatures
     [UnconditionalSuppressMessage("AOT", "IL3050",
         Justification = "These certserver tests do not target AOT publishing.")]
     [Given(@"a certificate server")]
-    public void GivenACertificateServer()
+    public async Task GivenACertificateServer()
     {
+        var storage = await CertificateServerStorage.Create(_scenarioContext, TestContext.Current.CancellationToken);
         var host = new HostBuilder().ConfigureWebHost(builder =>
         {
             builder
@@ -53,7 +55,8 @@ public partial class CertificateServerFeatures
                 .ConfigureServices(ConfigureServices)
                 .Configure(ConfigureApp);
         }).Build();
-        host.Start();
+        await host.StartAsync(TestContext.Current.CancellationToken);
+        _host = host;
         _server = host.GetTestServer();
         return;
 
@@ -144,7 +147,21 @@ public partial class CertificateServerFeatures
             services.AddSingleton<IValidateDns01Challenges, TestAcmeDns01ChallengeValidator>();
             services.AddSingleton<IValidateDeviceAttestChallenges, TestAcmeDeviceAttestChallengeValidator>();
             services.Replace(ServiceDescriptor.Singleton<IIssueCertificates>(sp => sp.GetRequiredService<TestAcmeIssuer>()));
+            storage.Register(services);
         }
+    }
+
+    [AfterScenario]
+    public async Task StopCertificateServer()
+    {
+        if (_host is null)
+        {
+            return;
+        }
+
+        await _host.StopAsync();
+        _host.Dispose();
+        _host = null;
     }
 
     [Given(@"an ACME client for (.+)")]
