@@ -14,7 +14,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\opencertserver.acme.server\opencertserver.acme.server.csproj" />
         <ProjectReference Include="..\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
         <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
     </ItemGroup>

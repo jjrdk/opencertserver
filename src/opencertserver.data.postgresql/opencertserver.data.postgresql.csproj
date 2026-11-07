@@ -9,6 +9,7 @@
     <ItemGroup>
         <ProjectReference Include="../opencertserver.data/opencertserver.data.csproj" />
         <PackageReference Include="Npgsql" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="All" />
     </ItemGroup>

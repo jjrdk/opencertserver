@@ -145,7 +145,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     {
         using var telemetry = CaCoreInstruments.Start("sign_certificate");
         var response = await SignCertificateRequestCore(
-            request, profileName, requestor, reenrollingFrom, notBefore, notAfter, cancellationToken)
+                request, profileName, requestor, reenrollingFrom, notBefore, notAfter, cancellationToken)
             .ConfigureAwait(false);
         telemetry.Complete(response is SignCertificateResponse.Success);
         return response;
@@ -506,17 +506,17 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     {
         var writer = new AsnWriter(AsnEncodingRules.DER);
         using (writer.PushSequence())
-        using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
-        using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
-        {
-            foreach (var uri in uris)
-            {
-                writer.WriteCharacterString(
-                    UniversalTagNumber.IA5String,
-                    uri,
-                    new Asn1Tag(TagClass.ContextSpecific, 6));
-            }
-        }
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+                {
+                    foreach (var uri in uris)
+                    {
+                        writer.WriteCharacterString(
+                            UniversalTagNumber.IA5String,
+                            uri,
+                            new Asn1Tag(TagClass.ContextSpecific, 6));
+                    }
+                }
 
         return new X509Extension(Oids.IssuingDistributionPoint, writer.Encode(), true);
     }
@@ -832,7 +832,7 @@ public sealed partial class DistinguishedNameValidation : IValidateCertificateRe
 
         // RFC 5280 §4.1.2.6: the subject MAY be empty when the identity is carried in subjectAltName
         // (ACME clients such as certbot send SAN-only CSRs).
-        if (request.SubjectName.EnumerateRelativeDistinguishedNames().Any() == false
+        if (!request.SubjectName.EnumerateRelativeDistinguishedNames().Any()
          && request.CertificateExtensions.Any(ext => ext.Oid?.Value == Oids.SubjectAltName))
         {
             return Task.FromResult<string?>(null);
@@ -886,14 +886,14 @@ public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertifi
                 var sanValue = name switch
                 {
                     {
-                        Type: GeneralName.GeneralNameType.Rfc822Name or GeneralName.GeneralNameType.DnsName,
-                        Value: AsnString asnString
-                    }
+                            Type: GeneralName.GeneralNameType.Rfc822Name or GeneralName.GeneralNameType.DnsName,
+                            Value: AsnString asnString
+                        }
                         => asnString.Value,
                     {
-                        Type: GeneralName.GeneralNameType.OtherName,
-                        Value: OtherName { TypeId: Oids.UserPrincipalName } otherName
-                    }
+                            Type: GeneralName.GeneralNameType.OtherName,
+                            Value: OtherName { TypeId: Oids.UserPrincipalName } otherName
+                        }
                         => otherName.StringValue,
                     _ => null
                 };
