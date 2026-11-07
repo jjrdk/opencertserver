@@ -17,6 +17,11 @@ Feature: Revocation sync for Intune-issued certificates
         Then 3 certificates were checked
         And nothing was revoked
 
+    Scenario: Revocation sync emits a tag-free request metric
+        Given an Intune revocation sync OpenTelemetry listener
+        When the sync runs as a dry run
+        Then the Intune revocation sync request counter is recorded without attributes
+
     Scenario: A disabled user loses the certificate
         Given the user "anna@contoso.test" is disabled
         When the sync runs

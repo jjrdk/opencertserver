@@ -1,5 +1,6 @@
 namespace OpenCertServer.Scep.Server.Handlers;
 
+using System.Diagnostics;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -52,14 +53,65 @@ internal static partial class ScepHandler
     {
         var operation = context.Request.Query["operation"].ToString();
         var profile = profileName ?? options.DefaultProfile;
-        return operation switch
+        var telemetryOperation = operation switch
         {
-            "GetCACaps" => Results.Text(Capabilities, "text/plain"),
-            "GetCACert" => await GetCaCert(profile, options, ca, cancellationToken).ConfigureAwait(false),
-            "PKIOperation" => await PkiOperation(context, profile, options, ca, validator, transactions,
-                loggers.CreateLogger("OpenCertServer.Scep"), cancellationToken).ConfigureAwait(false),
-            _ => Results.BadRequest($"Unsupported operation '{operation}'.")
+            "GetCACaps" => ScepInstruments.Operation.GetCaCaps,
+            "GetCACert" => ScepInstruments.Operation.GetCaCert,
+            "PKIOperation" => ScepInstruments.Operation.PkiOperation,
+            _ => ScepInstruments.Operation.Unsupported
         };
+        ScepInstruments.RecordRequest(telemetryOperation);
+        var started = Stopwatch.GetTimestamp();
+        using var activity = ScepInstruments.ActivitySource.StartActivity(ActivityNames.For(telemetryOperation));
+        try
+        {
+            IResult result;
+            bool succeeded;
+            switch (operation)
+            {
+                case "GetCACaps":
+                    result = Results.Text(Capabilities, "text/plain");
+                    succeeded = true;
+                    break;
+                case "GetCACert":
+                    result = await GetCaCert(profile, options, ca, cancellationToken).ConfigureAwait(false);
+                    succeeded = (result as IStatusCodeHttpResult)?.StatusCode is not (>= 400);
+                    break;
+                case "PKIOperation":
+                    var pkiResult = await PkiOperation(context, profile, options, ca, validator, transactions,
+                        loggers.CreateLogger("OpenCertServer.Scep"), cancellationToken).ConfigureAwait(false);
+                    result = pkiResult.Response;
+                    succeeded = pkiResult.Success;
+                    break;
+                default:
+                    result = Results.BadRequest($"Unsupported operation '{operation}'.");
+                    succeeded = false;
+                    break;
+            }
+
+            if (!succeeded)
+            {
+                ScepInstruments.RecordFailure(telemetryOperation);
+                activity?.SetStatus(ActivityStatusCode.Error);
+            }
+            else
+            {
+                ScepInstruments.RecordSuccess(telemetryOperation);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+
+            return result;
+        }
+        catch
+        {
+            ScepInstruments.RecordFailure(telemetryOperation);
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
+        }
+        finally
+        {
+            ScepInstruments.RecordDuration(telemetryOperation, Stopwatch.GetElapsedTime(started).TotalSeconds);
+        }
     }
 
     private static async Task<IResult> GetCaCert(
@@ -76,7 +128,7 @@ internal static partial class ScepHandler
         return Results.Bytes(ScepMessageCodec.EncodeCertificatesOnly(certificates), CaRaCert);
     }
 
-    private static async Task<IResult> PkiOperation(
+    private static async Task<PkiOperationResult> PkiOperation(
         HttpContext context,
         string? profile,
         ScepServerOptions options,
@@ -104,7 +156,7 @@ internal static partial class ScepHandler
             }
             catch (FormatException)
             {
-                return Results.BadRequest("The message parameter is not valid base64.");
+                return new PkiOperationResult(Results.BadRequest("The message parameter is not valid base64."), false);
             }
         }
 
@@ -118,7 +170,7 @@ internal static partial class ScepHandler
             // Without a verified request there is no recipient to encrypt to and no
             // transaction to answer; RFC 8894 leaves this to an HTTP error.
             logger.LogScepMessageRejectedReason(ex.Message);
-            return Results.BadRequest(ex.Message);
+            return new PkiOperationResult(Results.BadRequest(ex.Message), false);
         }
 
         // RFC 8894, 3.2.1.4: an algorithm the server does not support is badAlg. The request is
@@ -225,9 +277,9 @@ internal static partial class ScepHandler
         }
 
         await validator.NotifySuccess(challenge, success.Certificate, cancellationToken).ConfigureAwait(false);
-        return Results.Bytes(
-            ScepMessageCodec.EncodeSuccess(request, success.Certificate, options.RaCertificate),
-            PkiMessage);
+        return new PkiOperationResult(
+            Results.Bytes(ScepMessageCodec.EncodeSuccess(request, success.Certificate, options.RaCertificate), PkiMessage),
+            true);
     }
 
     /// <summary>
@@ -294,8 +346,10 @@ internal static partial class ScepHandler
             .Select(x => Convert.ToHexString(x.RawData))
             .ToHashSet(StringComparer.Ordinal);
 
-    private static IResult Failure(ScepRequest request, ScepFailInfo failInfo, ScepServerOptions options) =>
-        Results.Bytes(ScepMessageCodec.EncodeFailure(request, failInfo, options.RaCertificate), PkiMessage);
+    private readonly record struct PkiOperationResult(IResult Response, bool Success);
+
+    private static PkiOperationResult Failure(ScepRequest request, ScepFailInfo failInfo, ScepServerOptions options) =>
+        new(Results.Bytes(ScepMessageCodec.EncodeFailure(request, failInfo, options.RaCertificate), PkiMessage), false);
 
     private static string? ReadChallengePassword(CertificateRequest csr)
     {

@@ -1,5 +1,20 @@
 Feature: Certificate server compliance with SCEP (RFC 8894)
 
+    Scenario: SCEP capabilities emit metrics and a tag-free trace
+        Given the certificate server storage is "in-memory"
+        And a certificate server that complies with SCEP (RFC 8894)
+        And a SCEP OpenTelemetry listener
+        When a client asks for the CA capabilities
+        Then the SCEP capabilities metric and trace are recorded without attributes
+
+    Scenario: PKIOperation refusals count as protocol failures
+        Given the certificate server storage is "in-memory"
+        And a certificate server that complies with SCEP (RFC 8894)
+        And a SCEP OpenTelemetry listener
+        When a client enrolls asking for basicConstraints CA:TRUE and keyCertSign
+        Then the server answers FAILURE with failInfo badRequest
+        And the SCEP PKIOperation failure metric and trace are recorded
+
     Scenario Outline: The server announces its capabilities
         Given the certificate server storage is "<Storage>"
         And a certificate server that complies with SCEP (RFC 8894)

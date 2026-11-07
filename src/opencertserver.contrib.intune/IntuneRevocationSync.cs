@@ -1,5 +1,6 @@
 namespace OpenCertServer.Contrib.Intune;
 
+using System.Diagnostics;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using OpenCertServer.Ca.Utils.Ca;
@@ -67,18 +68,48 @@ public sealed partial class IntuneRevocationSync
 
     public async Task<SyncReport> Run(bool dryRun, CancellationToken cancellationToken)
     {
-        if (!await _running.WaitAsync(TimeSpan.Zero, cancellationToken).ConfigureAwait(false))
-        {
-            return new SyncReport(dryRun, 0, [], [], "A sync is already running.", AlreadyRunning: true);
-        }
-
+        IntuneInstruments.RevocationSyncRequests.Add(1);
+        var started = Stopwatch.GetTimestamp();
+        using var activity = IntuneInstruments.ActivitySource.StartActivity(ActivityNames.RevocationSync);
         try
         {
-            return await RunLocked(dryRun, cancellationToken).ConfigureAwait(false);
+            if (!await _running.WaitAsync(TimeSpan.Zero, cancellationToken).ConfigureAwait(false))
+            {
+                IntuneInstruments.RevocationSyncFailures.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Error);
+                return new SyncReport(dryRun, 0, [], [], "A sync is already running.", AlreadyRunning: true);
+            }
+
+            try
+            {
+                var report = await RunLocked(dryRun, cancellationToken).ConfigureAwait(false);
+                if (report.Aborted is null)
+                {
+                    IntuneInstruments.RevocationSyncSuccesses.Add(1);
+                    activity?.SetStatus(ActivityStatusCode.Ok);
+                }
+                else
+                {
+                    IntuneInstruments.RevocationSyncFailures.Add(1);
+                    activity?.SetStatus(ActivityStatusCode.Error);
+                }
+
+                return report;
+            }
+            finally
+            {
+                _running.Release();
+            }
+        }
+        catch
+        {
+            IntuneInstruments.RevocationSyncFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
         }
         finally
         {
-            _running.Release();
+            IntuneInstruments.RevocationSyncDuration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds);
         }
     }
 

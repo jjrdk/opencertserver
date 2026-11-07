@@ -1,5 +1,7 @@
 namespace OpenCertServer.Contrib.Intune.Tests.Steps;
 
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -27,6 +29,61 @@ public sealed class IntuneChallenge : IDisposable
     private X509Certificate2? _clientSigner;
     private X509Certificate2? _held;
     private string _transactionId = NewTransactionId();
+    private MeterListener? _meterListener;
+    private ActivityListener? _activityListener;
+    private readonly Dictionary<string, long> _telemetryCounters = new();
+    private readonly List<(string Name, int TagCount, ActivityStatusCode Status)> _telemetryActivities = [];
+    private int _hasTelemetryTags;
+
+    [Given("an Intune challenge OpenTelemetry listener")]
+    public void GivenIntuneChallengeOpenTelemetryListener()
+    {
+        _meterListener = new MeterListener
+        {
+            InstrumentPublished = (instrument, listener) =>
+            {
+                if (instrument.Meter.Name == "opencertserver.intune")
+                {
+                    listener.EnableMeasurementEvents(instrument);
+                }
+            }
+        };
+        _meterListener.SetMeasurementEventCallback<long>((instrument, measurement, tags, _) =>
+        {
+            if (!tags.IsEmpty)
+            {
+                Interlocked.Exchange(ref _hasTelemetryTags, 1);
+            }
+
+            lock (_telemetryCounters)
+            {
+                _telemetryCounters.TryGetValue(instrument.Name, out var current);
+                _telemetryCounters[instrument.Name] = current + measurement;
+            }
+        });
+        _meterListener.SetMeasurementEventCallback<double>((_, _, tags, _) =>
+        {
+            if (!tags.IsEmpty)
+            {
+                Interlocked.Exchange(ref _hasTelemetryTags, 1);
+            }
+        });
+        _meterListener.Start();
+
+        _activityListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "opencertserver.intune",
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity =>
+            {
+                lock (_telemetryActivities)
+                {
+                    _telemetryActivities.Add((activity.OperationName, activity.TagObjects.Count(), activity.Status));
+                }
+            }
+        };
+        ActivitySource.AddActivityListener(_activityListener);
+    }
 
     [Given("a SCEP server that asks Intune about every request")]
     public void GivenServer()
@@ -141,6 +198,34 @@ public sealed class IntuneChallenge : IDisposable
         Assert.NotNull(_certRep.Issued);
     }
 
+    [Then("Intune challenge telemetry is recorded without attributes")]
+    public void ThenChallengeTelemetryIsRecordedWithoutAttributes()
+    {
+        lock (_telemetryCounters)
+        {
+            Assert.True(
+                _telemetryCounters.TryGetValue("opencertserver.intune.challenge.validation.requests", out var count) && count > 0,
+                "Expected the Intune challenge validation request counter to increase.");
+            Assert.True(
+                _telemetryCounters.TryGetValue("opencertserver.intune.notification.success.requests", out var notificationCount)
+                    && notificationCount > 0,
+                "Expected the Intune success notification request counter to increase.");
+        }
+
+        Assert.Equal(0, Volatile.Read(ref _hasTelemetryTags));
+        lock (_telemetryActivities)
+        {
+            Assert.Contains(_telemetryActivities, x =>
+                x.Name == "opencertserver.intune.challenge.validation"
+                && x.TagCount == 0
+                && x.Status == ActivityStatusCode.Ok);
+            Assert.Contains(_telemetryActivities, x =>
+                x.Name == "opencertserver.intune.notification.success"
+                && x.TagCount == 0
+                && x.Status == ActivityStatusCode.Ok);
+        }
+    }
+
     [Then("the server answers FAILURE with failInfo badRequest")]
     public void ThenFailure()
     {
@@ -249,6 +334,8 @@ public sealed class IntuneChallenge : IDisposable
 
     public void Dispose()
     {
+        _meterListener?.Dispose();
+        _activityListener?.Dispose();
         _host?.Dispose();
         _fake.Dispose();
     }

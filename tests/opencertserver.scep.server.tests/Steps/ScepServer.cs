@@ -1,6 +1,8 @@
 namespace OpenCertServer.Scep.Tests.Steps;
 
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Formats.Asn1;
 using System.Net;
 using System.Net.Http;
@@ -48,11 +50,66 @@ public sealed class ScepServer : IDisposable
     private readonly ScenarioContext _scenarioContext;
     private readonly ScepLogCollector _logs = new();
     private string? _submittedTransactionId;
+    private MeterListener? _meterListener;
+    private ActivityListener? _activityListener;
+    private readonly Dictionary<string, long> _telemetryCounters = new();
+    private readonly List<(string Name, int TagCount, ActivityStatusCode Status)> _telemetryActivities = [];
+    private int _hasTelemetryTags;
 
     public ScepServer(ScenarioContext scenarioContext) => _scenarioContext = scenarioContext;
 
     [Given("a certificate server that complies with SCEP \\(RFC 8894\\)")]
     public Task GivenACertificateServer() => StartServer(withChallenge: true);
+
+    [Given("a SCEP OpenTelemetry listener")]
+    public void GivenScepOpenTelemetryListener()
+    {
+        _meterListener = new MeterListener
+        {
+            InstrumentPublished = (instrument, listener) =>
+            {
+                if (instrument.Meter.Name == "opencertserver.scep")
+                {
+                    listener.EnableMeasurementEvents(instrument);
+                }
+            }
+        };
+        _meterListener.SetMeasurementEventCallback<long>((instrument, measurement, tags, _) =>
+        {
+            if (!tags.IsEmpty)
+            {
+                Interlocked.Exchange(ref _hasTelemetryTags, 1);
+            }
+
+            lock (_telemetryCounters)
+            {
+                _telemetryCounters.TryGetValue(instrument.Name, out var current);
+                _telemetryCounters[instrument.Name] = current + measurement;
+            }
+        });
+        _meterListener.SetMeasurementEventCallback<double>((_, _, tags, _) =>
+        {
+            if (!tags.IsEmpty)
+            {
+                Interlocked.Exchange(ref _hasTelemetryTags, 1);
+            }
+        });
+        _meterListener.Start();
+
+        _activityListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "opencertserver.scep",
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity =>
+            {
+                lock (_telemetryActivities)
+                {
+                    _telemetryActivities.Add((activity.OperationName, activity.TagObjects.Count(), activity.Status));
+                }
+            }
+        };
+        ActivitySource.AddActivityListener(_activityListener);
+    }
 
     [Given("a certificate server with SCEP but no challenge validator")]
     public Task GivenAServerWithoutValidator() => StartServer(withChallenge: false);
@@ -277,6 +334,43 @@ public sealed class ScepServer : IDisposable
         Assert.Contains(a, lines);
         Assert.Contains(b, lines);
         Assert.Contains(c, lines);
+    }
+
+    [Then("the SCEP capabilities metric and trace are recorded without attributes")]
+    public void ThenScepTelemetryIsRecordedWithoutAttributes()
+    {
+        lock (_telemetryCounters)
+        {
+            Assert.True(
+                _telemetryCounters.TryGetValue("opencertserver.scep.getcacaps.requests", out var count) && count > 0,
+                "Expected the SCEP GetCACaps request counter to increase.");
+        }
+
+        Assert.Equal(0, Volatile.Read(ref _hasTelemetryTags));
+        lock (_telemetryActivities)
+        {
+            var activity = Assert.Single(_telemetryActivities, x => x.Name == "opencertserver.scep.getcacaps");
+            Assert.Equal(0, activity.TagCount);
+        }
+    }
+
+    [Then("the SCEP PKIOperation failure metric and trace are recorded")]
+    public void ThenScepPkiOperationFailureTelemetryIsRecorded()
+    {
+        lock (_telemetryCounters)
+        {
+            Assert.True(
+                _telemetryCounters.TryGetValue("opencertserver.scep.pkioperation.failures", out var count) && count > 0,
+                "Expected the SCEP PKIOperation failure counter to increase.");
+        }
+
+        Assert.Equal(0, Volatile.Read(ref _hasTelemetryTags));
+        lock (_telemetryActivities)
+        {
+            var activity = Assert.Single(_telemetryActivities, x => x.Name == "opencertserver.scep.pkioperation");
+            Assert.Equal(0, activity.TagCount);
+            Assert.Equal(ActivityStatusCode.Error, activity.Status);
+        }
     }
 
     [When("a client asks for the CA certificates")]
@@ -678,6 +772,8 @@ public sealed class ScepServer : IDisposable
 
     public void Dispose()
     {
+        _meterListener?.Dispose();
+        _activityListener?.Dispose();
         _host.Dispose();
         _held?.Dispose();
         _newKey?.Dispose();

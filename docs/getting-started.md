@@ -639,7 +639,7 @@ unknown tool name returns a failed result with error code
 
 ## 9. Operational tooling
 
-* **Telemetry.** EST, ACME, OCSP, CRL, and CA operations emit OpenTelemetry
+* **Telemetry.** EST, ACME, SCEP, Intune, OCSP, CRL, and CA operations emit OpenTelemetry
   counters/successes/failures/durations under the `opencertserver.*` namespace. See
   [OpenTelemetry metrics & traces](../OpenTelemetryMetricsTraces.md).
 * **TPM-backed CA keys.** `opencertserver.tpm` / `opencertserver.tss.net` can provision the CA

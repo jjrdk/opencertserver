@@ -287,7 +287,8 @@ internal static class Program
         RegisterAttestationTrustAnchors(services, builder.Configuration);
 
         // OpenTelemetry metrics and traces: exported over OTLP when enabled, so a deployment's
-        // instrumentation (the opencertserver.acme / .est / .ca meters and activity sources) is scrapeable.
+        // instrumentation (the opencertserver.acme / .est / .scep / .intune / .ca meters and activity sources)
+        // is scrapeable.
         RegisterTelemetry(builder.Services, builder.Configuration);
 
         builder.WebHost.UseKestrel(options =>
@@ -521,9 +522,10 @@ internal static class Program
 
     /// <summary>
     /// OpenTelemetry export over OTLP, enabled only when <c>Telemetry:Enabled</c> is set. The
-    /// <c>opencertserver.acme</c>, <c>opencertserver.est</c> and <c>opencertserver.ca</c> meters and
-    /// activity sources feed a single metric and a single trace provider, both exported to the endpoint
-    /// in <c>Telemetry:OtlpEndpoint</c> (default http://localhost:4317). When disabled nothing is
+    /// <c>opencertserver.acme</c>, <c>opencertserver.est</c>, <c>opencertserver.scep</c>,
+    /// <c>opencertserver.intune</c> and <c>opencertserver.ca</c> meters and activity sources feed a
+    /// single metric and a single trace provider, both exported to the endpoint in
+    /// <c>Telemetry:OtlpEndpoint</c> (default http://localhost:4317). When disabled nothing is
     /// registered, so the in-process behaviour and the in-process metrics tests are unchanged.
     /// </summary>
     private static IServiceCollection RegisterTelemetry(IServiceCollection services, IConfiguration configuration)
@@ -548,6 +550,8 @@ internal static class Program
                 meter
                     .AddMeter("opencertserver.acme")
                     .AddMeter("opencertserver.est")
+                    .AddMeter("opencertserver.scep")
+                    .AddMeter("opencertserver.intune")
                     .AddMeter("opencertserver.ca")
                     .AddOtlpExporter(options => options.Endpoint = endpoint);
             })
@@ -556,6 +560,8 @@ internal static class Program
                 tracer
                     .AddSource("opencertserver.acme")
                     .AddSource("opencertserver.est")
+                    .AddSource("opencertserver.scep")
+                    .AddSource("opencertserver.intune")
                     .AddSource("opencertserver.ca")
                     .AddOtlpExporter(options => options.Endpoint = endpoint);
             });
