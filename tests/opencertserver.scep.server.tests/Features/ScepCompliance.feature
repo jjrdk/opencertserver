@@ -4,6 +4,50 @@ Feature: The SCEP server behaves to RFC 8894 at the edges
   without crashing, the failure CertRep's echoing of the request, the Windows /pkiclient.exe
   mapping, and the replay window in both directions.
 
+Scenario Outline: An unsafe transaction ID is refused before logging or replying in SCEP
+  Even a signed request's transactionID is untrusted. It must fit the reply's PrintableString
+  encoding and length limit, including before the unsupported-cipher badAlg path.
+  Given a certificate server that complies with SCEP (RFC 8894)
+  When a client enrolls with a "<Value>" transaction ID encoded as "<Encoding>" using "<Cipher>"
+  Then the server answers HTTP 400
+  And exactly one safe SCEP rejection is logged
+
+  Examples:
+    | Value                     | Encoding        | Cipher |
+    | newline                   | UTF8String      | 3DES   |
+    | newline                   | IA5String       | 3DES   |
+    | newline                   | UTF8String      | AES    |
+    | newline                   | IA5String       | AES    |
+    | carriage return           | UTF8String      | AES    |
+    | tab                       | IA5String       | AES    |
+    | null                      | UTF8String      | AES    |
+    | non-PrintableString ASCII | IA5String       | AES    |
+    | Unicode                   | UTF8String      | AES    |
+    | empty                     | PrintableString | AES    |
+    | too long                  | PrintableString | AES    |
+    | too long                  | UTF8String      | AES    |
+    | too long                  | IA5String       | AES    |
+
+Scenario Outline: PrintableString-safe transaction IDs remain interoperable
+  Hex and base64 IDs, all PrintableString characters, and the exact length limit are accepted.
+  UTF8String and IA5String clients remain supported when their values are PrintableString-safe.
+  Given a certificate server that complies with SCEP (RFC 8894)
+  When a client enrolls with a "<Value>" transaction ID encoded as "<Encoding>" using "AES"
+  Then the server answers SUCCESS
+  And the response echoes the supplied transaction ID
+
+  Examples:
+    | Value                    | Encoding        |
+    | hex                      | PrintableString |
+    | base64                   | PrintableString |
+    | PrintableString alphabet | PrintableString |
+    | PrintableString alphabet | UTF8String      |
+    | PrintableString alphabet | IA5String       |
+    | minimum length           | PrintableString |
+    | maximum length           | PrintableString |
+    | maximum length           | UTF8String      |
+    | maximum length           | IA5String       |
+
 Scenario: A senderNonce longer than 16 bytes is refused
   RFC 8894, 3.2.1.1.1 fixes the senderNonce to 16 bytes.
   Given a certificate server that complies with SCEP (RFC 8894)

@@ -120,6 +120,16 @@ public static class ScepMessageCodec
                 "messageType, transactionID and senderNonce are required.");
         }
 
+        // The client chooses this value even for self-signed requests. Validate before
+        // logging or processing the envelope: every CertRep echoes it as PrintableString.
+        if (transactionId.Length is < 1 or > 128
+         || transactionId.Any(c => c is not (>= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9'
+             or ' ' or '\'' or '(' or ')' or '+' or ',' or '-' or '.' or '/' or ':' or '=' or '?')))
+        {
+            throw new ScepException(ScepFailInfo.BadRequest,
+                "transactionID must contain 1 to 128 PrintableString characters.");
+        }
+
         // RFC 8894, 3.2.1: a 16-byte random number.
         if (senderNonce.Length != 16)
         {

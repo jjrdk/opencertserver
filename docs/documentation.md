@@ -429,10 +429,18 @@ renewal rules and what Windows does differently are in
 | `/scep/{profile}` | The same for a named CA profile; `/scep` is the default profile. |
 | `/scep/pkiclient.exe`, `/scep/{profile}/pkiclient.exe` | The same - Windows appends `/pkiclient.exe` to the configured URL. |
 
-Malformed CMS messages, requests with an invalid `senderNonce`, unsupported message types, and
-requests whose decrypted payload is not a certificate request receive HTTP 400. A valid `CertPoll`
-request (message type `20`) receives a signed `FAILURE` `CertRep` with `failInfo=badRequest`;
-pending requests are not stored.
+Malformed CMS messages, requests with an invalid `senderNonce`, and undefined message types
+receive HTTP 400. A verified request whose decrypted payload is not a certificate request, or a
+valid `CertPoll` request (message type `20`), receives a signed `FAILURE` `CertRep` with
+`failInfo=badRequest`; pending requests are not stored.
+
+The `transactionID` must contain 1 to 128 ASN.1 PrintableString characters (letters, digits,
+space, and `'()+,-./:=?`), which includes hex and base64 IDs. UTF8String and IA5String encodings
+remain accepted only when their values satisfy that constraint. Invalid IDs receive HTTP 400
+before envelope processing or transaction logging, with one SCEP rejection warning that does
+not echo the ID or include a stack trace. No `CertRep` is returned because it cannot safely echo
+an invalid ID. Boundary and malformed-ID cases are covered in
+[`ScepCompliance.feature`](../tests/opencertserver.scep.server.tests/Features/ScepCompliance.feature).
 
 `PKIOperation` issues nothing until a challenge validator is configured; `GetCACaps` and
 `GetCACert` return public information only.

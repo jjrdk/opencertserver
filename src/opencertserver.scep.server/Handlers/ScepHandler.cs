@@ -11,7 +11,7 @@ using OpenCertServer.Ca.Utils.Ca;
 /// <summary>
 /// The SCEP endpoint (RFC 8894, section 4): one path, the operation in the query.
 /// </summary>
-internal static class ScepHandler
+internal static partial class ScepHandler
 {
     private const string PkiMessage = "application/x-pki-message";
     private const string CaRaCert = "application/x-x509-ca-ra-cert";
@@ -117,7 +117,7 @@ internal static class ScepHandler
         {
             // Without a verified request there is no recipient to encrypt to and no
             // transaction to answer; RFC 8894 leaves this to an HTTP error.
-            logger.LogWarning(ex, "SCEP message rejected: {Reason}", ex.Message);
+            logger.LogScepMessageRejectedReason(ex.Message);
             return Results.BadRequest(ex.Message);
         }
 
@@ -125,8 +125,7 @@ internal static class ScepHandler
         // signed and carries its nonce, so the refusal is a CertRep the client can match.
         if (request.ContentEncryptionAlgorithm is { } algorithm && !ScepMessageCodec.IsAcceptedEncryption(algorithm))
         {
-            logger.LogWarning("SCEP transaction {TransactionId} refused: content encryption {Algorithm} is not supported",
-                request.TransactionId, algorithm);
+            logger.LogScepTransactionTransactionIdRefusedContentEncryptionAlgorithmIsNotSupported(request.TransactionId, algorithm);
             return Failure(request, ScepFailInfo.BadAlg, options);
         }
 
@@ -141,8 +140,7 @@ internal static class ScepHandler
         // nonce. Refused here already when known; claimed only once it has passed its checks.
         if (transactions.IsKnown(request.TransactionId, request.SenderNonce))
         {
-            logger.LogWarning("SCEP transaction {TransactionId} refused: request already seen (replay)",
-                request.TransactionId);
+            logger.LogScepTransactionTransactionIdRefusedRequestAlreadySeenReplay(request.TransactionId);
             return Failure(request, ScepFailInfo.BadRequest, options);
         }
 
@@ -162,7 +160,7 @@ internal static class ScepHandler
             // process is badRequest in a signed CertRep. HTTP errors stay for messages it cannot
             // answer in SCEP at all. The replay slot is not claimed - that happens right before
             // issuing.
-            logger.LogWarning(ex, "SCEP transaction {TransactionId}: unreadable CSR", request.TransactionId);
+            logger.LogScepTransactionTransactionIdUnreadableCsr(request.TransactionId, ex);
             return Failure(request, ScepFailInfo.BadRequest, options);
         }
 
@@ -173,8 +171,7 @@ internal static class ScepHandler
                 .ConfigureAwait(false);
             if (refusal is not null)
             {
-                logger.LogInformation("SCEP transaction {TransactionId}: renewal refused: {Reason}",
-                    request.TransactionId, refusal);
+                logger.LogScepTransactionTransactionIdRenewalRefusedReason(request.TransactionId, refusal);
                 return Failure(request, ScepFailInfo.BadRequest, options);
             }
 
@@ -193,8 +190,7 @@ internal static class ScepHandler
         var decision = await validator.Validate(challenge, cancellationToken).ConfigureAwait(false);
         if (!decision.Allowed)
         {
-            logger.LogInformation("SCEP transaction {TransactionId} denied: {Reason}",
-                request.TransactionId, decision.Reason);
+            logger.LogScepTransactionTransactionIdDeniedReason(request.TransactionId, decision.Reason);
             await validator.NotifyFailure(challenge, decision.Reason ?? "denied", cancellationToken)
                 .ConfigureAwait(false);
             return Failure(request, ScepFailInfo.BadRequest, options);
@@ -208,7 +204,7 @@ internal static class ScepHandler
             var reason = claim == ScepTransactionIds.ClaimResult.Full
                 ? "too many requests remembered for replay protection"
                 : "request already seen (replay)";
-            logger.LogWarning("SCEP transaction {TransactionId} refused: {Reason}", request.TransactionId, reason);
+            logger.LogScepTransactionTransactionIdRefusedReason(request.TransactionId, reason);
             await validator.NotifyFailure(challenge, reason, cancellationToken).ConfigureAwait(false);
             return Failure(request, ScepFailInfo.BadRequest, options);
         }
@@ -223,7 +219,7 @@ internal static class ScepHandler
             var reason = response is SignCertificateResponse.Error error
                 ? string.Join("; ", error.Errors)
                 : "The CA did not issue a certificate.";
-            logger.LogWarning("SCEP transaction {TransactionId}: CA refused: {Reason}", request.TransactionId, reason);
+            logger.LogScepTransactionTransactionIdCaRefusedReason(request.TransactionId, reason);
             await validator.NotifyFailure(challenge, reason, cancellationToken).ConfigureAwait(false);
             return Failure(request, ScepFailInfo.BadRequest, options);
         }
@@ -330,4 +326,28 @@ internal static class ScepHandler
 
         return null;
     }
+
+    [LoggerMessage(LogLevel.Warning, "SCEP message rejected: {Reason}")]
+    static partial void LogScepMessageRejectedReason(this ILogger logger, string reason);
+
+    [LoggerMessage(LogLevel.Warning, "SCEP transaction {TransactionId} refused: content encryption {Algorithm} is not supported")]
+    static partial void LogScepTransactionTransactionIdRefusedContentEncryptionAlgorithmIsNotSupported(this ILogger logger, string transactionId, string algorithm);
+
+    [LoggerMessage(LogLevel.Warning, "SCEP transaction {TransactionId} refused: request already seen (replay)")]
+    static partial void LogScepTransactionTransactionIdRefusedRequestAlreadySeenReplay(this ILogger logger, string transactionId);
+
+    [LoggerMessage(LogLevel.Warning, "SCEP transaction {TransactionId}: unreadable CSR")]
+    static partial void LogScepTransactionTransactionIdUnreadableCsr(this ILogger logger, string transactionId, CryptographicException cryptographicException);
+
+    [LoggerMessage(LogLevel.Information, "SCEP transaction {TransactionId}: renewal refused: {Reason}")]
+    static partial void LogScepTransactionTransactionIdRenewalRefusedReason(this ILogger logger, string transactionId, string reason);
+
+    [LoggerMessage(LogLevel.Information, "SCEP transaction {TransactionId} denied: {Reason}")]
+    static partial void LogScepTransactionTransactionIdDeniedReason(this ILogger logger, string transactionId, string? reason);
+
+    [LoggerMessage(LogLevel.Warning, "SCEP transaction {TransactionId} refused: {Reason}")]
+    static partial void LogScepTransactionTransactionIdRefusedReason(this ILogger logger, string transactionId, string reason);
+
+    [LoggerMessage(LogLevel.Warning, "SCEP transaction {TransactionId}: CA refused: {Reason}")]
+    static partial void LogScepTransactionTransactionIdCaRefusedReason(this ILogger logger, string transactionId, string reason);
 }
