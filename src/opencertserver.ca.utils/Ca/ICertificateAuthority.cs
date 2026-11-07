@@ -84,11 +84,13 @@ public interface ICertificateAuthority : IDisposable
     /// Revokes a certificate by its serial number.
     /// </summary>
     /// <param name="serialNumber">The serial number of the certificate to revoke.</param>
+    /// <param name="issuingProfile">The name of the profile that issued the certificate.</param>
     /// <param name="reason">The reason for revoking the certificate.</param>
     /// <param name="cancellationToken">The cancellation token to use for the operation.</param>
     /// <returns>True if the certificate was successfully revoked, false otherwise.</returns>
     Task<bool> RevokeCertificate(
         string serialNumber,
+        string ? issuingProfile,
         X509RevocationReason reason,
         CancellationToken cancellationToken = default);
 

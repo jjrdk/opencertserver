@@ -124,7 +124,7 @@ public sealed partial class IntuneRevocationSync
 
         var profiles = _options.SyncProfiles.ToHashSet(StringComparer.Ordinal);
         var now = _time.GetUtcNow();
-        var hits = new List<(CertificateItemInfo Item, string Reason)>();
+        var hits = new List<(CertificateItemInfo Item, string IssuingProfile, string Reason)>();
         var unknown = new List<SyncUnknown>();
         var checkedCount = 0;
 
@@ -135,7 +135,7 @@ public sealed partial class IntuneRevocationSync
                 continue;
             }
 
-            var certificate = await LoadCertificate(item, cancellationToken).ConfigureAwait(false);
+            using var certificate = await LoadCertificate(item, cancellationToken).ConfigureAwait(false);
             if (certificate is null)
             {
                 continue;
@@ -162,7 +162,7 @@ public sealed partial class IntuneRevocationSync
                 var reason = await Judge(identity, cancellationToken).ConfigureAwait(false);
                 if (reason is not null)
                 {
-                    hits.Add((item, reason));
+                    hits.Add((item, issuingProfile, reason));
                 }
             }
             catch (GraphUnavailableException ex)
@@ -176,21 +176,23 @@ public sealed partial class IntuneRevocationSync
         {
             var message =
                 $"{hits.Count} certificates would be revoked, more than the limit of {_options.MaxRevocationsPerSync} - "
-                + "nothing revoked. Check the tenant and the app permissions, or raise Scep:Intune:MaxRevocationsPerSync.";
+              + "nothing revoked. Check the tenant and the app permissions, or raise Scep:Intune:MaxRevocationsPerSync.";
             LogAborted(_logger, hits.Count, _options.MaxRevocationsPerSync);
             return new SyncReport(dryRun, checkedCount, [], unknown, message);
         }
 
         var revoked = new List<SyncRevocation>(hits.Count);
-        foreach (var (item, reason) in hits)
+        foreach (var (item, issuingProfile, reason) in hits)
         {
             if (!dryRun)
             {
-                var done = await _ca.RevokeCertificate(item.SerialNumber, X509RevocationReason.CessationOfOperation, cancellationToken)
+                var done = await _ca.RevokeCertificate(item.SerialNumber, issuingProfile,
+                        X509RevocationReason.CessationOfOperation, cancellationToken)
                     .ConfigureAwait(false);
                 if (!done)
                 {
-                    unknown.Add(new SyncUnknown(item.SerialNumber, item.DistinguishedName, "The CA did not revoke it."));
+                    unknown.Add(new SyncUnknown(item.SerialNumber, item.DistinguishedName,
+                        "The CA did not revoke it."));
                     continue;
                 }
 
@@ -220,7 +222,8 @@ public sealed partial class IntuneRevocationSync
 
         if (identity.IntuneDeviceId is { } deviceId && Guid.TryParse(deviceId, out _))
         {
-            if (await _intune.GetManagedDeviceState(deviceId, cancellationToken).ConfigureAwait(false) == DirectoryState.Missing)
+            if (await _intune.GetManagedDeviceState(deviceId, cancellationToken).ConfigureAwait(false) ==
+                DirectoryState.Missing)
             {
                 return "The device is no longer managed by Intune (retired, wiped or deleted).";
             }
@@ -241,7 +244,8 @@ public sealed partial class IntuneRevocationSync
     }
 
     private async IAsyncEnumerable<CertificateItemInfo> Inventory(
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
+        CancellationToken cancellationToken)
     {
         const int pageSize = 100;
         for (var page = 0;; page++)
@@ -260,22 +264,10 @@ public sealed partial class IntuneRevocationSync
         }
     }
 
-    // By serial number, not by thumbprint: the stores key their items by serial, and the
-    // in-memory store's GetCertificatesByThumbprint compares thumbprints against those keys
-    // and finds nothing (seen 16.10.2026 while building this).
     private async Task<X509Certificate2?> LoadCertificate(CertificateItemInfo item, CancellationToken cancellationToken)
     {
-        byte[] serial;
-        try
-        {
-            serial = Convert.FromHexString(item.SerialNumber);
-        }
-        catch (FormatException)
-        {
-            return null;
-        }
-
-        await foreach (var certificate in _store.GetCertificatesById(cancellationToken, serial).ConfigureAwait(false))
+        await foreach (var certificate in _store
+            .GetCertificatesByThumbprint([item.Thumbprint.AsMemory()], cancellationToken).ConfigureAwait(false))
         {
             return certificate;
         }
@@ -292,9 +284,11 @@ public sealed partial class IntuneRevocationSync
     [LoggerMessage(LogLevel.Information, "Intune sync: revoked {Serial} ({Subject}): {Reason}")]
     private static partial void LogRevoked(ILogger logger, string serial, string subject, string reason);
 
-    [LoggerMessage(LogLevel.Error, "Intune sync aborted: {Hits} certificates would be revoked, limit is {Limit} - nothing revoked")]
+    [LoggerMessage(LogLevel.Error,
+        "Intune sync aborted: {Hits} certificates would be revoked, limit is {Limit} - nothing revoked")]
     private static partial void LogAborted(ILogger logger, int hits, int limit);
 
-    [LoggerMessage(LogLevel.Information, "Intune sync finished (dry run: {DryRun}): {CheckedCount} checked, {Revoked} revoked, {Unknown} unknown")]
+    [LoggerMessage(LogLevel.Information,
+        "Intune sync finished (dry run: {DryRun}): {CheckedCount} checked, {Revoked} revoked, {Unknown} unknown")]
     private static partial void LogFinished(ILogger logger, bool dryRun, int checkedCount, int revoked, int unknown);
 }

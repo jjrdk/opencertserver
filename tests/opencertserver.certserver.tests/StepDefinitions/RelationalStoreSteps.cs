@@ -122,8 +122,12 @@ public sealed class RelationalStoreSteps
     public async Task WhenCaServiceRevokesCertificate()
     {
         var certificateAuthority = _reloadedServices!.GetRequiredService<ICertificateAuthority>();
+        var store = _reloadedServices!.GetRequiredService<IStoreCertificates>();
+        var issuingProfile = await store.GetIssuingProfile(_issuedCertificate!.Thumbprint,
+            TestContext.Current.CancellationToken);
+        Assert.NotNull(issuingProfile);
         var revoked = await certificateAuthority.RevokeCertificate(
-            _issuedCertificate!.GetSerialNumberString(),
+            _issuedCertificate.GetSerialNumberString(), issuingProfile,
             X509RevocationReason.KeyCompromise).ConfigureAwait(false);
         Assert.True(revoked);
     }
@@ -227,5 +231,4 @@ public sealed class RelationalStoreSteps
                 ["AcmeServer:DisableCaaChecks"] = "true"
             })
             .Build();
-
 }

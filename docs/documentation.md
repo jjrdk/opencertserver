@@ -354,7 +354,9 @@ authorize issuance; annotations alone never grant approval.
   the client certificate and proof-of-possession signature. JWT authority settings are applied
   before the framework initializes OIDC discovery and signing-key retrieval.
 - Response: `200` on success, `404` if the serial number is unknown, `401` if authentication
-  fails, `403` if authorization fails.
+  fails, `403` if authorization fails. Revocation uses the target certificate's stored issuing
+  profile, not the caller's profile or a null default. Administrative requests with a serial
+  shared by multiple stored certificates return `400` rather than selecting a profile arbitrarily.
 
 ### POST /ca/ocsp  and  GET /ca/ocsp/{requestEncoded}
 
@@ -849,6 +851,13 @@ custom persistence:
 
 To bring your own store, implement the relevant `IStore*` interface and register it with
 `AddAcmeServer(...).WithCertificateService(...)` / the ACME registration instead of the defaults.
+
+Certificate stores must persist the resolved issuing profile supplied to
+`IStoreCertificates.AddCertificate(certificate, issuingProfile, cancellationToken)` and expose it
+through `GetIssuingProfile` for the exact certificate thumbprint. Profile-scoped serial lookup,
+removal and revocation-list queries match the stored profile ordinally. A null profile matches
+only certificates recorded without provenance; it does not select the configured default profile
+or all profiles. Such imported certificates cannot authorize re-enrollment.
 
 ---
 

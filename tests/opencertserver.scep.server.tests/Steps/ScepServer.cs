@@ -506,7 +506,10 @@ public sealed class ScepServer : IDisposable
     public async Task GivenRevoked()
     {
         var ca = _host.Services.GetRequiredService<ICertificateAuthority>();
-        Assert.True(await ca.RevokeCertificate(_held!.GetSerialNumberString(), X509RevocationReason.KeyCompromise)
+        var store = _host.Services.GetRequiredService<IStoreCertificates>();
+        var issuingProfile = await store.GetIssuingProfile(_held!.Thumbprint, TestContext.Current.CancellationToken);
+        Assert.NotNull(issuingProfile);
+        Assert.True(await ca.RevokeCertificate(_held.GetSerialNumberString(), issuingProfile, X509RevocationReason.KeyCompromise)
             .ConfigureAwait(false));
     }
 

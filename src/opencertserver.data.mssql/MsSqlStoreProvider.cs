@@ -54,6 +54,7 @@ public sealed class MsSqlStoreProvider : IRelationalStoreProvider
     public async Task<bool> RevokeCertificateAsync(
         CaDbContext context,
         string serialNumber,
+        string? issuingProfile,
         X509RevocationReason reason,
         CancellationToken cancellationToken)
     {
@@ -62,6 +63,7 @@ public sealed class MsSqlStoreProvider : IRelationalStoreProvider
             $"""
              UPDATE [Certificates] SET [RevocationReason] = {(int)reason}, [RevocationDate] = {DateTimeOffset.UtcNow}
              WHERE [SerialNumber] = {serialNumber}
+                 AND ([ProfileName] = {issuingProfile} OR ([ProfileName] IS NULL AND {issuingProfile} IS NULL))
              """, cancellationToken) == 1;
         telemetry.Complete();
         return revoked;

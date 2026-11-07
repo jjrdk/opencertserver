@@ -49,10 +49,8 @@ public partial class CertificateServerFeatures
         var request = new CertificateRequest("CN=test", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         var pem = new string(PemEncoding.Write("CERTIFICATE REQUEST", request.CreateSigningRequest()));
         using var client = _server.CreateClient();
-        using var message = new HttpRequestMessage(HttpMethod.Post, path)
-        {
-            Content = new StringContent(pem, Encoding.UTF8, "application/x-pem-file")
-        };
+        using var message = new HttpRequestMessage(HttpMethod.Post, path);
+        message.Content = new StringContent(pem, Encoding.UTF8, "application/x-pem-file");
         message.Headers.Add("Authorization", "Bearer valid-jwt");
         var response = await client.SendAsync(message).ConfigureAwait(false);
         _scenarioContext["csrStatus"] = response.StatusCode;

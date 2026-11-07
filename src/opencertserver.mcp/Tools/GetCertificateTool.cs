@@ -31,21 +31,24 @@ public class GetCertificateTool
             throw new McpException("serialNumber must be a valid hex-encoded string");
         }
 
-        var certs = store.GetCertificatesById(cancellationToken, serialBytes);
-        var certList = await certs.ToListAsync(cancellationToken).ConfigureAwait(false);
-
-        if (!certList.Any())
+        var matches = await store.GetInventory(0, int.MaxValue, cancellationToken)
+            .Where(item => item.SerialNumber.Equals(Convert.ToHexString(serialBytes), StringComparison.OrdinalIgnoreCase))
+            .Take(2).ToListAsync(cancellationToken).ConfigureAwait(false);
+        if (matches.Count == 0)
         {
             throw new McpException($"Certificate with serial number {serialNumber} not found");
         }
-
-        var cert = certList.First();
+        if (matches.Count > 1)
+        {
+            throw new McpException($"Certificate serial number {serialNumber} is ambiguous");
+        }
+        var inventory = matches[0];
+        using var cert = await store
+            .GetCertificatesByThumbprint([inventory.Thumbprint.AsMemory()], cancellationToken)
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false)
+            ?? throw new McpException($"Certificate with serial number {serialNumber} not found");
 
         var pem = includePem ? cert.ExportCertificatePem() : null;
-
-        // Look up revocation status from store
-        var inventory = await store.GetInventory(0, int.MaxValue, cancellationToken)
-            .FirstOrDefaultAsync(i => i.SerialNumber.Equals(serialNumber, StringComparison.OrdinalIgnoreCase), cancellationToken).ConfigureAwait(false);
 
         return new McpCertificateItem
         {

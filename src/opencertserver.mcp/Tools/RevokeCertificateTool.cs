@@ -23,12 +23,17 @@ public class RevokeCertificateTool
         IMcpAuthorization authorization,
         ClaimsPrincipal caller,
         ICertificateAuthority ca,
-        [Description("Certificate serial number (hex string)")] string serialNumber,
+        IStoreCertificates store,
+        [Description("Certificate serial number (hex string)")]
+        string serialNumber,
+        [Description("Issuing profile name (optional)")]
+        string? issuingProfile = null,
         [Description("Revocation reason")] string reason = "Unspecified",
         CancellationToken cancellationToken = default)
     {
         // Fail closed: refuse to revoke to an unauthenticated/unauthorized caller.
-        await authorization.EnsureAuthorizedAsync(McpCaOperation.Revoke, caller, cancellationToken).ConfigureAwait(false);
+        await authorization.EnsureAuthorizedAsync(McpCaOperation.Revoke, caller, cancellationToken)
+            .ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(serialNumber))
         {
@@ -41,7 +46,22 @@ public class RevokeCertificateTool
                 $"Invalid revocation reason: {reason}. Valid values: Unspecified, KeyCompromise, CACompromise, AffiliationChanged, Superseded, CessationOfOperation, CertificateHold, RemoveFromCRL, PrivilegeWithdrawn, AACompromise");
         }
 
-        var result = await ca.RevokeCertificate(serialNumber, revocationReason, cancellationToken).ConfigureAwait(false);
+        if (issuingProfile is null)
+        {
+            var matches = await store.GetInventory(0, int.MaxValue, cancellationToken)
+                .Where(item => string.Equals(item.SerialNumber, serialNumber, StringComparison.OrdinalIgnoreCase))
+                .Take(2).ToListAsync(cancellationToken).ConfigureAwait(false);
+            if (matches.Count != 1)
+            {
+                throw new McpException($"Certificate with serial number {serialNumber} not found or ambiguous; specify issuingProfile");
+            }
+
+            issuingProfile = await store.GetIssuingProfile(matches[0].Thumbprint, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var result = await ca.RevokeCertificate(serialNumber, issuingProfile, revocationReason, cancellationToken)
+            .ConfigureAwait(false);
 
         if (result)
         {

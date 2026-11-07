@@ -40,6 +40,7 @@ public sealed class ReEnrollmentProfileSteps
         var samePermissions = permissions == "identical";
         var issuer = CertificateAuthority.CreateSelfSignedRsa(
             "issuer", new X500DistinguishedName("CN=Shared issuer"), TimeSpan.FromDays(365));
+
         CaProfile Profile(string name, bool server) => new()
         {
             Name = name,
@@ -47,9 +48,11 @@ public sealed class ReEnrollmentProfileSteps
             CertificateChain = issuer.CertificateChain,
             CertificateValidity = TimeSpan.FromDays(server ? 90 : 30),
             KeyUsage = X509KeyUsageFlags.DigitalSignature,
-            ExtendedKeyUsages = server ? [Oids.ServerAuthenticationPurpose, Oids.ClientAuthenticationPurpose] : ["1.3.6.1.5.5.7.3.2"],
+            ExtendedKeyUsages =
+                server ? [Oids.ServerAuthenticationPurpose, Oids.ClientAuthenticationPurpose] : ["1.3.6.1.5.5.7.3.2"],
             CertificatePolicies = server ? [] : ["1.3.6.1.4.1.67091.10.1"]
         };
+
         _profiles = new CaProfileSet("vpn-server",
             Profile("vpn-user", samePermissions), Profile("vpn-server", true));
         _store = permissions == "legacy store" ? new LegacyStore() : new InMemoryCertificateStore();
@@ -80,9 +83,11 @@ public sealed class ReEnrollmentProfileSteps
     {
         var authority = _server.Services.GetRequiredService<ICertificateAuthority>();
         ICertificateAuthority issuingAuthority = records is "present" or "revoked" or "collision"
-            ? authority : new CertificateAuthority(
-            new CaConfiguration(_profiles, [], [], []), new InMemoryCertificateStore(),
-            new AcceptTestChain(), new RandomNumberCertificateIdGenerator(), NullLogger<CertificateAuthority>.Instance);
+            ? authority
+            : new CertificateAuthority(
+                new CaConfiguration(_profiles, [], [], []), new InMemoryCertificateStore(),
+                new AcceptTestChain(), new RandomNumberCertificateIdGenerator(),
+                NullLogger<CertificateAuthority>.Instance);
         using var key = RSA.Create(2048);
         var issued = Assert.IsType<SignCertificateResponse.Success>(
             await issuingAuthority.SignCertificateRequest(Request(), source == "default" ? null : source));
@@ -122,14 +127,22 @@ public sealed class ReEnrollmentProfileSteps
                 break;
             }
             case "revoked":
-                Assert.True(await authority.RevokeCertificate(_original.SerialNumber, X509RevocationReason.KeyCompromise));
+                Assert.True(await authority.RevokeCertificate(_original.SerialNumber,
+                    source == "default" ? "vpn-server" : source,
+                    X509RevocationReason.KeyCompromise));
                 break;
         }
 
-        _inventoryCount = await _store.GetInventory().CountAsync(TestContext.Current.CancellationToken);
+        _inventoryCount = await _store.GetInventory(cancellationToken: TestContext.Current.CancellationToken)
+            .CountAsync(TestContext.Current.CancellationToken);
         _targetProfile = target == "default" ? "vpn-server" : target;
         (_, _originalStatus, _) = await _store.GetCertificateStatus(
             CertId.Create(_original, HashAlgorithmName.SHA256));
+        if (records is "present" or "revoked")
+        {
+            Assert.Equal(records == "revoked" ? CertificateStatus.Revoked : CertificateStatus.Good,
+                _originalStatus);
+        }
         if (transport == "EST")
         {
             using var client = new HttpClient(new TestMessageHandler(_server, _original));
@@ -169,11 +182,13 @@ public sealed class ReEnrollmentProfileSteps
                 "invalid validity" => "validity period",
                 _ => "issuing profile"
             }, _body);
-            Assert.Equal(_inventoryCount, await _store.GetInventory().CountAsync(TestContext.Current.CancellationToken));
+            Assert.Equal(_inventoryCount,
+                await _store.GetInventory().CountAsync(TestContext.Current.CancellationToken));
             var (_, status, _) = await _store.GetCertificateStatus(
                 CertId.Create(_original, HashAlgorithmName.SHA256));
             Assert.NotEqual(X509RevocationReason.Superseded,
-                (await _store.GetInventory().ToArrayAsync(TestContext.Current.CancellationToken)).SingleOrDefault()?.RevocationReason);
+                (await _store.GetInventory().ToArrayAsync(TestContext.Current.CancellationToken)).SingleOrDefault()
+                ?.RevocationReason);
             Assert.Equal(_originalStatus, status);
         }
         else
@@ -206,37 +221,53 @@ public sealed class ReEnrollmentProfileSteps
     {
         private readonly InMemoryCertificateStore _inner = new();
 
-        [Obsolete("Use the overload that includes the issuing profile to support re-enrollment provenance.", error: true)]
+        [Obsolete("Use the overload that includes the issuing profile to support re-enrollment provenance.",
+            error: true)]
         public Task AddCertificate(X509Certificate2 certificate, CancellationToken cancellationToken = default) =>
             _inner.AddCertificate(certificate, issuingProfile: null, cancellationToken);
 
-        public Task AddCertificate(X509Certificate2 certificate, string? issuingProfile, CancellationToken cancellationToken = default)
+        public Task AddCertificate(
+            X509Certificate2 certificate,
+            string? issuingProfile,
+            CancellationToken cancellationToken = default)
         {
             return _inner.AddCertificate(certificate, issuingProfile, cancellationToken);
         }
 
         public Task<bool> RemoveCertificate(
-            string serialNumber, X509RevocationReason reason, CancellationToken cancellationToken = default) =>
-            _inner.RemoveCertificate(serialNumber, reason, cancellationToken);
+            string serialNumber,
+            string? issuingProfile,
+            X509RevocationReason reason,
+            CancellationToken cancellationToken = default) =>
+            _inner.RemoveCertificate(serialNumber, issuingProfile, reason, cancellationToken);
 
         public IAsyncEnumerable<CertificateItemInfo> GetRevocationList(
-            string? issuingProfile, int page = 0, int pageSize = 100, CancellationToken cancellationToken = default) =>
+            string? issuingProfile,
+            int page = 0,
+            int pageSize = 100,
+            CancellationToken cancellationToken = default) =>
             _inner.GetRevocationList(issuingProfile, page, pageSize, cancellationToken);
 
         public Task<(CertId, CertificateStatus, RevokedInfo?)> GetCertificateStatus(
-            CertId certId, CancellationToken cancellationToken = default) =>
+            CertId certId,
+            CancellationToken cancellationToken = default) =>
             _inner.GetCertificateStatus(certId, cancellationToken);
 
         public IAsyncEnumerable<CertificateItemInfo> GetInventory(
-            int page = 0, int pageSize = 100, CancellationToken cancellationToken = default) =>
+            int page = 0,
+            int pageSize = 100,
+            CancellationToken cancellationToken = default) =>
             _inner.GetInventory(page, pageSize, cancellationToken);
 
         public IAsyncEnumerable<X509Certificate2> GetCertificatesById(
-            CancellationToken cancellationToken, params IEnumerable<ReadOnlyMemory<byte>> ids) =>
-            _inner.GetCertificatesById(cancellationToken, ids);
+            string? issuingProfile,
+            CancellationToken cancellationToken,
+            params IEnumerable<ReadOnlyMemory<byte>> ids) =>
+            _inner.GetCertificatesById(issuingProfile, cancellationToken, ids);
 
         public IAsyncEnumerable<X509Certificate2> GetCertificatesByThumbprint(
-            IEnumerable<ReadOnlyMemory<char>> thumbprint, CancellationToken cancellationToken = default) =>
+            IEnumerable<ReadOnlyMemory<char>> thumbprint,
+            CancellationToken cancellationToken = default) =>
             _inner.GetCertificatesByThumbprint(thumbprint, cancellationToken);
     }
 }

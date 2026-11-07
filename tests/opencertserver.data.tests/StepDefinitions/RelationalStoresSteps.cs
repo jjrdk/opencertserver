@@ -43,6 +43,61 @@ public sealed class RelationalStoresSteps
     private IStoreExternalAccountKeys Keys => _services.GetRequiredService<IStoreExternalAccountKeys>();
     private IStoreCertificates Certificates => _services.GetRequiredService<IStoreCertificates>();
 
+    [Given("the certificate store is {string}")]
+    public async Task StartCertificateStore(string storage)
+    {
+        if (storage == "in-memory")
+        {
+            _services = new ServiceCollection()
+                .AddSingleton<IStoreCertificates, InMemoryCertificateStore>().BuildServiceProvider();
+            return;
+        }
+
+        await StartDatabase(storage);
+    }
+
+    [Then("profile-scoped certificate operations preserve isolation")]
+    public async Task CertificateProfileIsolation()
+    {
+        var certificate = NewCertificate(101);
+        var other = NewCertificate(102);
+        var imported = NewCertificate(103);
+        var ct = TestContext.Current.CancellationToken;
+        await Certificates.AddCertificate(certificate, "profile", ct);
+        await Certificates.AddCertificate(other, "other", ct);
+        await Certificates.AddCertificate(imported, issuingProfile: null, ct);
+
+        foreach (var item in new[] { certificate, other, imported })
+        {
+            Assert.Equal(CertificateStatus.Good,
+                (await Certificates.GetCertificateStatus(CertId.Create(item, HashAlgorithmName.SHA256), ct)).Item2);
+        }
+
+        Assert.Empty(await Certificates.GetCertificatesById("PROFILE", ct, certificate.SerialNumberBytes)
+            .ToListAsync(ct));
+        Assert.Empty(await Certificates.GetCertificatesById(null, ct, certificate.SerialNumberBytes)
+            .ToListAsync(ct));
+        Assert.False(await Certificates.RemoveCertificate(certificate.SerialNumber, "PROFILE",
+            X509RevocationReason.KeyCompromise, ct));
+        Assert.False(await Certificates.RemoveCertificate(certificate.SerialNumber, null,
+            X509RevocationReason.KeyCompromise, ct));
+        Assert.True(await Certificates.RemoveCertificate(certificate.SerialNumber, "profile",
+            X509RevocationReason.KeyCompromise, ct));
+        Assert.True(await Certificates.RemoveCertificate(imported.SerialNumber, null,
+            X509RevocationReason.CessationOfOperation, ct));
+        Assert.Equal(certificate.SerialNumber,
+            Assert.Single(await Certificates.GetRevocationList("profile", cancellationToken: ct)
+                .ToListAsync(ct)).SerialNumber);
+        Assert.Equal(imported.SerialNumber,
+            Assert.Single(await Certificates.GetRevocationList(null, cancellationToken: ct)
+                .ToListAsync(ct)).SerialNumber);
+        Assert.Empty(await Certificates.GetRevocationList("other", cancellationToken: ct).ToListAsync(ct));
+        Assert.Equal(CertificateStatus.Revoked,
+            (await Certificates.GetCertificateStatus(CertId.Create(certificate, HashAlgorithmName.SHA256), ct)).Item2);
+        Assert.Equal(CertificateStatus.Good,
+            (await Certificates.GetCertificateStatus(CertId.Create(other, HashAlgorithmName.SHA256), ct)).Item2);
+    }
+
     [Given("the relational database is {string}")]
     public async Task StartDatabase(string database)
     {
@@ -77,12 +132,15 @@ public sealed class RelationalStoresSteps
     [AfterScenario]
     public async Task Dispose()
     {
-        foreach (var certificate in _certificates) certificate.Dispose();
+        foreach (var certificate in _certificates)
+        {
+            certificate.Dispose();
+        }
+
         if (_services is not null)
         {
             await _services.DisposeAsync();
         }
-
         if (_database is not null)
         {
             await _database.DisposeAsync();
@@ -308,19 +366,25 @@ public sealed class RelationalStoresSteps
     public async Task CertificateRoundTrip()
     {
         var certificate = NewCertificate(0xABCD);
-        await Certificates.AddCertificate(certificate, "default", TestContext.Current.CancellationToken);
+        const string issuingProfile = "default";
+        await Certificates.AddCertificate(certificate, issuingProfile, TestContext.Current.CancellationToken);
         await Reload();
-        Assert.Equal("default",
+        Assert.Equal(issuingProfile,
             await Certificates.GetIssuingProfile(certificate.Thumbprint, TestContext.Current.CancellationToken));
         var id = CertId.Create(certificate, HashAlgorithmName.SHA256);
         Assert.Equal(CertificateStatus.Good,
             (await Certificates.GetCertificateStatus(id, TestContext.Current.CancellationToken)).Item2);
         var byId = await Certificates
-            .GetCertificatesById(TestContext.Current.CancellationToken, certificate.SerialNumberBytes)
+            .GetCertificatesById(issuingProfile, TestContext.Current.CancellationToken, certificate.SerialNumberBytes)
             .ToListAsync(TestContext.Current.CancellationToken);
         using var foundById = Assert.Single(byId);
         Assert.Equal(certificate.RawData, foundById.RawData);
         Assert.False(foundById.HasPrivateKey);
+        Assert.Empty(await Certificates
+            .GetCertificatesById("other-profile", TestContext.Current.CancellationToken, certificate.SerialNumberBytes)
+            .ToListAsync(TestContext.Current.CancellationToken));
+        Assert.False(await Certificates.RemoveCertificate(certificate.SerialNumber, "other-profile",
+            X509RevocationReason.KeyCompromise, TestContext.Current.CancellationToken));
         var byThumbprint = await Certificates
             .GetCertificatesByThumbprint([certificate.Thumbprint.ToLowerInvariant().AsMemory()],
                 TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
@@ -333,15 +397,16 @@ public sealed class RelationalStoresSteps
         Assert.Equal(certificate.NotAfter.ToUniversalTime(), inventory.NotAfter.UtcDateTime);
         Assert.Equal(TimeSpan.Zero, inventory.NotBefore.Offset);
         Assert.Equal(TimeSpan.Zero, inventory.NotAfter.Offset);
-        Assert.True(await Certificates.RemoveCertificate(certificate.SerialNumber, X509RevocationReason.KeyCompromise,
+        Assert.True(await Certificates.RemoveCertificate(certificate.SerialNumber, issuingProfile,
+            X509RevocationReason.KeyCompromise,
             TestContext.Current.CancellationToken));
         await Reload();
-        Assert.Equal("default",
+        Assert.Equal(issuingProfile,
             await Certificates.GetIssuingProfile(certificate.Thumbprint, TestContext.Current.CancellationToken));
         var revoked = await Certificates.GetCertificateStatus(id, TestContext.Current.CancellationToken);
         Assert.Equal(CertificateStatus.Revoked, revoked.Item2);
         Assert.NotNull(revoked.Item3);
-        Assert.False(await Certificates.RemoveCertificate("missing", X509RevocationReason.Unspecified,
+        Assert.False(await Certificates.RemoveCertificate("missing", issuingProfile, X509RevocationReason.Unspecified,
             TestContext.Current.CancellationToken));
         Assert.Equal(CertificateStatus.Unknown,
             (await Certificates.GetCertificateStatus(CertId.Create(NewCertificate(999), HashAlgorithmName.SHA256),
@@ -353,17 +418,20 @@ public sealed class RelationalStoresSteps
     {
         var memory = new InMemoryCertificateStore();
         // Include the certificate already recorded by the preceding step.
-        await memory.AddCertificate(_certificates[0], "default", TestContext.Current.CancellationToken);
-        await memory.RemoveCertificate(_certificates[0].SerialNumber, X509RevocationReason.KeyCompromise,
+        const string issuingProfile = "default";
+        await memory.AddCertificate(_certificates[0], issuingProfile, TestContext.Current.CancellationToken);
+        await memory.RemoveCertificate(_certificates[0].SerialNumber, issuingProfile,
+            X509RevocationReason.KeyCompromise,
             TestContext.Current.CancellationToken);
         for (var i = 1; i <= 105; i++)
         {
             var certificate = NewCertificate(i);
-            await Certificates.AddCertificate(certificate, "default", TestContext.Current.CancellationToken);
-            await memory.AddCertificate(certificate, "default", TestContext.Current.CancellationToken);
-            await Certificates.RemoveCertificate(certificate.SerialNumber, X509RevocationReason.Superseded,
+            await Certificates.AddCertificate(certificate, issuingProfile, TestContext.Current.CancellationToken);
+            await memory.AddCertificate(certificate, issuingProfile, TestContext.Current.CancellationToken);
+            await Certificates.RemoveCertificate(certificate.SerialNumber, issuingProfile,
+                X509RevocationReason.Superseded,
                 TestContext.Current.CancellationToken);
-            await memory.RemoveCertificate(certificate.SerialNumber, X509RevocationReason.Superseded,
+            await memory.RemoveCertificate(certificate.SerialNumber, issuingProfile, X509RevocationReason.Superseded,
                 TestContext.Current.CancellationToken);
         }
 
@@ -375,10 +443,11 @@ public sealed class RelationalStoresSteps
                 .ToListAsync(TestContext.Current.CancellationToken);
             Assert.Equal(expected.Select(c => c.SerialNumber), actual.Select(c => c.SerialNumber));
             Assert.Equal(expected.Select(c => c.RevocationReason), actual.Select(c => c.RevocationReason));
-            var expectedRevoked = await memory.GetRevocationList("default", page, 40, TestContext.Current.CancellationToken)
+            var expectedRevoked = await memory
+                .GetRevocationList(issuingProfile, page, 40, TestContext.Current.CancellationToken)
                 .ToListAsync(TestContext.Current.CancellationToken);
             var actualRevoked = await Certificates
-                .GetRevocationList("default", page, 40, TestContext.Current.CancellationToken)
+                .GetRevocationList(issuingProfile, page, 40, TestContext.Current.CancellationToken)
                 .ToListAsync(TestContext.Current.CancellationToken);
             Assert.Equal(expected.Select(c => c.SerialNumber), expectedRevoked.Select(c => c.SerialNumber));
             Assert.Equal(expectedRevoked.Select(c => c.SerialNumber), actualRevoked.Select(c => c.SerialNumber));
@@ -559,31 +628,5 @@ public sealed class RelationalStoresSteps
         {
             Environment.SetEnvironmentVariable(variable, null);
         }
-    }
-
-    private static async Task<string> RunProcess(ProcessStartInfo start, TimeSpan timeout)
-    {
-        start.RedirectStandardOutput = true;
-        start.RedirectStandardError = true;
-        start.UseShellExecute = false;
-        using var process = Process.Start(start) ??
-            throw new InvalidOperationException($"Could not start {start.FileName}.");
-        var stdout = process.StandardOutput.ReadToEndAsync();
-        var stderr = process.StandardError.ReadToEndAsync();
-        using var cancellation = new CancellationTokenSource(timeout);
-        try
-        {
-            await process.WaitForExitAsync(cancellation.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            process.Kill(entireProcessTree: true);
-            await process.WaitForExitAsync();
-            throw;
-        }
-
-        var output = await stdout + await stderr;
-        Assert.True(process.ExitCode == 0, $"{start.FileName} exited with {process.ExitCode}:\n{output}");
-        return output;
     }
 }

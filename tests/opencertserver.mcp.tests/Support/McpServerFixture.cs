@@ -227,7 +227,9 @@ public class McpServerFixture : IDisposable
                     services.GetRequiredService<IMcpAuthorization>(),
                     _currentCaller,
                     services.GetRequiredService<ICertificateAuthority>(),
+                    services.GetRequiredService<IStoreCertificates>(),
                     GetString(dict, "serialNumber") ?? string.Empty,
+                    GetString(dict, "issuingProfile"),
                     GetString(dict, "reason") ?? "Unspecified",
                     cancellationToken).ConfigureAwait(false),
                 "get_revocation_status" => await GetRevocationStatusTool.GetRevocationStatus(
