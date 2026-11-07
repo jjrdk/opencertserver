@@ -21,6 +21,7 @@
     <ItemGroup>
         <Compile Include="../Shared/RelationalTestDatabase.cs" Link="Support/RelationalTestDatabase.cs" />
         <ProjectReference Include="../../src/opencertserver.data.mssql/opencertserver.data.mssql.csproj" />
+        <ProjectReference Include="..\..\src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
         <ProjectReference Include="..\..\src\opencertserver.data.postgresql\opencertserver.data.postgresql.csproj" />
         <ProjectReference Include="..\..\src\opencertserver.acme.abstractions\opencertserver.acme.abstractions.csproj" />
         <ProjectReference Include="..\..\src\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
