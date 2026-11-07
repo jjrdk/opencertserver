@@ -27,13 +27,14 @@ public sealed class RelationalCertificateStore : IStoreCertificates
     }
 
     /// <inheritdoc />
+    [Obsolete("Use the overload that includes the issuing profile to support re-enrollment provenance.", error: false)]
     public Task AddCertificate(X509Certificate2 certificate, CancellationToken cancellationToken = default) =>
         AddCertificate(certificate, null!, cancellationToken);
 
     /// <inheritdoc />
     public async Task AddCertificate(
         X509Certificate2 certificate,
-        string issuingProfile,
+        string? issuingProfile,
         CancellationToken cancellationToken = default)
     {
         using var telemetry = DataInstruments.Start("certificate.add");

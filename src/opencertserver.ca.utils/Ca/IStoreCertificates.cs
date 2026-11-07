@@ -11,6 +11,7 @@ using Ocsp;
 /// </summary>
 public interface IStoreCertificates
 {
+    [Obsolete("Use the overload that includes the issuing profile to support re-enrollment provenance.", error: false)]
     Task AddCertificate(X509Certificate2 certificate, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -20,8 +21,8 @@ public interface IStoreCertificates
     /// </summary>
     Task AddCertificate(
         X509Certificate2 certificate,
-        string issuingProfile,
-        CancellationToken cancellationToken = default) => AddCertificate(certificate, cancellationToken);
+        string? issuingProfile,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns trusted issuance metadata for the exact certificate thumbprint, or null when

@@ -47,7 +47,7 @@ public sealed class ReEnrollmentProfileSteps
             CertificateChain = issuer.CertificateChain,
             CertificateValidity = TimeSpan.FromDays(server ? 90 : 30),
             KeyUsage = X509KeyUsageFlags.DigitalSignature,
-            ExtendedKeyUsages = server ? ["1.3.6.1.5.5.7.3.1", "1.3.6.1.5.5.7.3.2"] : ["1.3.6.1.5.5.7.3.2"],
+            ExtendedKeyUsages = server ? [Oids.ServerAuthenticationPurpose, Oids.ClientAuthenticationPurpose] : ["1.3.6.1.5.5.7.3.2"],
             CertificatePolicies = server ? [] : ["1.3.6.1.4.1.67091.10.1"]
         };
         _profiles = new CaProfileSet("vpn-server",
@@ -84,44 +84,49 @@ public sealed class ReEnrollmentProfileSteps
             new CaConfiguration(_profiles, [], [], []), new InMemoryCertificateStore(),
             new AcceptTestChain(), new RandomNumberCertificateIdGenerator(), NullLogger<CertificateAuthority>.Instance);
         using var key = RSA.Create(2048);
-        CertificateRequest Request() => new("CN=test", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
         var issued = Assert.IsType<SignCertificateResponse.Success>(
             await issuingAuthority.SignCertificateRequest(Request(), source == "default" ? null : source));
         _original = issued.Certificate;
-        if (records is "expired" or "not yet valid")
+        switch (records)
         {
-            using var issuedCertificate = _original;
-            var profile = await _profiles.GetProfile(source);
-            var now = DateTimeOffset.UtcNow;
-            var notBefore = records == "expired" ? now.AddDays(-2) : now.AddDays(1);
-            var notAfter = records == "expired" ? now.AddDays(-1) : now.AddDays(2);
-            _original = Request().Create(profile.CertificateChain[0].SubjectName,
-                X509SignatureGenerator.CreateForRSA((RSA)profile.PrivateKey, RSASignaturePadding.Pkcs1),
-                notBefore, notAfter, RandomNumberGenerator.GetBytes(16));
-            await _store.AddCertificate(_original, profile.Name);
+            case "expired" or "not yet valid":
+            {
+                using var issuedCertificate = _original;
+                var profile = await _profiles.GetProfile(source);
+                var now = DateTimeOffset.UtcNow;
+                var notBefore = records == "expired" ? now.AddDays(-2) : now.AddDays(1);
+                var notAfter = records == "expired" ? now.AddDays(-1) : now.AddDays(2);
+                _original = Request().Create(profile.CertificateChain[0].SubjectName,
+                    X509SignatureGenerator.CreateForRSA((RSA)profile.PrivateKey, RSASignaturePadding.Pkcs1),
+                    notBefore, notAfter, RandomNumberGenerator.GetBytes(16));
+                await _store.AddCertificate(_original, profile.Name);
+                break;
+            }
+            case "imported":
+                await _store.AddCertificate(_original, issuingProfile: null,
+                    TestContext.Current.CancellationToken);
+                Assert.Null(await _store.GetIssuingProfile(_original.Thumbprint,
+                    TestContext.Current.CancellationToken));
+                Assert.Equal(CertificateStatus.Good,
+                    (await _store.GetCertificateStatus(CertId.Create(_original, HashAlgorithmName.SHA256),
+                        TestContext.Current.CancellationToken)).Item2);
+                break;
+            case "collision":
+            {
+                using var recorded = _original;
+                var profile = await _profiles.GetProfile(source);
+                _original = Request().Create(profile.CertificateChain[0].SubjectName,
+                    X509SignatureGenerator.CreateForRSA((RSA)profile.PrivateKey, RSASignaturePadding.Pkcs1),
+                    recorded.NotBefore, recorded.NotAfter, recorded.GetSerialNumber().Reverse().ToArray());
+                Assert.NotEqual(recorded.Thumbprint, _original.Thumbprint);
+                break;
+            }
+            case "revoked":
+                Assert.True(await authority.RevokeCertificate(_original.SerialNumber, X509RevocationReason.KeyCompromise));
+                break;
         }
 
-        if (records == "imported")
-        {
-            await _store.AddCertificate(_original);
-        }
-
-        if (records == "collision")
-        {
-            using var recorded = _original;
-            var profile = await _profiles.GetProfile(source);
-            _original = Request().Create(profile.CertificateChain[0].SubjectName,
-                X509SignatureGenerator.CreateForRSA((RSA)profile.PrivateKey, RSASignaturePadding.Pkcs1),
-                recorded.NotBefore, recorded.NotAfter, recorded.GetSerialNumber().Reverse().ToArray());
-            Assert.NotEqual(recorded.Thumbprint, _original.Thumbprint);
-        }
-
-        if (records == "revoked")
-        {
-            Assert.True(await authority.RevokeCertificate(_original.SerialNumber, X509RevocationReason.KeyCompromise));
-        }
-
-        _inventoryCount = await _store.GetInventory().CountAsync();
+        _inventoryCount = await _store.GetInventory().CountAsync(TestContext.Current.CancellationToken);
         _targetProfile = target == "default" ? "vpn-server" : target;
         (_, _originalStatus, _) = await _store.GetCertificateStatus(
             CertId.Create(_original, HashAlgorithmName.SHA256));
@@ -146,6 +151,10 @@ public sealed class ReEnrollmentProfileSteps
             _status = result is SignCertificateResponse.Success ? HttpStatusCode.OK : HttpStatusCode.BadRequest;
             _body = result is SignCertificateResponse.Error error ? string.Join("\n", error.Errors) : "";
         }
+
+        return;
+
+        CertificateRequest Request() => new("CN=test", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
     }
 
     [Then("profile-bound renewal is {string}")]
@@ -160,16 +169,16 @@ public sealed class ReEnrollmentProfileSteps
                 "invalid validity" => "validity period",
                 _ => "issuing profile"
             }, _body);
-            Assert.Equal(_inventoryCount, await _store.GetInventory().CountAsync());
+            Assert.Equal(_inventoryCount, await _store.GetInventory().CountAsync(TestContext.Current.CancellationToken));
             var (_, status, _) = await _store.GetCertificateStatus(
                 CertId.Create(_original, HashAlgorithmName.SHA256));
             Assert.NotEqual(X509RevocationReason.Superseded,
-                (await _store.GetInventory().ToArrayAsync()).SingleOrDefault()?.RevocationReason);
+                (await _store.GetInventory().ToArrayAsync(TestContext.Current.CancellationToken)).SingleOrDefault()?.RevocationReason);
             Assert.Equal(_originalStatus, status);
         }
         else
         {
-            var inventory = await _store.GetInventory().ToArrayAsync();
+            var inventory = await _store.GetInventory().ToArrayAsync(TestContext.Current.CancellationToken);
             Assert.Equal(_inventoryCount + 1, inventory.Length);
             Assert.Equal(X509RevocationReason.Superseded,
                 inventory.Single(item => item.SerialNumber == _original.SerialNumber).RevocationReason);
@@ -197,8 +206,14 @@ public sealed class ReEnrollmentProfileSteps
     {
         private readonly InMemoryCertificateStore _inner = new();
 
+        [Obsolete("Use the overload that includes the issuing profile to support re-enrollment provenance.", error: true)]
         public Task AddCertificate(X509Certificate2 certificate, CancellationToken cancellationToken = default) =>
-            _inner.AddCertificate(certificate, cancellationToken);
+            _inner.AddCertificate(certificate, issuingProfile: null, cancellationToken);
+
+        public Task AddCertificate(X509Certificate2 certificate, string? issuingProfile, CancellationToken cancellationToken = default)
+        {
+            return _inner.AddCertificate(certificate, issuingProfile, cancellationToken);
+        }
 
         public Task<bool> RemoveCertificate(
             string serialNumber, X509RevocationReason reason, CancellationToken cancellationToken = default) =>

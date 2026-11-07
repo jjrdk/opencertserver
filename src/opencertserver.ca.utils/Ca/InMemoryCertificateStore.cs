@@ -23,7 +23,7 @@ public class InMemoryCertificateStore : IStoreCertificates
     /// <inheritdoc />
     public Task AddCertificate(
         X509Certificate2 certificate,
-        string issuingProfile,
+        string? issuingProfile,
         CancellationToken cancellationToken = default)
     {
         var item = CertificateItem.FromX509Certificate2(certificate);
