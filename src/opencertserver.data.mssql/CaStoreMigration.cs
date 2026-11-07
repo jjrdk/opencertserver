@@ -11,9 +11,11 @@ public static class CaStoreMigration
     [RequiresUnreferencedCode("EF migrations require untrimmed migration metadata.")]
     public static async Task MigrateAsync(string connectionString, CancellationToken cancellationToken = default)
     {
+        using var telemetry = MsSqlInstruments.Start("migrate");
         var options = new DbContextOptionsBuilder<CaDbContext>();
         new MsSqlStoreProvider().Configure(options, connectionString);
         await using var context = new CaDbContext(options.Options);
         await context.Database.MigrateAsync(cancellationToken);
+        telemetry.Complete();
     }
 }

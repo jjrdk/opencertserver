@@ -56,6 +56,14 @@ Feature: Relational ACME and CA stores
       | PostgreSQL |
       | MSSQL      |
 
+  Scenario Outline: Relational store telemetry excludes sensitive values
+    Given the relational database is "<Database>"
+    Then nonce telemetry contains only fixed operation metadata
+    Examples:
+      | Database   |
+      | PostgreSQL |
+      | MSSQL      |
+
   Scenario: Persistence is opt in and configuration fails closed
     Then omitting relational registration preserves the existing stores
     And explicit relational registration uses the named standard connection regardless of persistence settings

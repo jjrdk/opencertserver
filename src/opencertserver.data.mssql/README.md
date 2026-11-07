@@ -44,6 +44,11 @@ The initial migration, its target model and the model snapshot use the same mapp
 Accounts, orders and EAB keys retain the shared optimistic-concurrency policy;
 nonce insertion is idempotent and consumption is atomic.
 
+Provider-specific operations and migrations publish OpenTelemetry through the
+`opencertserver.data.mssql` meter and activity source. Only fixed operation names
+are recorded; SQL, connection strings, nonce values, certificate identifiers, profile
+names, and exception messages are excluded.
+
 ## Qualification
 
 Both relational BDD features have PostgreSQL and MSSQL example rows. They use real

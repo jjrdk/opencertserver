@@ -1,7 +1,9 @@
 namespace OpenCertServer.Ca.Tests;
 
 using System;
+using System.Diagnostics;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -91,6 +93,67 @@ public sealed class CertificateAuthorityTests : IDisposable
         {
             return name.Name.Split(',').Select(x => x.Trim()).OrderBy(x => x);
         }
+    }
+
+    [Fact]
+    public async Task CoreTelemetryContainsOnlyFixedOperationNames()
+    {
+        var instruments = new HashSet<string>(StringComparer.Ordinal);
+        var metricTags = new List<KeyValuePair<string, string?>>();
+        var activities = new List<Activity>();
+        using var meterListener = new MeterListener
+        {
+            InstrumentPublished = (instrument, listener) =>
+            {
+                if (instrument.Meter.Name == "opencertserver.ca.core")
+                {
+                    listener.EnableMeasurementEvents(instrument);
+                }
+            }
+        };
+        meterListener.SetMeasurementEventCallback<long>((instrument, _, tags, _) =>
+        {
+            instruments.Add(instrument.Name);
+            foreach (var tag in tags)
+            {
+                metricTags.Add(new KeyValuePair<string, string?>(tag.Key, tag.Value?.ToString()));
+            }
+        });
+        meterListener.SetMeasurementEventCallback<double>((instrument, _, tags, _) =>
+        {
+            instruments.Add(instrument.Name);
+            foreach (var tag in tags)
+            {
+                metricTags.Add(new KeyValuePair<string, string?>(tag.Key, tag.Value?.ToString()));
+            }
+        });
+        meterListener.Start();
+
+        using var activityListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "opencertserver.ca.core",
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) =>
+                ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activities.Add
+        };
+        ActivitySource.AddActivityListener(activityListener);
+
+        using var rsa = RSA.Create(2048);
+        var request = CreateCertificateRequest(rsa);
+        var result = await _authority.SignCertificateRequestPem(
+            request.ToPkcs10Pem(),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.IsType<SignCertificateResponse.Success>(result);
+        Assert.Contains(activities, activity => activity.OperationName == "sign_certificate_pem");
+        Assert.Contains(activities, activity => activity.OperationName == "sign_certificate");
+        Assert.All(activities, activity => Assert.Empty(activity.TagObjects));
+        Assert.NotEmpty(metricTags);
+        Assert.Contains("opencertserver.ca.core.operations", instruments);
+        Assert.Contains("opencertserver.ca.core.successes", instruments);
+        Assert.Contains("opencertserver.ca.core.duration", instruments);
+        Assert.All(metricTags, tag => Assert.Equal("operation", tag.Key));
+        Assert.DoesNotContain(metricTags, tag => tag.Value?.Contains("Test Server", StringComparison.Ordinal) == true);
     }
 
     [Fact]

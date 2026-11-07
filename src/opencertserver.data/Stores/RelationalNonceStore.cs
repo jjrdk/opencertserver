@@ -22,18 +22,23 @@ public sealed class RelationalNonceStore : INonceStore
     /// <inheritdoc />
     public async Task SaveNonceAsync(Nonce nonce, CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start("nonce.save");
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
         await scope.ServiceProvider.GetRequiredService<IRelationalStoreProvider>()
             .SaveNonceAsync(db, nonce, cancellationToken);
+        telemetry.Complete();
     }
 
     /// <inheritdoc />
     public async Task<bool> TryRemoveNonceAsync(Nonce nonce, CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start("nonce.consume");
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
-        return await scope.ServiceProvider.GetRequiredService<IRelationalStoreProvider>()
+        var removed = await scope.ServiceProvider.GetRequiredService<IRelationalStoreProvider>()
             .TryRemoveNonceAsync(db, nonce, cancellationToken);
+        telemetry.Complete();
+        return removed;
     }
 }
