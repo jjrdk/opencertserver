@@ -212,10 +212,7 @@ PostgreSQL-specific atomic operations, certificate paging, and migrations use th
 `opencertserver.data.mssql`. Each provider meter exposes `operations`, `successes`,
 `failures`, and `duration` instruments, with only a fixed `operation` tag.
 
-**Privacy:** CA and data activities contain no request-derived attributes. Metrics use
-only fixed operation names; no SQL, connection strings, nonce/token values, account/order
-identifiers, certificate contents/subjects/serials/thumbprints, profile names, or exception
-messages are recorded.
+**Privacy:** The CA core and data activities added here contain no request-derived attributes or exception messages. Existing CA endpoint activities may include error descriptions; the endpoint source must be treated separately. Metrics use only fixed operation names; no SQL, connection strings, nonce/token values, account/order identifiers, certificate contents/subjects/serials/thumbprints, profile names, or exception messages are recorded.
 
 ## CLI Operations
 
