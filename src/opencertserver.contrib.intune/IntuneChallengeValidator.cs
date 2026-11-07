@@ -1,6 +1,7 @@
 namespace OpenCertServer.Contrib.Intune;
 
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
@@ -35,6 +36,39 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
     }
 
     public async Task<ScepChallengeResult> Validate(ScepChallengeContext context, CancellationToken cancellationToken)
+    {
+        IntuneInstruments.ChallengeValidationRequests.Add(1);
+        var started = Stopwatch.GetTimestamp();
+        using var activity = IntuneInstruments.ActivitySource.StartActivity(ActivityNames.ChallengeValidation);
+        try
+        {
+            var result = await ValidateCore(context, cancellationToken).ConfigureAwait(false);
+            if (result.Allowed)
+            {
+                IntuneInstruments.ChallengeValidationSuccesses.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            else
+            {
+                IntuneInstruments.ChallengeValidationFailures.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Error);
+            }
+
+            return result;
+        }
+        catch
+        {
+            IntuneInstruments.ChallengeValidationFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
+        }
+        finally
+        {
+            IntuneInstruments.ChallengeValidationDuration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds);
+        }
+    }
+
+    private async Task<ScepChallengeResult> ValidateCore(ScepChallengeContext context, CancellationToken cancellationToken)
     {
         if (context.MessageType == ScepMessageType.RenewalReq && context.PreviousCertificate is not null)
         {
@@ -75,6 +109,9 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
             return;
         }
 
+        IntuneInstruments.SuccessNotificationRequests.Add(1);
+        var started = Stopwatch.GetTimestamp();
+        using var activity = IntuneInstruments.ActivitySource.StartActivity(ActivityNames.SuccessNotification);
         try
         {
             await _intune.NotifySuccess(
@@ -83,12 +120,26 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
                     new IntuneIssuedInfo(issued.Thumbprint, issued.SerialNumber, issued.NotAfter.ToUniversalTime(), issued.Issuer),
                     cancellationToken)
                 .ConfigureAwait(false);
+            IntuneInstruments.SuccessNotificationSuccesses.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex) when (ex is IntuneRefusedException or HttpRequestException or TaskCanceledException)
         {
+            IntuneInstruments.SuccessNotificationFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error);
             // The certificate is issued and on its way; a lost notification costs Intune
             // its bookkeeping, not the device its certificate.
             LogNotificationLost(_logger, ex, "success", context.TransactionId);
+        }
+        catch
+        {
+            IntuneInstruments.SuccessNotificationFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
+        }
+        finally
+        {
+            IntuneInstruments.SuccessNotificationDuration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds);
         }
     }
 
@@ -99,6 +150,9 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
             return;
         }
 
+        IntuneInstruments.FailureNotificationRequests.Add(1);
+        var started = Stopwatch.GetTimestamp();
+        using var activity = IntuneInstruments.ActivitySource.StartActivity(ActivityNames.FailureNotification);
         try
         {
             await _intune.NotifyFailure(
@@ -108,10 +162,24 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
                     reason,
                     cancellationToken)
                 .ConfigureAwait(false);
+            IntuneInstruments.FailureNotificationSuccesses.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex) when (ex is IntuneRefusedException or HttpRequestException or TaskCanceledException)
         {
+            IntuneInstruments.FailureNotificationFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error);
             LogNotificationLost(_logger, ex, "failure", context.TransactionId);
+        }
+        catch
+        {
+            IntuneInstruments.FailureNotificationFailures.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
+        }
+        finally
+        {
+            IntuneInstruments.FailureNotificationDuration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds);
         }
     }
 

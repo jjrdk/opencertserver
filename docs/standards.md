@@ -763,17 +763,23 @@ authorized caller via `IMcpAuthorization`/`DefaultMcpAuthorization`
 
 ### OpenTelemetry metrics & traces
 
-OpenCertServer emits OpenTelemetry counters/successes/failures/durations/activ
-es under the `opencertserver.{protocol}.{operation}.{type}` namespace for EST, ACME, OCSP, CRL, and
-CA endpoints. The metric and trace name catalogue is in
+OpenCertServer emits OpenTelemetry counters/successes/failures/durations/activities under the
+`opencertserver.{protocol}.{operation}.{type}` namespace for EST, ACME, SCEP, Intune, OCSP, CRL,
+and CA endpoints. SCEP and Intune telemetry does not include request-derived values or exception
+messages. The metric and trace name catalogue is in
 [OpenTelemetry metrics & traces](../OpenTelemetryMetricsTraces.md).
 
 **Where it lives.** `src/opencertserver.ca.server/CaInstruments.cs`, `MetricNames.cs`,
-`ActivityNames.cs`; mirrored on the EST and ACME sides.
+`ActivityNames.cs`; mirrored on the EST, ACME, SCEP, and Intune sides.
 
 **Tests that prove it.**
 [OpenTelemetryMetrics.feature](../tests/opencertserver.certserver.tests/Features/OpenTelemetryMetrics.feature) —
 counters increment on `cacerts`, `simpleenroll`, `ocsp`, and friends.
+[ScepServer.feature](../tests/opencertserver.scep.server.tests/Features/ScepServer.feature) and
+[IntuneChallenge.feature](../tests/opencertserver.contrib.intune.tests/Features/IntuneChallenge.feature) /
+[IntuneRevocationSync.feature](../tests/opencertserver.contrib.intune.tests/Features/IntuneRevocationSync.feature)
+verify SCEP and Intune signals are emitted without attributes; SCEP also verifies that a signed
+protocol refusal counts as a PKIOperation failure.
 
 ---
 
@@ -883,7 +889,7 @@ are enabled by shipping `ASPNETCORE_ENVIRONMENT=Hardened` (the profile in
 |---|---|---|---|
 | External account binding (RFC 8555 §7.3.4) | `AcmeServer:ExternalAccountKey:{keyId}` → `{MacKey,MacAlgorithm}` | The static `IStoreExternalAccountKeys` is populated and new-account requests may carry `externalAccountBinding`. | The ACME default in-memory store is empty: every new-account request carrying an EAB binding is rejected. |
 | Device attestation (FIDO / `device-attest-01`) | `Attestation:TrustAnchors:[]` → list of PEM files | Roots are loaded into `IAttestationTrustProvider`; the device-attestation challenge succeeds for a chain that trusts one anchor. | No `IAttestationTrustProvider` is registered → `device-attest-01` fails closed. |
-| OpenTelemetry / OTLP | `Telemetry:Enabled=true`, `Telemetry:OtlpEndpoint=http://collector:4317` | Meters `opencertserver.acme`, `opencertserver.est`, `opencertserver.ca` and their activity sources export over OTLP. | No metrics or tracing are exported. |
+| OpenTelemetry / OTLP | `Telemetry:Enabled=true`, `Telemetry:OtlpEndpoint=http://collector:4317` | Meters and activity sources for ACME, EST, SCEP, Intune and CA operations export over OTLP. SCEP/Intune telemetry excludes request-derived attributes and exception messages. | No metrics or tracing are exported. |
 | CDP / AIA / OCSP responder URLs (RFC 5280 / RFC 6960) | `CaServer:CrlDistributionPoints:[]`, `CaServer:OCSP:[]`, `CaServer:CaIssuers:[]` | Every issued certificate carries CRLDP, AIA OCSP + caIssuers extensions pointing at the configured responders. | Only the localhost loopback fallback is embedded on every issued certificate. |
 
 The attestation trust roots are intentionally **not baked in** — the default (absent) posture fails

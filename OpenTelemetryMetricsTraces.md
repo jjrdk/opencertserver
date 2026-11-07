@@ -1,11 +1,15 @@
 # OpenTelemetry Metrics and Traces for OpenCertServer
 
-This document lists relevant OpenTelemetry metrics and traces for OpenCertServer based on implemented RFCs (EST RFC 7030/8951/9908, ACME RFC 8555, OCSP RFC 6960, CRL RFC 5280) and codebase analysis.
+This document lists OpenTelemetry metrics and traces for OpenCertServer based on implemented protocols (EST RFC 7030/8951/9908, ACME RFC 8555, SCEP RFC 8894, Intune integration, OCSP RFC 6960, CRL RFC 5280) and codebase analysis.
 
 ## Naming Strategy
 - **Metrics**: `opencertserver.{protocol}.{operation}.{type}` where `type` is `requests` (counter), `successes` (counter), `failures` (counter), `duration` (histogram in seconds), `active` (gauge for ongoing operations).
 - **Traces**: Span name `opencertserver.{protocol}.{operation}`, with sub-spans for internal steps like validation, signing, persistence.
-- Protocols: `est`, `acme`, `ocsp`, `crl`, `ca` (for CA endpoints), `cli` (for CLI operations).
+- Protocols: `est`, `acme`, `scep`, `intune`, `ocsp`, `crl`, `ca` (for CA endpoints), `cli` (for CLI operations).
+
+**Privacy.** SCEP and Intune metrics and activities contain no request-derived attributes.
+Transaction IDs, challenge passwords, CSR or certificate contents, serial numbers, subjects,
+user/device identifiers, profile names, and exception messages are not emitted as telemetry.
 
 ## EST (RFC 7030)
 
@@ -39,6 +43,38 @@ This document lists relevant OpenTelemetry metrics and traces for OpenCertServer
 - `opencertserver.est.serverkeygen`: Span for key generation, sub-spans for key pair creation, certificate signing.
 
 **Collection Location**: In `src/opencertserver.est.server/Handlers/` (e.g., `CaCertHandler.cs`, `SimpleEnrollHandler.cs`), wrap `Handle` methods with spans, record metrics at start/end.
+
+## SCEP (RFC 8894)
+
+### Metrics
+- `opencertserver.scep.getcacaps.{requests,successes,failures,duration}`: GetCACaps endpoint requests.
+- `opencertserver.scep.getcacert.{requests,successes,failures,duration}`: GetCACert endpoint requests.
+- `opencertserver.scep.pkioperation.{requests,successes,failures,duration}`: PKIOperation requests; protocol refusal responses count as failures even though SCEP returns them with HTTP 200.
+- `opencertserver.scep.unsupported.{requests,successes,failures,duration}`: Unsupported operation requests.
+
+### Traces
+- `opencertserver.scep.getcacaps`: GetCACaps request.
+- `opencertserver.scep.getcacert`: GetCACert request.
+- `opencertserver.scep.pkioperation`: PKIOperation request.
+- `opencertserver.scep.unsupported`: Unsupported operation request.
+
+**Collection Location**: `src/opencertserver.scep.server/Handlers/ScepHandler.cs`.
+
+## Intune integration
+
+### Metrics
+- `opencertserver.intune.challenge.validation.{requests,successes,failures,duration}`: Intune challenge validation attempts.
+- `opencertserver.intune.notification.success.{requests,successes,failures,duration}`: Notifications after certificate issuance.
+- `opencertserver.intune.notification.failure.{requests,successes,failures,duration}`: Notifications after CA refusal.
+- `opencertserver.intune.revocationsync.{requests,successes,failures,duration}`: Revocation sync runs.
+
+### Traces
+- `opencertserver.intune.challenge.validation`: Validation request to Intune.
+- `opencertserver.intune.notification.success`: Post-issuance notification.
+- `opencertserver.intune.notification.failure`: Post-refusal notification.
+- `opencertserver.intune.revocationsync`: Full revocation sync run.
+
+**Collection Location**: `src/opencertserver.contrib.intune/`.
 
 ## ACME (RFC 8555)
 

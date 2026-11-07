@@ -11,6 +11,12 @@ Feature: SCEP enrollment validated by Intune
         And Intune was asked with the transaction id and the request
         And Intune received the success notification with thumbprint and serial number
 
+    Scenario: Intune challenge validation emits metrics and a tag-free trace
+        Given a SCEP server that asks Intune about every request
+        And an Intune challenge OpenTelemetry listener
+        When a device enrolls with the challenge Intune handed out
+        Then Intune challenge telemetry is recorded without attributes
+
     Scenario: Intune refuses the request
         Given a SCEP server that asks Intune about every request
         And Intune refuses with "ChallengeExpired"

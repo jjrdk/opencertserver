@@ -1,5 +1,6 @@
 namespace OpenCertServer.Contrib.Intune.Tests.Steps;
 
+using System.Diagnostics.Metrics;
 using System.Formats.Asn1;
 using System.Net;
 using System.Net.Http;
@@ -26,6 +27,45 @@ public sealed class IntuneRevocationSync : IDisposable
     private SyncReport? _report;
     private Task<SyncReport>? _running;
     private HttpResponseMessage? _http;
+    private MeterListener? _meterListener;
+    private readonly Dictionary<string, long> _telemetryCounters = new();
+    private int _hasTelemetryTags;
+
+    [Given("an Intune revocation sync OpenTelemetry listener")]
+    public void GivenIntuneRevocationSyncOpenTelemetryListener()
+    {
+        _meterListener = new MeterListener
+        {
+            InstrumentPublished = (instrument, listener) =>
+            {
+                if (instrument.Meter.Name == "opencertserver.intune")
+                {
+                    listener.EnableMeasurementEvents(instrument);
+                }
+            }
+        };
+        _meterListener.SetMeasurementEventCallback<long>((instrument, measurement, tags, _) =>
+        {
+            if (!tags.IsEmpty)
+            {
+                Interlocked.Exchange(ref _hasTelemetryTags, 1);
+            }
+
+            lock (_telemetryCounters)
+            {
+                _telemetryCounters.TryGetValue(instrument.Name, out var current);
+                _telemetryCounters[instrument.Name] = current + measurement;
+            }
+        });
+        _meterListener.SetMeasurementEventCallback<double>((_, _, tags, _) =>
+        {
+            if (!tags.IsEmpty)
+            {
+                Interlocked.Exchange(ref _hasTelemetryTags, 1);
+            }
+        });
+        _meterListener.Start();
+    }
 
     // --- Given --------------------------------------------------------------
 
@@ -154,6 +194,19 @@ public sealed class IntuneRevocationSync : IDisposable
 
     [Then("{int} certificates were checked")]
     public void ThenChecked(int count) => Assert.Equal(count, _report!.Checked);
+
+    [Then("the Intune revocation sync request counter is recorded without attributes")]
+    public void ThenSyncTelemetryIsRecordedWithoutAttributes()
+    {
+        lock (_telemetryCounters)
+        {
+            Assert.True(
+                _telemetryCounters.TryGetValue("opencertserver.intune.revocationsync.requests", out var count) && count > 0,
+                "Expected the Intune revocation sync request counter to increase.");
+        }
+
+        Assert.Equal(0, Volatile.Read(ref _hasTelemetryTags));
+    }
 
     [Then("nothing was revoked")]
     public async Task ThenNothingRevoked()
@@ -306,6 +359,7 @@ public sealed class IntuneRevocationSync : IDisposable
 
     public void Dispose()
     {
+        _meterListener?.Dispose();
         _host?.Dispose();
         _fake.Dispose();
     }

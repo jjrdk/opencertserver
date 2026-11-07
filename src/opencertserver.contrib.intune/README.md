@@ -38,6 +38,13 @@ person recognises. `IIntuneClient.GetManagedDeviceName` asks Graph for the
 same permission the sync already has - for an inventory page that lists
 certificates by device.
 
+## Telemetry
+
+When OpenTelemetry is enabled by the host, challenge validation, success/failure
+notifications, and revocation sync emit counters, durations, and traces under
+`opencertserver.intune`. Telemetry uses fixed operation names and does not attach
+request-derived attributes or exception messages.
+
 ## Configuration (`Scep:Intune`)
 
 | Key | Meaning |
