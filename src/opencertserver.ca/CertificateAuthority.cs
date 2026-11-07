@@ -432,7 +432,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         using var telemetry = CaCoreInstruments.Start("revoke_certificate");
         var revoked = await _certificateStore.RemoveCertificate(serialNumber, reason, cancellationToken)
             .ConfigureAwait(false);
-        telemetry.Complete();
+        telemetry.Complete(revoked);
         return revoked;
     }
 
