@@ -1,7 +1,10 @@
 namespace OpenCertServer.Scep.Tests.Steps;
 
+using System.Collections.Concurrent;
+using System.Formats.Asn1;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -10,6 +13,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using OpenCertServer.Ca;
 using OpenCertServer.Ca.Server;
 using OpenCertServer.Ca.Utils.Ca;
@@ -42,6 +46,8 @@ public sealed class ScepServer : IDisposable
     private readonly string _transactionId = Convert.ToHexString(RandomNumberGenerator.GetBytes(8));
     private readonly byte[] _senderNonce = RandomNumberGenerator.GetBytes(16);
     private readonly ScenarioContext _scenarioContext;
+    private readonly ScepLogCollector _logs = new();
+    private string? _submittedTransactionId;
 
     public ScepServer(ScenarioContext scenarioContext) => _scenarioContext = scenarioContext;
 
@@ -110,6 +116,7 @@ public sealed class ScepServer : IDisposable
             : [X509Certificate2.CreateFromPem(rsaCa.ExportCertificatePem()), X509Certificate2.CreateFromPem(_root.ExportCertificatePem())];
         var storage = await ScepServerStorage.Create(_scenarioContext, CancellationToken.None);
         _host = new HostBuilder()
+            .ConfigureLogging(logging => logging.AddProvider(_logs))
             .ConfigureWebHost(web => web
                 .UseTestServer()
                 .ConfigureServices(services =>
@@ -176,6 +183,92 @@ public sealed class ScepServer : IDisposable
 
     [When("a client asks for the CA capabilities")]
     public async Task WhenCaps() => _caps = await _client.GetCaCaps().ConfigureAwait(false);
+
+    [When("a client enrolls with a {string} transaction ID encoded as {string} using {string}")]
+    public async Task WhenEnrollWithTransactionId(string value, string encoding, string cipher)
+    {
+        _submittedTransactionId = value switch
+        {
+            "newline" => "device\ninfo: OpenCertServer.Scep[0]\n      forged enrollment",
+            "carriage return" => "device\rforged",
+            "tab" => "device\tforged",
+            "null" => "device\0forged",
+            "non-PrintableString ASCII" => "device@forged",
+            "Unicode" => "device\u2028forged",
+            "empty" => "",
+            "too long" => new string('A', 129),
+            "maximum length" => new string('A', 128),
+            "minimum length" => "A",
+            "PrintableString alphabet" => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 '()+,-./:=?",
+            "hex" => "0123456789ABCDEF",
+            "base64" => "abCD01+/==",
+            _ => throw new ArgumentOutOfRangeException(nameof(value))
+        };
+        _clientKey = RSA.Create(2048);
+        _clientSigner = ScepTestClient.CreateTransientSigner(_clientKey);
+        _logs.Entries.Clear();
+        _response = await new ScepTestClient(_host.GetTestClient(), "/scep/pkiclient.exe").Enroll(
+            ScepTestClient.CreateCsr(_clientKey, Subject, Challenge),
+            _clientSigner, _ra, _submittedTransactionId, _senderNonce,
+            encryptionOid: cipher switch
+            {
+                "AES" => OpenCertServer.Ca.Utils.Oids.Aes128Cbc,
+                "3DES" => "1.2.840.113549.3.7",
+                _ => throw new ArgumentOutOfRangeException(nameof(cipher))
+            },
+            transactionIdEncoding: Enum.Parse<UniversalTagNumber>(encoding)).ConfigureAwait(false);
+        if (_response.IsSuccessStatusCode)
+        {
+            await ReadCertRep().ConfigureAwait(false);
+        }
+    }
+
+    [Then("exactly one safe SCEP rejection is logged")]
+    public async Task ThenOneSafeRejection()
+    {
+        var entry = Assert.Single(_logs.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Equal(
+            "SCEP message rejected: transactionID must contain 1 to 128 PrintableString characters.",
+            entry.Message);
+        Assert.Null(entry.Exception);
+        Assert.Equal("transactionID must contain 1 to 128 PrintableString characters.",
+            await _response!.Content.ReadFromJsonAsync<string>().ConfigureAwait(false));
+    }
+
+    [Then("the response echoes the supplied transaction ID")]
+    public void ThenEchoesSuppliedTransactionId() =>
+        Assert.Equal(_submittedTransactionId, _certRep!.TransactionId);
+
+    private sealed class ScepLogCollector : ILoggerProvider
+    {
+        public ConcurrentQueue<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = new();
+
+        public ILogger CreateLogger(string categoryName) => new Logger(this, categoryName);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Logger(ScepLogCollector collector, string category) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                if (category == "OpenCertServer.Scep")
+                {
+                    collector.Entries.Enqueue((logLevel, formatter(state, exception), exception));
+                }
+            }
+        }
+    }
 
     [Then("the capabilities include {string}, {string} and {string}")]
     public void ThenCapsInclude(string a, string b, string c)

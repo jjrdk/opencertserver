@@ -42,7 +42,8 @@ public sealed class ScepTestClient(HttpClient http, string path = "/scep")
         string encryptionOid = OpenCertServer.Ca.Utils.Oids.Aes128Cbc,
         byte[]? innerContent = null,
         IReadOnlyList<X509Certificate2>? additionalSigners = null,
-        bool senderNonceAsInteger = false)
+        bool senderNonceAsInteger = false,
+        UniversalTagNumber transactionIdEncoding = UniversalTagNumber.PrintableString)
     {
         var csrDer = innerContent ?? csr.CreateSigningRequest();
         var enveloped = new EnvelopedCms(
@@ -58,12 +59,16 @@ public sealed class ScepTestClient(HttpClient http, string path = "/scep")
                 DigestAlgorithm = new System.Security.Cryptography.Oid("2.16.840.1.101.3.4.2.1")
             };
             cmsSigner.SignedAttributes.Add(Printable(ScepOids.MessageType, messageType));
-            cmsSigner.SignedAttributes.Add(Printable(ScepOids.TransactionId, transactionId));
+            var transactionWriter = new AsnWriter(AsnEncodingRules.DER);
+            transactionWriter.WriteCharacterString(transactionIdEncoding, transactionId);
+            cmsSigner.SignedAttributes.Add(new AsnEncodedData(
+                new System.Security.Cryptography.Oid(ScepOids.TransactionId), transactionWriter.Encode()));
             cmsSigner.SignedAttributes.Add(senderNonceAsInteger
             ? Integer(ScepOids.SenderNonce, senderNonce)
             : Octets(ScepOids.SenderNonce, senderNonce));
             signed.ComputeSignature(cmsSigner);
         }
+
         var message = signed.Encode();
 
         if (useGet)
