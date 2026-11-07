@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using CertesSlim.Acme;
@@ -345,6 +346,68 @@ public sealed class RelationalStoresSteps
         Assert.False(scope.ServiceProvider.GetRequiredService<CaDbContext>().Database.HasPendingModelChanges());
     }
 
+    [Then("nonce telemetry contains only fixed operation metadata")]
+    public async Task NonceTelemetryIsPrivacySafe()
+    {
+        var sensitiveNonce = "telemetry-sensitive-nonce";
+        var meters = new HashSet<string>(StringComparer.Ordinal);
+        var metricTags = new List<KeyValuePair<string, string?>>();
+        var activities = new List<(string Source, string Name, int TagCount)>();
+        using var meterListener = new MeterListener
+        {
+            InstrumentPublished = (instrument, listener) =>
+            {
+                if (instrument.Meter.Name is "opencertserver.data"
+                    or "opencertserver.data.postgresql"
+                    or "opencertserver.data.mssql")
+                {
+                    listener.EnableMeasurementEvents(instrument);
+                }
+            }
+        };
+        meterListener.SetMeasurementEventCallback<long>((instrument, _, tags, _) =>
+        {
+            meters.Add(instrument.Meter.Name);
+            foreach (var tag in tags)
+            {
+                metricTags.Add(new KeyValuePair<string, string?>(tag.Key, tag.Value?.ToString()));
+            }
+        });
+        meterListener.SetMeasurementEventCallback<double>((instrument, _, tags, _) =>
+        {
+            meters.Add(instrument.Meter.Name);
+            foreach (var tag in tags)
+            {
+                metricTags.Add(new KeyValuePair<string, string?>(tag.Key, tag.Value?.ToString()));
+            }
+        });
+        meterListener.Start();
+
+        using var activityListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name is "opencertserver.data"
+                or "opencertserver.data.postgresql"
+                or "opencertserver.data.mssql",
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) =>
+                ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity =>
+                activities.Add((activity.Source.Name, activity.OperationName, activity.TagObjects.Count()))
+        };
+        ActivitySource.AddActivityListener(activityListener);
+
+        var nonce = new Nonce(sensitiveNonce);
+        await Nonces.SaveNonceAsync(nonce, TestContext.Current.CancellationToken);
+        Assert.True(await Nonces.TryRemoveNonceAsync(nonce, TestContext.Current.CancellationToken));
+
+        Assert.Contains("opencertserver.data", meters);
+        Assert.Contains(meters, meter => meter is "opencertserver.data.postgresql" or "opencertserver.data.mssql");
+        Assert.Contains(activities, activity => activity.Source == "opencertserver.data");
+        Assert.Contains(activities, activity => activity.Source != "opencertserver.data");
+        Assert.All(metricTags, tag => Assert.Equal("operation", tag.Key));
+        Assert.DoesNotContain(metricTags, tag => tag.Value?.Contains(sensitiveNonce, StringComparison.Ordinal) == true);
+        Assert.All(activities, activity => Assert.Equal(0, activity.TagCount));
+    }
+
     [Then("omitting relational registration preserves the existing stores")]
     public void Defaults()
     {
@@ -364,7 +427,8 @@ public sealed class RelationalStoresSteps
             const string connection = "Host=selected;Database=test";
             var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["AcmeServer:Persistence"] = mode, ["Ca:Persistence"] = mode,
+                ["AcmeServer:Persistence"] = mode,
+                ["Ca:Persistence"] = mode,
                 ["ConnectionStrings:Selected"] = connection,
                 ["ConnectionStrings:Other"] = "Host=other",
                 ["AcmeServer:Relational:Connection"] = "Host=legacy",

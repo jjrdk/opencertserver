@@ -12,6 +12,11 @@ the name `OpenCertServer`.
 This adapter is qualified for untrimmed JIT deployments; Native AOT requires additional
 provider-specific model/query generation and runtime integration.
 
+Provider-specific operations and migrations publish OpenTelemetry through the
+`opencertserver.data.postgresql` meter and activity source. Only fixed operation names
+are recorded; SQL, connection strings, nonce values, certificate identifiers, profile
+names, and exception messages are excluded.
+
 Apply migrations separately from server startup, using a matching EF CLI and a connection
 supplied by a deployment secret provider through `ConnectionStrings__OpenCertServer`:
 

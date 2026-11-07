@@ -29,17 +29,21 @@ public sealed class RelationalOrderStore : IStoreOrders
     /// <inheritdoc />
     public async Task<Order?> LoadOrder(string orderId, CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start("order.load");
         var id = orderId;
         var ct = cancellationToken;
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
         var entity = await db.Orders.AsNoTrackingWithIdentityResolution().FirstOrDefaultAsync(e => e.OrderId == id, ct);
-        return entity is null ? null : FromEntity(entity);
+        var order = entity is null ? null : FromEntity(entity);
+        telemetry.Complete();
+        return order;
     }
 
     /// <inheritdoc />
     public async Task SaveOrder(Order order, CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start("order.save");
         var entity = new OrderEntity
         {
             OrderId = order.OrderId,
@@ -65,11 +69,13 @@ public sealed class RelationalOrderStore : IStoreOrders
         await db.SaveAggregateAsync(scope.ServiceProvider.GetRequiredService<IRelationalStoreProvider>(),
             cancellationToken);
         order.Version = entity.Version;
+        telemetry.Complete();
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<Order>> GetValidatableOrders(CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start("order.get_validatable");
         var ct = cancellationToken;
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
@@ -83,21 +89,25 @@ public sealed class RelationalOrderStore : IStoreOrders
             result.Add(FromEntity(row));
         }
 
+        telemetry.Complete();
         return result;
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<string>> GetOrderIds(string accountId, CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start("order.get_ids");
         var id = accountId;
         var ct = cancellationToken;
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
-        return await db.Orders.AsNoTracking()
+        var orderIds = await db.Orders.AsNoTracking()
             .Where(o => o.AccountId == id)
             .OrderBy(o => o.OrderId)
             .Select(o => o.OrderId)
             .ToListAsync(ct);
+        telemetry.Complete();
+        return orderIds;
     }
 
     private static Order FromEntity(OrderEntity entity)

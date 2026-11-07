@@ -24,13 +24,17 @@ public sealed class RelationalExternalAccountKeyStore : IStoreExternalAccountKey
     /// <inheritdoc />
     public async Task<ExternalAccountKey?> LoadKey(string keyId, CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start("external_account_key.load");
         var entity = await LoadEntity(keyId, cancellationToken);
-        return entity is null ? null : FromEntity(entity);
+        var key = entity is null ? null : FromEntity(entity);
+        telemetry.Complete();
+        return key;
     }
 
     /// <inheritdoc />
     public async Task SaveKey(ExternalAccountKey key, CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start("external_account_key.save");
         var entity = new ExternalAccountKeyEntity
         {
             KeyId = key.KeyId,
@@ -55,18 +59,23 @@ public sealed class RelationalExternalAccountKeyStore : IStoreExternalAccountKey
 
         await db.SaveAggregateAsync(scope.ServiceProvider.GetRequiredService<IRelationalStoreProvider>(), cancellationToken);
         key.Version = entity.Version;
+        telemetry.Complete();
     }
 
     /// <inheritdoc />
     public async Task<ExternalAccountKey?> FindActiveKey(string keyId, CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start("external_account_key.find_active");
         var entity = await LoadEntity(keyId, cancellationToken);
         if (entity is null || entity.IsUsed)
         {
+            telemetry.Complete();
             return null;
         }
 
-        return FromEntity(entity);
+        var key = FromEntity(entity);
+        telemetry.Complete();
+        return key;
     }
 
     private async Task<ExternalAccountKeyEntity?> LoadEntity(string keyId, CancellationToken cancellationToken)

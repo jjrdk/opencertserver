@@ -30,6 +30,15 @@ after registering the adapter. Missing providers/connections fail explicitly.
 ACME and CA must use the same connection when both use relational storage.
 Memory/file registrations remain separate and need no adapter.
 
+## OpenTelemetry
+
+Shared stores publish operation counts, successes, failures, durations, and activities
+through `opencertserver.data`. Operation names are fixed (for example
+`account.save`, `nonce.consume`, and `certificate.get_status`); telemetry does not include
+account/order identifiers, nonce values, certificate identifiers or contents, profile
+names, SQL, connection strings, or exception messages. The certserver host subscribes to
+this meter and activity source when OTLP export is configured.
+
 ## Add another engine
 
 Create a separate adapter project that references this project and the engine's EF provider.

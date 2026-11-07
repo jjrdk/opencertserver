@@ -24,7 +24,9 @@ public sealed class MsSqlStoreProvider : IRelationalStoreProvider
         exception.InnerException is SqlException { Number: 2601 or 2627 };
 
     /// <inheritdoc />
-    public async Task SaveNonceAsync(CaDbContext context, Nonce nonce, CancellationToken cancellationToken) =>
+    public async Task SaveNonceAsync(CaDbContext context, Nonce nonce, CancellationToken cancellationToken)
+    {
+        using var telemetry = MsSqlInstruments.Start("save_nonce");
         await context.Database.ExecuteSqlInterpolatedAsync(
             $"""
              INSERT INTO [Nonces] ([Token], [Created])
@@ -32,26 +34,38 @@ public sealed class MsSqlStoreProvider : IRelationalStoreProvider
              WHERE NOT EXISTS (
                  SELECT 1 FROM [Nonces] WITH (UPDLOCK, HOLDLOCK) WHERE [Token] = {nonce.Token})
              """, cancellationToken);
+        telemetry.Complete();
+    }
 
     /// <inheritdoc />
     public async Task<bool> TryRemoveNonceAsync(
         CaDbContext context,
         Nonce nonce,
-        CancellationToken cancellationToken) =>
-        await context.Database.ExecuteSqlInterpolatedAsync(
+        CancellationToken cancellationToken)
+    {
+        using var telemetry = MsSqlInstruments.Start("consume_nonce");
+        var removed = await context.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM [Nonces] WHERE [Token] = {nonce.Token}", cancellationToken) == 1;
+        telemetry.Complete();
+        return removed;
+    }
 
     /// <inheritdoc />
     public async Task<bool> RevokeCertificateAsync(
         CaDbContext context,
         string serialNumber,
         X509RevocationReason reason,
-        CancellationToken cancellationToken) =>
-        await context.Database.ExecuteSqlInterpolatedAsync(
+        CancellationToken cancellationToken)
+    {
+        using var telemetry = MsSqlInstruments.Start("revoke_certificate");
+        var revoked = await context.Database.ExecuteSqlInterpolatedAsync(
             $"""
              UPDATE [Certificates] SET [RevocationReason] = {(int)reason}, [RevocationDate] = {DateTimeOffset.UtcNow}
              WHERE [SerialNumber] = {serialNumber}
              """, cancellationToken) == 1;
+        telemetry.Complete();
+        return revoked;
+    }
 
     /// <inheritdoc />
     public async IAsyncEnumerable<CertificateItemInfo> ReadCertificatePage(
@@ -62,6 +76,7 @@ public sealed class MsSqlStoreProvider : IRelationalStoreProvider
         bool revokedOnly,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        using var telemetry = MsSqlInstruments.Start("read_certificate_page");
         var query = context.Certificates.AsNoTracking();
         if (revokedOnly)
         {
@@ -71,15 +86,20 @@ public sealed class MsSqlStoreProvider : IRelationalStoreProvider
         var items = query.OrderBy(c => c.SerialNumber).Skip(checked(page * pageSize)).Take(pageSize)
             .Select(c => new CertificateItemInfo
             {
-                SerialNumber = c.SerialNumber, DistinguishedName = c.DistinguishedName,
-                Issuer = c.Issuer, NotBefore = c.NotBefore, NotAfter = c.NotAfter,
-                Thumbprint = c.Thumbprint, RevocationReason = (X509RevocationReason?)c.RevocationReason,
+                SerialNumber = c.SerialNumber,
+                DistinguishedName = c.DistinguishedName,
+                Issuer = c.Issuer,
+                NotBefore = c.NotBefore,
+                NotAfter = c.NotAfter,
+                Thumbprint = c.Thumbprint,
+                RevocationReason = (X509RevocationReason?)c.RevocationReason,
                 RevocationDate = c.RevocationDate
             }).AsAsyncEnumerable();
         await foreach (var item in items.WithCancellation(cancellationToken))
         {
             yield return item;
         }
+        telemetry.Complete();
     }
 }
 

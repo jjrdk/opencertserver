@@ -11,9 +11,11 @@ public static class CaStoreMigration
     [RequiresUnreferencedCode("EF migrations require untrimmed migration metadata.")]
     public static async Task MigrateAsync(string connectionString, CancellationToken cancellationToken = default)
     {
+        using var telemetry = PostgreSqlInstruments.Start("migrate");
         var options = new DbContextOptionsBuilder<CaDbContext>();
         new PostgreSqlStoreProvider().Configure(options, connectionString);
         await using var db = new CaDbContext(options.Options);
         await db.Database.MigrateAsync(cancellationToken);
+        telemetry.Complete();
     }
 }

@@ -179,6 +179,44 @@ user/device identifiers, profile names, and exception messages are not emitted a
 
 **Collection Location**: In `src/opencertserver.ca.server/`, relevant handlers.
 
+## CA Core
+
+Core CA telemetry is intentionally separate from the CA HTTP handler instruments, which
+use `opencertserver.ca`. The core implementation uses the
+`opencertserver.ca.core` meter and activity source.
+
+### Metrics
+- `opencertserver.ca.core.operations`: Counter for core operations, tagged with a fixed `operation` name.
+- `opencertserver.ca.core.successes`: Counter for operations that completed successfully.
+- `opencertserver.ca.core.failures`: Counter for failed operations.
+- `opencertserver.ca.core.duration`: Histogram in seconds.
+
+### Traces
+- Fixed operation spans for certificate signing (PEM and parsed request), revocation,
+  root/published certificate retrieval, and CRL generation.
+
+## Relational Data Stores
+
+Shared relational stores use the `opencertserver.data` meter and activity source. Their
+operation names are fixed and cover account, order, nonce, external-account-key, and
+certificate storage operations.
+
+### Metrics
+- `opencertserver.data.store.operations`: Counter tagged with a fixed `operation` name.
+- `opencertserver.data.store.successes`: Counter for completed store operations.
+- `opencertserver.data.store.failures`: Counter for failed store operations.
+- `opencertserver.data.store.duration`: Histogram in seconds.
+
+PostgreSQL-specific atomic operations, certificate paging, and migrations use the
+`opencertserver.data.postgresql` meter and activity source. MSSQL equivalents use
+`opencertserver.data.mssql`. Each provider meter exposes `operations`, `successes`,
+`failures`, and `duration` instruments, with only a fixed `operation` tag.
+
+**Privacy:** CA and data activities contain no request-derived attributes. Metrics use
+only fixed operation names; no SQL, connection strings, nonce/token values, account/order
+identifiers, certificate contents/subjects/serials/thumbprints, profile names, or exception
+messages are recorded.
+
 ## CLI Operations
 
 ### Metrics

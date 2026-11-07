@@ -36,6 +36,7 @@ public sealed class RelationalCertificateStore : IStoreCertificates
         string issuingProfile,
         CancellationToken cancellationToken = default)
     {
+        using var telemetry = DataInstruments.Start("certificate.add");
         var item = CertificateItem.FromX509Certificate2(certificate);
         var entity = new CertificateEntity
         {
@@ -53,26 +54,33 @@ public sealed class RelationalCertificateStore : IStoreCertificates
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
         await db.Certificates.AddAsync(entity, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
+        telemetry.Complete();
     }
 
     /// <inheritdoc />
     public async Task<string?> GetIssuingProfile(string thumbprint, CancellationToken cancellationToken = default)
     {
+        using var telemetry = DataInstruments.Start("certificate.get_issuing_profile");
         var key = thumbprint.ToUpperInvariant();
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
         var entity = await db.Certificates.AsNoTrackingWithIdentityResolution()
             .FirstOrDefaultAsync(c => c.Thumbprint == key, cancellationToken);
-        return entity?.ProfileName;
+        var profileName = entity?.ProfileName;
+        telemetry.Complete();
+        return profileName;
     }
 
     /// <inheritdoc />
     public async Task<bool> RemoveCertificate(string serialNumber, X509RevocationReason reason, CancellationToken cancellationToken = default)
     {
+        using var telemetry = DataInstruments.Start("certificate.revoke");
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
-        return await scope.ServiceProvider.GetRequiredService<IRelationalStoreProvider>()
+        var revoked = await scope.ServiceProvider.GetRequiredService<IRelationalStoreProvider>()
             .RevokeCertificateAsync(db, serialNumber, reason, cancellationToken);
+        telemetry.Complete();
+        return revoked;
     }
 
     /// <inheritdoc />
@@ -88,6 +96,7 @@ public sealed class RelationalCertificateStore : IStoreCertificates
         CertId certId,
         CancellationToken cancellationToken = default)
     {
+        using var telemetry = DataInstruments.Start("certificate.get_status");
         var key = Convert.ToHexString(certId.SerialNumber);
         var ct = cancellationToken;
         using var scope = _scopeFactory.CreateScope();
@@ -95,13 +104,16 @@ public sealed class RelationalCertificateStore : IStoreCertificates
         var entity = await db.Certificates.AsNoTrackingWithIdentityResolution().FirstOrDefaultAsync(e => e.SerialNumber == key, ct);
         if (entity is null)
         {
+            telemetry.Complete();
             return (certId, CertificateStatus.Unknown, null);
         }
         if (entity.RevocationReason is null)
         {
+            telemetry.Complete();
             return (certId, CertificateStatus.Good, null);
         }
         var date = entity.RevocationDate!.Value;
+        telemetry.Complete();
         return (certId, CertificateStatus.Revoked, new RevokedInfo(date, (X509RevocationReason)entity.RevocationReason.Value));
     }
 
@@ -117,6 +129,9 @@ public sealed class RelationalCertificateStore : IStoreCertificates
         int page, int pageSize, bool revokedOnly,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start(revokedOnly
+            ? "certificate.read_revocation_page"
+            : "certificate.read_inventory_page");
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
         var provider = scope.ServiceProvider.GetRequiredService<IRelationalStoreProvider>();
@@ -124,6 +139,7 @@ public sealed class RelationalCertificateStore : IStoreCertificates
         {
             yield return item;
         }
+        telemetry.Complete();
     }
 
     /// <inheritdoc />
@@ -131,6 +147,7 @@ public sealed class RelationalCertificateStore : IStoreCertificates
         [EnumeratorCancellation] CancellationToken cancellationToken,
         params IEnumerable<ReadOnlyMemory<byte>> ids)
     {
+        using var telemetry = DataInstruments.Start("certificate.get_by_id");
         var keys = ids.Select(i => Convert.ToHexString(i.Span)).ToList();
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
@@ -143,6 +160,7 @@ public sealed class RelationalCertificateStore : IStoreCertificates
             cancellationToken.ThrowIfCancellationRequested();
             yield return X509Certificate2.CreateFromPem(e.PublicKeyPem);
         }
+        telemetry.Complete();
     }
 
     /// <inheritdoc />
@@ -150,6 +168,7 @@ public sealed class RelationalCertificateStore : IStoreCertificates
         IEnumerable<ReadOnlyMemory<char>> thumbprint,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        using var telemetry = DataInstruments.Start("certificate.get_by_thumbprint");
         var set = thumbprint.Select(t => t.ToString().ToUpperInvariant()).ToList();
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
@@ -162,5 +181,6 @@ public sealed class RelationalCertificateStore : IStoreCertificates
             cancellationToken.ThrowIfCancellationRequested();
             yield return X509Certificate2.CreateFromPem(e.PublicKeyPem);
         }
+        telemetry.Complete();
     }
 }

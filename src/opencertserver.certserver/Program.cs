@@ -553,6 +553,10 @@ internal static class Program
                     .AddMeter("opencertserver.scep")
                     .AddMeter("opencertserver.intune")
                     .AddMeter("opencertserver.ca")
+                    .AddMeter("opencertserver.ca.core")
+                    .AddMeter("opencertserver.data")
+                    .AddMeter("opencertserver.data.postgresql")
+                    .AddMeter("opencertserver.data.mssql")
                     .AddOtlpExporter(options => options.Endpoint = endpoint);
             })
             .WithTracing(tracer =>
@@ -563,6 +567,10 @@ internal static class Program
                     .AddSource("opencertserver.scep")
                     .AddSource("opencertserver.intune")
                     .AddSource("opencertserver.ca")
+                    .AddSource("opencertserver.ca.core")
+                    .AddSource("opencertserver.data")
+                    .AddSource("opencertserver.data.postgresql")
+                    .AddSource("opencertserver.data.mssql")
                     .AddOtlpExporter(options => options.Endpoint = endpoint);
             });
 

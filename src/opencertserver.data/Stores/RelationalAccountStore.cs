@@ -33,6 +33,7 @@ public sealed class RelationalAccountStore : IStoreAccounts
     /// <inheritdoc />
     public async Task SaveAccount(Account account, CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start("account.save");
         var entity = new AccountEntity
         {
             AccountId = account.AccountId ??
@@ -58,18 +59,22 @@ public sealed class RelationalAccountStore : IStoreAccounts
 
         await db.SaveAggregateAsync(scope.ServiceProvider.GetRequiredService<IRelationalStoreProvider>(), cancellationToken);
         account.Version = entity.Version;
+        telemetry.Complete();
     }
 
     /// <inheritdoc />
     public async Task<Account?> LoadAccount(string accountId, CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start("account.load");
         var id = accountId;
         var ct = cancellationToken;
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
         var entity = await db.Accounts.AsNoTrackingWithIdentityResolution()
             .FirstOrDefaultAsync(e => e.AccountId == id, ct);
-        return FromEntity(entity);
+        var account = FromEntity(entity);
+        telemetry.Complete();
+        return account;
     }
 
     /// <inheritdoc />
@@ -77,13 +82,16 @@ public sealed class RelationalAccountStore : IStoreAccounts
         Microsoft.IdentityModel.Tokens.JsonWebKey jwk,
         CancellationToken cancellationToken)
     {
+        using var telemetry = DataInstruments.Start("account.find");
         var ct = cancellationToken;
         var thumbprint = Convert.ToBase64String(jwk.ComputeJwkThumbprint());
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
         var entity = await db.Accounts.AsNoTrackingWithIdentityResolution()
             .FirstOrDefaultAsync(e => e.JwkThumbprint == thumbprint, ct);
-        return FromEntity(entity);
+        var account = FromEntity(entity);
+        telemetry.Complete();
+        return account;
     }
 
     private static Account? FromEntity(AccountEntity? entity)
