@@ -449,8 +449,9 @@ fail closed when the resolver is created rather than silently disabling corrobor
 
 **Tests that prove it.**
 [AcmeMultiPerspectiveIssuanceCorroboration.feature](../tests/opencertserver.certserver.tests/Features/AcmeMultiPerspectiveIssuanceCorroboration.feature)
-covers configured perspectives, the single-endpoint fallback, matching and differing TXT records,
-matching and differing A records, an unavailable perspective, and differing CAA records.
+covers configured perspectives, the single-endpoint fallback, programmatic `AddAcmeServer` options
+reaching the DI options pipeline, matching and differing TXT records, matching and differing A
+records, an unavailable perspective, and differing CAA records.
 
 ### RST 8657 — CAA `accounturi` / `validationmethods`
 

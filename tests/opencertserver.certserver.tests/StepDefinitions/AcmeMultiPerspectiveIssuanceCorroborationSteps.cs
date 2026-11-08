@@ -6,11 +6,15 @@ using System.Security.Cryptography;
 using System.Text;
 using CertesSlim.Acme.Resource;
 using DnsClientX;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using OpenCertServer.Acme.Abstractions.Services;
 using OpenCertServer.Acme.Server.Configuration;
+using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Acme.Server.Services;
 using Reqnroll;
 using Xunit;
@@ -33,6 +37,8 @@ public sealed class AcmeMultiPerspectiveIssuanceCorroborationSteps
     private IReadOnlyList<DnsPerspective> _createdPerspectives = [];
     private (bool IsValid, AcmeError? Error) _result;
     private Exception? _dnsException;
+    private ServiceProvider? _serviceProvider;
+    private AcmeServerOptions _programmaticOptions = new();
 
     [Given("an ACME account with a pending dns-01 challenge for {string}")]
     public void GivenDns01Challenge(string hostname)
@@ -120,6 +126,46 @@ public sealed class AcmeMultiPerspectiveIssuanceCorroborationSteps
             timeoutMilliseconds: 5000);
     }
 
+    [Given("an ACME server is registered with programmatic options and empty configuration")]
+    public void GivenAcmeServerIsRegisteredWithProgrammaticOptions()
+    {
+        _programmaticOptions = new AcmeServerOptions
+        {
+            DohServers = ["Cloudflare", "Google"],
+            DnsQueryTimeout = TimeSpan.FromSeconds(3)
+        };
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddAcmeServer(
+            new ConfigurationBuilder().Build(),
+            acmeServerOptions: _programmaticOptions);
+        _serviceProvider = services.BuildServiceProvider();
+    }
+
+    [Then("the ACME options must report {int} DoH servers and a DNS query timeout of {int} seconds")]
+    public void ThenAcmeOptionsReportProgrammaticSettings(int dohServerCount, int timeoutSeconds)
+    {
+        var options = _serviceProvider!
+            .GetRequiredService<IOptions<AcmeServerOptions>>()
+            .Value;
+
+        Assert.Equal(dohServerCount, options.DohServers.Length);
+        Assert.Equal(TimeSpan.FromSeconds(timeoutSeconds), options.DnsQueryTimeout);
+    }
+
+    [Then("the registered DNS resolver must use {int} distinct perspectives")]
+    public void ThenRegisteredDnsResolverUsesPerspectives(int count)
+    {
+        var resolver = Assert.IsType<MultiPerspectiveDnsResolver>(
+            _serviceProvider!.GetRequiredService<IDnsResolver>());
+
+        Assert.Equal(count, resolver.Perspectives.Count);
+        Assert.Equal(
+            count,
+            resolver.Perspectives.Select(perspective => perspective.Name).Distinct().Count());
+    }
+
     [When("the dns-01 challenge is validated with multi-perspective DNS")]
     public async Task WhenDns01ChallengeIsValidated()
     {
@@ -187,6 +233,10 @@ public sealed class AcmeMultiPerspectiveIssuanceCorroborationSteps
     [Then("the corroborated DNS lookup must fail with a perspective mismatch")]
     public void ThenLookupFailsWithMismatch()
         => Assert.IsType<DnsPerspectiveMismatchException>(_dnsException);
+
+    [AfterScenario]
+    public void DisposeServiceProvider()
+        => _serviceProvider?.Dispose();
 
     private void CreateChallenge(string hostname, string type)
     {
