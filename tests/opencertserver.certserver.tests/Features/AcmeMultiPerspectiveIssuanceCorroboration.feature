@@ -19,6 +19,13 @@ Feature: Multi-Perspective Issuance Corroboration
             When the DNS perspectives are created from configuration
             Then there must be 1 distinct DNS perspective
 
+    Rule: programmatic options configure the ACME server
+
+        Scenario: programmatic DoH servers and timeout reach the options pipeline
+            Given an ACME server is registered with programmatic options and empty configuration
+            Then the ACME options must report 2 DoH servers and a DNS query timeout of 3 seconds
+            And the registered DNS resolver must use 2 distinct perspectives
+
     Rule: dns-01 TXT lookups are corroborated
 
         Scenario: matching TXT records from every perspective validate the challenge

@@ -71,6 +71,20 @@ public static class ServiceCollectionExtensions
                 return client;
             }
 
+            static void Apply(AcmeServerOptions source, AcmeServerOptions target)
+            {
+                target.HostedWorkers = source.HostedWorkers;
+                target.WebsiteUrl = source.WebsiteUrl;
+                target.UrlRetrievalTimeout = source.UrlRetrievalTimeout;
+                target.ExternalAccountRequired = source.ExternalAccountRequired;
+                target.TOS = source.TOS;
+                target.CAAIdentities = source.CAAIdentities;
+                target.DohServers = source.DohServers;
+                target.DnsQueryTimeout = source.DnsQueryTimeout;
+                target.DnsEndpoint = source.DnsEndpoint;
+                target.DisableCaaChecks = source.DisableCaaChecks;
+            }
+
             services.AddSingleton<IDnsResolver>(sp =>
             {
                 var opts = sp.GetRequiredService<IOptions<AcmeServerOptions>>().Value;
@@ -92,7 +106,11 @@ public static class ServiceCollectionExtensions
 
             services.AddHostedService<HostedValidationService>();
 
-            services.Configure<AcmeServerOptions>(acmeServerConfig);
+            // The supplied instance has already had the configuration section bound into it,
+            // so copy its values into the options pipeline instead of binding a separate
+            // instance. This keeps programmatic settings (for example DohServers and
+            // DnsQueryTimeout) visible to consumers of IOptions<AcmeServerOptions>.
+            services.Configure<AcmeServerOptions>(options => Apply(acmeServerOptions, options));
 
             return services;
         }
