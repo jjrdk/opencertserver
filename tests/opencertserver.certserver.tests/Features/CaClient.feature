@@ -28,3 +28,15 @@ Feature: Backing CA HTTP client
         When the client signs a certificate request
         And the client revokes the certificate
         Then the client revocation succeeds
+
+    # F4: the CA client's "trusted connection" pins the trust anchor. A server certificate that does
+    # not chain to a pinned anchor must be rejected even if the system store would trust it.
+    Scenario: A CA client rejects a server certificate that does not chain to its pinned anchor
+        Given a pinned CA trust anchor
+        When the CA client is presented with a certificate that does not chain to the pinned anchor
+        Then the certificate is rejected
+
+    Scenario: A CA client accepts a server certificate that chains to its pinned anchor
+        Given a pinned CA trust anchor
+        When the CA client is presented with a certificate that chains to the pinned anchor
+        Then the certificate is accepted

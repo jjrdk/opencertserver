@@ -25,6 +25,12 @@ public partial class CertificateServerFeatures
     private byte[]? _remoteIssuerCert;
     private string? _remoteIssuerError;
 
+    // F4: the CA client's "trusted connection" pins the trust anchor. A presented server certificate
+    // that does not terminate at a pinned anchor is rejected even if the system store would trust it.
+    private X509Certificate2? _pinnedRoot;
+    private X509Certificate2? _unrelatedRoot;
+    private bool _anchorChainResult;
+
     /// <summary>
     /// Builds a backing-CA client authenticated with a bearer token (the RA identity). This is the
     /// "ACME server or RA process issues through a trusted HTTPS connection" wiring.
@@ -223,11 +229,91 @@ public partial class CertificateServerFeatures
         Assert.Equal("CN=host.tenant-a.example.com", leaf.Subject);
     }
 
+    /// <summary>
+    /// Builds a self-signed root and, for the pinning check, a leaf that either chains to that root
+    /// (accepted) or to a different root (rejected).
+    /// </summary>
+    private X509Certificate2 CreateRoot(string cn)
+    {
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest(
+            cn,
+            key,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+        request.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+        request.CertificateExtensions.Add(
+            new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign, true));
+        return request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(10));
+    }
+
+    private X509Certificate2 CreateLeafSignedBy(string leafCn, X509Certificate2 issuer)
+    {
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest(
+            leafCn,
+            key,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+        request.CertificateExtensions.Add(
+            new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, true));
+        request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
+            new OidCollection { new("1.3.6.1.5.5.7.3.1") }, false));
+        return request.Create(
+            issuer,
+            DateTimeOffset.UtcNow.AddHours(-1),
+            DateTimeOffset.UtcNow.AddDays(1),
+            RandomNumberGenerator.GetBytes(16));
+    }
+
+    [Given("a pinned CA trust anchor")]
+    public void GivenAPinnedCaTrustAnchor()
+    {
+        _pinnedRoot = CreateRoot("CN=Pinned test CA");
+        _unrelatedRoot = CreateRoot("CN=Unrelated test CA");
+    }
+
+    [When("the CA client is presented with a certificate that does not chain to the pinned anchor")]
+    public void WhenTheCaClientIsPresentedWithACertificateThatDoesNotChain()
+    {
+        Assert.NotNull(_pinnedRoot);
+        Assert.NotNull(_unrelatedRoot);
+        var pinned = new X509Certificate2Collection { _pinnedRoot! };
+        using var leaf = CreateLeafSignedBy("CN=server.example.com", _unrelatedRoot!);
+        _anchorChainResult =
+            OpenCertServer.Ca.Client.CaClientOptions.ServerCertificateChainsToAnchor(pinned, leaf);
+    }
+
+    [When("the CA client is presented with a certificate that chains to the pinned anchor")]
+    public void WhenTheCaClientIsPresentedWithACertificateThatChains()
+    {
+        Assert.NotNull(_pinnedRoot);
+        // A leaf that chains to the very root the client pinned must be accepted.
+        var pinned = new X509Certificate2Collection { _pinnedRoot! };
+        using var leaf = CreateLeafSignedBy("CN=server.example.com", _pinnedRoot!);
+        _anchorChainResult =
+            OpenCertServer.Ca.Client.CaClientOptions.ServerCertificateChainsToAnchor(pinned, leaf);
+    }
+
+    [Then("the certificate is rejected")]
+    public void ThenTheCertificateIsRejected()
+    {
+        Assert.False(_anchorChainResult);
+    }
+
+    [Then("the certificate is accepted")]
+    public void ThenTheCertificateIsAccepted()
+    {
+        Assert.True(_anchorChainResult);
+    }
+
     private IConfiguration? _caClientConfig;
 
     [AfterScenario]
     public void DisposeCaClient()
     {
         _caClientIdentity?.Dispose();
+        _pinnedRoot?.Dispose();
+        _unrelatedRoot?.Dispose();
     }
 }

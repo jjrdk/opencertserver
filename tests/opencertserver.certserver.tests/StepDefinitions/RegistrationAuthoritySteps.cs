@@ -99,6 +99,35 @@ public partial class CertificateServerFeatures
         }
     }
 
+    // F3: the RA is bound to its delegated scope on the subject CN as well as the subjectAltName,
+    // so a common name outside the scope is rejected even when every DNS SAN is in scope.
+    [When("the RA enrolls a certificate with a common name outside its scope")]
+    public async Task WhenTheRaEnrollsACertificateWithACnOutsideScope()
+    {
+        Assert.NotNull(_raPeerClient);
+
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest(
+            "CN=out.tenant-b.example.com",
+            key,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+        var subjectAlternativeName = new SubjectAlternativeNameBuilder();
+        subjectAlternativeName.AddDnsName("host.tenant-a.example.com");
+        request.CertificateExtensions.Add(subjectAlternativeName.Build());
+        _raCsr = PemEncoding.WriteString("CERTIFICATE REQUEST", request.CreateSigningRequest());
+
+        try
+        {
+            _raCertificatePem = await _raPeerClient.EnrollAsync(_raCsr).ConfigureAwait(false);
+            _raResponseStatus = HttpStatusCode.OK;
+        }
+        catch (HttpRequestException exception)
+        {
+            _raResponseStatus = exception.StatusCode;
+        }
+    }
+
     [When("the RA renews the certificate")]
     public async Task WhenTheRaRenewsTheCertificate()
     {

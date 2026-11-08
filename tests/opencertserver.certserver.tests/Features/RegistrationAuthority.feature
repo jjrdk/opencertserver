@@ -36,3 +36,11 @@ Feature: Outbound registration-authority peer
         When the RA enrolls a certificate
         Then the RA receives a CA-issued certificate
         And the peer request uses HTTPS
+
+    # F3: an RA is bound to a delegated DNS scope on both the subjectAltName and the subject CN, so
+    # it cannot carry a common name outside its scope.
+    Scenario: An RA cannot enroll with a subject common name outside its scope
+        Given a certificate server
+        And an outbound RA peer for "host.tenant-a.example.com"
+        When the RA enrolls a certificate with a common name outside its scope
+        Then the central CA rejects the RA request

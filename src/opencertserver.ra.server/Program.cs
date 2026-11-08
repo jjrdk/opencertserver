@@ -1,13 +1,12 @@
-using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.IdentityModel.Tokens;
 using OpenCertServer.Ca.Client;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.X509Extensions;
 using OpenCertServer.Est.Server;
 using OpenCertServer.Est.Server.Handlers;
 using OpenCertServer.Ra;
+using OpenCertServer.Ra.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
@@ -19,42 +18,16 @@ configuration.AddEnvironmentVariables();
 // /cacerts, /csrattrs, and /simpleenroll all resolve through the backing CA. The RA peer client is the
 // outbound delegator the RA uses for scoped enrollment.
 var services = builder.Services
-    .AddCaClient(configuration)
-    .AddRaPeerClient(configuration)
+    .AddCaClient(CaClientOptions.FromConfiguration(configuration))
+    .AddRaPeerClient(RaPeerOptions.FromConfiguration(configuration))
     // EST support on the RA: the built-in empty template loader plus the EST services. EST handlers
     // take the issuing authority from ICertificateAuthority, which the CA client provides (remote).
     .AddEstServer<CsrTemplateLoader>();
 
-// EST enrollment is protected by a bearer token. When Jwt:SymmetricKey is configured it is
-// validated; otherwise the RA requires a well-formed JWT but does not verify its signature, leaving
-// identity authority with the backing CA (which re-authenticates the delegated subject).
-services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        var section = configuration.GetSection("Jwt");
-        var symmetricKey = section["SymmetricKey"];
-        if (!string.IsNullOrWhiteSpace(symmetricKey))
-        {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateLifetime = false,
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(symmetricKey))
-            };
-        }
-        else
-        {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateLifetime = false,
-                ValidateIssuerSigningKey = false
-            };
-        }
-    });
+// EST enrollment, re-enrollment, and server-keygen are guarded by a signature-verified JWT. The RA
+// refuses to start without a signing key, so it can never accept a signature-unverified token; scope
+// and identity authority remain with the backing CA.
+services.ConfigureRaJwt(configuration);
 
 services.AddAuthorization();
 

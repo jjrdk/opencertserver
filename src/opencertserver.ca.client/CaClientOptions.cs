@@ -98,7 +98,7 @@ public sealed class CaClientOptions
                     System.IO.File.ReadAllBytes(TrustCertPath)),
             };
             handler.ServerCertificateCustomValidationCallback =
-                (_, presented, _, _) => ChainIsValidAgainst(pinned, presented);
+                (_, presented, _, _) => ServerCertificateChainsToAnchor(pinned, presented);
         }
 
         if (!string.IsNullOrWhiteSpace(ClientCertPath))
@@ -126,14 +126,17 @@ public sealed class CaClientOptions
 
     /// <summary>
     /// Accepts a presented server certificate only when it chains to one of the pinned anchors. This
-    /// is the fail-closed "trusted connection" check: a non-matching chain is rejected even if the
-    /// system store would otherwise trust it.
+    /// is the fail-closed "trusted connection" check: a chain that does not terminate at a pinned
+    /// anchor is rejected even if the system store would otherwise trust it. The pinned anchors are the
+    /// only trusted roots (<see cref="X509ChainTrustMode.CustomRootTrust"/>), revocation is checked on
+    /// the non-root chain, and a presented certificate that does not chain to a pinned anchor is never
+    /// accepted.
     /// </summary>
-    private static bool ChainIsValidAgainst(
+    internal static bool ServerCertificateChainsToAnchor(
         System.Security.Cryptography.X509Certificates.X509Certificate2Collection pinned,
         System.Security.Cryptography.X509Certificates.X509Certificate2? presented)
     {
-        if (presented is null)
+        if (presented is null || pinned.Count == 0)
         {
             return false;
         }
@@ -142,14 +145,21 @@ public sealed class CaClientOptions
         {
             ChainPolicy = new System.Security.Cryptography.X509Certificates.X509ChainPolicy
             {
+                TrustMode = System.Security.Cryptography.X509Certificates.X509ChainTrustMode.CustomRootTrust,
                 RevocationFlag = System.Security.Cryptography.X509Certificates.X509RevocationFlag.ExcludeRoot,
-                RevocationMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.NoCheck,
+                RevocationMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.Online,
             },
         };
+        // The pinned anchors are the only trusted roots, and are also offered as intermediate so a
+        // chain that passes through a pinned intermediate is accepted; a presented certificate that does
+        // not chain to a pinned anchor leaves no matching chain element and is rejected.
+        chain.ChainPolicy.CustomTrustStore.AddRange(pinned);
+        chain.ChainPolicy.ExtraStore.AddRange(pinned);
+
         chain.Build(presented);
 
         var anchors = pinned
-            .Select(p => p.Thumbprint)
+            .Select(anchor => anchor.Thumbprint)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         return chain.ChainElements.Any(element => anchors.Contains(element.Certificate.Thumbprint));
     }

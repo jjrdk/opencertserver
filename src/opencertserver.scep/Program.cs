@@ -14,7 +14,7 @@ builder.Services.AddSingleton(raCertificate);
 
 // Backing CA over trusted HTTPS: the SCEP host holds no CA key. It talks to the CA
 // exactly like the RA and ACME hosts, which is what makes SCEP deployable on its own.
-builder.Services.AddCaClient(builder.Configuration);
+builder.Services.AddCaClient(CaClientOptions.FromConfiguration(builder.Configuration));
 
 // The SCEP challenge: Intune when configured, otherwise a shared secret. PKIOperation
 // issues nothing until a challenge is configured.

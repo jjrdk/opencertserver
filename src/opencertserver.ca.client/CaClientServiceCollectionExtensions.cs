@@ -12,17 +12,6 @@ using OpenCertServer.Ca.Utils.Ca;
 /// </summary>
 public static class CaClientServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers a backing-CA client read from the <c>Ca</c> configuration section and exposes it as the
-    /// host's <see cref="ICertificateAuthority"/>. This is the wiring selected by
-    /// <c>AcmeServer:Issuer=remote</c>.
-    /// </summary>
-    public static IServiceCollection AddCaClient(this IServiceCollection services, IConfiguration configuration)
-    {
-        var options = CaClientOptions.FromConfiguration(configuration);
-        return services.AddCaClient(options);
-    }
-
     /// <summary>Registers a backing-CA client from explicit options.</summary>
     public static IServiceCollection AddCaClient(this IServiceCollection services, CaClientOptions options)
     {
