@@ -14,7 +14,7 @@ public abstract class SignCertificateResponse
     public sealed class Success : SignCertificateResponse
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="Success"/> class.
+        /// Initializes a new instance of the <see cref="SignCertificateResponse.Success"/> class.
         /// </summary>
         public Success(X509Certificate2 certificate, X509Certificate2Collection issuers)
         {

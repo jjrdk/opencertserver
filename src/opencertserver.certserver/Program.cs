@@ -185,7 +185,13 @@ internal static class Program
         }
 
         services = services.AddEstTrustAnchors(options => ReadEstTrustAnchors(builder.Configuration, options));
-        services = await AddScep(services, args, builder.Configuration).ConfigureAwait(false);
+        // WP9: SCEP is a per-host surface. The monolith enables it by default (any SCEP
+        // configuration - a RA cert, a shared secret, or the Intune validation - turns it on),
+        // but a CA-only host sets Scep:Enabled=false to run /ca/*, /est, /acme with no /scep.
+        if (IsScepEnabled(args, builder.Configuration))
+        {
+            services = await AddScep(services, args, builder.Configuration).ConfigureAwait(false);
+        }
 
         var a = Array.IndexOf(args, "--authority");
         var authority = a >= 0
@@ -393,10 +399,18 @@ internal static class Program
                 reEnrollPolicy: EstPolicy(),
                 serverKeyGenPolicy: EstPolicy())
             .UseCertificateAuthorityServer();
-        app.MapScepServer();
-        if (builder.Configuration.GetSection(IntuneOptions.SectionName).Exists())
+        // WP9: the SCEP surface (and the Intune revocation sync that rides on it) maps only when
+        // the host enables SCEP. The monolith enables it by default, so a fresh monolith maps /scep
+        // exactly as before; a CA-only host sets Scep:Enabled=false to run /ca/* with no /scep.
+        if (IsScepEnabled(args, builder.Configuration))
         {
-            app.MapIntuneSync();
+            app.MapScepServer();
+            // Intune revocation sync maps only when the Intune validation is configured - the
+            // CA-side surface a device-management platform calls after enrollment.
+            if (builder.Configuration.GetSection(IntuneOptions.SectionName).Exists())
+            {
+                app.MapIntuneSync();
+            }
         }
 
         await app.RunAsync().ConfigureAwait(false);
@@ -613,6 +627,32 @@ internal static class Program
         }
 
         return values;
+    }
+
+    /// <summary>
+    /// Whether the host maps the SCEP surface. The monolith enables it by default, so a fresh
+    /// monolith behaves exactly as before: any SCEP configuration (a pinned RA certificate via
+    /// <c>--scep-ra</c>, a shared secret via <c>Scep:Challenge</c>, or the Intune validation via
+    /// <c>Scep:Intune</c>) turns SCEP on. A CA-only host sets <c>Scep:Enabled=false</c> to run
+    /// <c>/ca/*</c> with no <c>/scep</c>; <c>Scep:Enabled=true</c> forces it on regardless.
+    /// </summary>
+    internal static bool IsScepEnabled(string[] args, IConfiguration configuration)
+    {
+        var section = configuration.GetSection("Scep");
+        var explicitValue = section["Enabled"];
+        // The flag is opt-out: "Scep:Enabled=false" is the only way to turn SCEP off on the
+        // monolith (a CA-only host). "true" is explicit on; absent, SCEP stays on to preserve T1.
+        if (string.Equals(explicitValue, "false", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+        if (string.Equals(explicitValue, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+        // Default (T1): SCEP is on, exactly as before. A challenge / Intune config / --scep-ra
+        // simply reinforce that; their presence is not what turns SCEP on.
+        return true;
     }
 
     /// <summary>

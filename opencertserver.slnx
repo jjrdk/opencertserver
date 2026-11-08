@@ -10,6 +10,7 @@
         <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
         <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
         <Project Path="src/opencertserver.scep.server/opencertserver.scep.server.csproj"/>
+        <Project Path="src/opencertserver.scep/opencertserver.scep.csproj"/>
         <Project Path="src/opencertserver.contrib.intune/opencertserver.contrib.intune.csproj"/>
     </Folder>
     <Folder Name="/Solution Items/">

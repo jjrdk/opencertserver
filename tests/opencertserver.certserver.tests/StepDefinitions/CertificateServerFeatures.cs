@@ -278,19 +278,19 @@ public partial class CertificateServerFeatures
     }
 
     [Given(@"a certificate server with Public RA enabled and rate limit (\d+)")]
-    public void GivenACertificateServerWithPublicRaEnabledAndRateLimit(int rateLimit)
+    public async Task GivenACertificateServerWithPublicRaEnabledAndRateLimit(int rateLimit)
     {
         _enablePublicRa = true;
         _publicRaRateLimit = rateLimit;
-        GivenACertificateServer();
+        await GivenACertificateServer().ConfigureAwait(false);
     }
 
     [Given(@"a certificate server with Public RA enabled, EAB required, and rate limit (\d+)")]
-    public void GivenACertificateServerWithPublicRaEnabledEabRequiredAndRateLimit(int rateLimit)
+    public async Task GivenACertificateServerWithPublicRaEnabledEabRequiredAndRateLimit(int rateLimit)
     {
         _enablePublicRa = true;
         _publicRaRequireEab = true;
         _publicRaRateLimit = rateLimit;
-        GivenACertificateServer();
+        await GivenACertificateServer().ConfigureAwait(false);
     }
 }

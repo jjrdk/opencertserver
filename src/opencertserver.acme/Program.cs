@@ -1,12 +1,7 @@
 using OpenCertServer.Acme;
 using OpenCertServer.Acme.Server;
 using OpenCertServer.Acme.Server.Extensions;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Acme.Abstractions.IssuanceServices;
 using OpenCertServer.Acme.Remote;
 

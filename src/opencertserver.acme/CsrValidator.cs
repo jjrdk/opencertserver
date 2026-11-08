@@ -8,7 +8,6 @@ using CertesSlim.Acme;
 using OpenCertServer.Acme.Abstractions.IssuanceServices;
 using OpenCertServer.Acme.Abstractions.Model;
 using OpenCertServer.Ca.Utils;
-using OpenCertServer.Ca.Utils.X509Extensions;
 
 /// <summary>
 /// The default ACME CSR validator used by a standalone ACME host. It checks that the proof-of-possession

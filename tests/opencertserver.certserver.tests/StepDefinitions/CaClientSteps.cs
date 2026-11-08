@@ -1,9 +1,7 @@
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
-using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using CertesSlim.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;

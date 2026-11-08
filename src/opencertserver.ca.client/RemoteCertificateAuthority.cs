@@ -53,10 +53,13 @@ public sealed class RemoteCertificateAuthority : ICertificateAuthority
         DateTimeOffset? notAfter = null,
         CancellationToken cancellationToken = default)
     {
-        // The requestor identity is not forwarded: the backing CA authenticates this process over the
-        // trusted connection (mTLS or bearer). The delegated scope, when any, comes from the client
-        // configuration so the ACME/RA process is the one the CA trusts.
-        return _client.SignCsr(request, profileName, null, notBefore, notAfter, cancellationToken);
+        // The requestor identity is not forwarded as a separate claim: the backing CA authenticates this
+        // process over the trusted connection (mTLS or bearer), and that principal is the RA identity
+        // the CA already trusts. The delegated scope, when any, comes from the client configuration.
+        // The certificate being re-enrolled from, however, must cross the wire so the CA can
+        // supersede-revoke it on the new one: a remote SCEP renewal or EST re-enrollment therefore
+        // carries <paramref name="reenrollingFrom"/> as the X-Reenrolling-From header.
+        return _client.SignCsr(request, profileName, null, reenrollingFrom, notBefore, notAfter, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -72,8 +75,10 @@ public sealed class RemoteCertificateAuthority : ICertificateAuthority
         string? profileName = null,
         CancellationToken cancellationToken = default)
     {
-        // The published set is the published root set; the backing CA exposes it on the same endpoint.
-        return _client.GetRootCertificates(profileName, cancellationToken);
+        // The full published chain (issuing CA plus root and any published intermediates) is fetched
+        // from the CA's published endpoint so a SCEP/EST peer gets exactly what the CA publishes, not
+        // just the root anchor.
+        return _client.GetPublishedCertificates(profileName, cancellationToken);
     }
 
     public async Task<IReadOnlyList<string>> GetSupportedProfiles(CancellationToken cancellationToken = default)

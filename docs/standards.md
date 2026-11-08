@@ -214,6 +214,21 @@ the new one is issued.
   Seen on Windows 11 devices enrolled through Intune; `RenewalReq` is covered by the scenarios and
   by other SCEP clients.
 
+**Standalone host and backing-CA mode.**
+SCEP can run on its own host, [`opencertserver.scep`](../src/opencertserver.scep/README.md),
+that holds **no CA key** and forwards enrollment/renewal to a backing CA over a trusted HTTPS
+connection, like the ACME and RA hosts. The CA stays authoritative for scope, identity, and the
+published chain: the host forwards the CSR to `POST /ca/csr`, a `RenewalReq` supersedes the
+previous certificate **at the CA** (the previous cert is forwarded via the `X-Reenrolling-From`
+header, which the CA reads and passes to the issuance as `reenrollingFrom`), and `GetCACert`
+returns the full published chain from `GET /ca/published` instead of rebuilding it locally. What
+stays local to the host is the SCEP RA certificate (RSA, from `--scep-ra`/`--scep-ra-key`), the
+challenge validator (a shared secret `Scep:Challenge` or Intune `Scep__Intune`), and the replay
+store. See [architecture-separation.md](../docs/architecture-separation.md) §"Setting up a SCEP
+host against a backing CA". The `opencertserver.certserver` monolith enables SCEP unless
+`Scep:Enabled=false` (a CA-only host); the same `IsScepEnabled` decision gates
+`MapScepServer`/`MapIntuneSync` there, while the standalone host maps SCEP unconditionally.
+
 **Where it lives.**
 Endpoints are mapped by `MapScepServer()` in
 [`src/opencertserver.scep.server/ScepServerExtensions.cs`](../src/opencertserver.scep.server/ScepServerExtensions.cs);
@@ -223,8 +238,6 @@ CMS envelopes
 [`ScepMessageCodec.cs`](../src/opencertserver.scep.server/ScepMessageCodec.cs). Registration is
 `AddScepServer(ScepServerOptions, IScepChallengeValidator)`; the challenge contract is
 [`IScepChallengeValidator.cs`](../src/opencertserver.scep.server/IScepChallengeValidator.cs).
-
-**Tests that prove it.**
 * [ScepServer.feature](../tests/opencertserver.scep.server.tests/Features/ScepServer.feature) —
 capabilities, `GetCACert` with and without a root above the issuing CA, enrollment through POST and
 GET and through the `/pkiclient.exe` paths, wrong and missing challenge, a request encrypted to
@@ -241,6 +254,15 @@ enrollment with the challenge, a wrong challenge refused, the `/pkiclient.exe` p
 refused with `badAlg`, and a new enrollment signed with the certificate the client holds;
 `openssl` verifies what it receives. `RenewalReq` is covered in-process, since sscep does not send
 one. See the [IQ README](../tests/opencertserver.iq.tests/README.md#scep-enrollment-scenarios).
+* [ScepRemoteCa.feature](../tests/opencertserver.scep.server.tests/Features/ScepRemoteCa.feature) —
+the **standalone host against a backing CA**: a device enrolls in scope and the backing CA issues
+the chain, a `RenewalReq` supersedes the previous certificate at the CA (proving the
+`X-Reenrolling-From` forwarding), an out-of-scope subject is refused, `GetCACert` returns the full
+published chain, a non-HTTPS backing CA is rejected at startup, and a replay is refused by the local
+replay store.
+* [ScepComposition.feature](../tests/opencertserver.certserver.tests/Features/ScepComposition.feature) —
+the **SCEP composition gate**: the monolith enables SCEP by default and on any `Scep` config, while a
+CA-only host (`Scep:Enabled=false`) disables it even when a challenge is present.
 
 ### Intune challenge validation and revocation sync (`opencertserver.contrib.intune`)
 

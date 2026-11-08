@@ -16,6 +16,7 @@ conveniences, never the source of truth.** The CA's `CaClient` performs the
 | **ACME ↔ backing CA** | `opencertserver.acme` host, or `certserver` with `AcmeServer:Issuer=remote` | ACME server + a separate CA |
 | **RA ↔ backing CA** | `opencertserver.ra.server` host | RA + a separate CA |
 | **RA serving EST ↔ backing CA** | `opencertserver.ra.server` host (serves `/.well-known/est/*`) | RA + a separate CA |
+| **SCEP ↔ backing CA** | `opencertserver.scep` host (serves `/scep`), or `certserver` with a `Scep` config | SCEP server + a separate CA |
 
 ## Project map
 
@@ -26,6 +27,7 @@ conveniences, never the source of truth.** The CA's `CaClient` performs the
 | `opencertserver.acme.remote` | `RemoteIssuer` (`IIssueCertificates`) that delegates to a `CaClient`; `AddAcmeRemoteCa` | no (via ca.client) |
 | `opencertserver.acme` | Standalone ACME server host (no ca core); issues via a remote CA | no |
 | `opencertserver.ra.server` | Standalone RA host; forwards CSR to a backing CA + RA peers; **serves EST** (`/.well-known/est/*`) over the backing CA | no |
+| `opencertserver.scep` | Standalone SCEP host (RFC 8894); forwards enrollment/renewal to a backing CA, holds only the SCEP RA cert + challenge + replay store; **no CA core** | no (via ca.client) |
 | `opencertserver.certserver` | In-process monolith; `AcmeServer:Issuer=remote` opts the ACME surface onto a backing CA | yes |
 
 The new remote projects depend on `opencertserver.ca.client` and **not** on
@@ -78,8 +80,12 @@ Every RA↔CA / ACME↔CA / RA↔RA call rides a trusted connection:
 | Key | Default | Meaning |
 |---|---|---|
 | `AcmeServer:Issuer` | (empty / `inproc`) | `remote` selects `RemoteIssuer` (issues through `Ca:RemoteUrl`); empty/`inproc` keeps the in-process `DefaultIssuer`. |
+| `Scep:Enabled` | on | Opt the SCEP surface (`/scep`) and the optional Intune sync on/off in the monolith. Absent = on (preserves T1); `false` runs a CA-only host with `/ca/*` and no `/scep`. `true` forces it on regardless of any `Scep:Challenge`/`Scep:Intune`/`--scep-ra` presence. The same decision gates `AddScep` registration and `MapScepServer`/`MapIntuneSync` mapping. |
 
 The `opencertserver.acme` host always uses the remote issuer (no in-process CA).
+The `opencertserver.scep` host always maps SCEP unconditionally (it is the SCEP host); a
+CA-only `certserver`/`ca.server` deployment instead sets `Scep:Enabled=false` so it serves
+`/ca/*` with no `/scep`.
 
 ### `opencertserver.ra.server` (RA host, EST + backing CA)
 
@@ -155,6 +161,74 @@ of profiles the backing CA supports:
    RA's current profile set can be read or refreshed at any time with
    `GET /ra/profiles` (which the RA fetches from `GET /ca/profiles` on the CA).
 
+### What stays local to a remote SCEP / ACME host (WP7)
+
+A host that talks to a backing CA holds **no CA key**. The things that are *not*
+CA authority stay local, exactly like the ACME and RA hosts:
+
+- **SCEP RA certificate (RSA).** The SCEP client encrypts its request to this cert
+  and the server signs its responses with it. It is an identity of the SCEP host,
+  loaded from `--scep-ra` / `--scep-ra-key` (a transient one is made when no key is
+  supplied, matching the ACME RA cert).
+- **The challenge validator** — a shared secret (`Scep:Challenge`) or Intune
+  (`Scep:Intune`). PKIOperation issues nothing until a challenge is configured.
+- **The replay store.** A window of accepted transaction IDs + sender nonces so a
+  captured PKCSReq/RenewalReq cannot be replayed (see `ScepServerOptions`).
+
+The published chain a remote SCEP/EST peer needs to reach the root is **not**
+rebuilt locally — the CA publishes it:
+
+- **`GET /ca/published`** (and `GET /ca/{profile}/published`) returns the full
+  published chain for a profile (issuing CA + root, and any published
+  intermediates) as a PEM bundle. It is authenticated exactly like `POST /ca/csr`
+  (`RequireAuthenticatedUser`), so a remote peer cannot enumerate the published
+  chain without the CA trusting its identity. `RemoteCertificateAuthority` calls
+  `GET /ca/published` (via `ICertificateAuthority.GetPublishedCertificates`) for its
+  GetCACert chain and renewal anchors, so the CA stays authoritative for what is
+  published.
+- **`X-Reenrolling-From` header.** Re-enrollment carries the *previous* certificate
+  to the CA so a `RenewalReq` supersedes it (superseding-revokes) at the CA. The
+  remote authority forwards it as the `X-Reenrolling-From` request header
+  (`RaProtocol.ReenrollingFromHeader`, a PEM-encoded previous cert); `CsrHandler`
+  reads it and passes it to `ca.SignCertificateRequest(..., reenrollingFrom:
+  previous)`. This is a **documented deviation from the plan's §10 Q6 JSON envelope**
+  — a header is the transport actually used, and it is the only thing that crosses
+  the wire for re-enrollment.
+
+### Setting up a SCEP host against a backing CA
+
+1. Run a backing CA that exposes `/ca/csr`, `/ca/revoke`, `/ca/crl`, `/ca/ocsp`,
+   and **`/ca/published`** (any `certserver`/`ca.server` deployment with JWT +
+   certificate auth on those routes).
+2. Run the SCEP host pointing at it:
+   ```sh
+   dotnet run --project src/opencertserver.scep \
+       -- --urls https://0.0.0.0:7100
+   ```
+   with `appsettings.json`:
+   ```json
+   {
+     "Ca": {
+       "RemoteUrl": "https://ca.example.com/",
+       "Profile": "rsa",
+       "DelegatedScope": "tenant-a.example.com",
+       "BearerToken": "<shared secret with the CA>",
+       "ClientCert": "/etc/scep/ra.pfx"
+     },
+     "Scep": {
+       "Challenge": "<shared secret, or set the Intune section>"
+     }
+   }
+   ```
+   The SCEP RA cert is loaded from `--scep-ra` / `--scep-ra-key` on the command
+   line (a transient one is made when no key is supplied). With `Scep:Intune`
+   configured instead of `Scep:Challenge`, the host also maps
+   `POST /scep/intune/sync` (the Intune revocation sync).
+3. SCEP clients enroll through `/scep` (and the Windows `/scep/pkiclient.exe`
+   form). The host forwards the CSR to the CA over the trusted connection; the CA
+   enforces scope/identity and signs, and a `RenewalReq` supersedes the previous
+   certificate at the CA via `X-Reenrolling-From`.
+
 ## BDD proofs
 
 | Feature | Proves |
@@ -164,7 +238,10 @@ of profiles the backing CA supports:
 | `tests/…/Features/RaServer.feature` | The RA host forwards an in-scope enrollment to the backing CA; an **out-of-scope subject is rejected (400)**; a renewal re-applies CA policy; the RA host enforces **HTTPS-only** transport to the CA. |
 | `tests/…/Features/RaMultiProfile.feature` | An RA **requests the CA's supported profile set** (discovery/refresh) and **enrolls against a non-default profile** by name, proving one RA serves several profiles. |
 | `tests/…/Features/Monolith.feature` | The default in-process monolith still issues an in-scope certificate and **rejects an anonymous `/ca/csr`** (T1 regression guard). |
-| `opencertserver.acme` / `opencertserver.ra.server` hosts | Build clean. `opencertserver.ra.server` (now **including its EST surface**) AOT-publishes to a native binary; its EST handlers delegate to the backing CA through the same `ICertificateAuthority` that the remote-issuer and CA-client features prove, so a full two-host EST test is a candidate for a dedicated `ra.tests` project. `opencertserver.acme` is framework-dependent only: it transitively pulls `DnsClientX` (dns-01 in `acme.server`), which is not AOT-compatible — a pre-existing property of `acme.server`, not of the separation. |
+| `tests/…/Features/ScepRemoteCa.feature` | A SCEP host pointed at a backing CA **enrolls in scope** (the backing CA issues the chain); a `RenewalReq` **supersedes the previous certificate at the CA**; an **out-of-scope subject is refused**; `GetCACert` returns the **full published chain**; a **non-HTTPS backing CA is rejected at startup**; and a **replay is refused by the local replay store**. |
+| `tests/…/Features/ScepComposition.feature` | The monolith **enables SCEP by default** (T1) and on any `Scep` config; a **CA-only host** (`Scep:Enabled=false`) **disables SCEP** even when a challenge is present — the same `IsScepEnabled` decision gates both `AddScep` registration and `MapScepServer`/`MapIntuneSync` mapping. |
+| `tests/…/Features/IntuneRevocationSync.feature` | The Intune revocation sync **revokes through the `ICertificateAuthority`** the host is wired with (a `RemoteCertificateAuthority` over a backing CA for a separated deployment, the in-proc CA otherwise), so a disabled/deleted user or retired/disabled device loses its certificate **at the backing CA**; unknown is never revoked. |
+| `opencertserver.acme` / `opencertserver.ra.server` / `opencertserver.scep` hosts | Build clean. `opencertserver.ra.server` (now **including its EST surface**) AOT-publishes to a native binary; its EST handlers delegate to the backing CA through the same `ICertificateAuthority` that the remote-issuer and CA-client features prove. `opencertserver.acme` is framework-dependent only: it transitively pulls `DnsClientX` (dns-01 in `acme.server`), which is not AOT-compatible — a pre-existing property of `acme.server`, not of the separation. |
 
 ## Telemetry
 

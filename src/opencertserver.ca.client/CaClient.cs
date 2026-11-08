@@ -58,6 +58,7 @@ public sealed partial class CaClient
         string csrPem,
         string? profile = null,
         string? delegatedScope = null,
+        X509Certificate2? reenrollingFrom = null,
         DateTimeOffset? notBefore = null,
         DateTimeOffset? notAfter = null,
         CancellationToken cancellationToken = default)
@@ -86,6 +87,13 @@ public sealed partial class CaClient
         var requestUri = new Uri(_options.BaseUrl, path);
         using var request = new HttpRequestMessage(HttpMethod.Post, requestUri);
         request.Content = new StringContent(csrPem, Encoding.UTF8, RaProtocol.CsrMimeType);
+        // A remote SCEP/EST peer that cannot host the CA core carries the previous certificate over the
+        // wire so the CA can supersede-revoke it on the new one; absence leaves first-enrollment unchanged.
+        if (reenrollingFrom is not null)
+        {
+            request.Headers.TryAddWithoutValidation(RaProtocol.ReenrollingFromHeader,
+                reenrollingFrom.ExportCertificatePem());
+        }
         ApplyAuth(request, effectiveScope);
 
         LogSigningCsrViaBackingCaAtUri(requestUri);
@@ -173,7 +181,27 @@ public sealed partial class CaClient
     }
 
     /// <summary>
-    /// Fetches the names of the profiles the backing CA supports. This is the RA's discovery and
+    /// Fetches the full published chain (issuing CA plus the root, and any published intermediates)
+    /// the backing CA serves for the given profile. A SCEP or EST peer that cannot host the CA core
+    /// uses this for its GetCACert chain and renewal anchors, so the CA stays authoritative for what
+    /// is published.
+    /// </summary>
+    public async Task<X509Certificate2Collection> GetPublishedCertificates(
+        string? profile = null,
+        CancellationToken cancellationToken = default)
+    {
+        var path = RaProtocol.PublishedPathFor(profile);
+        var requestUri = new Uri(_options.BaseUrl, path);
+        using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+        ApplyAuth(request);
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        var pem = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var collection = new X509Certificate2Collection();
+        collection.ImportFromPem(pem);
+        return collection;
+    }
     /// refresh call: an RA may call it at startup to learn the profiles to offer and again later to
     /// pick up a profile set the CA has updated. Only names come back over the wire.
     /// </summary>

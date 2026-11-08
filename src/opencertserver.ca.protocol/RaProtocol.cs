@@ -43,14 +43,45 @@ public static class RaProtocol
     /// <summary>Query parameter carrying the revocation reason for a revocation.</summary>
     public const string QueryReason = "reason";
 
+    /// <summary>
+    /// The HTTP header carrying the PEM of the certificate being re-enrolled from (the previous
+    /// certificate) on a <c>POST ca/csr</c>. When present the CA supersedes (superseding-revokes)
+    /// that certificate once the new one is issued, so a remote SCEP renewal or a remote EST
+    /// re-enrollment revokes the old certificate at the CA. Absence leaves first-enrollment
+    /// behavior unchanged.
+    /// </summary>
+    public const string ReenrollingFromHeader = "X-Reenrolling-From";
+
     /// <summary>Query parameter carrying the base64 proof-of-possession signature for a revocation.</summary>
     public const string QuerySignature = "signature";
 
     /// <summary>The CA endpoint that publishes the certificate revocation list.</summary>
     public const string CrlPath = "ca/crl";
 
-    /// <summary>Format for the CA endpoint that publishes the certificate revocation list for a named profile.</summary>
+    /// <summary>
+    /// The CA endpoint that publishes the full published chain (root and issuing CA) for the default
+    /// profile. A SCEP or EST peer that cannot host the CA core fetches its GetCACert chain and
+    /// renewal anchors from here.
+    /// </summary>
+    public const string PublishedPath = "ca/published";
+
+    /// <summary>Format for the CA endpoint that publishes the full published chain for a named profile.</summary>
+    public const string ProfilePublishedPathFormat = "ca/{0}/published";
+
+    /// <summary>The CA endpoint that lists the profile names the CA supports.</summary>
     public const string ProfilesPath = "ca/profiles";
+
+    /// <summary>Builds the published-chain path for the given profile, or the default-profile path when null/empty.</summary>
+    public static string PublishedPathFor(string? profile)
+    {
+        if (string.IsNullOrWhiteSpace(profile))
+        {
+            return PublishedPath;
+        }
+
+        return string.Format(System.Globalization.CultureInfo.InvariantCulture,
+            ProfilePublishedPathFormat, Uri.EscapeDataString(profile));
+    }
 
     /// <summary>Format for the CA endpoint that publishes the revocation list for a named profile.</summary>
     public const string ProfileCrlPathFormat = "ca/{0}/crl";

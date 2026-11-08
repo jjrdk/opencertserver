@@ -4,14 +4,12 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using CertesSlim.Acme;
 using CertesSlim.Acme.Resource;
-using CertesSlim.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenCertServer.Acme.Remote;
 using OpenCertServer.Ca.Client;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.X509Extensions;
 using Reqnroll;
 using Xunit;
 
