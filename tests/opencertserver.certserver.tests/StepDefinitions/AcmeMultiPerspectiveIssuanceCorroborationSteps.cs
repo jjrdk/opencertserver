@@ -114,6 +114,34 @@ public sealed class AcmeMultiPerspectiveIssuanceCorroborationSteps
         AddPerspective(new StubDnsResolver(caaRecords: [new CaaRecord(0, "issue", "other.example.com")]));
     }
 
+    [Given("one CAA perspective fails")]
+    public void GivenOneCaaPerspectiveFails()
+    {
+        // The TXT records are valid in every perspective, so only the CAA failure can
+        // make the challenge invalid. This proves the CAA lookup itself is classified
+        // as a DNS failure rather than being masked by the later TXT lookup.
+        var expected = ComputeDns01Content();
+        AddPerspective(new StubDnsResolver(
+            caaRecords: [new CaaRecord(0, "issue", "ca.example.com")],
+            txtRecords: [expected]));
+        AddPerspective(new StubDnsResolver(
+            txtRecords: [expected],
+            caaError: new DnsClientException("perspective unavailable")));
+    }
+
+    [Given("the challenge uses the real CAA validator")]
+    public void GivenTheChallengeUsesTheRealCaaValidator()
+    {
+        var options = Options.Create(new AcmeServerOptions
+        {
+            CAAIdentities = ["ca.example.com"]
+        });
+        _caaValidator = new CaaValidator(
+            NullLogger<CaaValidator>.Instance,
+            CreateResolver(),
+            options);
+    }
+
     [When("the DNS perspectives are created from configuration")]
     public void WhenPerspectivesAreCreated()
     {
@@ -294,25 +322,30 @@ public sealed class AcmeMultiPerspectiveIssuanceCorroborationSteps
         private readonly IReadOnlyList<string> _txtRecords;
         private readonly IReadOnlyList<IPAddress> _ipAddresses;
         private readonly Exception? _error;
+        private readonly Exception? _caaError;
 
         public StubDnsResolver(
             IReadOnlyList<CaaRecord>? caaRecords = null,
             IReadOnlyList<string>? txtRecords = null,
             IReadOnlyList<IPAddress>? ipAddresses = null,
-            Exception? error = null)
+            Exception? error = null,
+            Exception? caaError = null)
         {
             _caaRecords = caaRecords ?? [];
             _txtRecords = txtRecords ?? [];
             _ipAddresses = ipAddresses ?? [];
             _error = error;
+            _caaError = caaError;
         }
 
         public Task<IReadOnlyList<CaaRecord>> ResolveCaaRecordsAsync(
             string name,
             CancellationToken cancellationToken)
-            => _error is null
-                ? Task.FromResult(_caaRecords)
-                : Task.FromException<IReadOnlyList<CaaRecord>>(_error);
+            => _caaError is not null
+                ? Task.FromException<IReadOnlyList<CaaRecord>>(_caaError)
+                : _error is null
+                    ? Task.FromResult(_caaRecords)
+                    : Task.FromException<IReadOnlyList<CaaRecord>>(_error);
 
         public Task<IReadOnlyList<string>> ResolveTxtRecordsAsync(
             string name,

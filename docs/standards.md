@@ -405,9 +405,12 @@ that acts as one Network Perspective. For every issuance-critical lookup
 3. Returns the answer only when every perspective agrees.
 
 A lookup that fails in any perspective, or whose canonical answer sets differ, throws
-`DnsPerspectiveMismatchException` (or a `DnsClientException` for a perspective failure). Both
-challenge validators translate this into an ACME `urn:ietf:params:acme:error:dns` failure, so the
-challenge becomes `invalid` rather than being retried or silently accepted.
+`DnsPerspectiveMismatchException` (or a `DnsClientException` for a perspective failure).
+`CaaValidator` preserves that DNS failure classification instead of reporting a CAA policy
+rejection, and both challenge validators translate it into an ACME
+`urn:ietf:params:acme:error:dns` failure, so the challenge becomes `invalid` rather than being
+retried or silently accepted. A CAA policy rejection — a CAA RRset that does not authorize the CA
+— remains `urn:ietf:params:acme:error:caa`.
 
 For `http-01`, the corroborated A/AAAA set is pinned onto the challenge request. The connection
 handler connects only to those addresses — it never performs a second, ambient-DNS lookup — and
@@ -451,7 +454,8 @@ fail closed when the resolver is created rather than silently disabling corrobor
 [AcmeMultiPerspectiveIssuanceCorroboration.feature](../tests/opencertserver.certserver.tests/Features/AcmeMultiPerspectiveIssuanceCorroboration.feature)
 covers configured perspectives, the single-endpoint fallback, programmatic `AddAcmeServer` options
 reaching the DI options pipeline, matching and differing TXT records, matching and differing A
-records, an unavailable perspective, and differing CAA records.
+records, an unavailable perspective, differing CAA records, and CAA lookup failures surfacing as
+`dns` challenge errors through the real `CaaValidator`.
 
 ### RST 8657 — CAA `accounturi` / `validationmethods`
 
