@@ -111,8 +111,16 @@ public sealed partial class CaaValidator : ICaaValidator
         }
         catch (DnsClientException ex)
         {
+            // A failed or uncorroborated CAA lookup is a DNS failure, not a CAA policy
+            // decision. Preserve that classification so challenge validators report
+            // urn:ietf:params:acme:error:dns instead of urn:ietf:params:acme:error:caa.
             LogCaaLookupFailed(fqdn, ex.Message);
-            return new AcmeError { Type = "caa", Detail = $"Could not read CAA records from DNS: {ex.Message}" };
+            return new AcmeError
+            {
+                Type = "dns",
+                Detail = $"Could not read CAA records from DNS: {ex.Message}",
+                Identifier = identifier
+            };
         }
 
         if (relevantSet == null || relevantSet.Count == 0)

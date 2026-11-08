@@ -67,3 +67,19 @@ Feature: Multi-Perspective Issuance Corroboration
             Given two perspectives return different CAA records
             When CAA is resolved with multi-perspective DNS
             Then the corroborated DNS lookup must fail with a perspective mismatch
+
+    Rule: CAA DNS failures keep their dns classification at the challenge level
+
+        Scenario: differing CAA records fail a challenge with a dns error
+            Given an ACME account with a pending dns-01 challenge for "example.com"
+            And two perspectives return different CAA records
+            And the challenge uses the real CAA validator
+            When the dns-01 challenge is validated with multi-perspective DNS
+            Then the corroborated challenge must fail with error type "dns"
+
+        Scenario: an unavailable CAA perspective fails a challenge with a dns error
+            Given an ACME account with a pending dns-01 challenge for "example.com"
+            And one CAA perspective fails
+            And the challenge uses the real CAA validator
+            When the dns-01 challenge is validated with multi-perspective DNS
+            Then the corroborated challenge must fail with error type "dns"
