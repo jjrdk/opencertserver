@@ -208,7 +208,7 @@ public static class Extensions
         groupBuilder.MapGet("/{profileName}/crl", CrlHandler.HandleProfile)
             .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
         groupBuilder.MapPost("/ocsp", OcspHandler.Handle).WithName("ocsp").AllowAnonymous();
-        groupBuilder.MapGet("/ocsp/{requestEncoded}", OcspHandler.HandleGet).WithName("ocspGet").AllowAnonymous();
+        groupBuilder.MapGet("/ocsp/{**requestEncoded}", OcspHandler.HandleGet).WithName("ocspGet").AllowAnonymous();
 
         return endpoints;
     }

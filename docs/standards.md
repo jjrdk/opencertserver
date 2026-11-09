@@ -647,7 +647,9 @@ supplied.
 * `POST /ca/ocsp` takes a DER-encoded `OCSPRequest` and returns `application/ocsp-response` with a
    signed `BasicOCSPResponse`. Each `SingleResponse` reports `good`, `revoked`, or `unknown` from the
    certificate store.
-* `GET /ca/ocsp/{base64url}` (RFC 6960 Appendix A) for URL-safe base64-encoded requests.
+* `GET /ca/ocsp/{requestEncoded}` accepts URL-encoded standard base64 requests as specified
+   by RFC 6960 Appendix A.1 and RFC 5019 section 5. Unescaped `/` characters also reach the
+   responder. Padded and unpadded base64url requests remain supported for compatibility.
 * **Signed requests.** `IValidateOcspRequest` implementations run before status lookup; a `malformedRequest`
    is returned on an unparseable request, `unauthorized` when the server refuses service, `internalError`
    and `tryLater` cover responder faults, and `nonce` + `archiveCutoff` + `serviceLocator` +
@@ -669,6 +671,10 @@ supplied.
 maps the endpoint.
 
 **Tests that prove it.**
+* [OcspGet.feature](../tests/opencertserver.certserver.tests/Features/OcspGet.feature) —
+   URL-encoded standard base64, unescaped slashes, and legacy base64url, using requests whose
+   standard encoding contains `+`, `/`, and `=`; invalid encodings and invalid DER return
+   `malformedRequest`.
 * [OcspConformance.feature](../tests/opencertserver.certserver.tests/Features/OcspConformance.feature) —
    RFC 6960 conformance across nine rules: responder endpoint + OCSP-over-HTTP, request syntax +
    `CertID` matching, successful response structure, certificate status values, response freshness,

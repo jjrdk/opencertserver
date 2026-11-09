@@ -227,12 +227,16 @@ algorithm of the profile's CA key
 - Response: `200` on success, `404` if the serial number is unknown, `401` if authentication
   fails, `403` if authorization fails.
 
-### POST /ca/ocsp  and  GET /ca/ocsp/{base64url}
+### POST /ca/ocsp  and  GET /ca/ocsp/{requestEncoded}
 
 - Description: a signing OCSP responder ([RFC 6960](https://www.rfc-editor.org/rfc/rfc6960)).
 - `POST /ca/ocsp` takes a DER-encoded OCSP request and returns
    `application/ocsp-response` with a signed `BasicOCSPResponse`.
-- `GET /ca/ocsp/{base64url}` accepts a URL-safe base64-encoded request (RFC 6960 Appendix A).
+- `GET /ca/ocsp/{requestEncoded}` accepts the URL-encoded standard base64 encoding of a
+  DER request (RFC 6960 Appendix A.1 and RFC 5019 section 5), including `%2B`, `%2F`, and
+  `%3D`. Unescaped base64 slashes are also accepted. Base64url remains supported for
+  existing clients, with or without padding. Invalid encodings or DER return an OCSP
+  `malformedRequest` response.
 - Malformed requests return `malformedRequest`; a refused service returns `unauthorized`; responder
    faults return `internalError` / `tryLater`.
 

@@ -58,12 +58,14 @@ They are intentionally written before adding step implementations so they can dr
               | postgresql |
               | mssql      |
 
-        Scenario Outline: RFC 6960 Appendix A allows OCSP GET for URL-safe base64 encoded requests
+        Scenario Outline: OCSP GET retains compatibility with URL-safe base64 encoded requests
             Given the certificate server storage is "<Storage>"
             And a certificate server
             When an OCSP client sends an OCSP request using HTTP GET with the request encoded into the request URI
             Then the OCSP responder MAY accept the GET request
             And if the GET request is accepted the OCSP responder MUST return the "application/ocsp-response" media type
+            And the OCSP response status MUST be "successful"
+            And the corresponding SingleResponse MUST report the certificate status as good
 
             Examples:
               | Storage    |

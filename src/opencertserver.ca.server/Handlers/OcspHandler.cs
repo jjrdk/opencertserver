@@ -76,9 +76,17 @@ public static class OcspHandler
         byte[] requestBytes;
         try
         {
-            requestBytes = System.Buffers.Text.Base64Url.DecodeFromChars(encodedRequest.AsSpan());
+            encodedRequest = Uri.UnescapeDataString(encodedRequest);
+            try
+            {
+                requestBytes = Convert.FromBase64String(encodedRequest);
+            }
+            catch (FormatException)
+            {
+                requestBytes = System.Buffers.Text.Base64Url.DecodeFromChars(encodedRequest.AsSpan());
+            }
         }
-        catch
+        catch (FormatException)
         {
             var errorResponse = new OcspResponse(OcspResponseStatus.MalformedRequest);
             var w = new AsnWriter(AsnEncodingRules.DER);
