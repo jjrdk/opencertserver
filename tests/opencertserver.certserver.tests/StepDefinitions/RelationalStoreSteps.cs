@@ -188,7 +188,7 @@ public sealed class RelationalStoreSteps
                 {
                     HostedWorkers = new BackgroundServiceOptions
                     {
-                        EnableValidationService = false,
+                        EnableValidationService = true,
                         EnableIssuanceService = false
                     }
                 })
