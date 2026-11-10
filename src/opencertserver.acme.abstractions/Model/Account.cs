@@ -33,22 +33,6 @@ public sealed class Account : IVersioned
         ExternalAccountId = externalAccountId;
     }
 
-    [JsonConstructor]
-    public Account(
-        string accountId,
-        JsonWebKey jwk,
-        List<string>? contacts,
-        DateTimeOffset? tosAccepted,
-        string? externalAccountId)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(accountId);
-        AccountId = accountId;
-        Jwk = jwk ?? throw new ArgumentNullException(nameof(jwk));
-        Contacts = contacts;
-        TosAccepted = tosAccepted;
-        ExternalAccountId = externalAccountId;
-    }
-
     /// <summary>
     /// Hydrates an account from persisted storage, restoring the identity that the primary constructor
     /// generates. Used by the relational store; the <see cref="JsonConstructorAttribute"/> marks the

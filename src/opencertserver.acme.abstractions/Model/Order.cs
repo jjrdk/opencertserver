@@ -39,24 +39,6 @@ public sealed class Order : IVersioned
         Profile = profile;
     }
 
-    [JsonConstructor]
-    public Order(
-        string orderId,
-        string accountId,
-        OrderStatus status,
-        List<Identifier> identifiers,
-        List<Authorization> authorizations)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(orderId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(accountId);
-        OrderId = orderId;
-        AccountId = accountId;
-        Status = status;
-        Identifiers = identifiers ?? throw new ArgumentNullException(nameof(identifiers));
-        Authorizations = authorizations ?? throw new ArgumentNullException(nameof(authorizations));
-        foreach (var authorization in Authorizations) authorization.Order = this;
-    }
-
     /// <summary>
     /// Hydrates an order from persisted storage, restoring the identity and graph (<see cref="Authorizations"/>)
     /// that the primary constructor generates. Used by the relational store; the

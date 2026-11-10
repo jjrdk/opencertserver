@@ -742,7 +742,7 @@ internal static class Program
         // The RA decrypts requests and signs responses; SCEP defines the envelope for RSA
         // key transport only, so the RA is RSA even for an ECDSA CA.
         var raCertificate = GetArgumentValue(args, "--scep-ra") is not null
-            ? await CreateCert(args, "--scep-ra", "--scep-ra-key").ConfigureAwait(false)
+            ? await CreateCert(args, configuration, "Scep", "--scep-ra", "--scep-ra-key").ConfigureAwait(false)
             : CreateTransientRaCertificate();
         if (raCertificate.GetRSAPrivateKey() is null)
         {

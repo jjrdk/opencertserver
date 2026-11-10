@@ -399,7 +399,7 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
         Assert.Equal(_certificate!.Thumbprint, item.Thumbprint);
         Assert.Equal(X509RevocationReason.KeyCompromise, item.RevocationReason);
         Assert.Equal("rsa", await _store.GetIssuingProfile(_certificate.Thumbprint));
-        Assert.Single(await _store.GetRevocationList().ToArrayAsync());
+        Assert.Single(await _store.GetRevocationList("rsa").ToArrayAsync());
     }
 
     public void Dispose()

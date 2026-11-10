@@ -62,14 +62,6 @@ public static class ServiceCollectionExtensions
                     "PublicRa:RequireApproval is not supported until the certificate approval workflow is available.");
             }
 
-            if (publicRaEnabled &&
-                bool.TryParse(publicRaConfig["RequireApproval"], out var requireApproval) &&
-                requireApproval)
-            {
-                throw new InvalidOperationException(
-                    "PublicRa:RequireApproval is not supported until the certificate approval workflow is available.");
-            }
-
             services.ConfigureHttpJsonOptions(options =>
                 options.SerializerOptions.TypeInfoResolverChain.Insert(0, AcmeHttpSerializerContext.Default));
             services.AddScoped<IRequestValidationService, DefaultRequestValidationService>();

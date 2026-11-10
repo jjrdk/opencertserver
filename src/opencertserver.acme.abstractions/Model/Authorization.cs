@@ -45,23 +45,6 @@ public sealed class Authorization
         Expires = expires;
     }
 
-    [JsonConstructor]
-    public Authorization(
-        string authorizationId,
-        AuthorizationStatus status,
-        Identifier identifier,
-        DateTimeOffset expires,
-        List<Challenge> challenges)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(authorizationId);
-        AuthorizationId = authorizationId;
-        Status = status;
-        Identifier = identifier ?? throw new ArgumentNullException(nameof(identifier));
-        Expires = expires;
-        Challenges = challenges ?? throw new ArgumentNullException(nameof(challenges));
-        foreach (var challenge in Challenges) challenge.Authorization = this;
-    }
-
     /// <summary>
     /// Hydrates an authorization from persisted storage. The <see cref="Order"/> back-reference is
     /// <see cref="JsonIgnoreAttribute"/>-excluded and re-attached by the store's mapper after the parent

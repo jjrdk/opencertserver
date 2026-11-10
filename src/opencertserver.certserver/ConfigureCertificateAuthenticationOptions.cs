@@ -8,7 +8,6 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Utils.Ca;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.Extensions.Options;
 

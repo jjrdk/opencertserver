@@ -1,5 +1,3 @@
-namespace OpenCertServer.Ra;
-
 using Microsoft.Extensions.Configuration;
 
 namespace OpenCertServer.Ra;

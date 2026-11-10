@@ -42,18 +42,6 @@ public sealed class Challenge
         Authorization.Challenges.Add(this);
     }
 
-    [JsonConstructor]
-    public Challenge(string challengeId, ChallengeStatus status, string type, string token)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(challengeId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(type);
-        ArgumentException.ThrowIfNullOrWhiteSpace(token);
-        ChallengeId = challengeId;
-        Status = status;
-        Type = type;
-        Token = token;
-    }
-
     /// <summary>
     /// Hydrates a challenge from persisted storage. The <see cref="Authorization"/> back-reference is
     /// <see cref="JsonIgnoreAttribute"/>-excluded and re-attached by the store's mapper after the parent

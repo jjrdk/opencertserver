@@ -1,10 +1,7 @@
-namespace OpenCertServer.Ra;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Ca.Protocol;
 
 namespace OpenCertServer.Ra;
@@ -146,38 +143,5 @@ public sealed class RaPeerClient
         using var ecdsa = certificate.GetECDsaPrivateKey();
         return ecdsa?.SignData(data, HashAlgorithmName.SHA256)
                ?? throw new NotSupportedException("The RA identity certificate must use RSA or ECDSA.");
-    }
-}
-
-/// <summary>Dependency-injection extensions for the outbound RA peer.</summary>
-public static class RaPeerServiceCollectionExtensions
-{
-    /// <summary>Registers a configured HTTPS-only peer client.</summary>
-    public static IServiceCollection AddRaPeerClient(
-        this IServiceCollection services,
-        Microsoft.Extensions.Configuration.IConfiguration configuration)
-    {
-        return services.AddRaPeerClient(configuration, null);
-    }
-
-    /// <summary>
-    /// Registers a configured HTTPS-only peer client and optionally configures its outbound TLS
-    /// handler, for example to present an RA client certificate.
-    /// </summary>
-    public static IServiceCollection AddRaPeerClient(
-        this IServiceCollection services,
-        Microsoft.Extensions.Configuration.IConfiguration configuration,
-        Action<HttpClientHandler>? configureHandler)
-    {
-        var options = RaPeerOptions.FromConfiguration(configuration);
-        services.AddSingleton(options);
-        services.AddHttpClient<RaPeerClient>()
-            .ConfigurePrimaryHttpMessageHandler(() =>
-            {
-                var handler = new HttpClientHandler();
-                configureHandler?.Invoke(handler);
-                return handler;
-            });
-        return services;
     }
 }

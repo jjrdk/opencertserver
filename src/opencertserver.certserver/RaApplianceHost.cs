@@ -35,7 +35,7 @@ internal static class RaApplianceHost
                 roots.AddRange(imported);
             }
 
-            builder.Services.AddRaPeerClient(configuration, handler =>
+            builder.Services.AddRaPeerClient(RaPeerOptions.FromConfiguration(configuration), handler =>
             {
                 handler.ClientCertificates.Add(identity);
                 handler.AllowAutoRedirect = false;
@@ -146,7 +146,11 @@ internal static class RaApplianceHost
 
         try
         {
-            var certificate = await peer.EnrollAsync(csr, context.RequestAborted);
+            // The optional "profile" query selects which CA profile the enrollment targets,
+            // mirroring the RA server; it falls back to the CA's default profile when absent.
+            var profile = context.Request.Query["profile"].ToString();
+            var profileName = string.IsNullOrWhiteSpace(profile) ? null : profile;
+            var certificate = await peer.EnrollAsync(csr, profileName, context.RequestAborted);
             return Results.Text(certificate, "application/pem-certificate-chain");
         }
         catch (HttpRequestException exception)
