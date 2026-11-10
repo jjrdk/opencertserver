@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
@@ -12,7 +13,6 @@ using Abstractions.Storage;
 using Abstractions.Workers;
 using BackgroundServices;
 using Configuration;
-using DnsClientX;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -62,6 +62,16 @@ public static class ServiceCollectionExtensions
                     "PublicRa:RequireApproval is not supported until the certificate approval workflow is available.");
             }
 
+            if (publicRaEnabled &&
+                bool.TryParse(publicRaConfig["RequireApproval"], out var requireApproval) &&
+                requireApproval)
+            {
+                throw new InvalidOperationException(
+                    "PublicRa:RequireApproval is not supported until the certificate approval workflow is available.");
+            }
+
+            services.ConfigureHttpJsonOptions(options =>
+                options.SerializerOptions.TypeInfoResolverChain.Insert(0, AcmeHttpSerializerContext.Default));
             services.AddScoped<IRequestValidationService, DefaultRequestValidationService>();
             services.AddScoped<INonceService, DefaultNonceService>();
             services.AddScoped<IAccountService, DefaultAccountService>();
@@ -102,12 +112,32 @@ public static class ServiceCollectionExtensions
                 return client;
             }
 
-            services.AddSingleton<ClientX>(sp =>
+            static void Apply(AcmeServerOptions source, AcmeServerOptions target)
             {
-                var opts = sp.GetRequiredService<IOptions<AcmeServerOptions>>();
-                return new ClientX(opts.Value.DnsEndpoint);
+                target.HostedWorkers = source.HostedWorkers;
+                target.WebsiteUrl = source.WebsiteUrl;
+                target.UrlRetrievalTimeout = source.UrlRetrievalTimeout;
+                target.ExternalAccountRequired = source.ExternalAccountRequired;
+                target.TOS = source.TOS;
+                target.CAAIdentities = source.CAAIdentities;
+                target.DohServers = source.DohServers;
+                target.DnsQueryTimeout = source.DnsQueryTimeout;
+                target.DnsEndpoint = source.DnsEndpoint;
+                target.DisableCaaChecks = source.DisableCaaChecks;
+            }
+
+            services.AddSingleton<IDnsResolver>(sp =>
+            {
+                var opts = sp.GetRequiredService<IOptions<AcmeServerOptions>>().Value;
+                var timeoutMilliseconds = (int)Math.Clamp(
+                    opts.DnsQueryTimeout.TotalMilliseconds,
+                    1,
+                    int.MaxValue);
+                var perspectives = DnsPerspectiveFactory.Create(opts, timeoutMilliseconds);
+                return new MultiPerspectiveDnsResolver(
+                    perspectives,
+                    sp.GetRequiredService<ILogger<MultiPerspectiveDnsResolver>>());
             });
-            services.AddScoped<IDnsResolver, DnsClientXResolver>();
             services.AddScoped<ICaaValidator, CaaValidator>();
             services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();
             services.AddSingleton<IAttestationTrustProvider>(
@@ -117,7 +147,26 @@ public static class ServiceCollectionExtensions
 
             services.AddHostedService<HostedValidationService>();
 
-            services.Configure<AcmeServerOptions>(acmeServerConfig);
+            // The supplied instance has already had the configuration section bound into it,
+            // so copy its values into the options pipeline instead of binding a separate
+            // instance. This keeps programmatic settings (for example DohServers and
+            // DnsQueryTimeout) visible to consumers of IOptions<AcmeServerOptions>.
+            services.Configure<AcmeServerOptions>(options => Apply(acmeServerOptions, options));
+
+            services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.AddPolicy("PublicRa", context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = rateLimit,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueLimit = 0,
+                            AutoReplenishment = true
+                        }));
+            });
             if (requirePublicEab)
             {
                 services.Configure<AcmeServerOptions>(options => options.ExternalAccountRequired = true);

@@ -26,7 +26,10 @@ public sealed class Http01SsrfProtectionSteps
     private IDnsResolver _dnsResolver = null!;
     private ICaaValidator _caaValidator = null!;
     private FakeHttpHandler _httpHandler = null!;
-    private bool _useProductionHandler;
+    private SocketsHttpHandler? _productionHandler;
+    private IReadOnlyList<IPAddress> _pinnedAddresses = [];
+    private IPAddress? _selectedAddress;
+    private HttpRequestException? _selectionError;
     private (bool IsValid, AcmeError? Error) _result;
 
     public Http01SsrfProtectionSteps()
@@ -34,7 +37,6 @@ public sealed class Http01SsrfProtectionSteps
         _dnsResolver = Substitute.For<IDnsResolver>();
         _caaValidator = Substitute.For<ICaaValidator>();
         _httpHandler = new FakeHttpHandler();
-        _useProductionHandler = false;
 
         _caaValidator
             .ValidateAsync(Arg.Any<Identifier>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -67,17 +69,30 @@ public sealed class Http01SsrfProtectionSteps
 
     [Given("the challenge server returns a 302 redirect")]
     public void GivenChallengeServerReturns302()
+        => _httpHandler.SetRedirect("http://169.254.169.254/");
+
+    [When("the production HTTP handler is created")]
+    public void WhenProductionHttpHandlerIsCreated()
+        => _productionHandler = SsrfBlockingSocketsHandler.Create();
+
+    [Then("automatic redirects must be disabled")]
+    public void ThenAutomaticRedirectsAreDisabled()
     {
-        _httpHandler.SetRedirect("http://169.254.169.254/");
-        _useProductionHandler = true;
+        Assert.NotNull(_productionHandler);
+        Assert.False(_productionHandler.AllowAutoRedirect);
+    }
+
+    [Then("pooled connections must not be reused")]
+    public void ThenPooledConnectionsAreNotReused()
+    {
+        Assert.NotNull(_productionHandler);
+        Assert.Equal(TimeSpan.Zero, _productionHandler.PooledConnectionLifetime);
     }
 
     [When("the http-01 challenge is validated")]
     public async Task WhenHttp01ChallengeIsValidated()
     {
-        using var httpClient = _useProductionHandler
-            ? new HttpClient(SsrfBlockingSocketsHandler.Create())
-            : new HttpClient(_httpHandler);
+        using var httpClient = new HttpClient(_httpHandler);
         var validator = new ValidateHttp01Challenges(httpClient, _caaValidator, _dnsResolver);
         _result = await validator.ValidateChallenge(_challenge, _account, CancellationToken.None)
             .ConfigureAwait(false);
@@ -103,6 +118,47 @@ public sealed class Http01SsrfProtectionSteps
             .ResolveIpAddressesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ConfigureAwait(false);
     }
+
+    [Then("the challenge request must be pinned to the corroborated address {string}")]
+    public void ThenChallengeRequestIsPinnedToAddress(string ip)
+    {
+        Assert.NotNull(_httpHandler.PinnedAddresses);
+        var pinned = Assert.Single(_httpHandler.PinnedAddresses);
+        Assert.Equal(IPAddress.Parse(ip), pinned);
+    }
+
+    [Given("the pinned connection addresses are {string}")]
+    public void GivenPinnedConnectionAddresses(string addresses)
+        => _pinnedAddresses = addresses
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(IPAddress.Parse)
+            .ToArray();
+
+    [When("the connection target is selected")]
+    public void WhenConnectionTargetIsSelected()
+    {
+        try
+        {
+            _selectedAddress = SsrfBlockingSocketsHandler.SelectAllowedAddress(
+                _pinnedAddresses,
+                "example.com");
+        }
+        catch (HttpRequestException exception)
+        {
+            _selectionError = exception;
+        }
+    }
+
+    [Then("the connection must be rejected as prohibited")]
+    public void ThenConnectionIsRejectedAsProhibited()
+    {
+        Assert.NotNull(_selectionError);
+        Assert.Contains("prohibited", _selectionError.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Then("the selected connection target must be {string}")]
+    public void ThenSelectedConnectionTargetIs(string ip)
+        => Assert.Equal(IPAddress.Parse(ip), _selectedAddress);
 
     [Then("the challenge must succeed")]
     public void ThenChallengeSucceeds()
@@ -145,6 +201,8 @@ public sealed class Http01SsrfProtectionSteps
         private string? _body;
         private string? _redirectLocation;
 
+        public IReadOnlyList<IPAddress>? PinnedAddresses { get; private set; }
+
         public void SetResponse(HttpStatusCode status, string body)
         {
             _statusCode = status;
@@ -163,6 +221,13 @@ public sealed class Http01SsrfProtectionSteps
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+            if (request.Options.TryGetValue(
+                    SsrfBlockingSocketsHandler.CorroboratedAddressesKey,
+                    out var pinnedAddresses))
+            {
+                PinnedAddresses = pinnedAddresses;
+            }
+
             var response = new HttpResponseMessage(_statusCode);
             if (_redirectLocation is not null)
             {

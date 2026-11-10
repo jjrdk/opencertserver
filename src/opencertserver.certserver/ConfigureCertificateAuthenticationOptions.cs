@@ -1,3 +1,4 @@
+using OpenCertServer.Ca.Protocol;
 using OpenCertServer.Est.Server.TrustAnchor;
 
 namespace OpenCertServer.CertServer;
@@ -6,7 +7,7 @@ using System.Collections.Immutable;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using Est.Server;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Ca;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.Extensions.Options;
@@ -150,7 +151,8 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
             }
         }
 
-        using var chain = new X509Chain { ChainPolicy = chainPolicy };
+        using var chain = new X509Chain();
+        chain.ChainPolicy = chainPolicy;
         var isTrusted = chain.Build(certificate);
         var chainErrors = isTrusted
             ? string.Empty
@@ -189,7 +191,7 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
     private static ClaimsPrincipal CreatePrincipal(X509Certificate2 certificate)
     {
         var claims = certificate.SubjectName.Name
-            ?.Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
             .Select(x =>
             {
                 var separator = x.IndexOf('=');

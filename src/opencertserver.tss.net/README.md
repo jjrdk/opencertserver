@@ -1,16 +1,37 @@
-# OpenCertServer.TSS.Net.Managed
+# opencertserver.tss.net
 
-This project vendors and adapts the TSS.Net TPM 2.0 library for OpenCertServer. It provides a managed .NET layer for interacting with TPM 2.0 devices without the Windows-specific BCrypt dependency that the original package has, which makes it usable across Linux, macOS, and Windows builds.
+A vendored copy of Microsoft's **TSS.NET** TPM 2.0 library
+(https://github.com/microsoft/TSS.MSR), snapshot 2022-04-22, MIT-licensed. It is the
+managed TPM 2.0 primitive layer behind `opencertserver.tpm`.
+
+## Why it is vendored
+
+The published `Microsoft.TSS 2.1.1` NuGet package ships a cross-platform (`netstandard2.0`)
+assembly compiled against Windows BCrypt P/Invoke, and its `linux-x64` runtime-specific
+assembly is x64-only and not loadable on macOS arm64. This vendored build uses **managed
+.NET crypto only — no BCrypt dependency** — so it loads and runs on macOS, Linux and
+Windows. The root namespace is `OpenCertServer.Tpm2Lib` (with a `Tpm2Lib` namespace
+carried over from the source).
 
 ## Functionality
-- Wraps TPM 2.0 functionality in a managed .NET assembly
-- Provides the underlying TPM-related primitives used by OpenCertServer’s TPM and attestation features
-- Avoids the platform-specific Windows-only path in the upstream library by using managed crypto code instead
 
-## Dependencies
-- No project references in the current project file
-- Uses the vendored TSS.Net source copied from the upstream `TSS.MSR` project
-- Includes crypto support from BouncyCastle-style managed code patterns used by the vendored library
-- Targets .NET 8/AnyCPU-style compatibility and is intended as a reusable TPM library rather than an executable app
+- Managed TPM 2.0 command/session primitives (e.g. `Tpm2Lib` command processing,
+  `AuthSession`, `KDF`, `RawRsa`, `Prng`, `CommandProcessor`, `PolicyTree`).
+- The underlying TPM operations used by OpenCertServer's TPM and attestation features.
+- Consumed by `opencertserver.tpm` (its `TssTpmKeyProvider` implements `ITpmKeyProvider`
+  over `OpenCertServer.Tpm2Lib`) and referenced by `opencertserver.acme.server`.
 
-This assembly is a compatibility layer used to keep TPM support portable across development and deployment environments.
+## Build notes
+
+- No project or package references: this is the vendored third-party source itself.
+- `IsAotCompatible` and `IsTrimmable` are **false** — it is a vendored library and is
+  never trimmed or AOT-compiled; it is not safe for Native AOT.
+- Warnings are not escalated to errors for this project, and a set of
+  nullable/obsolete diagnostics from the large vendored source are suppressed (`NoWarn`).
+
+The consuming host (`opencertserver.tpm`, `opencertserver.acme.server`) builds against the
+repository's target framework (`net10.0` via `Directory.Build.props`); treat this assembly
+as AnyCPU managed code rather than as a native or AOT artifact.
+
+This assembly is a compatibility layer that keeps TPM support portable across
+development and deployment environments.

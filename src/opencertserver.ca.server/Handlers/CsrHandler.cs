@@ -1,3 +1,10 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using OpenCertServer.Ca.Protocol;
+
 namespace OpenCertServer.Ca.Server.Handlers;
 
 using System.Security.Claims;
@@ -6,6 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using System.Diagnostics;
 using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Http;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Server.RegistrationAuthority;
@@ -64,8 +72,26 @@ public static class CsrHandler
                     requestor.RoleClaimType);
             }
 
+            // A remote SCEP/EST peer that cannot host the CA core carries the certificate being
+            // re-enrolled from as a PEM header so the CA supersedes (superseding-revokes) it on the
+            // new certificate. Absence leaves first-enrollment behavior unchanged.
+            X509Certificate2? reenrollingFrom = null;
+            if (context.Request.Headers.TryGetValue(RaProtocol.ReenrollingFromHeader,
+                    out var reenrollingFromHeader) &&
+                !string.IsNullOrWhiteSpace(reenrollingFromHeader))
+            {
+                try
+                {
+                    reenrollingFrom = X509Certificate2.CreateFromPem(reenrollingFromHeader.ToString());
+                }
+                catch (Exception)
+                {
+                    return Results.BadRequest("Invalid reenrollingFrom header: cannot parse PEM");
+                }
+            }
+
             var certResponse = await ca.SignCertificateRequestPem(csrPem, profileName, requestor,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+                reenrollingFrom, cancellationToken: cancellationToken).ConfigureAwait(false);
             if (certResponse is SignCertificateResponse.Success success)
             {
                 CaInstruments.CsrSuccesses.Add(1);

@@ -50,6 +50,32 @@ public sealed class Account : IVersioned
     }
 
     /// <summary>
+    /// Hydrates an account from persisted storage, restoring the identity that the primary constructor
+    /// generates. Used by the relational store; the <see cref="JsonConstructorAttribute"/> marks the
+    /// parameterized shape the source-generated serializer context reconstructs from.
+    /// </summary>
+    [JsonConstructor]
+    internal Account(
+        string accountId,
+        JsonWebKey jwk,
+        List<string>? contacts,
+        DateTimeOffset? tosAccepted,
+        string? externalAccountId,
+        AccountStatus status,
+        string? accountUri,
+        long version)
+    {
+        AccountId = accountId;
+        Jwk = jwk;
+        Contacts = contacts;
+        TosAccepted = tosAccepted;
+        ExternalAccountId = externalAccountId;
+        Status = status;
+        AccountUri = accountUri;
+        Version = version;
+    }
+
+    /// <summary>
     /// Gets the external account key identifier bound to this account during creation,
     /// or null if the account was not created with an external account binding.
     /// </summary>

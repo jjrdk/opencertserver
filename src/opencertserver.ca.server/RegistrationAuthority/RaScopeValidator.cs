@@ -1,3 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using OpenCertServer.Ca.Protocol;
+
 namespace OpenCertServer.Ca.Server.RegistrationAuthority;
 
 using System.Globalization;
@@ -59,6 +66,15 @@ public sealed class RaScopeValidator : IValidateCertificateRequests
         if (names.Any(name => !MatchesScope(name, scope!)))
         {
             return $"The CSR contains a DNS name outside the delegated scope '{scope}'.";
+        }
+
+        // The subject CN, when present, must also fall within the delegated scope. subjectAltName is
+        // authoritative for TLS, but a mismatched CN is an audit and confusion vector and a scope gap
+        // in the subject, so the RA may not carry a common name outside its delegated scope.
+        var commonName = TryReadCommonName(request);
+        if (commonName is { } cn && !MatchesScope(cn, scope!))
+        {
+            return $"The CSR subject common name '{cn}' is outside the delegated scope '{scope}'.";
         }
 
         return null;
@@ -139,6 +155,16 @@ public sealed class RaScopeValidator : IValidateCertificateRequests
         }
 
         return claims.SingleOrDefault();
+    }
+
+    private static string? TryReadCommonName(CertificateRequest request)
+    {
+        var commonName = request.SubjectName
+            .EnumerateRelativeDistinguishedNames()
+            .Where(rdn => string.Equals(rdn.GetSingleElementType().Value, Oids.CommonName, StringComparison.Ordinal))
+            .Select(rdn => rdn.GetSingleElementValue())
+            .FirstOrDefault();
+        return string.IsNullOrWhiteSpace(commonName) ? null : commonName;
     }
 
     private static bool TryReadDnsNames(CertificateRequest request, out IReadOnlyList<string> names)

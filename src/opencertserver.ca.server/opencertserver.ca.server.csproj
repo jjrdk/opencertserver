@@ -12,6 +12,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
     </ItemGroup>
     <ItemGroup>
+        <ProjectReference Include="..\opencertserver.ca.protocol\opencertserver.ca.protocol.csproj" />
         <ProjectReference Include="..\opencertserver.ca\opencertserver.ca.csproj"/>
     </ItemGroup>
 

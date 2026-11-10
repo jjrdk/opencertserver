@@ -38,6 +38,16 @@ Feature: Re-enrollment is bound to the issuing profile
         When a certificate from "vpn-user" with "revoked" issuance records is renewed through "vpn-user" using "EST"
         Then profile-bound renewal is "revoked"
 
+    Scenario Outline: Renewal rejects certificates outside their validity period independently of authentication
+        Given EST profiles sharing one issuer with "different" permissions
+        When a certificate from "vpn-user" with "<records>" issuance records is renewed through "vpn-user" using "CA"
+        Then profile-bound renewal is "invalid validity"
+
+        Examples:
+          | records       |
+          | expired       |
+          | not yet valid |
+
     Scenario Outline: An imported certificate without a profile cannot renew
         Given EST profiles sharing one issuer with "different" permissions
         When a certificate from "vpn-user" with "imported" issuance records is renewed through "vpn-user" using "<transport>"

@@ -64,7 +64,7 @@ public static class CertificateExtensions
             sb.Append(FormatName(cert.IssuerName, "\t\t\t"));
 
             // Validity
-            var nowUtc = DateTime.UtcNow;
+            var nowUtc = DateTimeOffset.UtcNow;
             var notBefore = cert.NotBefore.ToUniversalTime();
             var notAfter = cert.NotAfter.ToUniversalTime();
             var expired = nowUtc > notAfter;

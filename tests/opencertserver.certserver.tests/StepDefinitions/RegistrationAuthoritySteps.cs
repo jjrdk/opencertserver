@@ -1,3 +1,5 @@
+using OpenCertServer.Ra;
+
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Net;
@@ -29,6 +31,7 @@ public partial class CertificateServerFeatures
     private Exception? _accountCreationError;
     private HttpStatusCode? _firstDirectoryStatus;
     private HttpStatusCode? _secondDirectoryStatus;
+    private IReadOnlyList<string>? _supportedProfiles;
 
     [Given(@"an outbound RA peer for ""(.*)""")]
     public void GivenAnOutboundRaPeerFor(string dnsName)
@@ -98,6 +101,35 @@ public partial class CertificateServerFeatures
         }
     }
 
+    // F3: the RA is bound to its delegated scope on the subject CN as well as the subjectAltName,
+    // so a common name outside the scope is rejected even when every DNS SAN is in scope.
+    [When("the RA enrolls a certificate with a common name outside its scope")]
+    public async Task WhenTheRaEnrollsACertificateWithACnOutsideScope()
+    {
+        Assert.NotNull(_raPeerClient);
+
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest(
+            "CN=out.tenant-b.example.com",
+            key,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+        var subjectAlternativeName = new SubjectAlternativeNameBuilder();
+        subjectAlternativeName.AddDnsName("host.tenant-a.example.com");
+        request.CertificateExtensions.Add(subjectAlternativeName.Build());
+        _raCsr = PemEncoding.WriteString("CERTIFICATE REQUEST", request.CreateSigningRequest());
+
+        try
+        {
+            _raCertificatePem = await _raPeerClient.EnrollAsync(_raCsr).ConfigureAwait(false);
+            _raResponseStatus = HttpStatusCode.OK;
+        }
+        catch (HttpRequestException exception)
+        {
+            _raResponseStatus = exception.StatusCode;
+        }
+    }
+
     [When("the RA renews the certificate")]
     public async Task WhenTheRaRenewsTheCertificate()
     {
@@ -147,6 +179,37 @@ public partial class CertificateServerFeatures
     {
         Assert.Equal(HttpStatusCode.BadRequest, _raResponseStatus);
         Assert.Null(_raCertificatePem);
+    }
+
+    [When("the RA requests the supported profiles")]
+    public async Task WhenTheRaRequestsTheSupportedProfiles()
+    {
+        Assert.NotNull(_raPeerClient);
+        _supportedProfiles = await _raPeerClient.GetSupportedProfiles().ConfigureAwait(false);
+    }
+
+    [Then(@"the supported profiles include ""(.+)"" and ""(.+)""")]
+    public void ThenTheSupportedProfilesInclude(string first, string second)
+    {
+        Assert.NotNull(_supportedProfiles);
+        Assert.Contains(first, _supportedProfiles);
+        Assert.Contains(second, _supportedProfiles);
+    }
+
+    [When(@"the RA enrolls a certificate against the ""(.+)"" profile")]
+    public async Task WhenTheRaEnrollsACertificateAgainstTheNamedProfile(string profile)
+    {
+        Assert.NotNull(_raPeerClient);
+        Assert.NotNull(_raCsr);
+        try
+        {
+            _raCertificatePem = await _raPeerClient.EnrollAsync(_raCsr, profile).ConfigureAwait(false);
+            _raResponseStatus = HttpStatusCode.OK;
+        }
+        catch (HttpRequestException exception)
+        {
+            _raResponseStatus = exception.StatusCode;
+        }
     }
 
     [Then("the peer request uses HTTPS")]

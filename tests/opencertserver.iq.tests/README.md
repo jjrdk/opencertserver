@@ -15,7 +15,7 @@ harness the conformance and correctness suites use.
 |---|---|---|
 | `opencertserver.certserver.tests`, `opencertserver.<proto>.tests` | in-process `WebApplicationFactory`/`TestServer` | .NET `EstClient`, `AcmeContext`, direct handler calls |
 | `opencertserver.mcp.tests` | in-process MCP host | .NET tool invocations |
-| **`opencertserver.iq.tests` (this project)** | **a running OpenCertServer container over HTTP/TLS** | **a Linux container running `estclient`, `openssl`, `curl`, `acme.sh`, `certbot`, `jq`, and the `opencert` CLI** |
+| **`opencertserver.iq.tests` (this project)** | **a running OpenCertServer container over HTTP/TLS** | **a Linux container running `estclient`, `sscep`, `openssl`, `curl`, `acme.sh`, `certbot`, `jq`, and the `opencert` CLI** |
 | **MCP IQ feature** | **the published standalone MCP executable, launched in Linux** | **JSON-RPC over subprocess stdin/stdout, with independent OpenSSL checks** |
 
 The goal is **complementarity, not duplication**: the RFC-conformance and
@@ -42,7 +42,7 @@ Two TestContainers images are orchestrated by the step definitions:
    built from the Ubuntu package sources, the ACME client
    `acme.sh` (fetched over curl, the canonical ACME client), EFF `certbot` (from `apt`)
    and the project's own `opencert` CLI. Every scenario's Given/When/Then is something
-   this image can execute: `estclient`, `curl`, `openssl`, `acme.sh`, `certbot`, `jq`, `opencert`.
+   this image can execute: `estclient`, `sscep`, `curl`, `openssl`, `acme.sh`, `certbot`, `jq`, `opencert`.
 
 A [`docker-compose.yml`](./docker-compose.yml) provides a manual equivalent of the
 same two-container topology for hands-on runs; TestContainers performs the same
@@ -149,6 +149,7 @@ remote deployment.
 | HTTP-08 | Conflicting Content-Length/Transfer-Encoding and duplicate Content-Length are rejected with connection close and no appended response; valid framing still reaches authentication |
 | HTTP-09 | Scanner paths, `.git/config` and `appsettings.json` receive 403/404 |
 | HTTP-10 | A 64 KiB header receives 400/431 |
+| HTTP-11 | A valid CA-issued client certificate's public DER bytes in `X-Client-Cert` alone cannot authorize EST simpleenroll, simplereenroll or `/ca/csr`; the requests send no TLS client certificate/private key, and the victim remains unrevoked |
 
 YARP-specific tenant-cache authorization becomes CA/EST authorization; proxy certificate
 stripping becomes denial of forged certificate identity; scanner-path checks assert no
@@ -176,8 +177,8 @@ Empty inventories, timeouts, missing tools and invalid TLS identity fail explici
 There is no report-only mode, skipped finding, or test-only server-policy override.
 Scenario output and the XML report retain observations and failed-server diagnostics.
 
-**Verified local result (2026-10-19): all 16 pentests and all 69 other IQ scenarios pass
-together, with no skips.** The production host now restricts Linux/OpenSSL ciphers to
+**Previously verified local baseline (2026-10-19, before HTTP-11): all 16 pentests and all
+69 other IQ scenarios passed together, with no skips.** The production host restricts Linux/OpenSSL ciphers to
 AEAD suites, publishes 180-day HSTS, filters Host values before redirects, rejects
 ambiguous framing before authentication, and selects JWT/mTLS authentication with a
 defined challenge scheme. The shared environment supplies its exact Docker host aliases
@@ -322,10 +323,10 @@ No new image, server substitute or production project reference is needed.
   compares the complete set of DER fingerprints with the separately retrieved `/cacerts` bundle.
 - `est-reenroll` receives the original certificate and matching private key, with no JWT.
   The renewed leaf must verify, match the same key and subject, and have a different serial.
-  The current EST client sends `X-Client-Cert`, which the standalone server's certificate-forwarding
-  middleware accepts. This qualifies that existing renewal path, **not TLS client-key possession**;
-  the separate estclient feature exercises real mTLS. Online server-side certificate revocation
-  checking remains enabled through the existing CRL relay.
+  Re-enrollment authenticates with the matching TLS client certificate and private key; a
+  certificate copied into `X-Client-Cert` is not a substitute. The separate estclient scenario
+  also exercises real mTLS. Online server-side certificate revocation checking remains enabled
+  through the existing CRL relay.
 
 Success assertions require usable, independently verified output and explicit success messages for
 enrollment/renewal, not only exit zero: several CLI commands currently print errors without setting
@@ -475,6 +476,45 @@ run through OpenSSL in the Linux container. The helper is mounted by the harness
 client images need no rebuild to pick up helper changes. Prebuilt images must include the patched
 `estclient`. Failure output includes the last client command and server, DNS and issuer/relay logs.
 
+### SCEP-enrollment scenarios
+
+Run all seven SCEP scenarios (requires Docker):
+
+```sh
+dotnet test --project tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj \
+  --filter-class "OpenCertServer.Iq.Tests.Features.RFC8894SCEPEnrollmentWorksForALinuxDeviceClientFeature"
+```
+
+The client is [`sscep`](https://github.com/certnanny/sscep) 0.10.0 (BSD-style licence by Jarkko
+Turkulainen, with parts under the OpenSSL License - see its `COPYING`), an independent SCEP
+implementation in C. No Debian or Ubuntu release packages it, so the client image builds the pinned
+release from source and checks its SHA-256. sscep speaks plain HTTP only: a `socat` bridge in the
+client carries it to the server over TLS and verifies the server certificate against the system
+bundle, which holds the disposable TLS root - TLS verification stays enabled. The server of this
+feature is started with a shared challenge (`Scep__Challenge`); without one it issues nothing. Each
+scenario has its own directory for the key, the CSR and the certificate.
+
+- `curl ?operation=GetCACaps` must list `POSTPKIOperation`, `SHA-256`, `AES` and `Renewal`.
+- `curl ?operation=GetCACert` is decoded with `openssl pkcs7`; the bundle must hold an RA certificate
+  for key encipherment and a `CA:TRUE` certificate, each checked on its own.
+- `sscep getca`, then `sscep enroll -E aes -S sha256` with a CSR that carries the challenge as
+  `challengePassword`, encrypted to the RA certificate from `GetCACert`. The certificate must name
+  the requested common name and verify with `openssl verify` against the `CA:TRUE` certificates of
+  `GetCACert` - not the RA.
+- A wrong challenge must end in a SCEP `FAILURE` with `failInfo=badRequest` (sscep exits 72), not a
+  transport error, and leave no certificate.
+- The same enrollment through `/scep/pkiclient.exe`, the path Windows uses.
+- The same enrollment with `-E 3des` must end in a `FAILURE` with `failInfo=badAlg` (sscep exits 70):
+  the capabilities offer AES only, and anything else is refused, not decrypted.
+- sscep then enrolls again with a new key, signing the request with the certificate it holds
+  (`-K`/`-O`). sscep has no `RenewalReq` - it sends a `PKCSReq` with the challenge - so `RenewalReq`
+  is covered in-process ([ScepServer.feature](../opencertserver.scep.server.tests/Features/ScepServer.feature)).
+  The new certificate must have a new serial and verify.
+
+Until 05.11.2026 the client was micromdm's `scepclient` v2.3.0. It sends `RenewalReq`, but always
+encrypts with single DES (the default of `smallstep/pkcs7`, which it never changes), and the server
+accepts AES only.
+
 ### Profile-controlled issuance scenarios
 
 Run all six profile cases (requires Docker):
@@ -610,8 +650,9 @@ before and after the attempt: successful revocation must add the exact serial an
 reason, and `openssl verify -crl_check` must reject the certificate as revoked. A denied request
 must return 403, leave the serial absent and leave the target certificate verifiable.
 
-The configured CDP is `http://issuer:8080/ca/crl`. Linux/.NET online chain validation needs an HTTP
-distribution point; the Python container relays **only** this public CRL path to the server over
+The configured CDP template is `http://issuer:8080/ca/{profile}/crl`; certificates issued under the
+default `rsa` profile carry `http://issuer:8080/ca/rsa/crl`. Linux/.NET online chain validation needs an HTTP
+distribution point; the Python container relays **only** the public `/ca/crl` and `/ca/{profile}/crl` paths to the server over
 verified HTTPS, without caching or generating CRLs itself. Enrollment and revocation still go
 directly to the server over verified HTTPS. The CDP scenario checks the exact extension URI,
 fetches that URI and verifies the returned CRL signature. Issuer/relay logs join server/DNS logs

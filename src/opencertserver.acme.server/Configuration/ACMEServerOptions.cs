@@ -24,8 +24,32 @@ public sealed class AcmeServerOptions
     public string[]? CAAIdentities { get; set; }
 
     /// <summary>
+    /// Gets or sets the ordered list of DNS-over-HTTPS endpoints used as Network
+    /// Perspectives for Multi-Perspective Issuance Corroboration
+    /// (CA/Browser Forum TLS Baseline Requirements §3.2.2.9).
+    /// </summary>
+    /// <remarks>
+    /// Each entry is either an absolute DoH URL (for example
+    /// <c>https://cloudflare-dns.com/dns-query</c>) or a <see cref="DnsEndpoint"/>
+    /// name (for example <c>Cloudflare</c>).  Every configured perspective is
+    /// queried independently; a challenge is rejected when the responses differ.
+    /// When the list is empty, <see cref="DnsEndpoint"/> is used as a single
+    /// Network Perspective for backwards compatibility.  Production deployments
+    /// should configure at least three distinct perspectives in different
+    /// Regional Internet Registry service regions.
+    /// </remarks>
+    public string[] DohServers { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the timeout applied to each individual DNS query sent to a
+    /// Network Perspective. Defaults to 10 seconds.
+    /// </summary>
+    public TimeSpan DnsQueryTimeout { get; set; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>
     /// Gets or sets the DNS-over-HTTPS (DoH) or DNS-over-TLS (DoT) endpoint used for
-    /// all issuance-critical DNS lookups (CAA records, http-01 IP validation, dns-01 TXT records).
+    /// all issuance-critical DNS lookups (CAA records, http-01 IP validation, dns-01 TXT records)
+    /// when <see cref="DohServers"/> is empty.
     /// Defaults to <see cref="DnsEndpoint.Cloudflare"/> to avoid dependence on the ambient
     /// system resolver, which may be poisoned, rebinding-capable, or misconfigured.
     /// </summary>

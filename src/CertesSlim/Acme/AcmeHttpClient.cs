@@ -141,7 +141,7 @@ public class AcmeHttpClient : IAcmeHttpClient
             var delta = response.Headers.RetryAfter.Delta;
             if (date.HasValue)
             {
-                return Math.Abs((date.Value - DateTime.UtcNow).TotalSeconds);
+                return Math.Abs((date.Value - DateTimeOffset.UtcNow).TotalSeconds);
             }
 
             if (delta.HasValue)

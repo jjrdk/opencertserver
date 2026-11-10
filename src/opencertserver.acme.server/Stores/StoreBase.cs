@@ -72,7 +72,7 @@ public partial class StoreBase
             throw new ConcurrencyException();
         }
 
-        newContent.Version = DateTime.UtcNow.Ticks;
+        newContent.Version = DateTimeOffset.UtcNow.Ticks;
     }
 
     [GeneratedRegex(@"^[\w\d_-]+$", RegexOptions.Compiled)]

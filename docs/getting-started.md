@@ -28,6 +28,106 @@ This produces the `opencert` CLI, the `certserver` HTTP server, and the NuGet pa
 
 ## 2. Run the cert server
 
+### PostgreSQL persistence
+
+Memory remains the default. To retain ACME accounts/orders and the CA inventory across
+restarts, deploy PostgreSQL and supply its connection through your deployment secret
+provider as `ConnectionStrings__OpenCertServer` (the standard `ConnectionStrings:OpenCertServer`
+entry). Do not put credentials in checked-in JSON or shell
+history. Then select:
+
+```sh
+export AcmeServer__Persistence=relational
+export Ca__Persistence=relational
+```
+
+For a regular **untrimmed JIT** deployment:
+
+```sh
+dotnet publish src/opencertserver.certserver -c Release -p:PublishAot=false -p:PublishTrimmed=false
+```
+
+Use untrimmed JIT for relational storage. Native AOT qualification does not carry over
+to the provider-separated implementation: compiled models and query interceptors need
+provider-specific generation and runtime integration. The shared data project deliberately
+does not select a database engine at build time.
+
+Apply migrations **once, before starting/upgrading the server**, with a regular .NET SDK
+process (not the Native AOT server):
+
+```sh
+dotnet ef database update --project src/opencertserver.data.postgresql
+```
+
+The design-time context reads `ConnectionStrings__OpenCertServer` from the environment.
+For another connection name, pass it after `--`, for example
+`dotnet ef database update --project src/opencertserver.data.postgresql -- MyDatabase`
+with `ConnectionStrings__MyDatabase` supplied by your secret provider.
+Missing or blank connections fail explicitly. Use an EF CLI matching the centrally pinned EF Core
+version. Back up the database before upgrades; generate/review a migration SQL script for
+controlled deployments:
+
+```sh
+dotnet ef migrations script --idempotent --project src/opencertserver.data.postgresql
+```
+
+Embedded JIT hosts can instead run
+`await CaStoreMigration.MigrateAsync(connection, cancellationToken)` in a deployment tool.
+Do not grant routine server credentials schema-modification permissions.
+
+After migrations, start `certserver` with the same CA profiles and authentication arguments
+as below. The host registers the PostgreSQL dependency before selecting the shared stores.
+Embedded hosts reference `opencertserver.data.postgresql` and register it **after** default
+store registrations and **before** building the container:
+
+```csharp
+using OpenCertServer.Data;
+using OpenCertServer.Data.PostgreSql;
+
+services.AddPostgreSqlStore()
+    .AddAcmeRelationalStore(configuration, "OpenCertServer")
+    .AddCaRelationalStore(configuration, "OpenCertServer");
+```
+
+Each registration only installs relational stores and reads the named entry using
+`configuration.GetConnectionString(name)`. Embedded hosts select their own connection name
+and which stores to register; the standalone host retains its existing persistence-mode
+settings and uses the name `OpenCertServer`. The old per-section relational connection
+keys and `OCS_RELATIONAL_CONN` fallback are no longer read.
+`AddAcmeRelationalStore(connection)` and `AddCaRelationalStore(connection)` remain available
+when the connection is supplied directly. The shared `opencertserver.data`
+project has no database-engine dependency; another adapter can implement
+`IRelationalStoreProvider` and supply its own EF configuration, migrations and atomic
+operations. See [the data module](../src/opencertserver.data/README.md). Do not confuse
+these server stores with ASP.NET ACME client certificate/challenge persistence strategies.
+
+Use persistent CA signing-key files/your existing key provider across replicas and restarts:
+the database contains public certificates, not CA private keys. Protect database connections,
+backups and EAB MAC keys using TLS, access controls and storage encryption. Tenant isolation
+is not implemented: use separate databases/deployments for separate trust domains. This task
+does not add cleanup/retention jobs, a distributed validation-worker lease, or cluster-wide
+CRL-number allocation. Retain certificate/revocation records according to your CA policy;
+plan nonce/account/order retention separately. Do not interpret shared persistence alone as
+qualification of unrestricted multi-writer CA operation.
+
+For an embedded SQL Server host, reference `opencertserver.data.mssql`, import
+`OpenCertServer.Data.MsSql` and replace `AddPostgreSqlStore()` with `AddMsSqlStore()`.
+Supply a SQL Server connection through the same standard named connection-string entry.
+Use `--project src/opencertserver.data.mssql` for its separate EF migration commands.
+The standalone host remains wired to PostgreSQL. See [the MSSQL adapter](../src/opencertserver.data.mssql/README.md).
+
+Run the PostgreSQL and MSSQL contract scenarios (Docker required):
+
+```sh
+dotnet test --project tests/opencertserver.data.tests
+dotnet test --project tests/opencertserver.certserver.tests --filter-class '*Relational*'
+```
+
+Scenario outlines select PostgreSQL and MSSQL through their `Examples` tables.
+SQL Server containers require an x86-64 Docker runtime (or working AMD64 emulation).
+Further providers and Redis are left for later sessions.
+See the [configuration reference](documentation.md#optional-postgresql-persistence).
+
 The `certserver` application accepts JSON configuration files, environment variables, and command-line
 arguments. For production, use the [hardened appliance](../Docker.md): mount a versioned configuration
 file read-only at `/config/appsettings.json`, keys separately, and persistent storage at
@@ -142,6 +242,12 @@ ACME behaviour is driven by the `AcmeServer` section of `appsettings.json`:
   "AcmeServer": {
     "WebsiteUrl": "https://pki.example.com",
     "UrlRetrievalTimeout": "00:01:40",
+    "DohServers": [
+      "https://cloudflare-dns.com/dns-query",
+      "https://dns.google/dns-query",
+      "https://dns.quad9.net/dns-query"
+    ],
+    "DnsQueryTimeout": "00:00:10",
     "TOS": {
       "RequireAgreement": false,
       "Url": "https://pki.example.com/tos",
@@ -162,6 +268,15 @@ ACME behaviour is driven by the `AcmeServer` section of `appsettings.json`:
 
 The server registers a background `HostedValidationService` that processes pending `http-01` /
 `dns-01` challenge validations asynchronously, and (optionally) an issuance worker.
+
+`DohServers` is the list of DNS-over-HTTPS resolvers used as independent **Network Perspectives**
+for CA/Browser Forum TLS Baseline Requirements §3.2.2.9. Every entry is queried separately for
+`dns-01` TXT records, `http-01` address records, and CAA records; a challenge is rejected with a
+`dns` error when any perspective fails or when the answers differ. Entries may be absolute DoH URLs
+or `DnsEndpoint` names such as `Cloudflare`. Configure at least three perspectives in different RIR
+service regions for a production CA. When `DohServers` is empty, the legacy single
+`AcmeServer:DnsEndpoint` value (default `Cloudflare`) is used, which preserves single-perspective
+deployments but does **not** satisfy the multi-perspective requirement.
 
 ---
 
@@ -445,7 +560,6 @@ for PEM and environment configuration and the distinction from `/cacerts` public
 ```csharp
 app.UseHttpsRedirection()
     .UseForwardedHeaders()
-    .UseCertificateForwarding()
     .UseRouting()
     .UseAuthentication()      // must run before any UseEndpoints-based Use…Server()
     .UseAuthorization()
@@ -460,8 +574,8 @@ app.UseHttpsRedirection()
 > carry authorization metadata. If `UseAuthentication()`/`UseAuthorization()` have not run by then,
 > requests fail with `InvalidOperationException: Endpoint … contains authorization metadata, but a
 > middleware was not found that supports authorization` (HTTP 500). Always place
-> `UseRouting()`, `UseAuthentication()` and `UseAuthorization()` (plus `UseCertificateForwarding()`
-> for mTLS) **before** the first `Use…Server()` call, and never put endpoint-executing middleware
+> `UseRouting()`, `UseAuthentication()` and `UseAuthorization()`
+> **before** the first `Use…Server()` call, and never put endpoint-executing middleware
 > ahead of them. When composing your own pipeline, you can alternatively call
 > `MapEstServer()` / `MapCertificateAuthorityServer()` inside a single `app.UseEndpoints(...)` placed
 > after `UseAuthorization()`.
@@ -469,6 +583,24 @@ app.UseHttpsRedirection()
 > ACME endpoints are explicitly `AllowAnonymous()`: ACME clients authenticate with RFC 8555 JWS
 > signatures, not ASP.NET credentials, so they remain reachable even if you configure a
 > `FallbackPolicy` requiring authenticated users.
+
+**Client certificate transport.** Direct connections use mTLS, not certificate headers.
+Configure Kestrel to request client certificates (`ClientCertificateMode.AllowCertificate`);
+the certificate authentication handler validates the certificate after the TLS handshake
+proves possession of its private key. `UseEstServer()` does not enable certificate forwarding.
+`EstClient.ReEnroll(key, certificate)` uses the certificate's private key for mTLS; when
+the certificate is public-only, `key` must match it. To renew with a new key, supply the
+old certificate with its old private key attached and pass the new key as `key`.
+
+For a TLS-terminating proxy, explicitly register
+`services.AddTrustedCertificateForwarding("X-Client-Cert", options =>
+options.KnownProxies.Add(IPAddress.Parse("192.0.2.10")))` and call
+`app.UseTrustedCertificateForwarding()` **before** `UseForwardedHeaders()` and authentication.
+Only use this when the proxy verifies mTLS and strips and replaces the header on every request.
+Never add an unconditional `UseCertificateForwarding()`: certificates are public data,
+and a header alone does not prove private-key possession.
+See [trusted proxy configuration](documentation.md#trusted-client-certificate-forwarding) for the
+standalone host's opt-in settings.
 
 **Endpoint summary**
 
@@ -487,6 +619,7 @@ app.UseHttpsRedirection()
 | ACME | `/order/{id}/finalize` | POST | JWS |
 | ACME | `/order/{id}/certificate` | POST | JWS |
 | CA | `/ca/csr`, `/ca/{profile}/csr` | POST | Yes |
+| CA | `/ca/profiles` | GET | Yes (lists supported profile names; RA/ACME discovery + refresh) |
 | CA | `/ca/revoke` | DELETE | Yes (mTLS + signature; self-service or `ca_admin` role) |
 | CA | `/ca/crl`, `/ca/{profile}/crl` | GET | No |
 | CA | `/ca/ocsp`, `/ca/ocsp/{requestEncoded}` | POST/GET | No |
@@ -569,7 +702,7 @@ unknown tool name returns a failed result with error code
 
 ## 9. Operational tooling
 
-* **Telemetry.** EST, ACME, OCSP, CRL, and CA operations emit OpenTelemetry
+* **Telemetry.** EST, ACME, SCEP, Intune, OCSP, CRL, and CA operations emit OpenTelemetry
   counters/successes/failures/durations under the `opencertserver.*` namespace. See
   [OpenTelemetry metrics & traces](../OpenTelemetryMetricsTraces.md).
 * **TPM-backed CA keys.** `opencertserver.tpm` / `opencertserver.tss.net` can provision the CA
@@ -643,8 +776,154 @@ not yet supported: setting `PublicRa:RequireApproval=true` intentionally fails s
 approval workflow is implemented. See [Implemented standards → Registration authorities](standards.md#registration-authorities-scoped-peer-and-public-self-service)
 and the full [configuration reference](documentation.md#registration-authority-configuration).
 
+## 10. SCEP and Intune
+
+SCEP (RFC 8894) is the enrollment protocol of device management: Windows, macOS, iOS and Android
+ship a client, and Intune deploys certificates through it. `certserver` serves it under `/scep`.
+
+### A shared challenge (to try it)
+
+```sh
+export Scep__Challenge='a-long-random-secret'   # never on the command line
+dotnet opencertserver.certserver.dll --dn "CN=My Internal CA" --port 5001 \
+   --scep-ra /path/to/scep-ra.pem --scep-ra-key /path/to/scep-ra-key.pem
+
+curl -k "https://localhost:5001/scep?operation=GetCACaps"
+# POSTPKIOperation SHA-256 AES SCEPStandard Renewal
+```
+
+The RA certificate must carry an **RSA** key, even for an ECDSA CA; without `--scep-ra` a temporary
+RA is created at every start. Any SCEP client can now enroll with the challenge, for example with
+the UPN of a user in the subjectAltName. `/scep` serves the default profile, `/scep/{profile}` a named
+one.
+
+### Intune-managed Windows devices
+
+1. **App registration in Entra.** Application permissions: Intune `scep_challenge_provider`; for
+   the revocation sync also Microsoft Graph `User.Read.All`, `Device.Read.All` and
+   `DeviceManagementManagedDevices.Read.All`. Grant admin consent. Give the app a certificate
+   credential (preferred - only the public half goes to Entra) or a secret.
+2. **Configure `certserver`** - instead of `Scep__Challenge`:
+
+   ```sh
+   export Scep__Intune__TenantId='contoso.onmicrosoft.com'
+   export Scep__Intune__ClientId='00000000-0000-0000-0000-000000000000'
+   export Scep__Intune__ClientCertificateFile=/run/secrets/intune-app.pem
+   export Scep__Intune__ClientCertificateKeyFile=/run/secrets/intune-app-key.pem
+   export Scep__Intune__SyncProfiles=rsa    # the profile(s) Intune issues through
+   ```
+
+   Every `PKCSReq` is now checked with Intune; if Intune refuses, cannot be reached or throttles,
+   nothing is issued.
+3. **Trusted certificate profiles in Intune** for the CA chain - the root into the computer's root
+   store, an issuing CA into the intermediate store. `GetCACert` publishes the root as well, and
+   Windows compares it with the root of its Intune profile before it sends a request.
+4. **SCEP certificate profile in Intune.** SCEP server URL `https://pki.example.com/scep` (or
+   `…/scep/{profile}`) **without a trailing slash** - Windows appends `/pkiclient.exe`. Subject name
+   format e.g. `CN={{UserPrincipalName}}` with the UPN as subjectAltName; key usage, extended key
+   usage and validity as the profile of the CA expects them; the trusted certificate profile from
+   step 3 as root. Intune adds the device as an `IntuneDeviceId://` URI.
+5. **A reverse proxy or WAF in front** has to pass `application/x-pki-message` in both directions
+   on `/scep`; rule sets that restrict request content types block `PKIOperation` otherwise.
+6. **Revocation sync.** Call `POST /scep/intune/sync?dryRun=true` with a client that holds the
+   `ca_admin` role, read the report, then schedule the run without `dryRun` - once a day is a
+   reasonable start. It judges only certificates issued through `Scep:Intune:SyncProfiles`,
+   revokes those of disabled or deleted users and of retired devices, and never revokes when
+   Graph is unreachable.
+
+**Renewal on Windows.** Windows renews by enrolling again with a fresh Intune challenge, not with a
+`RenewalReq`. The previous certificate stays valid at the CA until it expires; see
+[Implemented standards → SCEP](standards.md#scep--rfc-8894) for what that means and what an
+operator can do about it.
+
+---
+
+## 11. Registration authorities
+
+The central CA accepts a peer RA only when the RA is explicitly bound to profiles and DNS scopes.
+For example, configure the CA with:
+
+```text
+Ca__AcceptRa=true
+Ca__RaBindings__0__RaId=ra-tenant-a
+Ca__RaBindings__0__Scopes__0=tenant-a.example.com
+Ca__RaBindings__0__Profiles__0=default
+```
+
+The RA process initiates every connection; no inbound listener or CA-to-RA route is needed. Its
+configuration uses `Ra:PeerUrl` (HTTPS only), `Ra:Scope`, optional `Ra:Profile`, optional
+`Ra:Profiles` (a comma-separated delegated profile set; empty means *all* profiles the CA supports),
+and optionally `Ra:BearerToken`. Keep tokens in a secret provider, not source-controlled settings. For
+mTLS, load the RA's CA-issued client certificate from a secure store and configure the outbound handler:
+
+```csharp
+using System.Security.Cryptography.X509Certificates;
+using OpenCertServer.Ra;
+
+var builder = WebApplication.CreateBuilder(args);
+var raCertificate = X509CertificateLoader.LoadPkcs12FromFile(
+    certificatePathFromSecretStore,
+    certificatePasswordFromSecretStore);
+builder.Services.AddRaPeerClient(builder.Configuration, handler =>
+{
+    handler.ClientCertificateOptions = ClientCertificateOption.Manual;
+    handler.ClientCertificates.Add(raCertificate);
+});
+```
+
+The CA maps an mTLS certificate's CN to a configured `RaId`; a JWT peer instead supplies the `ra`
+claim. The CA must trust the mTLS certificate under its client-certificate policy. In either case,
+the request's delegated DNS suffix and selected profile are checked against the CA binding.
+`RaPeerClient.EnrollAsync(csrPem, profile)` (the `profile` selects a CA profile and defaults to
+`Ra:Profile`) and `RenewAsync(replacementCsrPem)` submit PKCS#10 requests;
+`RevokeAsync(raIdentityCertificate, serialNumberHex, reason)` sends a signed revocation request;
+`GetSupportedProfiles()` asks the CA for its current profile set so the RA can offer, and refresh,
+the full set of profiles the CA supports.
+Renewal is a new CSR submission, so the central CA's configured protocol and profile policy are
+reapplied.
+
+### Public self-service RA
+
+Public enrollment is disabled in the base configuration. To enable it, explicitly enable ACME for
+the selected profile as well as listing that profile in `PublicRa:Profiles`:
+
+```text
+PublicRa__Enabled=true
+PublicRa__RateLimit=60
+PublicRa__RequireEab=true
+PublicRa__Profiles__0=default
+default__AllowPublicEnrollment=true
+```
+
+ACME still requires account-based JWS requests and successful domain challenges; it is not an
+anonymous `/ca/csr` endpoint. Provision EAB keys through the existing ACME EAB configuration and
+store key material in a secret provider. Rate-limit rejections return HTTP 429. Human approval is
+not yet supported: setting `PublicRa:RequireApproval=true` intentionally fails startup until the T04
+approval workflow is implemented. See [Implemented standards → Registration authorities](standards.md#registration-authorities-scoped-peer-and-public-self-service)
+and the full [configuration reference](documentation.md#registration-authority-configuration).
+
+## Separating RA / CA / ACME
+
+By default `opencertserver.certserver` runs everything in one process: the CA core,
+EST, ACME (with an in-process issuer), RA acceptance, and the public RA. The roles
+can be split across hosts that talk to each other over **trusted HTTPS connections**;
+the CA stays authoritative for scope and identity.
+
+- **CA that validates its own clients and acts as an ACME server** — the default
+  monolith (in-process `DefaultIssuer`).
+- **Separate ACME server → backing CA** — run the `opencertserver.acme` host, or set
+  `AcmeServer:Issuer=remote` in `certserver`. It issues through a `CaClient` to
+  `Ca:RemoteUrl` over HTTPS (bearer/mTLS). The ACME process never loads a CA key.
+- **RA → backing CA** — run the `opencertserver.ra.server` host. It forwards CSR to a
+  backing CA (`Ca:RemoteUrl`) and, when configured, RA peers (`Ra:PeerUrl`).
+
+See [Architecture: separating RA/CA/ACME](architecture-separation.md) for the full
+topology map, project boundaries, trusted-connection details, and the `Ca`/`Ra`/
+`AcmeServer` configuration keys.
+
 ## Next steps
 
+* [Separating RA/CA/ACME](architecture-separation.md) — deploy the roles as one process or split them over trusted HTTPS connections.
 * [Implemented standards](standards.md) — every RFC, what OpenCertServer does, and the tests that prove it.
 * [Documentation index](documentation.md) — the endpoint reference.
 * [Certification Practice Statement](opencertserver_cps.md) and

@@ -39,6 +39,30 @@ RUN curl -fsSL https://archive.ubuntu.com/ubuntu/pool/universe/libe/libest/libes
  && make install \
  && install -D LICENSE /opt/libest/share/doc/libest/LICENSE
 
+# sscep (BSD-style, with parts under the OpenSSL License - see COPYING) is the independent
+# SCEP (RFC 8894) client. No Debian or Ubuntu release packages it, so the pinned release is
+# built from source, like libest above.
+FROM ubuntu:26.04 AS sscep-build
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      ca-certificates curl build-essential autoconf automake libtool pkg-config libssl-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+ARG SSCEP_VERSION=0.10.0
+ARG SSCEP_SHA256=489cc8e093986776eb3f15082bf766778f707176f3cd604bf0ef1008da06b8e5
+WORKDIR /build
+RUN curl -fsSL "https://github.com/certnanny/sscep/archive/refs/tags/v${SSCEP_VERSION}.tar.gz" -o sscep.tar.gz \
+ && echo "${SSCEP_SHA256}  sscep.tar.gz" | sha256sum -c - \
+ && mkdir source \
+ && tar -xzf sscep.tar.gz -C source --strip-components=1 \
+ && cd source \
+ && ./bootstrap.sh \
+ && ./configure --prefix=/opt/sscep \
+ && make -j2 \
+ && make install \
+ && install -D -m 0644 COPYING /opt/sscep/share/doc/sscep/COPYING
+
 FROM ubuntu:26.04
 
 # 1. Standard HTTP/TLS + JSON tooling, all available through apt on Debian/Ubuntu.
@@ -85,6 +109,14 @@ RUN curl -fsSL "https://github.com/acmesh-official/acme.sh/archive/refs/tags/${A
 #    ACME feature drives: it uses its own standalone http-01 server on :80 and, for
 #    dns-01, `--manual` with the mounted `certbot-dns-iq.sh` hook. Its Python `requests`
 #    stack trusts the system CA bundle, which holds the harness's test TLS root.
+
+#    sscep (built above) is the independent SCEP (RFC 8894) client. It chooses the
+#    content encryption with -E (the scenarios use AES, as the capabilities promise) and
+#    speaks plain HTTP only: `socat` (above) bridges it to the server over TLS, verifying
+#    the server certificate against the system CA bundle, which holds the test TLS root.
+COPY --from=sscep-build /opt/sscep /opt/sscep
+RUN ln -s /opt/sscep/bin/sscep /usr/local/bin/sscep \
+ && (sscep 2>&1 || true) | grep -q 'enroll'
 
 # 4. The project's own CLI. The image is built with the `opencert` binary already
 #    present on the image; the IQ harness copies the freshly built Linux binary at

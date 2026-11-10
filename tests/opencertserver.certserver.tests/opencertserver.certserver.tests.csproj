@@ -10,17 +10,25 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\opencertserver.ra\opencertserver.ra.csproj"/>
+        <ProjectReference Include="..\..\src\opencertserver.ca.client\opencertserver.ca.client.csproj"/>
+        <ProjectReference Include="..\..\src\opencertserver.acme.remote\opencertserver.acme.remote.csproj"/>
+        <ProjectReference Include="..\..\src\opencertserver.ra\opencertserver.ra.csproj" />
+        <ProjectReference Include="..\..\src\opencertserver.ra.server\opencertserver.ra.server.csproj" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.TestHost"/>
+        <PackageReference Include="Npgsql" />
         <PackageReference Include="NSubstitute"/>
         <PackageReference Include="Reqnroll.xUnit.v3"/>
         <PackageReference Include="Testcontainers"/>
+        <PackageReference Include="Testcontainers.MsSql"/>
+        <PackageReference Include="Testcontainers.PostgreSql"/>
         <PackageReference Include="xunit.v3.mtp-v2"/>
     </ItemGroup>
 
     <ItemGroup>
+        <Compile Include="../Shared/RelationalTestDatabase.cs" Link="Support/RelationalTestDatabase.cs" />
+        <ProjectReference Include="../../src/opencertserver.data.mssql/opencertserver.data.mssql.csproj" />
         <ProjectReference Include="..\..\src\opencertserver.acme.aspnetclient\opencertserver.acme.aspnetclient.csproj"/>
         <ProjectReference Include="..\..\src\opencertserver.certserver\opencertserver.certserver.csproj"/>
         <ProjectReference Include="..\..\src\opencertserver.est.client\opencertserver.est.client.csproj"/>

@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
 using OpenCertServer.Est.Server.TrustAnchor;
+using OpenCertServer.Data;
+using OpenCertServer.Data.PostgreSql;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
@@ -26,6 +28,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Acme.Server;
 using Acme.Server.Extensions;
+using OpenCertServer.Acme.Remote;
 using Acme.Server.Services;
 using Acme.Abstractions.Storage;
 using Acme.Abstractions.Model;
@@ -33,10 +36,11 @@ using Acme.Abstractions.Services;
 using Ca;
 using Ca.Server;
 using CertServer.Stores;
-using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Contrib.Intune;
+using Scep.Server;
 
 internal static class Program
 {
@@ -198,6 +202,13 @@ internal static class Program
         }
 
         services = services.AddEstTrustAnchors(options => ReadEstTrustAnchors(builder.Configuration, options));
+        // WP9: SCEP is a per-host surface. The monolith enables it by default (any SCEP
+        // configuration - a RA cert, a shared secret, or the Intune validation - turns it on),
+        // but a CA-only host sets Scep:Enabled=false to run /ca/*, /est, /acme with no /scep.
+        if (IsScepEnabled(args, builder.Configuration))
+        {
+            services = await AddScep(services, args, builder.Configuration).ConfigureAwait(false);
+        }
 
         var authority = builder.Configuration["Jwt:Authority"] ?? builder.Configuration["authority"]
          ?? throw new InvalidOperationException("Set Jwt:Authority in configuration or use --authority.");
@@ -238,14 +249,34 @@ internal static class Program
             .Services
             .AddSingleton(new JwtParameters { Authority = authority, Audiences = audiences.ToArray() })
             .AddSingleton<ICsrValidator, DefaultCsrValidator>()
-            .AddSingleton<IIssueCertificates, DefaultIssuer>()
             .ConfigureOptions<ConfigureJwtBearerOptions>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
-            .AddAuthorization()
+            .AddAuthorization(options => options.AddPolicy(
+                ContribIntuneExtensions.SyncPolicyName,
+                policy => policy
+                    .AddAuthenticationSchemes(
+                        JwtBearerDefaults.AuthenticationScheme,
+                        CertificateAuthenticationDefaults.AuthenticationScheme)
+                    .RequireAuthenticatedUser()
+                    .RequireRole(RevocationAuthorizationConstants.CaAdminRole)))
             .AddCertificateAuthorityAuthorization(policy => policy.AddAuthenticationSchemes(
                 JwtBearerDefaults.AuthenticationScheme,
                 CertificateAuthenticationDefaults.AuthenticationScheme))
             .AddHealthChecks();
+
+        // WP5 config gate: the ACME issuer is selectable. Default (empty or "inproc") preserves
+        // today's monolith behavior (the in-process CA issues ACME certificates). "remote" runs a
+        // remote ACME server that issues through a backing certificate authority over a trusted
+        // HTTPS connection (mTLS/bearer + PoP); it registers the remote issuer plus the CA client.
+        var acmeIssuer = builder.Configuration.GetSection("AcmeServer")["Issuer"];
+        if (string.Equals(acmeIssuer, "remote", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddAcmeRemoteCa(builder.Configuration);
+        }
+        else
+        {
+            services.AddSingleton<IIssueCertificates, DefaultIssuer>();
+        }
 
         if (hasEnrollment)
         {
@@ -276,9 +307,34 @@ internal static class Program
 
         // --- Hardened-deployment registrations, each config-gated and fail-closed when unset ---
 
-        // External account keys (RFC 8555 §7.3.4): when provisioned in configuration the read-only
-        // static store that carries them overrides the empty in-memory store registered above, so a
-        // hardened deployment can bind EAB-authenticated accounts without writing a key to disk.
+        switch (builder.Configuration["AcmeServer:Persistence"]?.ToLowerInvariant())
+        {
+            case null:
+            case "memory":
+                break;
+            case "file":
+                services.AddAcmeFileStore(builder.Configuration);
+                break;
+            case "relational":
+                services.AddPostgreSqlStore()
+                    .AddAcmeRelationalStore(builder.Configuration, "OpenCertServer");
+                break;
+            default:
+                throw new InvalidOperationException("Unsupported AcmeServer:Persistence.");
+        }
+        switch (builder.Configuration["Ca:Persistence"]?.ToLowerInvariant())
+        {
+            case null:
+            case "memory":
+                break;
+            case "relational":
+                services.AddPostgreSqlStore()
+                    .AddCaRelationalStore(builder.Configuration, "OpenCertServer");
+                break;
+            default:
+                throw new InvalidOperationException("Unsupported Ca:Persistence.");
+        }
+        // Configured EAB keys override the selected empty or relational key store.
         if (hasEnrollment)
         {
             RegisterExternalAccountKeys(services, builder.Configuration);
@@ -288,7 +344,8 @@ internal static class Program
         }
 
         // OpenTelemetry metrics and traces: exported over OTLP when enabled, so a deployment's
-        // instrumentation (the opencertserver.acme / .est / .ca meters and activity sources) is scrapeable.
+        // instrumentation (the opencertserver.acme / .est / .scep / .intune / .ca meters and activity sources)
+        // is scrapeable.
         RegisterTelemetry(builder.Services, builder.Configuration);
 
         builder.WebHost.UseKestrel(options =>
@@ -331,14 +388,17 @@ internal static class Program
                 });
             })
             .UseUrls($"https://*:{port}");
-        await using var app = builder.Build();
-        // Resolve persistent state before opening the listener, not on the first issuance request.
-        _ = app.Services.GetRequiredService<IStoreCertificates>();
+        var certificateForwardingEnabled = ConfigureCertificateForwarding(builder.Services, builder.Configuration);
+        var app = builder.Build();
+        if (certificateForwardingEnabled)
+        {
+            app.UseTrustedCertificateForwarding();
+        }
 
         if (!OperatingSystem.IsLinux())
         {
             app.Logger.LogWarning(
-                "The TLS cipher allow-list requires Linux/OpenSSL; this host uses the operating system cipher policy.");
+                "The TLS cipher allow-list requires Linux/OpenSSL; this host uses the operating system cipher policy");
         }
 
         if (appliance.Hardened)
@@ -356,28 +416,28 @@ internal static class Program
             .Use(next => context =>
             {
                 // Kestrel renames Content-Length to X-Content-Length when normalizing CL+TE.
-                if (context.Request.Headers.ContainsKey("X-Content-Length") ||
-                    (context.Request.Headers.ContainsKey("Content-Length") &&
-                        context.Request.Headers.ContainsKey("Transfer-Encoding")))
+                if (!context.Request.Headers.ContainsKey("X-Content-Length") &&
+                    (!context.Request.Headers.ContainsKey("Content-Length") ||
+                        !context.Request.Headers.ContainsKey("Transfer-Encoding")))
                 {
-                    app.Logger.LogWarning("Rejected ambiguous request framing on connection {ConnectionId}.",
-                        context.Connection.Id);
-                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                    if (context.Request.Protocol.StartsWith("HTTP/1.", StringComparison.Ordinal))
-                    {
-                        context.Response.Headers.Connection = "close";
-                    }
-
-                    return Task.CompletedTask;
+                    return next(context);
                 }
 
-                return next(context);
+                app.Logger.LogWarning("Rejected ambiguous request framing on connection {ConnectionId}",
+                    context.Connection.Id);
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                if (context.Request.Protocol.StartsWith("HTTP/1.", StringComparison.Ordinal))
+                {
+                    context.Response.Headers.Connection = "close";
+                }
+
+                return Task.CompletedTask;
+
             })
             .UseHttpsRedirection()
             .UseCors("TrustedClients")
             .UseForwardedHeaders(forwardedHeadersOptions)
             .UseHealthChecks("/health")
-            .UseCertificateForwarding()
             .UseRouting()
             .Use(next => async context =>
             {
@@ -407,7 +467,19 @@ internal static class Program
         }
 
         app.UseCertificateAuthorityServer();
-
+// WP9: the SCEP surface (and the Intune revocation sync that rides on it) maps only when
+        // the host enables SCEP. The monolith enables it by default, so a fresh monolith maps /scep
+        // exactly as before; a CA-only host sets Scep:Enabled=false to run /ca/* with no /scep.
+        if (IsScepEnabled(args, builder.Configuration))
+        {
+            app.MapScepServer();
+            // Intune revocation sync maps only when the Intune validation is configured - the
+            // CA-side surface a device-management platform calls after enrollment.
+            if (builder.Configuration.GetSection(IntuneOptions.SectionName).Exists())
+            {
+                app.MapIntuneSync();
+            }
+        }
         await app.RunAsync().ConfigureAwait(false);
     }
 
@@ -553,15 +625,16 @@ internal static class Program
 
     /// <summary>
     /// OpenTelemetry export over OTLP, enabled only when <c>Telemetry:Enabled</c> is set. The
-    /// <c>opencertserver.acme</c>, <c>opencertserver.est</c> and <c>opencertserver.ca</c> meters and
-    /// activity sources feed a single metric and a single trace provider, both exported to the endpoint
-    /// in <c>Telemetry:OtlpEndpoint</c> (default http://localhost:4317). When disabled nothing is
+    /// <c>opencertserver.acme</c>, <c>opencertserver.est</c>, <c>opencertserver.scep</c>,
+    /// <c>opencertserver.intune</c> and <c>opencertserver.ca</c> meters and activity sources feed a
+    /// single metric and a single trace provider, both exported to the endpoint in
+    /// <c>Telemetry:OtlpEndpoint</c> (default http://localhost:4317). When disabled nothing is
     /// registered, so the in-process behaviour and the in-process metrics tests are unchanged.
     /// </summary>
     private static IServiceCollection RegisterTelemetry(IServiceCollection services, IConfiguration configuration)
     {
         var telemetry = configuration.GetSection("Telemetry");
-        if (string.Equals(telemetry["Enabled"], "true", StringComparison.OrdinalIgnoreCase) != true)
+        if (!string.Equals(telemetry["Enabled"], "true", StringComparison.OrdinalIgnoreCase))
         {
             return services;
         }
@@ -580,7 +653,14 @@ internal static class Program
                 meter
                     .AddMeter("opencertserver.acme")
                     .AddMeter("opencertserver.est")
+                    .AddMeter("opencertserver.scep")
+                    .AddMeter("opencertserver.intune")
                     .AddMeter("opencertserver.ca")
+                    .AddMeter("opencertserver.ca.core")
+                    .AddMeter("opencertserver.ca.client")
+                    .AddMeter("opencertserver.data")
+                    .AddMeter("opencertserver.data.postgresql")
+                    .AddMeter("opencertserver.data.mssql")
                     .AddOtlpExporter(options => options.Endpoint = endpoint);
             })
             .WithTracing(tracer =>
@@ -588,7 +668,14 @@ internal static class Program
                 tracer
                     .AddSource("opencertserver.acme")
                     .AddSource("opencertserver.est")
+                    .AddSource("opencertserver.scep")
+                    .AddSource("opencertserver.intune")
                     .AddSource("opencertserver.ca")
+                    .AddSource("opencertserver.ca.core")
+                    .AddSource("opencertserver.ca.client")
+                    .AddSource("opencertserver.data")
+                    .AddSource("opencertserver.data.postgresql")
+                    .AddSource("opencertserver.data.mssql")
                     .AddOtlpExporter(options => options.Endpoint = endpoint);
             });
 
@@ -613,6 +700,118 @@ internal static class Program
         }
 
         return values;
+    }
+
+    /// <summary>
+    /// Whether the host maps the SCEP surface. The monolith enables it by default, so a fresh
+    /// monolith behaves exactly as before: any SCEP configuration (a pinned RA certificate via
+    /// <c>--scep-ra</c>, a shared secret via <c>Scep:Challenge</c>, or the Intune validation via
+    /// <c>Scep:Intune</c>) turns SCEP on. A CA-only host sets <c>Scep:Enabled=false</c> to run
+    /// <c>/ca/*</c> with no <c>/scep</c>; <c>Scep:Enabled=true</c> forces it on regardless.
+    /// </summary>
+    internal static bool IsScepEnabled(string[] args, IConfiguration configuration)
+    {
+        var section = configuration.GetSection("Scep");
+        var explicitValue = section["Enabled"];
+        // The flag is opt-out: "Scep:Enabled=false" is the only way to turn SCEP off on the
+        // monolith (a CA-only host). "true" is explicit on; absent, SCEP stays on to preserve T1.
+        if (string.Equals(explicitValue, "false", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+        if (string.Equals(explicitValue, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+        // Default (T1): SCEP is on, exactly as before. A challenge / Intune config / --scep-ra
+        // simply reinforce that; their presence is not what turns SCEP on.
+        return true;
+    }
+
+    /// <summary>
+    /// Wires SCEP like EST and ACME. GetCACaps and GetCACert only publish public information;
+    /// PKIOperation issues nothing until a challenge is configured (<c>Scep:Challenge</c>,
+    /// e.g. the environment variable <c>Scep__Challenge</c> - not a command line argument,
+    /// where it would show in the process list).
+    /// </summary>
+    private static async Task<IServiceCollection> AddScep(
+        IServiceCollection services,
+        string[] args,
+        IConfiguration configuration)
+    {
+        // The RA decrypts requests and signs responses; SCEP defines the envelope for RSA
+        // key transport only, so the RA is RSA even for an ECDSA CA.
+        var raCertificate = GetArgumentValue(args, "--scep-ra") is not null
+            ? await CreateCert(args, "--scep-ra", "--scep-ra-key").ConfigureAwait(false)
+            : CreateTransientRaCertificate();
+        if (raCertificate.GetRSAPrivateKey() is null)
+        {
+            throw new InvalidOperationException("The SCEP RA certificate (--scep-ra) needs an RSA private key.");
+        }
+
+        var options = new ScepServerOptions
+        {
+            RaCertificate = raCertificate,
+            DefaultProfile = configuration["Scep:DefaultProfile"]
+        };
+        // Intune takes precedence over a shared secret: with <c>Scep:Intune</c> configured,
+        // every request is validated by Intune's SCEP validation service, and the revocation
+        // sync is mapped (see opencertserver.contrib.intune).
+        if (configuration.GetSection(IntuneOptions.SectionName).Exists())
+        {
+            return services.AddIntune(configuration).AddScepServer(options);
+        }
+
+        var challenge = configuration["Scep:Challenge"];
+        return string.IsNullOrEmpty(challenge)
+            ? services.AddScepServer(options)
+            : services.AddScepServer(options, new SharedSecretChallengeValidator(challenge));
+    }
+
+    /// <summary>
+    /// Without a configured RA, a self-signed one is created at start-up. It changes with
+    /// every restart, which SCEP clients tolerate because they fetch GetCACert before each
+    /// enrollment; a deployment that pins the RA configures <c>--scep-ra</c>.
+    /// </summary>
+    private static X509Certificate2 CreateTransientRaCertificate()
+    {
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest("CN=OpenCertServer SCEP RA", key, HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+        request.CertificateExtensions.Add(new X509KeyUsageExtension(
+            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, true));
+        using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5),
+            DateTimeOffset.UtcNow.AddYears(1));
+        // Round-trip through PKCS#12 so the key outlives the RSA instance above on every platform.
+        return X509CertificateLoader.LoadPkcs12(certificate.Export(X509ContentType.Pkcs12), null);
+    }
+
+    internal static bool ConfigureCertificateForwarding(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var section = configuration.GetSection("CertificateForwarding");
+        if (!section.GetValue<bool>("Enabled"))
+        {
+            return false;
+        }
+
+        var header = section["CertificateHeader"]
+         ?? throw new InvalidOperationException(
+                "CertificateForwarding:CertificateHeader is required when forwarding is enabled.");
+        services.AddTrustedCertificateForwarding(header, options =>
+        {
+            foreach (var address in ListConfigValues(section.GetSection("KnownProxies")))
+            {
+                options.KnownProxies.Add(System.Net.IPAddress.Parse(address));
+            }
+
+            foreach (var network in ListConfigValues(section.GetSection("KnownNetworks")))
+            {
+                options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+            }
+        });
+        return true;
     }
 
     private static ForwardedHeadersOptions CreateForwardedHeaderOptions(bool hardened)
@@ -654,8 +853,7 @@ internal static class Program
         {
             Name = profileName,
             CertificateChain = await LoadCertificateBundle(
-                    GetArgumentValue(args, certArgument) ?? configuration[$"{profileName}:Pem"], activeCertificate)
-                .ConfigureAwait(false),
+                args[Array.IndexOf(args, certArgument) + 1], activeCertificate).ConfigureAwait(false),
             PublishedCertificateChain = await LoadCertificateBundle(publishedCertificatePath, activeCertificate)
                 .ConfigureAwait(false),
             CertificateValidity = TimeSpan.FromDays(90),
@@ -663,7 +861,7 @@ internal static class Program
             PrivateKey = privateKey,
             AllowPublicEnrollment =
                 bool.TryParse(configuration[$"{profileName}:AllowPublicEnrollment"], out var allowPublicEnrollment)
-             && allowPublicEnrollment,
+                && allowPublicEnrollment,
             CertificatePolicies = ReadList(configuration, $"{profileName}:CertificatePolicies") ?? [],
             KeyUsage = ReadKeyUsage(configuration[$"{profileName}:KeyUsage"]),
             ExtendedKeyUsages = ReadList(configuration, $"{profileName}:ExtendedKeyUsages"),

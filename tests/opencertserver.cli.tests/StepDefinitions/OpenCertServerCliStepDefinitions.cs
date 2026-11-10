@@ -92,7 +92,11 @@ namespace opencertserver.cli.tests.StepDefinitions
                 var args = RecombineOptionValues(rawTokens);
                 if (_server != null)
                 {
-                    Program.MessageHandlerFactory = () => _server.CreateHandler();
+                    Program.MessageHandlerFactory = args[0] == "est-reenroll"
+                        ? () => CreateReEnrollmentTlsHandler(
+                            args[Array.IndexOf(args, "--cert") + 1],
+                            args[Array.IndexOf(args, "--private-key") + 1])
+                        : () => _server.CreateHandler();
                 }
 
                 var swOut = new StringWriter();

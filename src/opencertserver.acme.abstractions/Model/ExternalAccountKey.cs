@@ -1,6 +1,7 @@
 namespace OpenCertServer.Acme.Abstractions.Model;
 
 using System;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// Represents an external account key provisioned out-of-band by the CA, used to bind
@@ -19,6 +20,17 @@ public sealed class ExternalAccountKey : IVersioned
         KeyId = keyId;
         MacKey = macKey;
         MacAlgorithm = macAlgorithm;
+    }
+
+    [JsonConstructor]
+    internal ExternalAccountKey(string keyId, string macKey, string macAlgorithm,
+        bool isUsed, string? boundAccountId, DateTimeOffset? boundAt, long version)
+        : this(keyId, macKey, macAlgorithm)
+    {
+        IsUsed = isUsed;
+        BoundAccountId = boundAccountId;
+        BoundAt = boundAt;
+        Version = version;
     }
 
     /// <summary>Gets the key identifier issued by the CA for out-of-band provisioning.</summary>

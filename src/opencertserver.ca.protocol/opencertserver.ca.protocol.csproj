@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Ca.Protocol</RootNamespace>
+        <AssemblyName>opencertserver.ca.protocol</AssemblyName>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <Description>Shared RA/CA wire protocol: bindings, claims, request/response contracts and path/claim constants. This is the single source of truth that both a registration authority (opencertserver.ra) and the certificate authority (opencertserver.ca.server) must agree on so the two can be deployed independently.</Description>
+    </PropertyGroup>
+
+</Project>

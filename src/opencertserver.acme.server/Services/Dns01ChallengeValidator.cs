@@ -68,6 +68,16 @@ public sealed partial class ValidateDns01Challenges : TokenChallengeValidator, I
 
             return (txtRecords.ToList(), null);
         }
+        catch (DnsPerspectiveMismatchException ex)
+        {
+            return (null,
+                    new AcmeError
+                    {
+                        Type = "dns",
+                        Detail = ex.Message,
+                        Identifier = challenge.Authorization.Identifier
+                    });
+        }
         catch (DnsClientException)
         {
             return (null, new AcmeError { Type = "dns", Detail = "Could not read from DNS" });

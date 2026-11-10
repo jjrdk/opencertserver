@@ -17,6 +17,7 @@ Start elsewhere:
 | See the metrics/traces the server emits | [OpenTelemetry metrics & traces](../OpenTelemetryMetricsTraces.md) |
 | Integrate the CA into YARP | [opencertserver.acme.yarp/README.md](../src/opencertserver.acme.yarp/README.md) |
 | Feed the CA to an AI agent | [opencertserver.mcp/README.md](../src/opencertserver.mcp/README.md) |
+| Issue certificates to Intune-managed devices | [SCEP with Intune](#scep-with-intune), [opencertserver.contrib.intune/README.md](../src/opencertserver.contrib.intune/README.md) |
 | Wire device attestation | [opencertserver.attestation/README.md](../src/opencertserver.attestation/README.md) |
 
 This page keeps the concrete HTTP surface — methods, paths, content types, and authentication — so
@@ -27,6 +28,57 @@ you don't have to read handler source. The reasoning and the RFC citations for e
 ---
 
 ## Host perimeter and deployment configuration
+
+### Optional PostgreSQL persistence
+
+`opencertserver.data` implements the ACME account, order, nonce and external-account-key
+stores and the CA certificate inventory behind their existing interfaces without depending
+on a database engine. The optional `opencertserver.data.postgresql` dependency owns Npgsql,
+SQL, migrations and design-time tooling. Configure it before building the service provider;
+the standalone host selects storage modes and calls `AddPostgreSqlStore()` followed by
+`AddAcmeRelationalStore(configuration, "OpenCertServer")` and/or
+`AddCaRelationalStore(configuration, "OpenCertServer")` for the selected relational stores.
+Embedded hosts must register an `IRelationalStoreProvider` before selecting relational
+storage. No schema changes run automatically during server startup.
+
+| Key (environment form) | Default | Meaning |
+|---|---|---|
+| `AcmeServer__Persistence` | `memory` | `memory`, `file` (existing `AcmeFileStore` settings), or `relational` |
+| `Ca__Persistence` | `memory` | `memory` or `relational` |
+| `ConnectionStrings__OpenCertServer` | unset | Standard named connection string used by the standalone host and default migration tooling; supply through a secret provider |
+
+The mode settings belong to the standalone host, not the shared data registration API.
+Embedded hosts explicitly register relational stores with an `IConfiguration` and connection
+string name (`GetConnectionString`), or with a connection string directly.
+The old per-section relational connection keys and `OCS_RELATIONAL_CONN` fallback are not read.
+ACME and CA can select persistence independently. If both select relational storage,
+their connections must match because they share one context/schema. Unsupported host selections
+and missing connections/providers fail at registration rather than silently reverting to memory.
+Existing `ExternalAccountBinding:Keys` configuration still installs the host's read-only
+static external-account-key store; omit it when provisioning keys in the relational store.
+Embedded hosts can instead reference `opencertserver.data.mssql` and register
+`AddMsSqlStore()` from `OpenCertServer.Data.MsSql` before the same shared-store registrations.
+It owns SQL Server configuration, atomic SQL and separate migrations. The standalone host
+remains wired to PostgreSQL; it does not select an engine from a connection-string format.
+See [the MSSQL adapter](../src/opencertserver.data.mssql/README.md).
+Redis and further database providers are deferred.
+
+**Runtime support:** untrimmed JIT deployments. Native AOT is not qualified after the
+provider split; provider-specific compiled-model/query generation and runtime integration
+are still required. Apply migrations separately with a JIT deployment tool using the
+chosen adapter project, not the shared data project.
+
+Accounts, orders and external-account keys use optimistic version checks, raising the
+existing ACME `ConcurrencyException` for stale writes. Nonce consumption is one atomic
+SQL delete. Certificates are stored as public PEM only, with UTC validity/revocation dates;
+CA signing keys are **not** stored in this database.
+
+Relational timestamps retain the selected database's precision. PostgreSQL stores
+microseconds, so Npgsql truncates any sub-microsecond .NET ticks; the MSSQL adapter
+preserves 100-nanosecond ticks.
+
+See [the PostgreSQL setup guide](getting-started.md#postgresql-persistence) for schema
+deployment, operational boundaries and the provider-table BDD tests.
 
 The standalone `opencertserver.certserver` host applies these policies to every protocol,
 including health checks:
@@ -97,9 +149,51 @@ The CA endpoints are mounted by the `ca.server` handlers under `/ca` in the `cer
 are secured by TLS client-certificate authentication: Kestrel accepts a client certificate
 (`ClientCertificateMode.AllowCertificate`, any certificate at the TLS layer) and the certificate
 authentication handler (`CertificateAuthenticationDefaults.AuthenticationScheme` = `"Certificate"`)
-validates it against the CA's own certificates. Behind a reverse proxy the certificate arrives in
-the `X-Client-Cert` header instead (`UseCertificateForwarding`) in non-appliance hosting.
-Hardened appliances terminate mTLS themselves and strip that header.
+validates it against the CA's own certificates. The TLS handshake proves possession of the
+client's private key. Certificate headers, including `X-Client-Cert`, are ignored by default,
+both in `certserver` and applications embedding `UseEstServer()`.
+
+### Trusted client certificate forwarding
+
+Forwarding is only appropriate for a TLS-terminating proxy that verifies the client's TLS
+certificate and removes and replaces the certificate header on **every** incoming request.
+A public certificate in an HTTP header is not proof of possession of its private key.
+Prefer direct mTLS or TLS passthrough whenever possible.
+
+The standalone host accepts forwarding only with explicit configuration:
+
+```json
+{
+  "CertificateForwarding": {
+    "Enabled": true,
+    "CertificateHeader": "X-Client-Cert",
+    "KnownProxies": ["192.0.2.10"],
+    "KnownNetworks": []
+  }
+}
+```
+
+`Enabled` defaults to false. When enabled, a header name and at least one trusted proxy IP
+or CIDR network are required; missing or malformed configuration fails at startup.
+Environment equivalents include `CertificateForwarding__Enabled=true`,
+`CertificateForwarding__CertificateHeader=X-Client-Cert`, and
+`CertificateForwarding__KnownProxies__0=192.0.2.10`.
+Keep allowed networks as narrow as possible: every host in them is trusted to assert identities.
+
+Embedded hosts opt in with `AddTrustedCertificateForwarding(header, configureTrustedProxies)`
+and `UseTrustedCertificateForwarding()`. The configure action uses
+`ForwardedHeadersOptions.KnownProxies` / `KnownIPNetworks` (the .NET 10 network API).
+This middleware must precede address forwarding and authentication: it checks the **original
+connection peer**, not an attacker-controlled `X-Forwarded-For` value, and strips the configured
+certificate header on untrusted requests without replacing a genuine TLS client certificate.
+The ordinary forwarded-address configuration does not grant certificate-forwarding trust.
+
+**Upgrade requirement.** Remove unconditional `UseCertificateForwarding()` from custom host
+pipelines. Direct EST clients must present their certificate **and private key** through mTLS.
+`EstClient` no longer sends `X-Client-Cert` during renewal. The default transport creates a fresh
+TLS session when switching client identity, including from anonymous enrollment to renewal.
+If supplying a custom `HttpMessageHandler`, the caller must configure mTLS and isolate its
+connections by client identity; `EstClient` cannot configure an arbitrary external transport.
 
 **Validity window.** When the caller does not request a `notBefore` - EST never does, ACME only when
 the order carries one - an issued certificate is valid from midnight UTC of the day it is issued, for
@@ -181,46 +275,32 @@ Example:
 ```
 
 The outbound RA library reads `Ra:PeerUrl` (absolute HTTPS URL), `Ra:Scope`, optional
-`Ra:Profile`, and optional `Ra:BearerToken`. Use a secret provider for bearer tokens. For mTLS,
+`Ra:Profile`, optional `Ra:Profiles` (a comma-separated delegated profile set; empty means *all*
+profiles the CA supports), and optional `Ra:BearerToken`. The RA can refresh the CA's current profile
+set on demand via `RaPeerClient.GetSupportedProfiles` (which the RA host exposes as `GET /ra/profiles`).
+Use a secret provider for bearer tokens. For mTLS,
 register `AddRaPeerClient(configuration, configureHandler)` and add the RA client certificate to
 the supplied `HttpClientHandler.ClientCertificates`. The peer only makes outbound requests; it
 does not expose a customer-side CA listener. See [Getting started → Registration authorities](getting-started.md#registration-authorities)
 for the client setup sample.
 
-### RA appliance endpoints
+### GET /ca/profiles
 
-The `Dockerfile.ra` role is a separate operator-facing HTTPS host built around the outbound
-`RaPeerClient` library. Its liveness check does not attest that the CA peer is reachable.
-Every `/ra/*` operation requires a JWT bearer token with the `ra_operator` role. Configure
-`Jwt:Authority` and `Jwt:Audiences`, and configure the backend mTLS client certificate and
-private key as described in the [appliance operator guide](appliance.md#ra-configuration-and-authentication).
-
-| Method and path | Request | Result |
-|---|---|---|
-| `GET /health` | No body | Liveness only |
-| `POST /ra/enroll` | PEM-encoded PKCS#10 CSR | Requests issuance under the configured delegated scope/profile |
-| `POST /ra/renew` | PEM-encoded replacement PKCS#10 CSR | Fresh enrollment under that scope/profile; not certificate-authenticated EST re-enrollment |
-| `DELETE /ra/revoke?sn=<serial>&reason=<name>` | Hex serial and `X509RevocationReason` enum name | `204` when processed; `404` when no matching issued certificate is found |
-
-| RA setting | Meaning |
-|---|---|
-| `Jwt:Authority`, `Jwt:Audiences` | Required issuer and accepted token audience(s) for operator bearer authentication |
-| `Ra:PeerUrl` | Absolute HTTPS URL of the CA peer endpoint |
-| `Ra:Scope`, `Ra:Profile` | Delegated DNS suffix and permitted CA profile |
-| `Ra:ClientCertificatePath`, `Ra:ClientPrivateKeyPath` | PEM client identity for outbound mutual TLS |
-| `Ra:CaTrustRoots` | Optional PEM root certificate paths used to validate the CA peer |
-| `Ra:BearerToken` | Optional outbound bearer token, when required by the CA |
-
-The RA role does not expose `/ca/*`, EST, or ACME routes and does not load local issuing
-CA keys. The `Ca` role exposes only existing `/ca/*` endpoints and health. Only the `Unified`
-role combines the CA endpoints with EST and ACME. See the operator guide for sample requests,
-scope binding, custom trust roots, and operational limits.
+- Description: Lists the names of the profiles the CA supports, one per line.
+- Response: `text/plain` with newline-delimited profile names.
+- Authorization: requires an authenticated user (like `POST /ca/csr`).
+- Purpose: the discovery endpoint an RA (or a remote ACME issuer) uses to learn the profile set it
+  may offer and to **refresh** it when the CA adds or removes profiles. Only names are returned; the
+  profile material (keys, chains, validity) never crosses the wire. The RA host exposes this to its
+  own clients as `GET /ra/profiles`.
 
 ### GET /ca/crl
 
 - Description: Retrieve the current Certificate Revocation List for the CA (or a profile).
 - Paths: `/ca/crl` and `/ca/{profile}/crl`.
 - Response: `application/pkix-crl` (DER). Cached for 12 hours.
+- Scope: each profile's CRL lists only certificates issued under that profile; revocations from other profiles are never included.
+- Partitioning: each CRL has a critical `issuingDistributionPoint` naming the profile's CRL URL, and issued certificates carry the same URL in `cRLDistributionPoints`. Use the `{profile}` token in `CaServer:CrlDistributionPoints` (e.g. `http://localhost:6001/ca/{profile}/crl`). With more than one profile, untokenized URLs are rejected (fail closed). The MCP `get_server_metadata` tool reports the raw templates, including `{profile}`.
 
 ### DELETE /ca/revoke
 
@@ -249,12 +329,16 @@ scope binding, custom trust roots, and operational limits.
 - Response: `200` on success, `404` if the serial number is unknown, `401` if authentication
   fails, `403` if authorization fails.
 
-### POST /ca/ocsp  and  GET /ca/ocsp/{base64url}
+### POST /ca/ocsp  and  GET /ca/ocsp/{requestEncoded}
 
 - Description: a signing OCSP responder ([RFC 6960](https://www.rfc-editor.org/rfc/rfc6960)).
 - `POST /ca/ocsp` takes a DER-encoded OCSP request and returns
    `application/ocsp-response` with a signed `BasicOCSPResponse`.
-- `GET /ca/ocsp/{base64url}` accepts a URL-safe base64-encoded request (RFC 6960 Appendix A).
+- `GET /ca/ocsp/{requestEncoded}` accepts the URL-encoded standard base64 encoding of a
+  DER request (RFC 6960 Appendix A.1 and RFC 5019 section 5), including `%2B`, `%2F`, and
+  `%3D`. Unescaped base64 slashes are also accepted. Base64url remains supported for
+  existing clients, with or without padding. Invalid encodings or DER return an OCSP
+  `malformedRequest` response.
 - Malformed requests return `malformedRequest`; a refused service returns `unauthorized`; responder
    faults return `internalError` / `tryLater`.
 
@@ -366,11 +450,13 @@ returning no requirements. Embedded hosts can still supply their own `ICsrTempla
 ### POST /.well-known/est/simplereenroll
 
 - Description: Re-enroll using an existing certificate or the server-key-generated key.
-- Authentication: the existing client certificate (mTLS) or a JWT.
+- Authentication: an accepted EST scheme (certificate, JWT or configured Basic), with the
+   certificate being renewed supplied through mTLS or explicitly trusted-proxy forwarding.
 - The certificate being renewed must have been signed by one of the profile's CA certificates
    (`OwnCertificateValidation` verifies the signature; a matching issuer name alone is not enough), and
-   must not have been revoked by this CA (the store is asked by serial number). An expired
-   certificate may still renew - RFC 7030 §4.2.2 leaves that to the CA's policy.
+   must not have been revoked by this CA (the store is asked by serial number). The CA also
+   requires the certificate's current validity window, independently of JWT/Basic authentication:
+   expired and not-yet-valid certificates cannot renew. Use fresh enrollment instead.
    A profile that holds only its issuing intermediate, without the root, works.
 - **Profile binding:** the CA records the resolved issuing profile with each issued certificate.
    `OwnCertificateValidation` looks up that provenance by the exact certificate thumbprint and
@@ -387,7 +473,7 @@ returning no requirements. Embedded hosts can still supply their own `ICsrTempla
    EKUs/policies are not a substitute: different profiles can have identical extensions but different
    validity or enrollment requirements. Hosts intentionally allowing transitions or legacy renewal
    must replace `OwnCertificateValidation` with an explicit validator (retaining issuer-signature
-   and revocation checks); adding a permissive validator alongside it does not override its rejection.
+   validity and revocation checks); adding a permissive validator alongside it does not override its rejection.
 - Response: as `simpleenroll`.
 
 ### POST /.well-known/est/serverkeygen
@@ -433,11 +519,109 @@ lists `EstBasicAuthenticationDefaults.AuthenticationScheme` in the policies it p
 Clients: `opencert est-enroll --user name:password …`, or any EST client that sends
 `Authorization: Basic` - strongSwan's `pki --est --userpass name:password`, for example.
 
+## SCEP endpoints
+
+The SCEP server (RFC 8894) is mapped by `MapScepServer()` under `/scep`. Every operation is one
+request to the same path with `?operation=`; SCEP clients authenticate with the challenge password
+inside the request, not over HTTP, so the endpoint allows anonymous access. The reasoning, the
+renewal rules and what Windows does differently are in
+[Implemented standards → SCEP](standards.md#scep--rfc-8894).
+
+| Method and path | Operation |
+|---|---|
+| `GET /scep?operation=GetCACaps` | Capabilities, `text/plain`. |
+| `GET /scep?operation=GetCACert` | RA certificate and the profile's published chain, `application/x-x509-ca-ra-cert`. |
+| `POST /scep?operation=PKIOperation` (or `GET …&message=`) | `PKCSReq` or `RenewalReq` in `application/x-pki-message`; the reply is a `CertRep` of the same type. |
+| `/scep/{profile}` | The same for a named CA profile; `/scep` is the default profile. |
+| `/scep/pkiclient.exe`, `/scep/{profile}/pkiclient.exe` | The same - Windows appends `/pkiclient.exe` to the configured URL. |
+
+Malformed CMS messages, requests with an invalid `senderNonce`, and undefined message types
+receive HTTP 400. A verified request whose decrypted payload is not a certificate request, or a
+valid `CertPoll` request (message type `20`), receives a signed `FAILURE` `CertRep` with
+`failInfo=badRequest`; pending requests are not stored.
+
+The `transactionID` must contain 1 to 128 ASN.1 PrintableString characters (letters, digits,
+space, and `'()+,-./:=?`), which includes hex and base64 IDs. UTF8String and IA5String encodings
+remain accepted only when their values satisfy that constraint. Invalid IDs receive HTTP 400
+before envelope processing or transaction logging, with one SCEP rejection warning that does
+not echo the ID or include a stack trace. No `CertRep` is returned because it cannot safely echo
+an invalid ID. Boundary and malformed-ID cases are covered in
+[`ScepCompliance.feature`](../tests/opencertserver.scep.server.tests/Features/ScepCompliance.feature).
+
+`PKIOperation` issues nothing until a challenge validator is configured; `GetCACaps` and
+`GetCACert` return public information only.
+
+### SCEP configuration (certserver)
+
+| Key or argument | Meaning |
+|---|---|
+| `Scep:Challenge` | A shared challenge password for every request (`Scep__Challenge` in the environment - not a command-line argument, where it would show in the process list). Without it, and without `Scep:Intune`, nothing is issued. |
+| `Scep:DefaultProfile` | The CA profile for `/scep` and `/scep/pkiclient.exe`. Default: the CA's default profile. |
+| `--scep-ra <pem>` / `--scep-ra-key <pem>` | The RA certificate and its **RSA** private key. Without them a self-signed RA is created at start-up and changes with every restart; clients fetch `GetCACert` before each enrollment and tolerate that, but a deployment that pins the RA configures one. |
+
+A host that embeds the server calls `AddScepServer(new ScepServerOptions { RaCertificate = … },
+validator)` and `MapScepServer()`. `ScepServerOptions.TransactionIdWindow` (default 24 hours) is how
+long an accepted request (transaction ID and senderNonce) is remembered for replay protection;
+`MaxRememberedRequests` (default 100,000) bounds that store - only requests that passed their
+checks are remembered, and when it is full a new request is refused.
+
+### SCEP with Intune
+
+With a `Scep:Intune` section, `certserver` validates every request with Intune instead of a shared
+secret (`opencertserver.contrib.intune`) and maps the revocation sync:
+
+| Key | Meaning |
+|---|---|
+| `Scep:Intune:TenantId` | The Entra tenant (GUID or domain). |
+| `Scep:Intune:ClientId` | An app registration with the Intune application permission `scep_challenge_provider` and, for the sync, the Graph application permissions `User.Read.All`, `Device.Read.All` and `DeviceManagementManagedDevices.Read.All` - all with admin consent. |
+| `Scep:Intune:ClientCertificateFile` + `ClientCertificateKeyFile` | The app's certificate credential (PEM, RSA key); only the public half goes to Entra. Preferred over a secret. |
+| `Scep:Intune:ClientSecret` / `ClientSecretFile` | Alternatively the secret, or a file whose first line holds it. |
+| `Scep:Intune:CallerInfo` | Shown in Intune's logs. Default `OpenCertServer`. |
+| `Scep:Intune:LoginBase`, `GraphBase`, `IntuneResource` | Override for national clouds. |
+| `Scep:Intune:ValidationEndpoint` | A fixed address of the validation service instead of Graph discovery. |
+| `Scep:Intune:Timeout` | Per request to Intune or Graph. Default 30 seconds. |
+| `Scep:Intune:MaxRevocationsPerSync` | A sync that would revoke more aborts. Default 25. |
+| `Scep:Intune:SyncProfiles` | The CA profiles Intune issues through; the sync judges only certificates the store recorded as issued from one of them. Array (`SyncProfiles__0`) or comma-separated. Empty: the sync checks nothing. |
+
+`POST /scep/intune/sync?dryRun=true|false` runs the revocation sync and returns its report (what
+was revoked and why, what could not be checked); 409 while a run is in progress. It requires the
+policy `scep_intune_sync`, which `certserver` grants to the `ca_admin` role over the same
+authentication schemes as the CA endpoints.
+
 ## ACME endpoints
 
 ACME endpoints are mounted by `UseAcmeServer()` and protected by RFC 8555 account-based JWS
 authentication. Requests are signed with compact JWS ([RFC 7515](https://www.rfc-editor.org/rfc/rfc7515));
 every error response is `application/problem+json` ([RFC 7807](https://www.rfc-editor.org/rfc/rfc7807)).
+
+### ACME DNS validation configuration
+
+Issuance-critical DNS lookups for `http-01`, `dns-01`, and CAA are made through the list of
+DNS-over-HTTPS resolvers in `AcmeServer:DohServers`. Each resolver is queried independently as one
+Network Perspective under CA/Browser Forum TLS Baseline Requirements §3.2.2.9. The challenge is
+rejected with `urn:ietf:params:acme:error:dns` when any perspective fails or when their canonical
+answer sets differ.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `AcmeServer:DohServers` | `string[]` | `[]` | Absolute DoH URLs (for example `https://dns.google/dns-query`) or `DnsEndpoint` names (for example `Cloudflare`). Configure at least three distinct perspectives in different RIR service regions. |
+| `AcmeServer:DnsQueryTimeout` | `TimeSpan` | `00:00:10` | Per-perspective query timeout. |
+| `AcmeServer:DnsEndpoint` | `DnsEndpoint` | `Cloudflare` | Legacy single-perspective resolver, used only when `DohServers` is empty. Single-perspective operation does not meet §3.2.2.9 for a public CA. |
+
+```json
+{
+  "AcmeServer": {
+    "DohServers": [
+      "https://cloudflare-dns.com/dns-query",
+      "https://dns.google/dns-query",
+      "https://dns.quad9.net/dns-query"
+    ],
+    "DnsQueryTimeout": "00:00:10"
+  }
+}
+```
+
+In the environment, use `AcmeServer__DohServers__0`, `AcmeServer__DohServers__1`, … for the list.
 
 ### GET /directory
 
@@ -495,6 +679,27 @@ every error response is `application/problem+json` ([RFC 7807](https://www.rfc-e
 
 For challenge types, CAA enforcement, and the `device-attest-01` validator, see
 [Implemented standards → ACME / CAA / device attestation](standards.md#acme--rfc-8555).
+
+### Remote ACME issuer (`AcmeServer:Issuer`)
+
+The ACME issuer is selectable so a deployment can run a **remote ACME server** that issues
+through a backing certificate authority over a trusted HTTPS connection instead of an
+in-process CA.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `AcmeServer:Issuer` | (empty / `inproc`) | `remote` selects the `RemoteIssuer`, which delegates issuance to a `CaClient` (`AddAcmeRemoteCa`). Empty or `inproc` keeps the in-process `DefaultIssuer`. |
+| `Ca:RemoteUrl` (or `Ca:BaseUrl`) | — | Absolute HTTPS URL of the backing CA. Required when `Issuer=remote`. |
+| `Ca:Profile` | — | Issuance profile forwarded to the CA. |
+| `Ca:DelegatedScope` | — | Delegated scope; the CA's RA-scope validator re-checks it authoritatively. |
+| `Ca:BearerToken` | — | Shared secret / JWT bearer for the trusted connection. |
+| `Ca:Trust` | — | Path to a PEM bundle of CA trust anchors (PEM → `Ca:TrustCertPath`). |
+| `Ca:ClientCert` / `Ca:ClientCertPassword` | — | PFX for the client cert (revocation PoP + mTLS). |
+
+The `opencertserver.acme` host always uses the remote issuer (it contains no CA core); the
+`opencertserver.ra.server` host uses the same `Ca` keys to forward CSR to a backing CA. The
+default monolith (`opencertserver.certserver` with no `AcmeServer:Issuer`) is unchanged. See
+[Separating RA/CA/ACME](architecture-separation.md).
 
 ---
 

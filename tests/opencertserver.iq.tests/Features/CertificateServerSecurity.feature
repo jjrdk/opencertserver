@@ -67,3 +67,7 @@ Feature: Certificate server perimeter security from a Linux scanner
   Scenario: HTTP-10 Bound request header size
     When the Linux scanner runs certificate server penetration probe "HTTP-10"
     Then the certificate server security requirement is satisfied
+
+  Scenario: HTTP-11 Reject CA-issued client certificate impersonation from a header
+    When the Linux scanner runs certificate server penetration probe "HTTP-11"
+    Then the certificate server security requirement is satisfied

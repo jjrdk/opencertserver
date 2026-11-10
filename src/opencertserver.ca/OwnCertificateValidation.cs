@@ -37,6 +37,14 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
             return null;
         }
 
+        var now = DateTime.UtcNow;
+        if (now < reenrollingFrom.NotBefore.ToUniversalTime()
+         || now > reenrollingFrom.NotAfter.ToUniversalTime())
+        {
+            LogReEnrollmentOutsideValidityPeriod(reenrollingFrom.Thumbprint);
+            return "Re-enrollment certificate is outside its validity period";
+        }
+
         var caProfile = await _caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
         if (!IsIssuedBy(reenrollingFrom, caProfile.CertificateChain))
         {
@@ -299,6 +307,9 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
 
     [LoggerMessage(LogLevel.Warning, "Re-enrollment refused: certificate {SerialNumber} is revoked")]
     partial void LogReEnrollmentFromRevokedCertificate(string serialNumber);
+
+    [LoggerMessage(LogLevel.Warning, "Re-enrollment refused: certificate {Thumbprint} is outside its validity period")]
+    partial void LogReEnrollmentOutsideValidityPeriod(string thumbprint);
 
     [LoggerMessage(LogLevel.Warning,
         "Re-enrollment refused: certificate {Thumbprint} issuing profile {IssuingProfile} does not match requested profile {RequestedProfile}, or is unknown")]

@@ -1,3 +1,6 @@
+using System;
+using OpenCertServer.Ca.Protocol;
+
 namespace OpenCertServer.Ca.Server;
 
 using System.Numerics;
@@ -155,6 +158,7 @@ public static class Extensions
         /// <param name="certificateIdGenerator">The certificate ID generator.</param>
         /// <param name="strictOcspHttpBinding">Whether to enforce strict OCSP HTTP binding, including content-type validation for POST requests.</param>
         /// <param name="ocspFreshnessWindow">The OCSP freshness window for responses.</param>
+        /// <param name="allowPublicEnrollment">Whether to allow public enrollment.</param>
         /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
         public IServiceCollection AddSelfSignedCertificateAuthority(
             X500DistinguishedName distinguishedName,
@@ -269,6 +273,10 @@ public static class Extensions
         {
             policy.RequireAuthenticatedUser();
         });
+        groupBuilder.MapGet("/profiles", ProfilesHandler.Handle).RequireAuthorization(policy =>
+        {
+            policy.RequireAuthenticatedUser();
+        });
         groupBuilder
             .MapDelete("/revoke", RevocationHandler.Handle)
             .RequireAuthorization(RevocationAuthorizationConstants.RevocationPolicyName);
@@ -276,8 +284,12 @@ public static class Extensions
             .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
         groupBuilder.MapGet("/{profileName}/crl", CrlHandler.HandleProfile)
             .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
+        groupBuilder.MapGet("/published", PublishedCertificatesHandler.Handle)
+            .RequireAuthorization(policy => { policy.RequireAuthenticatedUser(); });
+        groupBuilder.MapGet("/{profileName}/published", PublishedCertificatesHandler.HandleProfile)
+            .RequireAuthorization(policy => { policy.RequireAuthenticatedUser(); });
         groupBuilder.MapPost("/ocsp", OcspHandler.Handle).WithName("ocsp").AllowAnonymous();
-        groupBuilder.MapGet("/ocsp/{requestEncoded}", OcspHandler.HandleGet).WithName("ocspGet").AllowAnonymous();
+        groupBuilder.MapGet("/ocsp/{**requestEncoded}", OcspHandler.HandleGet).WithName("ocspGet").AllowAnonymous();
 
         return endpoints;
     }

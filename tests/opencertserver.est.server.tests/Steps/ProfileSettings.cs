@@ -1,6 +1,6 @@
-namespace OpenCertServer.Est.Tests;
-
 using System.Security.Cryptography.X509Certificates;
+
+namespace OpenCertServer.Est.Tests.Steps;
 
 /// <summary>What a scenario fixes on a CA profile: the content the CA writes regardless of the CSR.</summary>
 public sealed record ProfileSettings(

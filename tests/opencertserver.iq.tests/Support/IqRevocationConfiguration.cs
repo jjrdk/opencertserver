@@ -14,7 +14,10 @@ internal sealed class IqRevocationConfiguration
     public const string IssuerAlias = "issuer";
     public const string IssuerUrl = "https://issuer:8443";
     public const string Audience = "https://iq.test";
-    public const string CrlUrl = "http://issuer:8080/ca/crl";
+    public const string CrlUrlTemplate = "http://issuer:8080/ca/{profile}/crl";
+
+    /// <summary>The CDP of a certificate issued under the default <c>rsa</c> profile.</summary>
+    public const string CrlUrl = "http://issuer:8080/ca/rsa/crl";
 
     private readonly byte[] _jwks;
 
@@ -65,7 +68,7 @@ internal sealed class IqRevocationConfiguration
         .WithEnvironment("SSL_CERT_FILE", "/certs/iq-tls-root.crt")
         .WithResourceMapping(Encoding.ASCII.GetBytes(tls.RootPem),
             "/certs/iq-tls-root.crt", fileMode: Unix.FileMode644)
-        .WithEnvironment("CaServer__CrlDistributionPoints__0", CrlUrl);
+        .WithEnvironment("CaServer__CrlDistributionPoints__0", CrlUrlTemplate);
 
     public IContainer BuildIssuer(INetwork network, TestTlsPki tls) =>
         new ContainerBuilder("python:3.12-alpine")
@@ -86,16 +89,16 @@ internal sealed class IqRevocationConfiguration
                 "/oidc/.well-known/openid-configuration", fileMode: Unix.FileMode644)
             .WithResourceMapping(_jwks, "/oidc/jwks.json", fileMode: Unix.FileMode644)
             .WithCommand("python", "-u", "-c", """
-                import os, ssl, threading, urllib.request
+                import os, re, ssl, threading, urllib.request
                 from http.server import BaseHTTPRequestHandler, SimpleHTTPRequestHandler, ThreadingHTTPServer
                 os.chdir("/oidc")
                 class CrlProxy(BaseHTTPRequestHandler):
                     def do_GET(self):
-                        if self.path != "/ca/crl":
+                        if not re.fullmatch(r"/ca/(?:[A-Za-z0-9_.-]+/)?crl", self.path):
                             self.send_error(404)
                             return
                         try:
-                            with urllib.request.urlopen("https://opencertserver:6001/ca/crl",
+                            with urllib.request.urlopen("https://opencertserver:6001" + self.path,
                                     context=ssl.create_default_context(cafile="root.crt"), timeout=15) as response:
                                 body = response.read()
                                 self.send_response(response.status)

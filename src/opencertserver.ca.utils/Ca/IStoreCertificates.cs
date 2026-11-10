@@ -36,7 +36,18 @@ public interface IStoreCertificates
         X509RevocationReason reason,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns one 0-based page of revoked certificates issued under <paramref name="issuingProfile"/>.
+    /// Implementations must only return certificates whose recorded issuing profile matches
+    /// (ordinal comparison) so that a profile's CRL never discloses another profile's revocations.
+    /// Certificates stored without an issuing profile only match a <see langword="null"/> profile.
+    /// </summary>
+    /// <param name="issuingProfile">The name of the issuing profile whose revocations are requested.</param>
+    /// <param name="page">The 0-based page index.</param>
+    /// <param name="pageSize">The maximum number of entries per page.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     IAsyncEnumerable<CertificateItemInfo> GetRevocationList(
+        string? issuingProfile,
         int page = 0,
         int pageSize = 100,
         CancellationToken cancellationToken = default);

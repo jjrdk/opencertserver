@@ -58,6 +58,52 @@ public sealed class Order : IVersioned
     }
 
     /// <summary>
+    /// Hydrates an order from persisted storage, restoring the identity and graph (<see cref="Authorizations"/>)
+    /// that the primary constructor generates. Used by the relational store; the
+    /// <see cref="JsonConstructorAttribute"/> marks the parameterized shape the source-generated serializer
+    /// context reconstructs from. Back-references to <c>Authorizations</c> are set without re-adding, because the
+    /// authorizations are assembled by the order's hydration before the challenges' back-references are fixed.
+    /// </summary>
+    [JsonConstructor]
+    internal Order(
+        string orderId,
+        string accountId,
+        OrderStatus status,
+        List<Identifier> identifiers,
+        List<Authorization> authorizations,
+        DateTimeOffset? notBefore,
+        DateTimeOffset? notAfter,
+        DateTimeOffset? expires,
+        AcmeError? error,
+        string? certificateSigningRequest,
+        byte[]? certificate,
+        string? profile,
+        long version)
+    {
+        OrderId = orderId;
+        AccountId = accountId;
+        Status = status;
+        Identifiers = identifiers ?? [];
+        Authorizations = authorizations ?? [];
+        NotBefore = notBefore;
+        NotAfter = notAfter;
+        Expires = expires;
+        Error = error;
+        CertificateSigningRequest = certificateSigningRequest;
+        Certificate = certificate;
+        Profile = profile;
+        Version = version;
+        foreach (var authorization in Authorizations)
+        {
+            authorization.Order = this;
+            foreach (var challenge in authorization.Challenges)
+            {
+                challenge.Authorization = authorization;
+            }
+        }
+    }
+
+    /// <summary>
     /// Gets the unique order identifier.
     /// </summary>
     public string OrderId { get; }

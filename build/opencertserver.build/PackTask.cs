@@ -34,10 +34,15 @@ public sealed class PackTask : FrostingTask<BuildContext>
             "opencertserver.acme.server",
             "opencertserver.acme.yarp",
             "opencertserver.ca",
+            "opencertserver.ca.server",
             "opencertserver.ca.utils",
+            "opencertserver.contrib.intune",
+            "opencertserver.data",
+            "opencertserver.data.mssql",
+            "opencertserver.data.postgresql",
             "opencertserver.est.client",
             "opencertserver.est.server",
-            "opencertserver.ca.server",
+            "opencertserver.scep.server",
             "opencertserver.tss.net",
             "opencertserver.tpm"
         ];

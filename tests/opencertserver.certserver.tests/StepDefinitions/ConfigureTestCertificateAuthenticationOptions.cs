@@ -1,7 +1,7 @@
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.Extensions.Options;
-using OpenCertServer.Est.Server;
+using OpenCertServer.Ca.Protocol;
 using OpenCertServer.Est.Server.TrustAnchor;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Server.RegistrationAuthority;

@@ -33,7 +33,7 @@ Rule: the CRL URL is carried as a CDP
 Scenario: A certificate issued through ACME carries the CRL distribution point
     And an issued certificate is obtained through ACME for "acme.example.com"
     When the Linux client inspects the certificate with "openssl x509 -text"
-    Then the extension CRL Distribution Points lists the URL "http://localhost:6001/ca/crl.pem"
+    Then the extension CRL Distribution Points lists the URL "http://localhost:6001/ca/rsa/crl"
 
 Scenario: A certificate issued through EST carries the same responder URLs
     Given a hardened OpenCertServer is reachable

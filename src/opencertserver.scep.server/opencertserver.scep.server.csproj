@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Scep.Server</RootNamespace>
+        <AssemblyName>opencertserver.scep.server</AssemblyName>
+        <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+    </PropertyGroup>
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="System.Security.Cryptography.Pkcs" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Acme.Remote</RootNamespace>
+        <AssemblyName>opencertserver.acme.remote</AssemblyName>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <Description>Remote ACME issuer: an ACME server that issues through a backing certificate authority over a
+        trusted HTTPS connection instead of hosting the CA core in-process. This project references
+        opencertserver.acme.server and opencertserver.ca.client, but never opencertserver.ca, so the ACME
+        server can be deployed as its own process. The backing CA stays authoritative for scope and
+        identity.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.acme.server\opencertserver.acme.server.csproj"/>
+        <ProjectReference Include="..\opencertserver.ca.client\opencertserver.ca.client.csproj"/>
+    </ItemGroup>
+
+</Project>

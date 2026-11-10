@@ -19,6 +19,7 @@ using Reqnroll;
 [Scope(Feature = ProfileIssuanceSteps.FeatureTitle)]
 [Scope(Feature = DeviceAttestationSteps.FeatureTitle)]
 [Scope(Feature = PenetrationSteps.FeatureTitle)]
+[Scope(Feature = ScepEnrollmentSteps.FeatureTitle)]
 public sealed class AcmeIssuanceHooks
 {
     private readonly FeatureContext _featureContext;
@@ -48,14 +49,16 @@ public sealed class AcmeIssuanceHooks
         var isCli = featureContext.FeatureInfo.Title == OpenCertCliSteps.FeatureTitle;
         var isTelemetry = featureContext.FeatureInfo.Title == OpenTelemetrySteps.FeatureTitle;
         var isProfile = featureContext.FeatureInfo.Title == ProfileIssuanceSteps.FeatureTitle;
-        if (featureContext.FeatureInfo.Title == CrlRevocationSteps.FeatureTitle || isEst || isOcsp || isCli || isTelemetry)
+        var isPenetration = featureContext.FeatureInfo.Title == PenetrationSteps.FeatureTitle;
+        if (featureContext.FeatureInfo.Title == CrlRevocationSteps.FeatureTitle
+            || isEst || isOcsp || isCli || isTelemetry || isPenetration)
         {
             revocationConfiguration = new IqRevocationConfiguration();
             featureContext.Set(revocationConfiguration);
         }
 
         if (featureContext.FeatureInfo.Title is AuthorityInformationSteps.FeatureTitle or CrlRevocationSteps.FeatureTitle
-            || isEst || isOcsp || isCli || isTelemetry || isProfile)
+            || isEst || isOcsp || isCli || isTelemetry || isProfile || isPenetration)
         {
             authorityConfiguration = new IqAuthorityConfiguration(
                 revocationConfiguration is null ? "https://iq.test" : IqRevocationConfiguration.IssuerUrl,
@@ -67,7 +70,10 @@ public sealed class AcmeIssuanceHooks
                 authorityConfiguration: authorityConfiguration, revocationConfiguration: revocationConfiguration,
                 enableHttp: featureContext.FeatureInfo.Title is LinuxServerDeploymentSteps.FeatureTitle
                     or PenetrationSteps.FeatureTitle,
-                enableTelemetry: isTelemetry)
+                enableTelemetry: isTelemetry,
+                scepChallenge: featureContext.FeatureInfo.Title == ScepEnrollmentSteps.FeatureTitle
+                    ? ScepEnrollmentSteps.Challenge
+                    : null)
             .ConfigureAwait(false);
         featureContext.Set(environment);
         if (environment.TelemetryCollector is { } collector)

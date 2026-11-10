@@ -1,8 +1,10 @@
-﻿using OpenCertServer.Ca.Utils.X509;
+﻿using OpenCertServer.Ca.Protocol;
+using OpenCertServer.Ca.Utils.X509;
 
 namespace OpenCertServer.Ca;
 
 using System;
+using System.Formats.Asn1;
 using System.Linq;
 using System.Numerics;
 using System.Security.Claims;
@@ -64,7 +66,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             :
             [
                 new CaExtensionValidation(_config.Profiles, NullLogger<CaExtensionValidation>.Instance),
-                new OwnCertificateValidation(_config.Profiles, _certificateStore, NullLogger<OwnCertificateValidation>.Instance),
+                new OwnCertificateValidation(_config.Profiles, _certificateStore,
+                    NullLogger<OwnCertificateValidation>.Instance),
                 new DistinguishedNameValidation(NullLogger<DistinguishedNameValidation>.Instance),
                 new KeyCrlSignatureValidation(_config.Profiles, NullLogger<KeyCrlSignatureValidation>.Instance),
                 new AuthenticatedSubjectValidation(NullLogger<AuthenticatedSubjectValidation>.Instance),
@@ -141,7 +144,25 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         DateTimeOffset? notAfter = null,
         CancellationToken cancellationToken = default)
     {
+        using var telemetry = CaCoreInstruments.Start("sign_certificate");
+        var response = await SignCertificateRequestCore(
+                request, profileName, requestor, reenrollingFrom, notBefore, notAfter, cancellationToken)
+            .ConfigureAwait(false);
+        telemetry.Complete(response is SignCertificateResponse.Success);
+        return response;
+    }
+
+    private async Task<SignCertificateResponse> SignCertificateRequestCore(
+        CertificateRequest request,
+        string? profileName,
+        ClaimsIdentity? requestor,
+        X509Certificate2? reenrollingFrom,
+        DateTimeOffset? notBefore,
+        DateTimeOffset? notAfter,
+        CancellationToken cancellationToken)
+    {
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
+        await _config.ValidateCrlUrlsAsync(cancellationToken).ConfigureAwait(false);
         var results = await Task.WhenAll(_validators.Select(v =>
             // ReSharper disable once AccessToModifiedClosure
             v.Validate(request, profileName, requestor, reenrollingFrom, cancellationToken))).ConfigureAwait(false);
@@ -219,11 +240,11 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         // even if the caller listed them in AllowedCsrExtensions.
         var serverManagedOids = new HashSet<string>(StringComparer.Ordinal)
         {
-            Oids.SubjectKeyIdentifier,         // 2.5.29.14 — fresh SKI always generated from public key
-            Oids.AuthorityInformationAccess,   // 1.3.6.1.5.5.7.1.1 — added from config (OCSP/CA issuers)
-            Oids.CrlDistributionPoints,        // 2.5.29.31 — added from config (CRL URLs)
-            Oids.AuthorityKeyIdentifier,       // 2.5.29.35 — added from issuer certificate
-            Oids.CertPolicies,                 // 2.5.29.32 — the CA's assertion, from the profile; never from the CSR
+            Oids.SubjectKeyIdentifier, // 2.5.29.14 — fresh SKI always generated from public key
+            Oids.AuthorityInformationAccess, // 1.3.6.1.5.5.7.1.1 — added from config (OCSP/CA issuers)
+            Oids.CrlDistributionPoints, // 2.5.29.31 — added from config (CRL URLs)
+            Oids.AuthorityKeyIdentifier, // 2.5.29.35 — added from issuer certificate
+            Oids.CertPolicies, // 2.5.29.32 — the CA's assertion, from the profile; never from the CSR
         };
         var serverManaged = request.CertificateExtensions
             .Where(ext => ext.Oid?.Value is not null && serverManagedOids.Contains(ext.Oid.Value))
@@ -282,7 +303,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         if (!request.SubjectName.EnumerateRelativeDistinguishedNames().Any())
         {
             foreach (var san in request.CertificateExtensions
-                         .Where(ext => ext.Oid?.Value == Oids.SubjectAltName && !ext.Critical).ToArray())
+                .Where(ext => ext.Oid?.Value == Oids.SubjectAltName && !ext.Critical).ToArray())
             {
                 request.CertificateExtensions.Remove(san);
                 request.CertificateExtensions.Add(new X509Extension(san.Oid!, san.RawData, true));
@@ -300,10 +321,11 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
         }
 
-        if (_config.CrlUrls.Length > 0)
+        var crlUrls = _config.GetCrlUrls(profile.Name);
+        if (crlUrls.Length > 0)
         {
             request.CertificateExtensions.Add(
-                CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(_config.CrlUrls));
+                CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(crlUrls));
         }
 
         if (_config.OcspUrls.Length > 0 || _config.CaIssuersUrls.Length > 0)
@@ -330,6 +352,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         DateTimeOffset? notAfter = null,
         CancellationToken cancellationToken = default)
     {
+        using var telemetry = CaCoreInstruments.Start("sign_certificate_pem");
         var hasPem = PemEncoding.TryFind(request, out var fields);
         byte[] csr;
         if (!hasPem)
@@ -342,8 +365,10 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             csr = Convert.FromBase64CharArray(r.ToArray(), 0, r.Length);
         }
 
-        return await SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, notBefore, notAfter,
+        var response = await SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, notBefore, notAfter,
             cancellationToken).ConfigureAwait(false);
+        telemetry.Complete(response is SignCertificateResponse.Success);
+        return response;
     }
 
     private Task<SignCertificateResponse> SignCertificateRequest(
@@ -370,7 +395,9 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         string? profileName = null,
         CancellationToken cancellationToken = default)
     {
+        using var telemetry = CaCoreInstruments.Start("get_root_certificates");
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
+        telemetry.Complete();
         return profile.CertificateChain;
     }
 
@@ -379,11 +406,26 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         string? profileName = null,
         CancellationToken cancellationToken = default)
     {
+        using var telemetry = CaCoreInstruments.Start("get_published_certificates");
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
-        return new X509Certificate2Collection(profile.CertificateChain
+        var certificates = new X509Certificate2Collection(profile.CertificateChain
             .Concat(profile.PublishedCertificateChain)
             .DistinctBy(certificate => certificate.Thumbprint, StringComparer.OrdinalIgnoreCase)
             .ToArray());
+        telemetry.Complete();
+        return certificates;
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<string>> GetSupportedProfiles(CancellationToken cancellationToken = default)
+    {
+        var names = new List<string>();
+        await foreach (var profile in _config.Profiles.GetProfiles(cancellationToken).ConfigureAwait(false))
+        {
+            names.Add(profile.Name);
+        }
+
+        return names;
     }
 
     /// <inheritdoc/>
@@ -392,7 +434,19 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         X509RevocationReason reason,
         CancellationToken cancellationToken = default)
     {
-        return _certificateStore.RemoveCertificate(serialNumber, reason, cancellationToken);
+        return RevokeCertificateCore(serialNumber, reason, cancellationToken);
+    }
+
+    private async Task<bool> RevokeCertificateCore(
+        string serialNumber,
+        X509RevocationReason reason,
+        CancellationToken cancellationToken)
+    {
+        using var telemetry = CaCoreInstruments.Start("revoke_certificate");
+        var revoked = await _certificateStore.RemoveCertificate(serialNumber, reason, cancellationToken)
+            .ConfigureAwait(false);
+        telemetry.Complete(revoked);
+        return revoked;
     }
 
     /// <inheritdoc/>
@@ -400,7 +454,9 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         string? profileName = null,
         CancellationToken cancellationToken = default)
     {
+        using var telemetry = CaCoreInstruments.Start("get_revocation_list");
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
+        await _config.ValidateCrlUrlsAsync(cancellationToken).ConfigureAwait(false);
 
         // Read all pages so the CRL is never silently truncated at the store's default page size.
         const int pageSize = 100;
@@ -410,7 +466,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         do
         {
             var batch = await _certificateStore
-                .GetRevocationList(page, pageSize, cancellationToken)
+                .GetRevocationList(profile.Name, page, pageSize, cancellationToken)
                 .Select(c =>
                 {
                     if (!c.RevocationReason.HasValue || c.RevocationReason.Value == X509RevocationReason.Unspecified)
@@ -431,9 +487,19 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             revoked.AddRange(batch);
             batchCount = batch.Count;
             page++;
-        }
-        while (batchCount == pageSize);
+        } while (batchCount == pageSize);
+
         var nextCrlNumber = profile.GetNextCrlNumber();
+        var crlExtensions = new List<X509Extension> { new X509CrlNumberExtension(nextCrlNumber, false) };
+        var profileCrlUrls = _config.GetCrlUrls(profile.Name);
+        if (profileCrlUrls.Length > 0)
+        {
+            // RFC 5280 §5.2.5: a critical issuingDistributionPoint scopes this (partial) CRL to the
+            // profile-specific distribution point carried in that profile's certificates, so relying
+            // parties never accept another profile's CRL as authoritative for a certificate.
+            crlExtensions.Add(BuildIssuingDistributionPoint(profileCrlUrls));
+        }
+
         var crl = new CertificateRevocationList(
             TypeVersion.V2,
             HashAlgorithmName.SHA256,
@@ -441,10 +507,31 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow.AddDays(7),
             revoked,
-            [new X509CrlNumberExtension(nextCrlNumber, false)]
+            crlExtensions
         );
 
-        return crl.Build(HashAlgorithmName.SHA256, profile.PrivateKey);
+        var encoded = crl.Build(HashAlgorithmName.SHA256, profile.PrivateKey);
+        telemetry.Complete();
+        return encoded;
+    }
+
+    private static X509Extension BuildIssuingDistributionPoint(IEnumerable<string> uris)
+    {
+        var writer = new AsnWriter(AsnEncodingRules.DER);
+        using (writer.PushSequence())
+            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+                {
+                    foreach (var uri in uris)
+                    {
+                        writer.WriteCharacterString(
+                            UniversalTagNumber.IA5String,
+                            uri,
+                            new Asn1Tag(TagClass.ContextSpecific, 6));
+                    }
+                }
+
+        return new X509Extension(Oids.IssuingDistributionPoint, writer.Encode(), true);
     }
 
     private static (RSA, X509Certificate2) CreateSelfSignedRsaCert(
@@ -481,7 +568,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     /// Midnight of the current UTC day, with a zero offset.
     /// </summary>
     /// <remarks>
-    /// <c>DateTimeOffset.UtcNow.Date</c> is a <see cref="DateTime"/> with <see cref="DateTimeKind.Unspecified"/>;
+    /// <c>DateTimeOffset.UtcNow.Date</c> is a <see cref="DateTimeOffset"/> with <see cref="DateTimeKind.Unspecified"/>;
     /// converting it back to <see cref="DateTimeOffset"/> applies the local offset of the server, so a
     /// certificate issued west of UTC would only become valid hours later. See issue #81.
     /// </remarks>
@@ -664,7 +751,8 @@ public sealed partial class KeyCrlSignatureValidation : IValidateCertificateRequ
                 if (basicConstraints?.CertificateAuthority != true)
                 {
                     LogCsrRequestsKeyCertSignWithoutCaTrue();
-                    return "CSR requests keyCertSign but does not assert CA:TRUE in basicConstraints (RFC 5280 §4.2.1.3)";
+                    return
+                        "CSR requests keyCertSign but does not assert CA:TRUE in basicConstraints (RFC 5280 §4.2.1.3)";
                 }
             }
 
@@ -730,7 +818,6 @@ public sealed partial class CaExtensionValidation : IValidateCertificateRequests
 
     [LoggerMessage(LogLevel.Error, "CSR requests CA:TRUE in basicConstraints")]
     partial void LogCsrRequestsCaCertificate();
-
 }
 
 public sealed partial class DistinguishedNameValidation : IValidateCertificateRequests
@@ -758,8 +845,8 @@ public sealed partial class DistinguishedNameValidation : IValidateCertificateRe
 
         // RFC 5280 §4.1.2.6: the subject MAY be empty when the identity is carried in subjectAltName
         // (ACME clients such as certbot send SAN-only CSRs).
-        if (request.SubjectName.EnumerateRelativeDistinguishedNames().Any() == false
-            && request.CertificateExtensions.Any(ext => ext.Oid?.Value == Oids.SubjectAltName))
+        if (!request.SubjectName.EnumerateRelativeDistinguishedNames().Any()
+         && request.CertificateExtensions.Any(ext => ext.Oid?.Value == Oids.SubjectAltName))
         {
             return Task.FromResult<string?>(null);
         }
@@ -811,9 +898,15 @@ public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertifi
                 // extension rules govern those.
                 var sanValue = name switch
                 {
-                    { Type: GeneralName.GeneralNameType.Rfc822Name or GeneralName.GeneralNameType.DnsName, Value: AsnString asnString }
+                    {
+                            Type: GeneralName.GeneralNameType.Rfc822Name or GeneralName.GeneralNameType.DnsName,
+                            Value: AsnString asnString
+                        }
                         => asnString.Value,
-                    { Type: GeneralName.GeneralNameType.OtherName, Value: OtherName { TypeId: Oids.UserPrincipalName } otherName }
+                    {
+                            Type: GeneralName.GeneralNameType.OtherName,
+                            Value: OtherName { TypeId: Oids.UserPrincipalName } otherName
+                        }
                         => otherName.StringValue,
                     _ => null
                 };

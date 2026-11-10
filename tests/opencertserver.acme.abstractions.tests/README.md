@@ -3,7 +3,7 @@
 This project verifies the ACME abstractions layer used throughout OpenCertServer. It checks the shared models, interfaces, and contracts that define how ACME operations are represented between the client and server.
 
 ## Functionality
-- Validates the ABAs and contracts used by the ACME stack
+- Validates the abstractions and contracts used by the ACME stack
 - Ensures the shared models remain consistent across server and client integrations
 - Acts as a focused test harness for the `opencertserver.acme.abstractions` library
 

@@ -55,6 +55,30 @@ public sealed class Challenge
     }
 
     /// <summary>
+    /// Hydrates a challenge from persisted storage. The <see cref="Authorization"/> back-reference is
+    /// <see cref="JsonIgnoreAttribute"/>-excluded and re-attached by the store's mapper after the parent
+    /// authorization is reconstructed, avoiding a circular reference in the serialized graph.
+    /// </summary>
+    [JsonConstructor]
+    internal Challenge(
+        string challengeId,
+        string type,
+        string token,
+        ChallengeStatus status,
+        DateTimeOffset? validated,
+        AcmeError? error,
+        string? extraData)
+    {
+        ChallengeId = challengeId;
+        Type = type;
+        Token = token;
+        Status = status;
+        Validated = validated;
+        Error = error;
+        ExtraData = extraData;
+    }
+
+    /// <summary>
     /// Gets the unique challenge identifier.
     /// </summary>
     public string ChallengeId { get; }
@@ -76,6 +100,8 @@ public sealed class Challenge
 
     /// <summary>
     /// Gets the parent authorization to which this challenge belongs.
+    /// <see cref="JsonIgnoreAttribute"/>-excluded from the serialized graph; the store's mapper re-attaches
+    /// it after the parent authorization is reconstructed.
     /// </summary>
     [JsonIgnore]
     public Authorization Authorization

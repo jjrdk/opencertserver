@@ -5,7 +5,7 @@ namespace OpenCertServer.Est.Tests.Configuration;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.Extensions.Options;
-using Est.Server;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Ca;
 
 public class ConfigureCertificateAuthenticationOptions :
