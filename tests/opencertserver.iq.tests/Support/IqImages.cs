@@ -1,6 +1,7 @@
 namespace OpenCertServer.Iq.Tests.Support;
 
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Images;
@@ -20,6 +21,13 @@ internal static class IqImages
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static IImage? _server;
     private static IImage? _client;
+    private readonly record struct ApplianceRole(string Role, string Dockerfile);
+    private static readonly Dictionary<string, ApplianceRole> ApplianceRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Unified"] = new("Unified", "Dockerfile.unified"),
+        ["Ca"] = new("Ca", "Dockerfile.ca"),
+        ["Ra"] = new("Ra", "Dockerfile.ra")
+    };
 
     public static async Task<IImage> GetClientAsync(CancellationToken cancellationToken = default)
     {
@@ -57,9 +65,129 @@ internal static class IqImages
         }
     }
 
+    private static readonly Dictionary<string, IImage> _applianceImages = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, string> _applianceImageNames = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Builds one chiseled Ubuntu 24.04 appliance image (<c>Dockerfile.unified</c> / <c>Dockerfile.ca</c> /
+    /// <c>Dockerfile.ra</c>) over a freshly published, self-contained server for the Docker host's
+    /// architecture. The chiseled <c>runtime-deps</c> image carries the glibc native dependencies but no .NET
+    /// runtime (and no chiseled ASP.NET Core image exists), so the server is published self-contained with the
+    /// glibc RID (<c>linux-x64</c> / <c>linux-arm64</c>) and <c>InvariantGlobalization</c> — the framework and
+    /// coreclr are bundled on top of the glibc deps. The same self-contained output is reused for all three
+    /// roles; each role's Dockerfile only differs in the baked <c>Appliance__Role</c> default and exposed ports.
+    /// </summary>
+    public static async Task<(IImage Image, string Name)> GetApplianceImageAsync(
+        string role, CancellationToken cancellationToken = default)
+    {
+        if (!ApplianceRoles.TryGetValue(role, out var applianceRole))
+        {
+            throw new ArgumentOutOfRangeException(nameof(role), role,
+                "An appliance IQ role must be one of Unified, Ca, or Ra.");
+        }
+
+        await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_applianceImages.TryGetValue(role, out var image)
+                && _applianceImageNames.TryGetValue(role, out var name))
+            {
+                return (image, name);
+            }
+
+            var built = await BuildApplianceImage(applianceRole, cancellationToken).ConfigureAwait(false);
+            _applianceImages[role] = built.Image;
+            _applianceImageNames[role] = built.Name;
+            return built;
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
+    private static async Task<(IImage Image, string Name)> BuildApplianceImage(
+        ApplianceRole applianceRole, CancellationToken cancellationToken)
+    {
+        var rid = $"linux-{Arch}";
+        var imageName = $"opencertserver-iq-appliance-{applianceRole.Role.ToLowerInvariant()}:local";
+
+        if (Environment.GetEnvironmentVariable($"IQ_APPLIANCE_{applianceRole.Role.ToUpperInvariant()}_IMAGE")
+            is { Length: > 0 } prebuilt)
+        {
+            imageName = prebuilt;
+            return (new DockerImage(prebuilt), imageName);
+        }
+
+        var context = Path.Combine(RepositoryPaths.IqArtifacts, $"appliance-context-{applianceRole.Role.ToLowerInvariant()}");
+        Directory.CreateDirectory(context);
+        File.Copy(Path.Combine(RepositoryPaths.Root, applianceRole.Dockerfile),
+            Path.Combine(context, "Dockerfile"), true);
+
+        // The self-contained publish is shared across the three role images; publish once per RID.
+        var publishDir = Path.Combine(RepositoryPaths.IqArtifacts, "appliance-publish", rid);
+        if (!File.Exists(Path.Combine(publishDir, "opencertserver.certserver")))
+        {
+            await DotNetPublish(
+                    Path.Combine(RepositoryPaths.Root, "src", "opencertserver.certserver",
+                        "opencertserver.certserver.csproj"),
+                    rid,
+                    publishDir,
+                    cancellationToken,
+                    "-p:InvariantGlobalization=true")
+                .ConfigureAwait(false);
+        }
+
+        // The appliance Dockerfiles COPY artifacts/publish/appliance/${RID}/; stage the publish there.
+        var stageDir = Path.Combine(context, "artifacts", "publish", "appliance", rid);
+        if (Directory.Exists(stageDir))
+        {
+            Directory.Delete(stageDir, true);
+        }
+
+        Directory.CreateDirectory(stageDir);
+        CopyRecursively(publishDir, stageDir);
+
+        var image = new ImageFromDockerfileBuilder()
+            .WithDockerfileDirectory(context)
+            .WithDockerfile("Dockerfile")
+            .WithName(imageName)
+            .WithBuildArgument("PLATFORM", Platform)
+            .WithBuildArgument("RID", rid)
+            .WithImageBuildPolicy(PullPolicy.Always)
+            .WithCleanUp(false)
+            .Build();
+        await image.CreateAsync(cancellationToken).ConfigureAwait(false);
+        return (image, imageName);
+    }
+
+
     private static string Arch =>
         Environment.GetEnvironmentVariable("IQ_DOCKER_ARCH")
         ?? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64");
+
+    private static void CopyRecursively(string source, string destination)
+    {
+        var sourceDir = new DirectoryInfo(Path.GetFullPath(source));
+        var destinationDir = new DirectoryInfo(Path.GetFullPath(destination));
+        if (!destinationDir.Exists)
+        {
+            destinationDir.Create();
+        }
+
+        foreach (var file in sourceDir.EnumerateFiles("*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(sourceDir.FullName, file.FullName);
+            var target = Path.Combine(destinationDir.FullName, relative);
+            var targetDirectory = Path.GetDirectoryName(target);
+            if (!string.IsNullOrEmpty(targetDirectory))
+            {
+                Directory.CreateDirectory(targetDirectory);
+            }
+
+            file.CopyTo(target, true);
+        }
+    }
 
     private static string Platform => Arch == "arm64" ? "linux/arm64" : "linux/amd64";
 

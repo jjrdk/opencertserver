@@ -164,21 +164,6 @@ public static class ServiceCollectionExtensions
                 services.Configure<AcmeServerOptions>(options => options.ExternalAccountRequired = true);
             }
 
-            services.AddRateLimiter(options =>
-            {
-                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-                options.AddPolicy("PublicRa", context =>
-                    RateLimitPartition.GetFixedWindowLimiter(
-                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                        _ => new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = rateLimit,
-                            Window = TimeSpan.FromMinutes(1),
-                            QueueLimit = 0,
-                            AutoReplenishment = true
-                        }));
-            });
-
             return services;
         }
 

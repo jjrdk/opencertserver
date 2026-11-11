@@ -19,6 +19,10 @@
              starts as (a) a server image and (b) a Linux client image that runs the
              standard apt tools (see Support/IqAcmeEnvironment.cs). -->
         <PackageReference Include="Testcontainers"/>
+        <!-- Docker.DotNet.Enhanced is the native Docker Engine client Testcontainers drives. We
+             inspect images and containers through it (not the docker CLI, whose inspect is
+             unreliable under the MTP/Docker-Desktop test host) to read the unprivileged user. -->
+        <PackageReference Include="Docker.DotNet.Enhanced"/>
     </ItemGroup>
 
 </Project>

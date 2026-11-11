@@ -1,13 +1,13 @@
 # Headless appliance operator guide
 
-This guide covers the source-built, native-AOT container images and the host configuration
-they consume. The appliance is headless and provides protocol endpoints and APIs.
+This guide covers the source-built, chiseled Ubuntu 24.04 container images and the host
+configuration they consume. The appliance is headless and provides protocol endpoints and APIs.
 
 ## Roles and images
 
 | Image | Service surface | Local CA keys | Typical use |
 |---|---|---:|---|
-| `opencertserver-unified` (`Dockerfile.unified`) | CA `/ca/*`, EST, ACME, `/health` | Yes | Single-host CA and enrollment protocols |
+| `opencertserver-unified` (`Dockerfile.unified`) | CA `/ca/*`, EST, ACME, SCEP, `/health` | Yes | Single-host CA and enrollment protocols |
 | `opencertserver-ca` (`Dockerfile.ca`) | Existing `/ca/*` endpoints and `/health` only | Yes | CA backend for a separate RA service |
 | `opencertserver-ra` (`Dockerfile.ra`) | Operator API `/ra/*` and liveness `/health` | No | Authenticated RA service delegating issuance to a CA |
 | `Dockerfile.appliance` | Same unified role as `Dockerfile.unified` | Yes | Compatibility build name for the unified image |
@@ -27,16 +27,19 @@ docker build -f Dockerfile.ra -t opencertserver-ra:local .
 
 Use the same version-pinned application release for the CA and RA. In production, pin the
 published image by immutable digest rather than a mutable tag. All appliance images are
-Linux/Alpine, source-built for .NET 10, run as non-root UID `1654`, and enforce TLS 1.3.
+chiseled Ubuntu 24.04 (Noble) for .NET 10, run as non-root UID `1654`, and enforce TLS 1.3.
 
-Native-AOT publish currently reports TPM marshaller reflection warning IL2067 and DnsClientX
-AOT warning IL3053. The Dockerfiles keep these warnings visible using
-`IlcTreatWarningsAsErrors=false` and `TrimmerTreatWarningsAsErrors=false`; they are not
-suppressed, and C# compiler warnings remain errors. Runtime qualification covers ordinary
-mounted-configuration, CA, RA, and ACME account/order persistence paths, not hardware-attestation
-or dynamic TPM operations.
-The image build is not a claim that every dependency or hardware/device-attestation path is
-AOT-qualified; hardware qualification remains separate.
+The appliance Dockerfiles build on the chiseled `runtime-deps` image
+(`mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled`), which carries the glibc native
+runtime dependencies (including OpenSSL 3, which .NET's `SslStream` loads) but no .NET runtime —
+and no chiseled ASP.NET Core image exists. The application is therefore published
+**self-contained** with the glibc RID (`linux-x64` / `linux-arm64`) and
+`InvariantGlobalization=true`; the publish bundles coreclr, hostfxr and the ASP.NET Core framework
+on top of the glibc dependencies. The chiseled base already runs as the unprivileged `app` user
+(UID `1654`), so the images add no root tooling.
+Because the image ships no ICU, the runtime is configured for invariant globalization; the
+self-contained publish sets this via `-p:InvariantGlobalization=true` and the Dockerfiles export
+`DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`.
 
 ## Files and configuration
 
@@ -220,10 +223,12 @@ durable storage and set retention appropriate to your policy.
 ## Container image verification
 
 All four appliance Dockerfiles (`Dockerfile.appliance`, `Dockerfile.unified`, `Dockerfile.ca`,
-and `Dockerfile.ra`) build native-AOT images successfully. Publish currently reports the TPM
-marshaller IL2067 and DnsClientX IL3053 dependency warnings; the Dockerfiles keep them visible
-rather than suppressing them. See the
-[AOT qualification limits](standards.md#hardened-headless-appliance-t18).
+and `Dockerfile.ra`) build chiseled Ubuntu 24.04 images successfully. Each publishes the
+application self-contained over the glibc `runtime-deps` base (no .NET runtime is present on the
+chiseled image), so the framework and coreclr ship in the publish output. The
+[AOT qualification limits](standards.md#hardened-headless-appliance-t18) no longer apply —
+self-contained trimming is not used, so the TPM/DnsClientX AOT warnings that native-AOT publish
+reported do not occur.
 
 `ApplianceUpgrade.feature` includes process-host scenarios and opt-in real Linux image checks.
 Run the feature with:
@@ -237,6 +242,9 @@ On Linux, process-host startup/configuration scenarios can run without Docker im
 On macOS, the host `SslStream` does not support TLS 1.3, so image-backed startup scenarios are
 skipped unless `OPENCERT_APPLIANCE_TEST_IMAGE` names a built Linux image. The topology scenario
 is always image-gated and requires Docker and `curl`; process-host probes also use `curl`.
+The chiseled base has no shell or `curl`, so black-box assertions (TLS posture, endpoint surface,
+non-root user) are driven from a separate Ubuntu client container — see the
+`opencertserver.iq.tests` appliance scenarios.
 Build and select the images as follows:
 the role-specific image variables are optional and otherwise fall back to the unified image:
 

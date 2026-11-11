@@ -1031,22 +1031,21 @@ operators provision `AcmeServer:ExternalAccountKey` from their secret source.
 
 ### Hardened headless appliance (T18)
 
-`Dockerfile.appliance` / `Dockerfile.unified`, `Dockerfile.ca`, and `Dockerfile.ra` publish native-AOT
-Linux/Alpine images as a non-root user. Appliance roles enforce **TLS 1.3 only**, strict OCSP
-HTTP binding, and the existing request validators. Only the Unified role has ACME endpoints and
-therefore applies the hardened EAB, CAA, and challenge-validation worker settings. No attestation
-roots are implicitly trusted; no example EAB key is baked in. A local CA requires persistent keys
-and a persistent certificate/revocation store. The RA holds a transport identity only and delegates
-CA operations over mutually authenticated TLS.
+`Dockerfile.appliance` / `Dockerfile.unified`, `Dockerfile.ca`, and `Dockerfile.ra` build chiseled
+Ubuntu 24.04 (Noble) images as the non-root `app` user (UID `1654`). Each publishes the
+application **self-contained** over the glibc `runtime-deps` base
+(`mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled`), which carries the glibc native
+dependencies (including OpenSSL 3, which .NET's `SslStream` loads) but no .NET runtime; the
+framework and coreclr therefore ship in the publish output. Appliance roles enforce **TLS 1.3
+only**, strict OCSP HTTP binding, and the existing request validators. Only the Unified role has
+ACME endpoints and therefore applies the hardened EAB, CAA, and challenge-validation worker
+settings. No attestation roots are implicitly trusted; no example EAB key is baked in. A local CA
+requires persistent keys and a persistent certificate/revocation store. The RA holds a transport
+identity only and delegates CA operations over mutually authenticated TLS.
 
-Native-AOT publish currently reports TPM marshaller reflection warning IL2067 and DnsClientX AOT
-warning IL3053. Dockerfiles keep these warnings visible using
-`IlcTreatWarningsAsErrors=false` and `TrimmerTreatWarningsAsErrors=false`; they are not suppressed,
-and C# compiler warnings remain errors. Runtime qualification covers ordinary mounted-configuration,
-CA, RA, and ACME account/order persistence paths, not hardware-attestation or dynamic TPM operations.
-Do not interpret the AOT image
-build as qualification of every dependency or hardware/device-attestation path; hardware
-qualification is separate.
+Because the chiseled image has no shell or `curl`, black-box assertions (TLS 1.3-only posture,
+endpoint surface, non-root user) are driven from a separate Ubuntu client container in
+`opencertserver.iq.tests`.
 
 Configuration is a read-only mounted JSON file with a version field. Version 1-to-2 migration
 groups legacy JWT settings; `configload` writes a new file, `configdump` round-trips it, and
@@ -1064,6 +1063,11 @@ native EAB-bound ACME account/order reloads, and real mTLS CA/RA enrollment, sig
 scope rejection and revocation. Process-level TLS tests depend on the host TLS stack; use the
 documented image variables to run these checks on macOS. This is separate from hardware-attestation
 and dynamic TPM qualification.
+[`ApplianceContainers.feature`](../tests/opencertserver.iq.tests/Features/ApplianceContainers.feature)
+proves the chiseled images from a separate Ubuntu client container: the Unified, CA and RA images
+run as UID `1654`, complete a TLS 1.3 handshake, reject TLS 1.2, omit the `Server` header, report a
+healthy `/health`, and expose only their own endpoint surface; a hardened appliance refuses to start
+when a plain-HTTPS listener is absent.
 See [Getting started](getting-started.md#appliance-roles-and-upgrades) and the
 [headless appliance operator guide](appliance.md).
 

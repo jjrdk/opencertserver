@@ -81,11 +81,21 @@ internal static class Program
                         .AllowAnyHeader()
                         .AllowAnyMethod();
                 });
-            })
-            .AddInMemoryCertificateStore();
+            });
         services = services
             .AddRa(builder.Configuration)
             .AddPublicRa(builder.Configuration);
+        // A persistent store wins. The appliance store is created below when a DataDirectory is
+        // mounted; the relational store is wired when Ca:Persistence is "relational". The in-memory
+        // store is only the fallback for both — registering it unconditionally would shadow a
+        // relational store and, next to the appliance store, hand out two IStoreCertificates whose
+        // FileShare.None lease collides on the certificate lock file.
+        var relationalCa =
+            builder.Configuration["Ca:Persistence"]?.ToLowerInvariant() == "relational";
+        if (!relationalCa && string.IsNullOrWhiteSpace(appliance.DataDirectory))
+        {
+            services = services.AddInMemoryCertificateStore();
+        }
         if (!string.IsNullOrWhiteSpace(appliance.DataDirectory))
         {
             services.AddSingleton<IStoreCertificates>(_ => new ApplianceCertificateStore(appliance.DataDirectory));
@@ -849,11 +859,17 @@ internal static class Program
         var publishedCertificatePath =
             GetArgumentValue(args, publishedArgument) ?? configuration[$"{profileName}:PublishedPem"];
 
+        // The active certificate's bundle path comes from the CLI cert argument when present, otherwise
+        // from the JSON '<profile>:Pem' path. Resolving it like CreateCert does means a purely JSON
+        // appliance configuration (no CLI args, as the container uses) no longer dereferences an
+        // absent array index.
+        var activeCertificatePath = GetArgumentValue(args, certArgument) ?? configuration[$"{profileName}:Pem"];
+
         return new CaProfile
         {
             Name = profileName,
             CertificateChain = await LoadCertificateBundle(
-                args[Array.IndexOf(args, certArgument) + 1], activeCertificate).ConfigureAwait(false),
+                activeCertificatePath, activeCertificate).ConfigureAwait(false),
             PublishedCertificateChain = await LoadCertificateBundle(publishedCertificatePath, activeCertificate)
                 .ConfigureAwait(false),
             CertificateValidity = TimeSpan.FromDays(90),

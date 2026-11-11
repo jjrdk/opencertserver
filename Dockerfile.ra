@@ -1,25 +1,30 @@
-# syntax=docker/dockerfile:1
-FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
-ARG TARGETARCH
-RUN apk add --no-cache clang build-base zlib-dev
-WORKDIR /source
-COPY Directory.Build.props Directory.Packages.props global.json ./
-COPY src/ src/
-RUN case "$TARGETARCH" in amd64) rid=linux-musl-x64 ;; arm64) rid=linux-musl-arm64 ;; *) exit 1 ;; esac \
-    && dotnet publish src/opencertserver.certserver/opencertserver.certserver.csproj \
-       -c Release -r "$rid" -p:PublishAot=true -p:StripSymbols=true \
-       -p:IlcTreatWarningsAsErrors=false -p:TrimmerTreatWarningsAsErrors=false -o /publish
+# Chiseled Ubuntu 24.04 appliance — Registration Authority (mTLS) only.
+#
+# Serves the RA surface (/ra/enroll, /ra/renew, DELETE /ra/revoke) plus /health, and nothing else: no
+# /est, /acme, /ca, /scep, or /mcp. The CA/RA separation means the RA never holds the CA signing key —
+# it forwards the request to the CA over the RA client mTLS connection. Same hardened, unprivileged,
+# ICU-less chiseled posture as Dockerfile.unified; only the role differs (see Dockerfile.unified for the
+# chisel rationale: runtime-deps chiseled + a self-contained publish that bundles the framework).
+ARG PLATFORM=linux/amd64
+# runtime-deps chiseled carries the glibc deps but no .NET runtime, so the publish is self-contained
+# (it bundles coreclr + hostfxr + the ASP.NET Core framework).
+FROM --platform=${PLATFORM} mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine
-RUN mkdir -p /var/lib/opencertserver /config \
-    && chown -R app:app /var/lib/opencertserver /config
+ARG RID=linux-x64
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV DOTNET_NOLOGO=true
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+ENV Appliance__Role=Ra
+ENV Appliance__Hardened=true
+ENV Telemetry__Enabled=false
+
+COPY artifacts/publish/appliance/${RID}/ app/
 WORKDIR /app
-COPY --from=build /publish/ ./
-ENV ASPNETCORE_ENVIRONMENT=Hardened \
-    OPENCERT_CONFIG=/config/appsettings.json \
-    Appliance__Role=Ra \
-    DOTNET_NOLOGO=true \
-    DOTNET_CLI_TELEMETRY_OPTOUT=1
-USER app
-EXPOSE 5001
+
+USER 1654
+
+EXPOSE 6001
+# No baked-in VOLUME: the appliance runs unprivileged (UID 1654), so a root-owned Docker volume
+# would not be writable. The RA role holds no persistent store; mount a data directory only for the
+# Unified/CA roles, and let the operator own it.
 ENTRYPOINT ["./opencertserver.certserver"]
