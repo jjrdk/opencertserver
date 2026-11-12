@@ -12,7 +12,7 @@ Start elsewhere:
 | Operate the headless CA/RA appliance containers | [Appliance operator guide](appliance.md) |
 | See every standard implemented and the tests that prove it | [Implemented standards](standards.md) |
 | Read the operational rules | [Certification Practice Statement](opencertserver_cps.md) / [Certificate Policy](opencertserver_cp.md) |
-| Run it in Docker | [Docker.md](../Docker.md) |
+| Run it in Docker | [Docker](docker.md) |
 | Report a vulnerability | [SECURITY.md](../SECURITY.md) |
 | See the metrics/traces the server emits | [OpenTelemetry metrics & traces](../OpenTelemetryMetricsTraces.md) |
 | Integrate the CA into YARP | [opencertserver.acme.yarp/README.md](../src/opencertserver.acme.yarp/README.md) |

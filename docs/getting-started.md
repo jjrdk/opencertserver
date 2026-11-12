@@ -129,7 +129,7 @@ Further providers and Redis are left for later sessions.
 See the [configuration reference](documentation.md#optional-postgresql-persistence).
 
 The `certserver` application accepts JSON configuration files, environment variables, and command-line
-arguments. For production, use the [hardened appliance](../Docker.md): mount a versioned configuration
+arguments. For production, use the [hardened appliance](docker.md): mount a versioned configuration
 file read-only at `/config/appsettings.json`, keys separately, and persistent storage at
 `/var/lib/opencertserver`. No certificate command-line arguments are needed.
 
