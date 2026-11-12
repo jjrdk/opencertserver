@@ -10,6 +10,7 @@ using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Images;
 using DotNet.Testcontainers.Networks;
+using OpenCertServer.Testing;
 
 /// <summary>
 /// The black-box topology for the chiseled appliance IQ scenarios. One appliance container (a
@@ -36,6 +37,7 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
     private IContainer _server = null!;
     private string _containerName = null!;
     private string _applianceImageName = null!;
+    private RelationalTestDatabase? _database;
 
     private IqApplianceEnvironment(TestTlsPki tls)
     {
@@ -47,6 +49,20 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
 
     /// <summary>The role-under-test, one of Unified, Ca, or Ra.</summary>
     public string Role { get; private set; } = "Unified";
+
+    /// <summary>
+    /// The relational engine the appliance targets: <c>postgres</c>, <c>mssql</c>, or empty for the
+    /// default in-container store. Empty selects the base per-role image; a concrete engine selects the
+    /// matching engine-variant image (see <see cref="StartWithDatabaseAsync"/>).
+    /// </summary>
+    public string Engine { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// The relational database the appliance writes to (null when the environment is booted without a
+    /// database). The appliance is handed its connection string as <c>ConnectionStrings:OpenCertServer</c>
+    /// and the schema is applied out-of-band by the test before the appliance starts.
+    /// </summary>
+    public RelationalTestDatabase? Database { get; private set; }
 
     /// <summary>Whether the appliance was booted to trip the HTTPS-only startup guard (expected to fail).</summary>
     public bool HttpGuard { get; private set; }
@@ -92,12 +108,57 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
         }
     }
 
-    private async Task BootAsync(CancellationToken cancellationToken)
+    private static string NormalizeEngine(string? engine) =>
+        string.IsNullOrWhiteSpace(engine) ? "" : engine.Trim().ToLowerInvariant() switch
+        {
+            "mssql" or "sqlserver" => "mssql",
+            _ => "postgres"
+        };
+
+    /// <summary>
+    /// Boots the appliance against a Testcontainers relational database: the database is created first
+    /// and its schema migrated out-of-band, then the appliance is started with
+    /// <c>ConnectionStrings:OpenCertServer</c> pointed at it. Used by the relational-storage scenarios.
+    /// </summary>
+    public static async Task<IqApplianceEnvironment> StartWithDatabaseAsync(
+        string role,
+        string engine,
+        CancellationToken cancellationToken = default)
+    {
+        var roleLower = role.Trim();
+        var engineTag = NormalizeEngine(engine);
+        var environment = new IqApplianceEnvironment(TestTlsPki.Create(ServerAlias, ClientAlias))
+        {
+            Role = roleLower,
+            Engine = engineTag,
+            _containerName = $"oc-appliance-{roleLower.ToLowerInvariant()}-{Guid.NewGuid():N}"
+        };
+        try
+        {
+            await environment.BootWithDatabaseAsync(cancellationToken).ConfigureAwait(false);
+            return environment;
+        }
+        catch
+        {
+            await environment.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private async Task BootAsync(CancellationToken cancellationToken, RelationalTestDatabase? database = null)
     {
         _network = await CreateNetwork(cancellationToken).ConfigureAwait(false);
+        _database = database;
+        if (database is not null)
+        {
+            // The schema is applied out-of-band, before the appliance starts: the test starts the database
+            // on the shared network and migrates it, so the appliance only connects to a ready database.
+            await database.StartAsync(_network, cancellationToken).ConfigureAwait(false);
+            Database = database;
+        }
 
         var (applianceImage, applianceImageName) =
-            await IqImages.GetApplianceImageAsync(Role, cancellationToken).ConfigureAwait(false);
+            await IqImages.GetApplianceImageAsync(Role, cancellationToken, Engine).ConfigureAwait(false);
         _applianceImageName = applianceImageName;
         var clientImage = await IqImages.GetClientAsync(cancellationToken).ConfigureAwait(false);
 
@@ -117,6 +178,23 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
             .WithEnvironment("Jwt__Authority", "https://iq.test")
             .WithEnvironment("Jwt__Audiences__0", "https://iq.test")
             .WithPortBinding(ServerPort, true);
+
+        // The relational backend (postgres/mssql) is selected by the engine-baked image and reached via a
+        // runtime-supplied connection string, the same way a deployment supplies a database password. The
+        // engine variant image bakes Appliance__Engine and the relational persistence selectors; the test
+        // supplies the connection string pointing at the "db" network alias.
+        if (database is not null)
+        {
+            builder = builder
+                .WithEnvironment("ConnectionStrings__OpenCertServer", database.NetworkConnectionString);
+            if (Engine == "mssql")
+            {
+                // The MSSQL provider trusts the server certificate on the test network; a deployment would
+                // pin a real CA. Documented here so the appliance can open the test connection.
+                builder = builder.WithEnvironment("ConnectionStrings__OpenCertServer",
+                    AppendTrustedCertificate(database.NetworkConnectionString));
+            }
+        }
 
         // The CA and Unified roles issue from a persistent store; RA does not (its DataDirectory is
         // skipped), so only mount one where the role needs it. A tmpfs mount (in-container memory) is
@@ -220,6 +298,19 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
         await _server.StartAsync(cancellationToken).ConfigureAwait(false);
         await Client.StartAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>Boots the appliance against a freshly created, out-of-band-migrated relational database.</summary>
+    private async Task BootWithDatabaseAsync(CancellationToken cancellationToken)
+    {
+        var database = new RelationalTestDatabase(Engine == "mssql" ? "MSSQL" : "PostgreSQL");
+        await BootAsync(cancellationToken, database).ConfigureAwait(false);
+    }
+
+    /// <summary>Appends TrustServerCertificate=true so the appliance can open the test network's connection.</summary>
+    private static string AppendTrustedCertificate(string connectionString) =>
+        connectionString.Contains("TrustServerCertificate", StringComparison.OrdinalIgnoreCase)
+            ? connectionString
+            : connectionString.TrimEnd(';') + ";TrustServerCertificate=true";
 
     /// <summary>Runs a bash script in the client container.</summary>
     public Task<ExecResult> ExecClientAsync(string script, CancellationToken cancellationToken = default) =>

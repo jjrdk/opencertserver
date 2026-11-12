@@ -1,0 +1,36 @@
+# Chiseled Ubuntu 24.04 appliance — CA responder only.
+#
+# Serves the CA HTTP surface (/ca/csr, /ca/revoke, /ca/crl, /ca/ocsp) and /health. No EST/ACME/SCEP.
+# Same hardened, unprivileged, ICU-less (InvariantGlobalization) chiseled posture as Dockerfile.unified;
+# only the role differs. See Dockerfile.unified for the chisel rationale (runtime-deps chiseled + a
+# self-contained publish that bundles the ASP.NET Core framework).
+ARG PLATFORM=linux/amd64
+# runtime-deps chiseled carries the glibc deps but no .NET runtime, so the publish is self-contained
+# (it bundles coreclr + hostfxr + the ASP.NET Core framework).
+FROM --platform=${PLATFORM} mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled
+
+ARG RID=linux-x64
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV DOTNET_NOLOGO=true
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+ENV Appliance__Role=Ca
+ENV Appliance__Hardened=true
+ENV Telemetry__Enabled=false
+
+# ---- Relational backend (postgres) ----
+# This variant is built to target the postgres engine. The connection string is a deployment
+# secret supplied at runtime via ConnectionStrings__OpenCertServer (not baked into the image);
+# AcmeServer:Persistence=relational and Ca:Persistence=relational select the relational stores, and
+# Appliance:Engine picks the postgres IRelationalStoreProvider. Schema migrations are an out-of-band
+ENV Appliance__Engine=postgres
+ENV AcmeServer__Persistence=relational
+ENV Ca__Persistence=relational
+COPY artifacts/publish/appliance/${RID}/ app/
+WORKDIR /app
+
+USER 1654
+
+EXPOSE 6001
+# No baked-in VOLUME: the appliance runs unprivileged (UID 1654), so a root-owned Docker volume
+# would not be writable. Mount an operator-owned data directory at /var/lib/opencertserver instead.
+ENTRYPOINT ["./opencertserver.certserver"]

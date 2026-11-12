@@ -119,7 +119,7 @@ public sealed partial class ApplianceUpgradeSteps
 
     private static string ReadHeader(string path, string name) =>
         File.ReadLines(path).FirstOrDefault(line => line.StartsWith(name + ":", StringComparison.OrdinalIgnoreCase))
-            ?[(name.Length + 1)..].Trim() ?? "";
+            ?[(name.Length + 1)..]?.Trim() ?? "";
 
     [Then("the appliance ACME file store round-trips account and order aggregates")]
     public async Task AcmeFileRoundTrip()

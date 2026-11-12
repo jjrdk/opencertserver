@@ -1,0 +1,47 @@
+# Full (non-chiseled) Ubuntu 24.04 appliance — Unified (EST + ACME + SCEP + CA), mssql engine.
+#
+# Unlike the chiseled Dockerfile.unified / Dockerfile.unified.postgres, this variant uses the FULL
+# runtime-deps image: the SQL Server EF Core provider (Microsoft.Data.SqlClient, via
+# RelationalConnection) hard-requires ICU, which the chiseled image does not ship. The chiseled
+# InvariantGlobalization posture (see Dockerfile.unified) works for the PostgreSQL provider (Npgsql
+# tolerates invariant mode) but throws "Globalization Invariant Mode is not supported" for mssql, so
+# the mssql variant keeps ICU and a non-invariant runtime.
+#
+# The runtime-deps image carries the native dependencies (incl. ICU and OpenSSL 3, which .NET's
+# SslStream loads) but NOT the .NET runtime (and no chiseled ASP.NET Core image exists), so the app is
+# published self-contained WITHOUT InvariantGlobalization: the publish bundles coreclr + hostfxr + the
+# ASP.NET Core framework, and the harness builds this variant from a non-invariant publish
+# (artifacts/publish/appliance/mssql/${RID}). PLATFORM/RID default to amd64; the IQ harness overrides
+# both to run natively on the Docker host. The image already runs as the unprivileged "app" user.
+ARG PLATFORM=linux/amd64
+FROM --platform=${PLATFORM} mcr.microsoft.com/dotnet/runtime-deps:10.0-noble
+
+ARG RID=linux-x64
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV DOTNET_NOLOGO=true
+# The mssql EF provider needs ICU; the full runtime-deps image ships it, so the runtime is NOT invariant.
+ENV Appliance__Role=Unified
+ENV Appliance__Hardened=true
+ENV Telemetry__Enabled=false
+
+# ---- Relational backend (mssql) ----
+# This variant is built to target the mssql engine. The connection string is a deployment
+# secret supplied at runtime via ConnectionStrings__OpenCertServer (not baked into the image);
+# AcmeServer:Persistence=relational and Ca:Persistence=relational select the relational stores, and
+# Appliance:Engine picks the mssql IRelationalStoreProvider. Schema migrations are an out-of-band
+# step (dotnet ef / the adapter's MigrateAsync) and are NEVER applied at startup. The mssql
+# database container must be started with ACCEPT_EULA=Y.
+ENV Appliance__Engine=mssql
+ENV AcmeServer__Persistence=relational
+ENV Ca__Persistence=relational
+# The mssql variant is built from a separate, non-invariant publish (the SQL Server provider needs ICU).
+COPY artifacts/publish/appliance/mssql/${RID}/ app/
+WORKDIR /app
+
+# The full runtime-deps image runs as the unprivileged "app" user (UID 1654).
+USER 1654
+
+EXPOSE 6000 6001
+# No baked-in VOLUME: the appliance runs unprivileged (UID 1654), so a root-owned Docker volume
+# would not be writable. Mount an operator-owned data directory at /var/lib/opencertserver instead.
+ENTRYPOINT ["./opencertserver.certserver"]

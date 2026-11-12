@@ -142,6 +142,47 @@ public sealed class ApplianceContainerSteps
         Assert.Contains("HTTPS", logs, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Then(@"^the ""(.*)"" database reflects the appliance's relational access$")]
+    public async Task DatabaseReflectsRelationalAccess(string engine)
+    {
+        // The client (a black-box with only curl/openssl) forced the appliance to persist a nonce via the
+        // anonymous GET /new-nonce; the test then queries the database directly, proving the appliance
+        // connected to and wrote to the relational backend on the shared network. Both engines keep the
+        // table named Nonces; PostgreSQL quotes it, MSSQL brackets it.
+        var sql = engine == "mssql"
+            ? "SELECT COUNT(*) FROM [Nonces]"
+            : "SELECT COUNT(*) FROM \"Nonces\"";
+        var rows = await _environment!.Database!.QueryRowCountAsync(sql, CancellationToken.None).ConfigureAwait(false);
+        Assert.True(rows > 0, $"Expected the {engine} database to hold a persisted nonce, found {rows}.");
+    }
+
+    [Given(@"^the ""(.*)"" appliance is deployed with the ""(.*)"" relational database$")]
+    public async Task DeployWithDatabase(string role, string engine)
+    {
+        _environment = await IqApplianceEnvironment.StartWithDatabaseAsync(role, engine)
+            .ConfigureAwait(false);
+        _scenarioContext.Set(_environment);
+    }
+
+    [Given(@"^the schema for the ""(.*)"" database is migrated out of band$")]
+    public Task SchemaMigratedOutofBand(string engine)
+    {
+        // The RelationalTestDatabase applies the schema at startup (out of band, before the appliance
+        // starts), so this step documents that invariant rather than performing it in the appliance.
+        Assert.NotNull(_environment?.Database);
+        return Task.CompletedTask;
+    }
+
+    [When(@"^the appliance performs a database-backed role operation$")]
+    public async Task AppliancePerformsDatabaseOperation()
+    {
+        // A GET /new-nonce is anonymous on a hardened appliance; it forces INonceService.CreateNonceAsync,
+        // which persists a row to the relational NonceStore. The 204 + Replay-Nonce prove the call ran.
+        await _environment!.ClientGetAsync("/new-nonce").ConfigureAwait(false);
+        var (status, _, _) = await _environment.ReadProbeAsync().ConfigureAwait(false);
+        Assert.Equal(204, status);
+    }
+
     private async Task ExpectAsync(string method, string path, int expected)
     {
         var (status, _, _) = await ProbeAsync(method, path).ConfigureAwait(false);

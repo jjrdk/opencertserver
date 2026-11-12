@@ -202,6 +202,14 @@ configuration for the selected role under [`deploy/appliance/`](../deploy/applia
 follow the [headless appliance operator guide](appliance.md) for role-specific trust, endpoint,
 backup, upgrade, and rollback details.
 
+For a relational backend instead of the in-container file store, build the matching engine variant
+— `Dockerfile.<role>.postgres` or `Dockerfile.<role>.mssql` — which bakes `Appliance:Engine` and the
+`relational` persistence choices and reads its connection string from
+`ConnectionStrings:OpenCertServer` at runtime. The postgres variant is chiseled; the mssql variant
+builds on the full `runtime-deps` base because the SQL Server EF Core provider requires ICU.
+Schema migrations are an out-of-band step. See the
+[operator guide's relational-storage section](appliance.md#relational-storage).
+
 On the host (without a container), the same file is accepted:
 
 ```sh

@@ -78,7 +78,7 @@ internal static class IqImages
     /// roles; each role's Dockerfile only differs in the baked <c>Appliance__Role</c> default and exposed ports.
     /// </summary>
     public static async Task<(IImage Image, string Name)> GetApplianceImageAsync(
-        string role, CancellationToken cancellationToken = default)
+        string role, CancellationToken cancellationToken = default, string engine = "")
     {
         if (!ApplianceRoles.TryGetValue(role, out var applianceRole))
         {
@@ -89,15 +89,16 @@ internal static class IqImages
         await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_applianceImages.TryGetValue(role, out var image)
-                && _applianceImageNames.TryGetValue(role, out var name))
+            var key = string.IsNullOrEmpty(engine) ? role : $"{role}:{engine}";
+            if (_applianceImages.TryGetValue(key, out var image)
+                && _applianceImageNames.TryGetValue(key, out var name))
             {
                 return (image, name);
             }
 
-            var built = await BuildApplianceImage(applianceRole, cancellationToken).ConfigureAwait(false);
-            _applianceImages[role] = built.Image;
-            _applianceImageNames[role] = built.Name;
+            var built = await BuildApplianceImage(applianceRole, engine, cancellationToken).ConfigureAwait(false);
+            _applianceImages[key] = built.Image;
+            _applianceImageNames[key] = built.Name;
             return built;
         }
         finally
@@ -105,12 +106,23 @@ internal static class IqImages
             Gate.Release();
         }
     }
-
     private static async Task<(IImage Image, string Name)> BuildApplianceImage(
-        ApplianceRole applianceRole, CancellationToken cancellationToken)
+        ApplianceRole applianceRole, string engine, CancellationToken cancellationToken)
     {
         var rid = $"linux-{Arch}";
-        var imageName = $"opencertserver-iq-appliance-{applianceRole.Role.ToLowerInvariant()}:local";
+        // A blank engine keeps the original per-role Dockerfile (no relational backend baked in); a
+        // concrete engine selects the matching variant that bakes Appliance__Engine plus the relational
+        // persistence selectors.
+        var engineTag = string.IsNullOrWhiteSpace(engine) ? "" : engine.Trim().ToLowerInvariant() switch
+        {
+            "mssql" or "sqlserver" => "mssql",
+            _ => "postgres"
+        };
+        var dockerfile = engineTag.Length == 0
+            ? applianceRole.Dockerfile
+            : $"Dockerfile.{applianceRole.Role.ToLowerInvariant()}.{engineTag}";
+        var imageSuffix = engineTag.Length == 0 ? "" : $"-{engineTag}";
+        var imageName = $"opencertserver-iq-appliance-{applianceRole.Role.ToLowerInvariant()}{imageSuffix}:local";
 
         if (Environment.GetEnvironmentVariable($"IQ_APPLIANCE_{applianceRole.Role.ToUpperInvariant()}_IMAGE")
             is { Length: > 0 } prebuilt)
@@ -119,13 +131,20 @@ internal static class IqImages
             return (new DockerImage(prebuilt), imageName);
         }
 
-        var context = Path.Combine(RepositoryPaths.IqArtifacts, $"appliance-context-{applianceRole.Role.ToLowerInvariant()}");
+        var context = Path.Combine(RepositoryPaths.IqArtifacts,
+            $"appliance-context-{applianceRole.Role.ToLowerInvariant()}{imageSuffix}");
         Directory.CreateDirectory(context);
-        File.Copy(Path.Combine(RepositoryPaths.Root, applianceRole.Dockerfile),
+        File.Copy(Path.Combine(RepositoryPaths.Root, dockerfile),
             Path.Combine(context, "Dockerfile"), true);
 
         // The self-contained publish is shared across the three role images; publish once per RID.
-        var publishDir = Path.Combine(RepositoryPaths.IqArtifacts, "appliance-publish", rid);
+        // The mssql variant needs ICU — the SQL Server EF Core provider (Microsoft.Data.SqlClient)
+        // does not support invariant globalization — so it is published WITHOUT InvariantGlobalization
+        // and staged under a separate mssql sub-path that its Dockerfiles COPY from. The chiseled
+        // postgres/base variants stay on the ICU-less invariant publish.
+        var mssql = engineTag == "mssql";
+        var ridDir = mssql ? Path.Combine("mssql", rid) : rid;
+        var publishDir = Path.Combine(RepositoryPaths.IqArtifacts, "appliance-publish", ridDir);
         if (!File.Exists(Path.Combine(publishDir, "opencertserver.certserver")))
         {
             await DotNetPublish(
@@ -134,12 +153,13 @@ internal static class IqImages
                     rid,
                     publishDir,
                     cancellationToken,
-                    "-p:InvariantGlobalization=true")
+                    $"-p:InvariantGlobalization={(mssql ? "false" : "true")}")
                 .ConfigureAwait(false);
         }
 
-        // The appliance Dockerfiles COPY artifacts/publish/appliance/${RID}/; stage the publish there.
-        var stageDir = Path.Combine(context, "artifacts", "publish", "appliance", rid);
+        // The appliance Dockerfiles COPY their variant's publish dir (…/appliance/${RID} for the
+        // chiseled variants, …/appliance/mssql/${RID} for mssql); stage the publish there.
+        var stageDir = Path.Combine(context, "artifacts", "publish", "appliance", ridDir);
         if (Directory.Exists(stageDir))
         {
             Directory.Delete(stageDir, true);

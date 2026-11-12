@@ -1068,8 +1068,17 @@ proves the chiseled images from a separate Ubuntu client container: the Unified,
 run as UID `1654`, complete a TLS 1.3 handshake, reject TLS 1.2, omit the `Server` header, report a
 healthy `/health`, and expose only their own endpoint surface; a hardened appliance refuses to start
 when a plain-HTTPS listener is absent.
+The same feature proves a **relational** appliance connects to and seeds its database: an engine
+variant image (`Dockerfile.<role>.postgres` / `Dockerfile.<role>.mssql`) bakes
+`Appliance:Engine` plus the `relational` persistence choices and reads its connection string from the
+`ConnectionStrings:OpenCertServer` environment variable at runtime. A Testcontainers-managed
+PostgreSQL or MSSQL container is migrated out of band, then a black-box `GET /new-nonce` forces the
+appliance to persist a nonce row, which the test queries back from the database.
+The **postgres** variant is chiseled and invariant; the **mssql** variant builds on the **full**
+`runtime-deps` base with a non-invariant self-contained publish, because the SQL Server EF Core
+provider (`Microsoft.Data.SqlClient`) hard-requires ICU — which the chiseled image does not ship.
 See [Getting started](getting-started.md#appliance-roles-and-upgrades) and the
-[headless appliance operator guide](appliance.md).
+[headless appliance operator guide](appliance.md#relational-storage).
 
 ### OpenTelemetry metrics emitted
 

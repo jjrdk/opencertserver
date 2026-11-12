@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using OpenCertServer.Est.Server.TrustAnchor;
 using OpenCertServer.Data;
 using OpenCertServer.Data.PostgreSql;
+using OpenCertServer.Data.MsSql;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
@@ -317,6 +318,12 @@ internal static class Program
 
         // --- Hardened-deployment registrations, each config-gated and fail-closed when unset ---
 
+        // The relational engine (postgres or mssql) is chosen by Appliance__Engine so the same image can
+        // target either backend; the connection is read from ConnectionStrings:OpenCertServer. Schema
+        // migrations are an out-of-band step (dotnet ef / the adapter's MigrateAsync) — never applied at
+        // startup.
+        var relationalEngine =
+            builder.Configuration["Appliance:Engine"]?.Trim()?.ToLowerInvariant();
         switch (builder.Configuration["AcmeServer:Persistence"]?.ToLowerInvariant())
         {
             case null:
@@ -326,7 +333,7 @@ internal static class Program
                 services.AddAcmeFileStore(builder.Configuration);
                 break;
             case "relational":
-                services.AddPostgreSqlStore()
+                AddRelationalEngine(services, relationalEngine)
                     .AddAcmeRelationalStore(builder.Configuration, "OpenCertServer");
                 break;
             default:
@@ -338,7 +345,7 @@ internal static class Program
             case "memory":
                 break;
             case "relational":
-                services.AddPostgreSqlStore()
+                AddRelationalEngine(services, relationalEngine)
                     .AddCaRelationalStore(builder.Configuration, "OpenCertServer");
                 break;
             default:
@@ -572,6 +579,21 @@ internal static class Program
             .RequireAuthenticatedUser()
             .Build();
     }
+
+    /// <summary>
+    /// Selects the relational store engine (PostgreSQL or MSSQL) that subsequent relational-store
+    /// registrations bind to. The engine is chosen by <c>Appliance:Engine</c> so a single image can target
+    /// either backend; PostgreSQL is the default when the key is absent. The connection string is read from
+    /// <c>ConnectionStrings:OpenCertServer</c>. Schema migrations are an out-of-band step, not applied here.
+    /// </summary>
+    private static IServiceCollection AddRelationalEngine(IServiceCollection services, string? engine)
+        => engine switch
+        {
+            null or "postgres" or "postgresql" => services.AddPostgreSqlStore(),
+            "mssql" or "sqlserver" => services.AddMsSqlStore(),
+            var other => throw new InvalidOperationException(
+                $"Unsupported Appliance:Engine '{other}'. Expected 'postgres' or 'mssql'.")
+        };
 
     /// <summary>
     /// External account keys configured under <c>AcmeServer:ExternalAccountKey:{keyId}</c>, each with a

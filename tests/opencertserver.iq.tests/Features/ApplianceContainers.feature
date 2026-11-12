@@ -44,3 +44,15 @@ Feature: Chiseled appliance containers are hardened and serve their role
   Scenario: A hardened appliance refuses a plain-HTTP listener
     Given a hardened appliance is started with a plain-HTTP Kestrel endpoint
     Then the appliance refuses to start because a hardened appliance permits only HTTPS listeners
+
+  Rule: A relational appliance connects to and seeds its database
+  Scenario Outline: The relational <Engine> appliance connects to and seeds its database
+    Given the "<Role>" appliance is deployed with the "<Engine>" relational database
+    And the schema for the "<Engine>" database is migrated out of band
+    When the appliance performs a database-backed role operation
+    Then the "<Engine>" database reflects the appliance's relational access
+
+    Examples:
+      | Role    | Engine   |
+      | Unified | postgres |
+      | Unified | mssql     |

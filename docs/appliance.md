@@ -12,6 +12,12 @@ configuration they consume. The appliance is headless and provides protocol endp
 | `opencertserver-ra` (`Dockerfile.ra`) | Operator API `/ra/*` and liveness `/health` | No | Authenticated RA service delegating issuance to a CA |
 | `Dockerfile.appliance` | Same unified role as `Dockerfile.unified` | Yes | Compatibility build name for the unified image |
 
+The in-container, file-backed store is the default for every role above. For a
+relational backend, build the matching engine variant instead —
+[`Dockerfile.<role>.postgres`](#relational-storage) /
+[`Dockerfile.<role>.mssql`](#relational-storage) — which bakes the engine selector and the
+`relational` persistence choices and reads its connection string from the environment at runtime.
+
 The RA image is not the `opencertserver.ra` library by itself. It is the headless RA host
 which uses that library's outbound `RaPeerClient`. It does not expose EST, ACME, the CA's
 `/ca/*` routes, or an inbound CA peer API. The CA and RA communicate over the RA client's
@@ -219,6 +225,97 @@ curl --cacert tls-root.pem \
 
 Container request-audit events are written to stdout/stderr. Collect logs in access-controlled
 durable storage and set retention appropriate to your policy.
+
+## Relational storage
+
+The default appliance store is in-container (a tmpfs `certificates.json` snapshot plus the ACME
+file store for the Unified role). A relational backend (PostgreSQL or MSSQL) is selected by an
+**engine variant Dockerfile** and its connection string is supplied at **runtime** — it is never
+baked into the image.
+
+### Engine variants
+
+Each role has two relational variants alongside its base image:
+
+| Base image | Relational variants |
+|---|---|
+| `Dockerfile.unified` | `Dockerfile.unified.postgres`, `Dockerfile.unified.mssql` |
+| `Dockerfile.ca` | `Dockerfile.ca.postgres`, `Dockerfile.ca.mssql` |
+| `Dockerfile.ra` | `Dockerfile.ra.postgres`, `Dockerfile.ra.mssql` |
+
+Each variant bakes the same three environment defaults as its base:
+
+```dockerfile
+ENV Appliance__Engine=postgres          # postgres | mssql — selects the IRelationalStoreProvider
+ENV AcmeServer__Persistence=relational  # selects the relational ACME stores
+ENV Ca__Persistence=relational          # selects the relational certificate store
+```
+
+The connection string is **not** baked in; it is a deployment secret supplied at runtime via the
+`ConnectionStrings:OpenCertServer` environment variable (`ConnectionStrings__OpenCertServer`). The
+RA role does not issue and has no data directory, so its relational variants are inert (its store
+selection has nothing to write) — use a relational backend on the Unified or CA roles.
+
+The **postgres** variants are chiseled like their base image. The **mssql** variants are not: the
+SQL Server EF Core provider (`Microsoft.Data.SqlClient`, via `RelationalConnection`) hard-requires ICU,
+which the chiseled `runtime-deps` image does not ship. The PostgreSQL provider (`Npgsql`) tolerates
+invariant globalization, so the postgres variant can stay chiseled and invariant; the mssql variant
+must instead build on the **full** `mcr.microsoft.com/dotnet/runtime-deps:10.0-noble` base (which
+carries ICU) from a **non-invariant** self-contained publish — it keeps the same hardened posture
+(UID 1654, TLS 1.3, HTTPS-only) but is larger because ICU and the full locale data ship in the image.
+The mssql image therefore omits `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`.
+
+Build from the repository root:
+
+```sh
+docker build -f Dockerfile.unified.postgres -t opencertserver-unified-postgres:local .
+docker build -f Dockerfile.unified.mssql   -t opencertserver-unified-mssql:local .
+```
+
+### Migrations are out of band
+
+The appliance **never** applies schema migrations at startup. The relational store assumes the
+schema already exists. Apply it out of band with the matching adapter's EF migration project,
+**once, before starting or upgrading the server** — the same procedure as the embedded-host
+guidance in [Getting started](getting-started.md#postgresql-persistence):
+
+```sh
+# PostgreSQL
+dotnet ef database update --project src/opencertserver.data.postgresql
+# MSSQL
+dotnet ef database update --project src/opencertserver.data.mssql
+```
+
+Back up the database before an upgrade; generate and review an idempotent migration script for
+production. The `OpencertServer` connection-string name is shared by the ACME and CA stores, so a
+single `ConnectionStrings:OpenCertServer` entry backs both.
+
+### Running a relational appliance
+
+```sh
+docker run -d --name opencertserver-unified-postgres --restart unless-stopped \
+  --read-only --cap-drop ALL --security-opt no-new-privileges \
+  --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+  -p 5001:5001 \
+  -e 'ConnectionStrings__OpenCertServer=Host=db;Port=5432;Database=opencert;Username=ocs;Password=REPLACE_WITH_SECRET' \
+  --mount type=bind,src="$PWD/config/appsettings.json",dst=/config/appsettings.json,readonly \
+  --mount type=bind,src="$PWD/keys",dst=/run/secrets,readonly \
+  opencertserver-unified-postgres:local
+```
+
+The database is reached over the network at `ConnectionStrings:OpenCertServer`; the engine variant
+image determines which provider (PostgreSQL or MSSQL) and store implementation are registered.
+The MSSQL variant trusts the server certificate on the test network — pin a real CA in production.
+
+### Verification
+
+`opencertserver.iq.tests` `ApplianceContainers.feature` boots a relational appliance against a
+Testcontainers-managed PostgreSQL or MSSQL container on a shared network and proves it connects and
+seeds data: the out-of-band-migrated schema is prepared on the network first, then a black-box
+`GET /new-nonce` (anonymous on a hardened Unified appliance) forces the appliance to persist a nonce
+row, and the test queries the database directly to assert the row exists. The relational backend is
+selected by the engine-baked image and reached via the runtime-supplied connection string — the same
+mechanism a deployment uses to supply a database password.
 
 ## Container image verification
 
