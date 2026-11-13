@@ -99,7 +99,7 @@ public sealed partial class ApplianceUpgradeSteps
         var encodedPayload = Encode(payload);
         var signature = key.SignData(Encoding.ASCII.GetBytes(protectedHeader + "." + encodedPayload),
             HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-        File.WriteAllText(request, new JsonObject
+        await File.WriteAllTextAsync(request, new JsonObject
         {
             ["protected"] = protectedHeader, ["payload"] = encodedPayload,
             ["signature"] = Base64UrlEncoder.Encode(signature)
@@ -112,7 +112,7 @@ public sealed partial class ApplianceUpgradeSteps
             "--dump-header", headers, "--output", body, "--write-out", "%{http_code}", url
         ]);
         Assert.True(result.ExitCode == 0, result.Error);
-        return (int.Parse(result.Output), File.ReadAllText(body), ReadHeader(headers, "Location"));
+        return (int.Parse(result.Output), await File.ReadAllTextAsync(body), ReadHeader(headers, "Location"));
     }
 
     private static string Encode(string value) => Base64UrlEncoder.Encode(Encoding.UTF8.GetBytes(value));

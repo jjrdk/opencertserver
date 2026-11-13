@@ -55,8 +55,8 @@ public sealed partial class ApplianceUpgradeSteps
             [$"http://host.docker.internal:{crlPort}/ra.crl"]));
         using var identity = identityRequest.Create(root, DateTimeOffset.UtcNow.AddMinutes(-1),
             DateTimeOffset.UtcNow.AddDays(1), RandomNumberGenerator.GetBytes(16));
-        File.WriteAllText(Path.Combine(_directory, "ra.pem"), identity.ExportCertificatePem());
-        File.WriteAllText(Path.Combine(_directory, "ra.key"), identityKey.ExportPkcs8PrivateKeyPem());
+        await File.WriteAllTextAsync(Path.Combine(_directory, "ra.pem"), identity.ExportCertificatePem());
+        await File.WriteAllTextAsync(Path.Combine(_directory, "ra.key"), identityKey.ExportPkcs8PrivateKeyPem());
         var crl = new CertificateRevocationListBuilder().Build(root, BigInteger.One,
             DateTimeOffset.UtcNow.AddDays(1), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         var issuerPort = FreePort();
@@ -99,7 +99,7 @@ public sealed partial class ApplianceUpgradeSteps
         _identityProvider.MapGet("/ra.crl", () => Results.Bytes(crl, "application/pkix-crl"));
         await _identityProvider.StartAsync();
         config["Jwt"]!["Authority"] = issuer;
-        File.WriteAllText(Source, config.ToJsonString());
+        await File.WriteAllTextAsync(Source, config.ToJsonString());
         await StartContainer(Environment.GetEnvironmentVariable("OPENCERT_APPLIANCE_TEST_CA_IMAGE") ?? image!);
         _caContainer = _container;
         _container = null;
@@ -116,7 +116,7 @@ public sealed partial class ApplianceUpgradeSteps
             ["CaTrustRoots"] = new JsonArray(Path.Combine(_directory, "tls.pem"))
         };
         var raConfigPath = Path.Combine(_directory, "ra-config.json");
-        File.WriteAllText(raConfigPath, config.ToJsonString());
+        await File.WriteAllTextAsync(raConfigPath, config.ToJsonString());
         // The CA holds its original file mount; replacing a different path avoids changing its configuration.
         File.Move(raConfigPath, Source, overwrite: true);
         await StartContainer(Environment.GetEnvironmentVariable("OPENCERT_APPLIANCE_TEST_RA_IMAGE") ?? image!);
@@ -147,7 +147,7 @@ public sealed partial class ApplianceUpgradeSteps
         request.CertificateExtensions.Add(names.Build());
         var csr = Path.Combine(_directory, "request.csr");
         var body = Path.Combine(_directory, "response.txt");
-        File.WriteAllText(csr, request.CreateSigningRequestPem());
+        await File.WriteAllTextAsync(csr, request.CreateSigningRequestPem());
         var result = await Execute("curl",
         [
             "--silent", "--show-error", "--noproxy", "*", "--max-time", "30",
@@ -157,7 +157,7 @@ public sealed partial class ApplianceUpgradeSteps
             $"https://localhost:{_port}/ra/enroll"
         ]);
         Assert.True(result.ExitCode == 0, result.Error);
-        return (int.Parse(result.Output), File.ReadAllText(body));
+        return (int.Parse(result.Output), await File.ReadAllTextAsync(body));
     }
 
     [Then("the certificate is signed by the remote CA")]

@@ -42,13 +42,24 @@ internal static class IqImages
         }
     }
 
-    public static Task PublishMcpAsync(string output, CancellationToken cancellationToken = default) =>
-        DotNetPublish(
-            Path.Combine(RepositoryPaths.Root, "src", "opencertserver.mcp", "opencertserver.mcp.csproj"),
-            $"linux-{Arch}",
-            output,
-            cancellationToken,
-            "-p:PublishTrimmed=false");
+    public static async Task PublishMcpAsync(string output, CancellationToken cancellationToken = default)
+    {
+        // All IQ publishes share dependency bin/obj directories, even with separate output paths.
+        await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await DotNetPublish(
+                Path.Combine(RepositoryPaths.Root, "src", "opencertserver.mcp", "opencertserver.mcp.csproj"),
+                $"linux-{Arch}",
+                output,
+                cancellationToken,
+                "-p:PublishTrimmed=false").ConfigureAwait(false);
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
 
     public static async Task<(IImage Server, IImage Client)> GetAsync(CancellationToken cancellationToken = default)
     {

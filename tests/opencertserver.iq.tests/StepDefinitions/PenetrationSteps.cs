@@ -456,7 +456,7 @@ public sealed class PenetrationSteps(
 
     private async Task<Reply> Raw(string request)
     {
-        var script = File.ReadAllText(Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "pentest-raw-request.py"));
+        var script = await File.ReadAllTextAsync(Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "pentest-raw-request.py"));
         var result = await Tool("python3", "-c", script, Host, Port.ToString(CultureInfo.InvariantCulture),
             TrustRoot, Convert.ToBase64String(Encoding.ASCII.GetBytes(request))).ConfigureAwait(false);
         Assert.True(result.ExitCode == 0, $"Raw TLS probe failed:\n{result.Stdout}\n{result.Stderr}");

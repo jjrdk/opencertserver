@@ -50,6 +50,22 @@ bring-up programmatically.
 
 MCP is the stdio exception to the network topology: it reuses the client image and
 publish infrastructure, but needs no HTTP server, DNS container or private network.
+Its publish uses the same semaphore as the server, client and appliance image builds:
+their project references share `bin`/`obj` directories even with distinct publish
+output paths. Keep every IQ publish under that gate so parallel features cannot
+overwrite one another's build artifacts; scenario execution remains parallel.
+
+The raw HTTP perimeter probe reads the server's rejection response even if an
+oversized request triggers a broken pipe during the send. A broken pipe alone is
+not a passing result: the header-limit scenario still requires HTTP 400 or 431.
+
+HTTP readiness attempts for the IQ server, issuer, DNS API and telemetry collector
+are limited to five seconds each. Probe timeouts and unwrapped socket errors are
+logged and reported as retryable HTTP failures because Testcontainers 4.16 only
+retries `HttpRequestException`, not timeout cancellations or `SocketException`.
+HTTP status checks, TLS trust validation and caller cancellation are preserved.
+`Features/Readiness.feature` covers timeout and socket-error recovery,
+cancellation and unchanged HTTP status codes without Docker.
 
 > **Status.** The ACME feature ([`AcmeIssuance.feature`](./Features/AcmeIssuance.feature))
 > is implemented: [`Support/IqAcmeEnvironment.cs`](./Support/IqAcmeEnvironment.cs) builds the

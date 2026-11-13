@@ -19,9 +19,18 @@ only compiles the middleware it serves:
 
 | Host project | Role | Serves | References |
 |---|---|---|---|
-| `opencertserver.host.ca` | CA | `UseCertificateAuthorityServer` + `/health` (trust anchor: `/csr`, `/crl`, `/ocsp`, `/profiles`) | `ca.server`, `ca.utils`, `est.server` |
+| `opencertserver.host.ca` | CA | `UseCertificateAuthorityServer` + `/health` (trust anchor: `/ca/csr`, `/ca/crl`, `/ca/ocsp`, `/ca/profiles`) | `ca.server`, `ca.utils`, `est.server` |
 | `opencertserver.host.ra` | RA | `/ra/enroll`, `/ra/renew`, `/ra/revoke`, `/health` | `ra`, `est.server` |
 | `opencertserver.host.unified` | Unified | EST + ACME + SCEP + CA + `/health` | superset of the above (+ `acme.server`, `acme.remote`, `scep.server`, `contrib.intune`) |
+
+Each host ships a per-host runbook (`README.md`) documenting why it exists, what it serves/omits, and its
+full configuration contract:
+
+| Host | README |
+|---|---|
+| CA | [`src/hosts/opencertserver.host.ca/README.md`](../src/hosts/opencertserver.host.ca/README.md) |
+| RA | [`src/hosts/opencertserver.host.ra/README.md`](../src/hosts/opencertserver.host.ra/README.md) |
+| Unified / superset | [`src/hosts/opencertserver.host.unified/README.md`](../src/hosts/opencertserver.host.unified/README.md) |
 
 The **relational engine** (postgres or mssql) is *not* a separate host: the same per-role host wires the
 store from `Appliance:Engine` at start-up, and the per-engine image is selected at deploy time via the

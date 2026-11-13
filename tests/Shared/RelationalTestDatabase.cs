@@ -111,7 +111,35 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
                 throw new NotSupportedException($"No relational test database factory is registered for '{database}'.");
         }
 
+        if (database == "PostgreSQL")
+        {
+            await WaitForHostConnectionAsync(cancellationToken);
+        }
         await MigrateAsync(cancellationToken);
+    }
+
+    private async Task WaitForHostConnectionAsync(CancellationToken cancellationToken)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(TimeSpan.FromMinutes(1));
+        while (true)
+        {
+            // Container-local readiness does not establish that Docker's mapped host port is usable.
+            await using var connection = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Timeout = 2
+            }.ConnectionString);
+            try
+            {
+                await connection.OpenAsync(deadline.Token);
+                return;
+            }
+            catch (NpgsqlException exception) when (exception.IsTransient)
+            {
+                await Console.Error.WriteLineAsync($"Waiting for {database} host connection: {exception.Message}");
+                await Task.Delay(TimeSpan.FromSeconds(1), deadline.Token);
+            }
+        }
     }
 
     public Task MigrateAsync(CancellationToken cancellationToken) => MigrateAsync(ConnectionString, cancellationToken);

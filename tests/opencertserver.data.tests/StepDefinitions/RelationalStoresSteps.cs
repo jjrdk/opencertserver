@@ -220,7 +220,7 @@ public sealed class RelationalStoresSteps
     public async Task Cancellation()
     {
         using var cancelled = new CancellationTokenSource();
-        cancelled.Cancel();
+        await cancelled.CancelAsync();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Accounts.LoadAccount("missing", cancelled.Token));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Orders.LoadOrder("missing", cancelled.Token));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Nonces.SaveNonceAsync(new Nonce("cancelled"), cancelled.Token));

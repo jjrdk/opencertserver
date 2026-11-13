@@ -24,6 +24,22 @@ client libraries, so you can copy and adapt it directly.
 This produces the `opencert` CLI, the `certserver` HTTP server, and the NuGet packages under
 `artifacts/`.
 
+### Run the tests
+
+The tests target .NET 10 and require its runtime as well as an SDK. SDK roll-forward
+in `global.json` does not install the .NET 10 runtime or allow tests to run on a newer
+runtime automatically. Check `dotnet --list-runtimes` if test executables cannot start.
+Docker must also be running for the relational and IQ scenarios.
+
+```sh
+dotnet test
+```
+
+In Rider, use **Settings > Build, Execution, Deployment > Toolset and Build** to
+select an installed .NET CLI executable. After a Homebrew upgrade, a cached
+versioned `Cellar` path may no longer exist. For a `dotnet@10` installation, the
+stable path is `/opt/homebrew/opt/dotnet@10/libexec/dotnet` on Apple Silicon.
+
 ---
 
 ## 2. Run the cert server

@@ -146,7 +146,8 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
                     """), "/etc/otelcol-contrib/config.yaml", fileMode: Unix.FileMode644)
                 .WithPortBinding(13133, true)
                 .WithWaitStrategy(Wait.ForUnixContainer()
-                    .UntilHttpRequestIsSucceeded(r => r.ForPort(13133).ForPath("/")))
+                    .UntilHttpRequestIsSucceeded(r => r.ForPort(13133).ForPath("/")
+                        .UsingHttpMessageHandler(new IqReadinessHandler(new HttpClientHandler()))))
                 .Build());
             await TelemetryCollector.StartAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -164,7 +165,8 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
             .WithCommand("python", "/app/dns_server.py")
             .WithPortBinding(DnsApiPort, true)
             .WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilHttpRequestIsSucceeded(r => r.ForPort(DnsApiPort).ForPath("/health")))
+                .UntilHttpRequestIsSucceeded(r => r.ForPort(DnsApiPort).ForPath("/health")
+                    .UsingHttpMessageHandler(new IqReadinessHandler(new HttpClientHandler()))))
             .Build());
         await _dns.StartAsync(cancellationToken).ConfigureAwait(false);
 
@@ -362,7 +364,7 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
                     .ForPort(ServerPort)
                     .ForPath("/health")
                     .UsingTls()
-                    .UsingHttpMessageHandler(Tls.CreateTrustingHandler())));
+                    .UsingHttpMessageHandler(new IqReadinessHandler(Tls.CreateTrustingHandler()))));
         if (_enableHttp)
         {
             builder = builder

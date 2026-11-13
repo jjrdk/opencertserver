@@ -128,7 +128,7 @@ internal sealed class IqRevocationConfiguration
             .WithPortBinding(8443, true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(request => request
                 .ForPort(8443).ForPath("/.well-known/openid-configuration").UsingTls()
-                .UsingHttpMessageHandler(tls.CreateTrustingHandler())))
+                .UsingHttpMessageHandler(new IqReadinessHandler(tls.CreateTrustingHandler()))))
             .Build();
 
     private static string Base64Url(byte[] bytes) =>

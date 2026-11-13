@@ -199,7 +199,7 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
         var role = config["Appliance"]!["Role"]!.GetValue<string>();
         config["port"] = 5001;
         config["Appliance"]!["DataDirectory"] = "/var/lib/opencertserver";
-        File.WriteAllText(Source, config.ToJsonString().Replace(_directory, "/run/secrets", StringComparison.Ordinal));
+        await File.WriteAllTextAsync(Source, config.ToJsonString().Replace(_directory, "/run/secrets", StringComparison.Ordinal));
         if (!OperatingSystem.IsWindows())
             File.SetUnixFileMode(_directory, UnixFileMode.UserRead | UnixFileMode.UserWrite |
                 UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
