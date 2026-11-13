@@ -1,6 +1,5 @@
 namespace OpenCertServer.Iq.Tests.Support;
 
-using System.Net.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -8,7 +7,6 @@ using System.IO;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
-using DotNet.Testcontainers.Images;
 using DotNet.Testcontainers.Networks;
 using OpenCertServer.Testing;
 

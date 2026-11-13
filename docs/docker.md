@@ -12,6 +12,29 @@ The repository ships two Dockerfile families:
 For role-specific trust, endpoint, backup, and upgrade detail see the
 [headless appliance operator guide](appliance.md).
 
+## Host projects (per-role)
+
+Each appliance role is a separate host project under `src/hosts/`, so the role that ships in an image
+only compiles the middleware it serves:
+
+| Host project | Role | Serves | References |
+|---|---|---|---|
+| `opencertserver.host.ca` | CA | `UseCertificateAuthorityServer` + `/health` (trust anchor: `/csr`, `/crl`, `/ocsp`, `/profiles`) | `ca.server`, `ca.utils`, `est.server` |
+| `opencertserver.host.ra` | RA | `/ra/enroll`, `/ra/renew`, `/ra/revoke`, `/health` | `ra`, `est.server` |
+| `opencertserver.host.unified` | Unified | EST + ACME + SCEP + CA + `/health` | superset of the above (+ `acme.server`, `acme.remote`, `scep.server`, `contrib.intune`) |
+
+The **relational engine** (postgres or mssql) is *not* a separate host: the same per-role host wires the
+store from `Appliance:Engine` at start-up, and the per-engine image is selected at deploy time via the
+`Appliance:<role>.<Engine>` environment variables baked into the `.postgres` / `.mssql` Dockerfiles. The
+original `src/opencertserver.certserver` monolith is retained for the published server image and as the
+compatibility reference; the host projects are the minimal per-role surfaces.
+
+Relational storage requires a **schema that is created out of band**: the host never runs EF Core
+migrations at start-up (it connects to an already-provisioned database). Provision the schema once —
+`dotnet ef database update` against the same connection string and engine — before the first request,
+exactly as the relational IQ test does with `RelationalTestDatabase` (which migrates the schema before the
+appliance container is started).
+
 ## Image catalog
 
 | Dockerfile | Role / surface | Base image | Engine | Ports |
@@ -127,22 +150,38 @@ production. See the [operator guide's relational-storage section](appliance.md#r
 The published image is built by the Cake `Linux-Docker-Build` task
 (`build/opencertserver.build/LinuxDockerBuildTask.cs`), which publishes
 `src/opencertserver.certserver` to `artifacts/publish/server/linux-musl-x64` and builds the root
-`Dockerfile` with tags `jjrdk/opencertserver:latest` and `jjrdk/opencertserver:<version>`. The
-appliance images are **not** in that pipeline; build them by hand (or let the IQ harness build them).
+`Dockerfile` with tags `jjrdk/opencertserver:latest` and `jjrdk/opencertserver:<version>`.
 
-Every appliance Dockerfile copies the self-contained publish from
-`artifacts/publish/appliance/${RID}/` (mssql from `artifacts/publish/appliance/mssql/${RID}/`). Stage
-that publish first, then build from the repository root as the build context:
+The appliance images are built by the Cake `Appliance-Docker-Build` task
+(`build/opencertserver.build/ApplianceDockerBuildTask.cs`), which publishes **each role's own host
+project** to `artifacts/publish/<role>/linux-x64/` (base + postgres, `InvariantGlobalization=true`) and
+to `artifacts/publish/<role>/mssql/linux-x64/` (mssql, no `InvariantGlobalization` — ICU required), then
+builds every `Dockerfile.{appliance,unified,ca,ra}` and `Dockerfile.{unified,ca,ra}.{postgres,mssql}`.
+Each image is tagged with the same version tag the rest of the build uses (`<image>:latest` and
+`<image>:<version>`), e.g. `opencertserver-appliance-ca:<version>`. Run it with:
 
 ```sh
+dotnet run --project build/opencertserver.build/opencertserver.build.csproj -c Release -- --target=Appliance-Docker-Build
+```
+
+You can also build them by hand: each appliance Dockerfile copies the self-contained publish of its own
+host project from `artifacts/publish/<role>/${RID}/` (mssql from
+`artifacts/publish/<role>/mssql/${RID}/`). Stage that publish first, then build from the repository root
+as the build context:
+
+```sh
+# Stage the per-role publish (example: CA, base + postgres)
+dotnet publish src/hosts/opencertserver.host.ca -c Release -r linux-x64 \
+  -p:SelfContained=true -p:PublishTrimmed=false -p:InvariantGlobalization=true \
+  --artifacts-path artifacts/publish/ca
 # Unified (file store)
-docker build -f Dockerfile.unified -t opencertserver-unified:local .
+docker build -f Dockerfile.unified -t opencertserver-appliance-unified:local .
 # CA / RA
-docker build -f Dockerfile.ca -t opencertserver-ca:local .
-docker build -f Dockerfile.ra -t opencertserver-ra:local .
+docker build -f Dockerfile.ca -t opencertserver-appliance-ca:local .
+docker build -f Dockerfile.ra -t opencertserver-appliance-ra:local .
 # Relational
-docker build -f Dockerfile.unified.postgres -t opencertserver-unified-postgres:local .
-docker build -f Dockerfile.unified.mssql   -t opencertserver-unified-mssql:local .
+docker build -f Dockerfile.unified.postgres -t opencertserver-appliance-unified-postgres:local .
+docker build -f Dockerfile.unified.mssql   -t opencertserver-appliance-unified-mssql:local .
 ```
 
 Build from the repository root (the Dockerfiles reference `artifacts/publish/...` relative to the

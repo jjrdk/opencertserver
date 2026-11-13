@@ -32,7 +32,7 @@ ENV Telemetry__Enabled=false
 ENV Appliance__Engine=postgres
 ENV AcmeServer__Persistence=relational
 ENV Ca__Persistence=relational
-COPY artifacts/publish/appliance/${RID}/ app/
+COPY artifacts/publish/unified/${RID}/ app/
 WORKDIR /app
 
 # Chiseled ships no user-creation tooling; the image already runs as "app" (UID 1654).
@@ -41,4 +41,4 @@ USER 1654
 EXPOSE 6000 6001
 # No baked-in VOLUME: the appliance runs unprivileged (UID 1654), so a root-owned Docker volume
 # would not be writable. Mount an operator-owned data directory at /var/lib/opencertserver instead.
-ENTRYPOINT ["./opencertserver.certserver"]
+ENTRYPOINT ["./opencertserver.host.unified"]

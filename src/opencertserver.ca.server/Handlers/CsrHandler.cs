@@ -1,8 +1,3 @@
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using OpenCertServer.Ca.Protocol;
 
 namespace OpenCertServer.Ca.Server.Handlers;
@@ -16,7 +11,6 @@ using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Http;
 using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Ca.Server.RegistrationAuthority;
 using Utils.X509Extensions;
 
 public static class CsrHandler

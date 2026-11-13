@@ -28,7 +28,6 @@ using Ca.Server;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Server.PublicRa;
 using OpenCertServer.Ca.Server.RegistrationAuthority;
-using OpenCertServer.Ra;
 using Ca.Utils.Ocsp;
 using Est.Server;
 using Reqnroll;

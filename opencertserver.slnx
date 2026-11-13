@@ -13,6 +13,11 @@
         <Project Path="src/opencertserver.scep/opencertserver.scep.csproj"/>
         <Project Path="src/opencertserver.contrib.intune/opencertserver.contrib.intune.csproj"/>
     </Folder>
+    <Folder Name="/hosts/">
+        <Project Path="src/hosts/opencertserver.host.ca/opencertserver.host.ca.csproj" />
+        <Project Path="src/hosts/opencertserver.host.ra/opencertserver.host.ra.csproj" />
+        <Project Path="src/hosts/opencertserver.host.unified/opencertserver.host.unified.csproj" />
+    </Folder>
     <Folder Name="/Solution Items/">
         <File Path="build.ps1" />
         <File Path="build.sh" />

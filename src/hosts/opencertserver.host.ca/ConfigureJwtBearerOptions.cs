@@ -1,0 +1,35 @@
+namespace OpenCertServer.Host.Ca;
+
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+
+public class ConfigureJwtBearerOptions(JwtParameters parameters) : IConfigureNamedOptions<JwtBearerOptions>
+{
+    /// <inheritdoc />
+    public void Configure(JwtBearerOptions options) => Configure(null, options);
+
+    /// <inheritdoc />
+    public void Configure(string? name, JwtBearerOptions options)
+    {
+        options.Authority = parameters.Authority;
+        options.RefreshOnIssuerKeyNotFound = true;
+        options.RequireHttpsMetadata = true;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = true,
+            ValidateIssuer = true,
+            ValidIssuer = parameters.Authority,
+            ValidAudiences = parameters.Audiences,
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
+    }
+}
+
+public record JwtParameters
+{
+    public required string Authority { get; init; }
+
+    public required string[] Audiences { get; init; }
+}

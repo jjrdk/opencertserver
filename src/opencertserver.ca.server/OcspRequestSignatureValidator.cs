@@ -1,5 +1,3 @@
-using System.Threading.Tasks;
-
 namespace OpenCertServer.Ca.Server;
 
 using OpenCertServer.Ca.Utils;

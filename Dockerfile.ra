@@ -18,7 +18,7 @@ ENV Appliance__Role=Ra
 ENV Appliance__Hardened=true
 ENV Telemetry__Enabled=false
 
-COPY artifacts/publish/appliance/${RID}/ app/
+COPY artifacts/publish/ra/${RID}/ app/
 WORKDIR /app
 
 USER 1654
@@ -27,4 +27,4 @@ EXPOSE 6001
 # No baked-in VOLUME: the appliance runs unprivileged (UID 1654), so a root-owned Docker volume
 # would not be writable. The RA role holds no persistent store; mount a data directory only for the
 # Unified/CA roles, and let the operator own it.
-ENTRYPOINT ["./opencertserver.certserver"]
+ENTRYPOINT ["./opencertserver.host.ra"]

@@ -91,7 +91,7 @@ public sealed class CertificateAuthorityTests : IDisposable
 
         static IEnumerable<string> GetParts(X500DistinguishedName name)
         {
-            return name.Name.Split(',').Select(x => x.Trim()).OrderBy(x => x);
+            return name.Name.Split(',').Select(x => x.Trim()).OrderBy(x => x, StringComparer.Ordinal);
         }
     }
 
@@ -170,10 +170,10 @@ public sealed class CertificateAuthorityTests : IDisposable
         Assert.Equal(
             string.Join("",
                 req.SubjectName.Format(true).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-                    .OrderBy(x => x)),
+                    .OrderBy(x => x, StringComparer.Ordinal)),
             string.Join("",
                 cert!.Certificate.SubjectName.Format(true)
-                    .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x)));
+                    .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x, StringComparer.Ordinal)));
     }
 
     [Fact]

@@ -1,9 +1,6 @@
-using OpenCertServer.Ra;
-
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Net;
-using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;

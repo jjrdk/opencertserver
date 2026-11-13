@@ -126,7 +126,7 @@ internal sealed class ApplianceCertificateStore : IStoreCertificates, IDisposabl
         int page = 0,
         int pageSize = 100,
         CancellationToken cancellationToken = default) =>
-        _certificates.OrderBy(item => item.SerialNumber).Skip(page * pageSize).Take(pageSize)
+        _certificates.OrderBy(item => item.SerialNumber, StringComparer.Ordinal).Skip(page * pageSize).Take(pageSize)
             .Select(item => item.AsInfo()).ToAsyncEnumerable();
 
     public IAsyncEnumerable<CertificateItemInfo> GetRevocationList(
@@ -136,7 +136,7 @@ internal sealed class ApplianceCertificateStore : IStoreCertificates, IDisposabl
         CancellationToken cancellationToken = default) =>
         _certificates.Where(item => item.IsRevoked
          && string.Equals(item.IssuingProfile, issuingProfile, StringComparison.Ordinal))
-            .OrderBy(item => item.SerialNumber)
+            .OrderBy(item => item.SerialNumber, StringComparer.Ordinal)
             .Skip(page * pageSize).Take(pageSize).Select(item => item.AsInfo()).ToAsyncEnumerable();
 
     public Task<(CertId, CertificateStatus, RevokedInfo?)> GetCertificateStatus(

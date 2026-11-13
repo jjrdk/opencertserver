@@ -1,12 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using OpenCertServer.Ca.Protocol;
 
 namespace OpenCertServer.Ca.Server.RegistrationAuthority;
 
 using Microsoft.Extensions.Configuration;
-using OpenCertServer.Ca.Utils.Ca;
 
 /// <summary>
 /// CA-side settings for accepting scoped registration-authority requests.

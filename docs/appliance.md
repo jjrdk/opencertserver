@@ -256,6 +256,13 @@ The connection string is **not** baked in; it is a deployment secret supplied at
 RA role does not issue and has no data directory, so its relational variants are inert (its store
 selection has nothing to write) — use a relational backend on the Unified or CA roles.
 
+The **database schema is created out of band**: the host connects to an already-provisioned
+database and never runs EF Core migrations at start-up. Provision the schema once before the first
+request — `dotnet ef database update` against the same engine and connection string — exactly as the
+relational IQ test does with `RelationalTestDatabase`, which migrates the schema *before* the appliance
+container is started. The host only reads/writes the application tables; it does not create or alter
+the schema.
+
 The **postgres** variants are chiseled like their base image. The **mssql** variants are not: the
 SQL Server EF Core provider (`Microsoft.Data.SqlClient`, via `RelationalConnection`) hard-requires ICU,
 which the chiseled `runtime-deps` image does not ship. The PostgreSQL provider (`Npgsql`) tolerates

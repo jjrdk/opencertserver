@@ -14,7 +14,6 @@ using OpenCertServer.Ca.Utils.Ca;
 using System.Linq;
 using System.Numerics;
 using System.Net.Security;
-using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using Acme.Abstractions.IssuanceServices;
 using Est.Server;

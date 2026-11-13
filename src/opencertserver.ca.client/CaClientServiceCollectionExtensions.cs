@@ -1,7 +1,6 @@
 namespace OpenCertServer.Ca.Client;
 
 using System.Security.Cryptography.X509Certificates;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OpenCertServer.Ca.Utils.Ca;
 

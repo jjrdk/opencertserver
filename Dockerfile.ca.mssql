@@ -29,7 +29,7 @@ ENV Appliance__Engine=mssql
 ENV AcmeServer__Persistence=relational
 ENV Ca__Persistence=relational
 # The mssql variant is built from a separate, non-invariant publish (the SQL Server provider needs ICU).
-COPY artifacts/publish/appliance/mssql/${RID}/ app/
+COPY artifacts/publish/ca/mssql/${RID}/ app/
 WORKDIR /app
 
 # The full runtime-deps image runs as the unprivileged "app" user (UID 1654).
@@ -38,4 +38,4 @@ USER 1654
 EXPOSE 6001
 # No baked-in VOLUME: the appliance runs unprivileged (UID 1654), so a root-owned Docker volume
 # would not be writable. Mount an operator-owned data directory at /var/lib/opencertserver instead.
-ENTRYPOINT ["./opencertserver.certserver"]
+ENTRYPOINT ["./opencertserver.host.ca"]

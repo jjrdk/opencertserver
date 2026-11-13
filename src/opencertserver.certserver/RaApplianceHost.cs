@@ -110,7 +110,7 @@ internal static class RaApplianceHost
                     !Enum.IsDefined(reason) ||
                     !string.Equals(reasonName, reason.ToString(), StringComparison.OrdinalIgnoreCase))
                 {
-                    app.Logger.LogWarning("Rejected RA revocation with missing serial or invalid reason.");
+                    app.Logger.LogWarning("Rejected RA revocation with missing serial or invalid reason");
                     return Results.BadRequest("Supply sn and a valid X509RevocationReason name.");
                 }
 
@@ -140,7 +140,7 @@ internal static class RaApplianceHost
         if (string.IsNullOrWhiteSpace(csr))
         {
             context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("RaAppliance")
-                .LogWarning("Rejected empty RA enrollment request.");
+                .LogWarning("Rejected empty RA enrollment request");
             return Results.BadRequest("Supply a PEM PKCS#10 request.");
         }
 
@@ -162,7 +162,7 @@ internal static class RaApplianceHost
     private static IResult PeerFailure(HttpContext context, HttpRequestException exception)
     {
         context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("RaAppliance")
-            .LogWarning(exception, "RA peer request failed with status {StatusCode}.", exception.StatusCode);
+            .LogWarning(exception, "RA peer request failed with status {StatusCode}", exception.StatusCode);
         return Results.Problem("The central CA rejected or could not complete the RA request.",
             statusCode: exception.StatusCode is System.Net.HttpStatusCode.BadRequest
              or System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.NotFound

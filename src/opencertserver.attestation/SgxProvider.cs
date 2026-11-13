@@ -89,7 +89,7 @@ public sealed class SgxProvider : IAttestationProvider
 
     public unsafe Task<byte[]> GenerateAndSignQuoteAsync(X509Certificate2 cert, byte[] nonce)
     {
-        _logger.LogInformation("Generating SGX DCAP quote.");
+        _logger.LogInformation("Generating SGX DCAP quote");
         uint quoteSize = 0;
         int result = _native.CreateQuote(IntPtr.Zero, ref quoteSize, nonce.AsSpan());
 

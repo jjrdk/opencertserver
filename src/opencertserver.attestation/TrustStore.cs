@@ -48,7 +48,7 @@ public sealed class TrustStore
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to load {Vendor} root CA from {Path}; trying embedded resource.", vendor,
+                _logger.LogWarning(ex, "Failed to load {Vendor} root CA from {Path}; trying embedded resource", vendor,
                     path);
             }
         }
@@ -65,14 +65,14 @@ public sealed class TrustStore
         if (stream is null)
         {
             _logger.LogWarning("No embedded root CA found for vendor {Vendor} (resource '{Resource}'). " +
-                "Certificate chain validation for this vendor will fail.", vendor, resourceName);
+                "Certificate chain validation for this vendor will fail", vendor, resourceName);
             return;
         }
 
         var certBytes = new byte[stream.Length];
         stream.ReadExactly(certBytes);
         _pinnedRoots[vendor] = X509CertificateLoader.LoadCertificate(certBytes);
-        _logger.LogInformation("Pinned {Vendor} root CA loaded from embedded resources.", vendor);
+        _logger.LogInformation("Pinned {Vendor} root CA loaded from embedded resources", vendor);
     }
 
     private void TryLoadEmbeddedAppleRoot()
@@ -91,7 +91,7 @@ public sealed class TrustStore
     {
         if (!_pinnedRoots.TryGetValue(vendor, out var pinnedRoot))
         {
-            _logger.LogWarning("No pinned root CA available for vendor '{Vendor}'.", vendor);
+            _logger.LogWarning("No pinned root CA available for vendor '{Vendor}'", vendor);
             return (false, "Unknown Vendor");
         }
 

@@ -1,7 +1,6 @@
 namespace OpenCertServer.Acme.Server;
 
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.RateLimiting;
 using OpenCertServer.Acme.Server.Endpoints;
 using OpenCertServer.Acme.Server.Filters;
 

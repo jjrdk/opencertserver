@@ -64,7 +64,7 @@ public class InMemoryCertificateStore : IStoreCertificates
         CancellationToken cancellationToken = default)
     {
         return _certificates
-            .OrderBy(x => x.Key)
+            .OrderBy(x => x.Key, StringComparer.Ordinal)
             .Where(x => x.Value.IsRevoked
              && string.Equals(x.Value.IssuingProfile, issuingProfile, StringComparison.Ordinal))
             .Skip(page * pageSize)
@@ -99,7 +99,7 @@ public class InMemoryCertificateStore : IStoreCertificates
         CancellationToken cancellationToken = default)
     {
         return _certificates
-            .OrderBy(x => x.Key)
+            .OrderBy(x => x.Key, StringComparer.Ordinal)
             .Skip(page * pageSize)
             .Take(pageSize)
             .Select(x => x.Value.AsInfo())
@@ -114,7 +114,7 @@ public class InMemoryCertificateStore : IStoreCertificates
         var idSet = new HashSet<string>(ids.Select(i => Convert.ToHexString(i.Span)));
         return _certificates
             .Where(x => idSet.Contains(x.Key))
-            .OrderBy(x => x.Key)
+            .OrderBy(x => x.Key, StringComparer.Ordinal)
             .Select(x => X509Certificate2.CreateFromPem(x.Value.PublicKeyPem))
             .ToAsyncEnumerable();
     }
@@ -130,7 +130,7 @@ public class InMemoryCertificateStore : IStoreCertificates
         // item. Comparing against the key found nothing, ever.
         return _certificates
             .Where(x => thumbprintSet.Contains(x.Value.Thumbprint))
-            .OrderBy(x => x.Key)
+            .OrderBy(x => x.Key, StringComparer.Ordinal)
             .Select(x => X509Certificate2.CreateFromPem(x.Value.PublicKeyPem))
             .ToAsyncEnumerable();
     }

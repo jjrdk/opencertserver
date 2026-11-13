@@ -1612,9 +1612,9 @@ public partial class CertificateServerFeatures
     {
         var order = AcmeState.OrderResponse ?? DeserializeOrderResponse();
         Assert.NotNull(AcmeState.ExpectedIdentifiers);
-        var identifiers = order.Identifiers!.Select(i => i.Value!.Trim().ToLowerInvariant()).OrderBy(static x => x)
+        var identifiers = order.Identifiers!.Select(i => i.Value!.Trim().ToLowerInvariant()).OrderBy(static x => x, StringComparer.Ordinal)
             .ToArray();
-        var expected = AcmeState.ExpectedIdentifiers!.Select(i => i.Trim().ToLowerInvariant()).OrderBy(static x => x)
+        var expected = AcmeState.ExpectedIdentifiers!.Select(i => i.Trim().ToLowerInvariant()).OrderBy(static x => x, StringComparer.Ordinal)
             .ToArray();
         Assert.Equal(expected, identifiers);
     }
@@ -1754,11 +1754,11 @@ public partial class CertificateServerFeatures
             .OfType<X509SubjectAlternativeNameExtension>()
             .SelectMany(ext => ext.EnumerateDnsNames())
             .Select(name => name.Trim().ToLowerInvariant())
-            .OrderBy(static x => x)
+            .OrderBy(static x => x, StringComparer.Ordinal)
             .ToArray();
         var expected = AcmeState.ExpectedIdentifiers!
             .Select(name => name.Trim().ToLowerInvariant())
-            .OrderBy(static x => x)
+            .OrderBy(static x => x, StringComparer.Ordinal)
             .ToArray();
         Assert.Equal(expected, csrNames);
     }
