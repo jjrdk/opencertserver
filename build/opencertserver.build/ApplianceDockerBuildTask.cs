@@ -47,8 +47,7 @@ public sealed class ApplianceDockerBuildTask : FrostingTask<BuildContext>
 
     public override void Run(BuildContext context)
     {
-        if (context is null)
-            throw new ArgumentNullException(nameof(context));
+        ArgumentNullException.ThrowIfNull(context);
 
         foreach (var role in Roles)
         {
