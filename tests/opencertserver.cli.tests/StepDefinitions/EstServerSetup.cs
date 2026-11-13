@@ -52,7 +52,7 @@ public partial class OpenCertServerCliStepDefinitions
                 context.Request.Path = request.RequestUri!.AbsolutePath;
                 foreach (var header in request.Headers)
                 {
-                    context.Request.Headers[header.Key] = [.. header.Value];
+                    context.Request.Headers[header.Key] = header.Value.ToArray();
                 }
 
                 if (request.Content != null)
@@ -60,7 +60,7 @@ public partial class OpenCertServerCliStepDefinitions
                     context.Request.Body = await request.Content.ReadAsStreamAsync(cancellationToken);
                     foreach (var header in request.Content.Headers)
                     {
-                        context.Request.Headers[header.Key] = [.. header.Value];
+                        context.Request.Headers[header.Key] = header.Value.ToArray();
                     }
                 }
             }, cancellationToken);

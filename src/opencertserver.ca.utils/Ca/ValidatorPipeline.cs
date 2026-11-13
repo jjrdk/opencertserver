@@ -141,6 +141,8 @@ public sealed class ValidatorPipeline : IValidatorPipeline
 		IEnumerable<ValidatorPhase> phases,
 		CancellationToken cancellationToken)
 	{
+		var token = cancellationToken == default ? context.CancellationToken : cancellationToken;
+		token.ThrowIfCancellationRequested();
 		var reasons = new List<string>();
 		foreach (var phase in phases)
 		{
@@ -151,8 +153,9 @@ public sealed class ValidatorPipeline : IValidatorPipeline
 
 			foreach (var registration in validators)
 			{
+				token.ThrowIfCancellationRequested();
 				var validator = registration.Validator;
-				var result = await validator.Validate(context, cancellationToken);
+				var result = await validator.Validate(context, token).ConfigureAwait(false);
 				if (result.IsError)
 				{
 					reasons.Add(result.Reason ?? $"Validator {registration.Name} rejected the request.");
@@ -164,9 +167,17 @@ public sealed class ValidatorPipeline : IValidatorPipeline
 					continue; // aggregate mode: record and continue
 				}
 
-				if (result.RequiresApproval && result.Annotation is not null)
+				if (result.RequiresApproval)
 				{
-					context.Annotations.Add(result.Annotation);
+					if (!context.Annotations.Contains(ValidationResult.NeedsApprovalAnnotation))
+					{
+						context.Annotations.Add(ValidationResult.NeedsApprovalAnnotation);
+					}
+
+					if (result.Annotation is not null && result.Annotation != ValidationResult.NeedsApprovalAnnotation)
+					{
+						context.Annotations.Add(result.Annotation);
+					}
 				}
 			}
 		}

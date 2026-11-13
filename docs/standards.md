@@ -634,8 +634,16 @@ issuance path runs before and after signing. It generalises the historical
   registered directly in `ValidatorPhase.Issuance`. The interface's default pipeline overload maps
   their existing error-string result to a non-short-circuiting rejection, so every validator runs and
   their errors are joined — preserving the pre-pipeline behaviour.
+  Additional `IValidateCertificateRequests` services, including `RaScopeValidator` and opt-in
+  `PublicRaValidation`, enter the same phase with the original profile, caller, re-enrollment
+  source, and cancellation token. Direct CA construction with request validators uses this same
+  adaptation; server and TPM registrations inject `IValidatorPipeline`.
 * **Short-circuit vs. aggregate.** A `ValidationResult.ShortCircuit` rejection stops the pipeline; a
   non-short-circuiting rejection is recorded and the pipeline continues.
+* **Issuance gates.** Pre-sign rejection or required approval prevents signing. Post-sign rejection
+  or required approval prevents persistence and superseding an existing certificate. Approval
+  requests always retain the `needs-approval` marker, including when a validator supplies no
+  annotation or a custom annotation; until an approval workflow exists, the CA returns an error.
 * **Where it lives.** `src/opencertserver.ca.utils/Ca/` — `IValidateCertificateRequests`,
   `IValidatorPipeline`, `ValidatorPipeline`, `ValidatorRegistration`, `ValidatorContext`,
   `ValidationResult`/`ValidationOutcome`.
@@ -649,7 +657,11 @@ issuance path runs before and after signing. It generalises the historical
 
 **Proved by** [ValidatorPipeline.feature](../tests/opencertserver.ca.tests/Features/ValidatorPipeline.feature)
 (a Data-phase rejection prevents later-phase validators from running; a short-circuiting validator stops
-the pipeline) and the existing `DistinguishedName` / `CaExtension` / `AuthenticatedSubject` /
+the pipeline),
+[CertificateRequestPipeline.feature](../tests/opencertserver.ca.tests/Features/CertificateRequestPipeline.feature)
+(both contracts run through the CA, context preservation, aggregate errors, phase gates, post-sign
+inspection, approval refusal, and cancellation), the `RaServer` / `RaProtocol` / `RaMultiProfile` /
+`PublicRa` suites, and the existing `DistinguishedName` / `CaExtension` / `AuthenticatedSubject` /
 `OwnCertificate` / `KeyCrlSignature` suites (no behavioural regression).
 
 ### Supporting encodings

@@ -661,9 +661,14 @@ Add your own check by implementing `IValidateCertificateRequests` and registerin
 public sealed class RequireCnValidator : IValidateCertificateRequests
 {
     public Task<ValidationResult> Validate(ValidatorContext ctx, CancellationToken ct = default)
-        => Task.FromResult(string.IsNullOrWhiteSpace(ctx.Request.Subject.CN)
-            ? ValidationResult.Reject("Common name is required")   // short-circuits later phases
-            : ValidationResult.Passed);
+    {
+        var hasCommonName = ctx.Request.SubjectName.EnumerateRelativeDistinguishedNames()
+            .Any(rdn => rdn.GetSingleElementType().Value == "2.5.4.3"
+                && !string.IsNullOrWhiteSpace(rdn.GetSingleElementValue()));
+        return Task.FromResult(hasCommonName
+            ? ValidationResult.Passed
+            : ValidationResult.Reject("Common name is required"));
+    }
 }
 
 // in your Add*Server wiring, before AddValidatorPipeline():
@@ -677,8 +682,22 @@ mode. The interface's default pipeline overload maps their existing error-string
 `ValidationResult`, so adding a validator does not change their behaviour. A
 `ValidationResult.Reject` stops the pipeline (short-circuit); `ValidationResult.Error` records the
 rejection and continues; `ValidationResult.NeedsApproval` tags the request for human approval.
-Prove the routing with
-[ValidatorPipeline.feature](../tests/opencertserver.ca.tests/Features/ValidatorPipeline.feature).
+Until an approval workflow is installed, the CA refuses issuance when approval is required.
+`Post` validators receive the signed certificate before it is stored or replaces a prior certificate;
+their rejection or approval requirement also prevents successful issuance.
+
+Existing validators that implement the `Task<string?> Validate(CertificateRequest, ...)` overload
+can still be registered with `services.AddSingleton<IValidateCertificateRequests, MyValidator>()`.
+`AddValidatorPipeline()` includes these registrations automatically in `Issuance`, including
+`RaScopeValidator` and the opt-in `PublicRaValidation`. Both contracts receive the same profile,
+caller, re-enrollment certificate, and cancellation token. Do not register the same validator through
+both helpers unless you intend it to run twice.
+
+`AddCertificateAuthority` / `AddSelfSignedCertificateAuthority` and the TPM CA wiring already
+assemble the pipeline. For a manually constructed CA, pass an `IValidatorPipeline` to its constructor,
+or pass request validators to the existing constructor to adapt them into the same framework.
+See [ValidatorPipeline.feature](../tests/opencertserver.ca.tests/Features/ValidatorPipeline.feature)
+and [CertificateRequestPipeline.feature](../tests/opencertserver.ca.tests/Features/CertificateRequestPipeline.feature).
 
 ---
 

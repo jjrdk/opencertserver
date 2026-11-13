@@ -311,6 +311,16 @@ the `Validators__…` double-underscore hierarchy):
 `<Name>` is the validator's registration name (the type name by default, or the `name` passed to
 `AddValidator<T>`). No secret values are read here.
 
+All `IValidateCertificateRequests` services participate in the same pipeline, including RA scope
+and public-enrollment policy validators; implementations using the original error-string overload
+are adapted to aggregate rejection results. The CA's direct request-validator constructor uses
+the same adapter, while its `IValidatorPipeline` constructor accepts a fully configured pipeline.
+
+Pre-sign validation must pass before signing. `Post` validation runs on the signed certificate
+before persistence and before an old certificate is superseded. Rejection in either hook returns
+a signing error. `NeedsApproval` also returns a signing error until an approval workflow can
+authorize issuance; annotations alone never grant approval.
+
 ### GET /ca/crl
 
 - Description: Retrieve the current Certificate Revocation List for the CA (or a profile).

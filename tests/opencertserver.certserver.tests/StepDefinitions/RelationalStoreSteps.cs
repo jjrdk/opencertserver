@@ -197,9 +197,9 @@ public sealed class RelationalStoreSteps
             .AddRouting();
 
         services.AddSingleton<TestAcmeChallengeValidationState>();
-        services.Replace(ServiceDescriptor.Singleton<IValidateHttp01Challenges, TestAcmeHttp01ChallengeValidator>());
-        services.Replace(ServiceDescriptor.Singleton<IValidateDns01Challenges, TestAcmeDns01ChallengeValidator>());
-        services.Replace(ServiceDescriptor.Singleton<IValidateDeviceAttestChallenges,
+        services.Replace(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeHttp01ChallengeValidator>());
+        services.Replace(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeDns01ChallengeValidator>());
+        services.Replace(ServiceDescriptor.Singleton<IValidateChallenges,
             TestAcmeDeviceAttestChallengeValidator>());
         services.AddSingleton<ICsrValidator, DefaultCsrValidator>();
         services.AddSingleton(sp => new DefaultIssuer(sp.GetRequiredService<ICertificateAuthority>()));

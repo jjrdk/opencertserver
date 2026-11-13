@@ -36,7 +36,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     private readonly IStoreCertificates _certificateStore;
     private readonly IValidateX509Chains _x509ChainValidation;
     private readonly IGenerateCertificateId _certificateIdGenerator;
-    private readonly IValidateCertificateRequests[] _validators;
+    private readonly IValidatorPipeline _pipeline;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CertificateAuthority"/> class.
@@ -46,7 +46,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     /// <param name="x509ChainValidation">The X509 chain validation.</param>
     /// <param name="certificateIdGenerator">The certificate ID generator.</param>
     /// <param name="logger">The logger.</param>
-    /// <param name="validators">The validators.</param>
+    /// <param name="validators">The request validators to run through the pipeline, or the built-in set when empty.</param>
     /// <exception cref="ArgumentException"></exception>
     public CertificateAuthority(
         CaConfiguration config,
@@ -61,7 +61,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         _certificateStore = certificateStore;
         _x509ChainValidation = x509ChainValidation;
         _certificateIdGenerator = certificateIdGenerator;
-        _validators = validators.Length > 0
+        IValidateCertificateRequests[] requestValidators = validators.Length > 0
             ? [.. validators]
             :
             [
@@ -72,6 +72,34 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
                 new KeyCrlSignatureValidation(_config.Profiles, NullLogger<KeyCrlSignatureValidation>.Instance),
                 new AuthenticatedSubjectValidation(NullLogger<AuthenticatedSubjectValidation>.Instance),
             ];
+        _pipeline = ValidatorPipeline.FromCertificateRequestValidators(requestValidators);
+    }
+
+    /// <summary>
+    /// Initializes a certificate authority using a unified pipeline for pre-sign request validation
+    /// and post-sign certificate validation.
+    /// </summary>
+    /// <param name="config">The CA configuration.</param>
+    /// <param name="certificateStore">The certificate store.</param>
+    /// <param name="x509ChainValidation">The X509 chain validation.</param>
+    /// <param name="certificateIdGenerator">The certificate ID generator.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="pipeline">The configured validator pipeline.</param>
+    public CertificateAuthority(
+        CaConfiguration config,
+        IStoreCertificates certificateStore,
+        IValidateX509Chains x509ChainValidation,
+        IGenerateCertificateId certificateIdGenerator,
+        ILogger<CertificateAuthority> logger,
+        IValidatorPipeline pipeline)
+    {
+        ArgumentNullException.ThrowIfNull(pipeline);
+        _config = config;
+        _logger = logger;
+        _certificateStore = certificateStore;
+        _x509ChainValidation = x509ChainValidation;
+        _certificateIdGenerator = certificateIdGenerator;
+        _pipeline = pipeline;
     }
 
     public static CaProfile CreateSelfSignedRsa(
@@ -163,14 +191,15 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     {
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
         await _config.ValidateCrlUrlsAsync(cancellationToken).ConfigureAwait(false);
-        var results = await Task.WhenAll(_validators.Select(v =>
-            // ReSharper disable once AccessToModifiedClosure
-            v.Validate(request, profileName, requestor, reenrollingFrom, cancellationToken))).ConfigureAwait(false);
-        var validationResult = results.Where(r => r != null).ToArray();
-        if (validationResult.Length > 0)
+        var context = ValidatorContext.Create(
+            request, profileName, requestor, reenrollingFrom, cancellationToken: cancellationToken);
+        var validationResult = await _pipeline.Run(context, cancellationToken).ConfigureAwait(false);
+        if (!validationResult.IsApproved)
         {
             LogCouldNotValidateRequest();
-            return new SignCertificateResponse.Error(string.Join("\n", validationResult));
+            return new SignCertificateResponse.Error(validationResult.RequiresApproval
+                ? "Certificate request requires approval."
+                : string.Join("\n", validationResult.Reasons));
         }
 
         LogCreatingCertificateForSubjectName(request.SubjectName.Name);
@@ -198,6 +227,17 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             effectiveNotBefore,
             effectiveNotAfter,
             _certificateIdGenerator.GenerateId());
+
+        context.IssuedCertificate = cert;
+        var postResult = await _pipeline.RunPost(context, cancellationToken).ConfigureAwait(false);
+        if (!postResult.IsApproved)
+        {
+            LogCouldNotValidateRequest();
+            cert.Dispose();
+            return new SignCertificateResponse.Error(postResult.RequiresApproval
+                ? "Issued certificate requires approval."
+                : string.Join("\n", postResult.Reasons));
+        }
 
         using var chain = new X509Chain();
         chain.ChainPolicy = new X509ChainPolicy
