@@ -32,7 +32,7 @@ public sealed class ApplianceDockerBuildTask : FrostingTask<BuildContext>
     // One entry per role host. The base+postgres Dockerfiles COPY from .../&lt;role&gt;/&lt;rid&gt;/
     // (invariant); the mssql Dockerfiles COPY from .../&lt;role&gt;/mssql/&lt;rid&gt;/ (no invariant).
     private static readonly RoleSpec[] Roles =
-    {
+    [
         new("ca", "./src/hosts/opencertserver.host.ca/opencertserver.host.ca.csproj",
             ["./Dockerfile.ca", "./Dockerfile.ca.postgres"],
             ["./Dockerfile.ca.mssql"]),
@@ -42,8 +42,8 @@ public sealed class ApplianceDockerBuildTask : FrostingTask<BuildContext>
         // Dockerfile.appliance is the unified alias (same COPY path as Dockerfile.unified).
         new("unified", "./src/hosts/opencertserver.host.unified/opencertserver.host.unified.csproj",
             ["./Dockerfile.unified", "./Dockerfile.appliance", "./Dockerfile.unified.postgres"],
-            ["./Dockerfile.unified.mssql"]),
-    };
+            ["./Dockerfile.unified.mssql"])
+    ];
 
     public override void Run(BuildContext context)
     {
@@ -113,11 +113,11 @@ public sealed class ApplianceDockerBuildTask : FrostingTask<BuildContext>
             File = dockerfile,
             ForceRm = true,
             Rm = true,
-            Tag = new[]
-            {
+            Tag =
+            [
                 $"{image}:latest",
                 $"{image}:{context.BuildVersion}"
-            }
+            ]
         }, "./");
     }
 

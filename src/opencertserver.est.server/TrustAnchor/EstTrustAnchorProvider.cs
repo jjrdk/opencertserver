@@ -12,14 +12,14 @@ internal sealed class EstTrustAnchorProvider : IEstTrustAnchorProvider
             certificate.ValidateCertificateAuthority();
         }
 
-        TrustAnchors = Array.AsReadOnly(options.TrustAnchors
-            .Cast<X509Certificate2>()
-            .Select(Clone)
-            .ToArray());
-        AdditionalChainCertificates = Array.AsReadOnly(options.AdditionalChainCertificates
-            .Cast<X509Certificate2>()
-            .Select(Clone)
-            .ToArray());
+        TrustAnchors = Array.AsReadOnly([
+            .. options.TrustAnchors
+                .Select(Clone)
+        ]);
+        AdditionalChainCertificates = Array.AsReadOnly([
+            .. options.AdditionalChainCertificates
+                .Select(Clone)
+        ]);
     }
 
     public IReadOnlyCollection<X509Certificate2> TrustAnchors { get; }

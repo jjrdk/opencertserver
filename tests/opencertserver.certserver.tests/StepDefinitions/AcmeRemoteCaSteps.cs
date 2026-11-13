@@ -96,7 +96,7 @@ public partial class CertificateServerFeatures
         var (certificate, error) = await _acmeRemoteIssuer!.IssueCertificate(
             "default",
             csr!,
-            Array.Empty<Identifier>(),
+            [],
             null,
             null,
             CancellationToken.None).ConfigureAwait(false);
@@ -112,7 +112,7 @@ public partial class CertificateServerFeatures
         var (certificate, error) = await _acmeRemoteIssuer!.IssueCertificate(
             "default",
             csr,
-            Array.Empty<Identifier>(),
+            [],
             null,
             null,
             CancellationToken.None).ConfigureAwait(false);

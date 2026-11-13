@@ -103,9 +103,9 @@ public partial class CertificateServerFeatures
                 { Content = content, RequestMessage = request };
             foreach (var header in context.Response.Headers)
             {
-                if (!response.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()))
+                if (!response.Headers.TryAddWithoutValidation(header.Key, [.. header.Value]))
                 {
-                    content.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
+                    content.Headers.TryAddWithoutValidation(header.Key, [.. header.Value]);
                 }
             }
 

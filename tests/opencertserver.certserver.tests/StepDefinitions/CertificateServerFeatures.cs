@@ -103,7 +103,7 @@ public partial class CertificateServerFeatures
         void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services)
         {
             services
-                .AddSingleton<IResponderId>(new ResponderIdByKey("test"u8.ToArray()))
+                .AddSingleton<IResponderId>(new ResponderIdByKey([.. "test"u8]))
                 .AddInMemoryCertificateStore()
                 .AddRa(new RaServerOptions
                 {

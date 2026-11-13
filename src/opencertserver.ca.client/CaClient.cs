@@ -214,7 +214,7 @@ public sealed partial class CaClient
         using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return body.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        return [.. body.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
     }
 
     /// <summary>Fetches the revocation list (DER CRL) published by the backing CA.</summary>
@@ -271,7 +271,7 @@ public sealed partial class CaClient
     {
         if (string.IsNullOrWhiteSpace(body))
         {
-            return new[] { "The backing CA rejected the request." };
+            return ["The backing CA rejected the request."];
         }
 
         return body.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

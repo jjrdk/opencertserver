@@ -208,7 +208,7 @@ public partial class CertificateServerFeatures
         var (certificate, error) = await _remoteIssuer.IssueCertificate(
             "default",
             _caClientCsr,
-            Array.Empty<CertesSlim.Acme.Resource.Identifier>(),
+            [],
             null,
             null,
             CancellationToken.None).ConfigureAwait(false);

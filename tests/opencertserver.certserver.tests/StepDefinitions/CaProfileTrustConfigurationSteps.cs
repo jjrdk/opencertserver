@@ -78,7 +78,7 @@ public sealed class CaProfileTrustConfigurationSteps
         var ca = services.GetRequiredService<ICertificateAuthority>();
         var published = await ca.GetPublishedCertificates("rsa").ConfigureAwait(false);
         Assert.Equal(3, published.Count);
-        Assert.Equal(new[] { "CN=Issuing Intermediate", "CN=Issuing Root", "CN=Publication Supplement" },
+        Assert.Equal(["CN=Issuing Intermediate", "CN=Issuing Root", "CN=Publication Supplement"],
             published.Select(certificate => certificate.Subject));
 
         using var key = RSA.Create();
@@ -166,8 +166,10 @@ public sealed class CaProfileTrustConfigurationSteps
         Assert.Single(_profile.CertificateChain);
         Assert.Single(_profile.PublishedCertificateChain);
         Assert.Equal(trustedCertificates,
-            _profile.TrustAnchors.Concat(_profile.AdditionalChainCertificates)
-                .Select(certificate => certificate.RawData).ToArray());
+        [
+            .. _profile.TrustAnchors.Concat(_profile.AdditionalChainCertificates)
+                .Select(certificate => certificate.RawData)
+        ]);
     }
 
     private Task<CaProfile> LoadProfile(IConfiguration configuration) =>

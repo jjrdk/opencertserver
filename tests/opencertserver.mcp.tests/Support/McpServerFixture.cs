@@ -26,7 +26,7 @@ public class McpServerFixture : IDisposable
     public IReadOnlyDictionary<string, McpToolDefinition> ToolDefinitions { get; }
     public CertificateAuthority CertificateAuthority { get; }
     public IStoreCertificates Store { get; }
-    private readonly List<X509Certificate2> _issuedCerts = new();
+    private readonly List<X509Certificate2> _issuedCerts = [];
 
     // The fixture configures an authenticated CA-admin caller by default so the existing
     // sign/revoke scenarios exercise the authorized path. Individual scenarios can switch the
@@ -232,7 +232,7 @@ public class McpServerFixture : IDisposable
                     cancellationToken).ConfigureAwait(false),
                 "get_revocation_status" => await GetRevocationStatusTool.GetRevocationStatus(
                     services.GetRequiredService<IStoreCertificates>(),
-                    GetStringArray(dict, "serialNumbers") ?? Array.Empty<string>(),
+                    GetStringArray(dict, "serialNumbers") ?? [],
                     GetString(dict, "profileName"),
                     cancellationToken).ConfigureAwait(false),
                 "check_ocsp_status" => await CheckOcspStatusTool.CheckOcspStatus(
@@ -412,18 +412,20 @@ public class McpServerFixture : IDisposable
 
         if (value is IEnumerable<string> enumerable)
         {
-            return enumerable.ToArray();
+            return [.. enumerable];
         }
 
         if (value is JsonElement element)
         {
             if (element.ValueKind == JsonValueKind.Array)
             {
-                return element.EnumerateArray()
-                    .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() : item.ToString())
-                    .Where(item => !string.IsNullOrWhiteSpace(item))
-                    .Cast<string>()
-                    .ToArray();
+                return
+                [
+                    .. element.EnumerateArray()
+                        .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() : item.ToString())
+                        .Where(item => !string.IsNullOrWhiteSpace(item))
+                        .Cast<string>()
+                ];
             }
 
             if (element.ValueKind == JsonValueKind.String)
@@ -434,7 +436,7 @@ public class McpServerFixture : IDisposable
 
         if (value is IEnumerable<object> objects)
         {
-            return objects.Select(o => o.ToString()).Where(s => !string.IsNullOrWhiteSpace(s)).Cast<string>().ToArray();
+            return [.. objects.Select(o => o.ToString()).Where(s => !string.IsNullOrWhiteSpace(s)).Cast<string>()];
         }
 
         if (value is string s)
@@ -471,7 +473,7 @@ public class McpServerFixture : IDisposable
     public void UseAuthenticatedNonAdminCaller()
     {
         var identity = new ClaimsIdentity(
-            new[] { new Claim(ClaimTypes.Name, "mcp-test-user") },
+            [new Claim(ClaimTypes.Name, "mcp-test-user")],
             authenticationType: "McpSharedSecret");
         _currentCaller = new ClaimsPrincipal(identity);
     }

@@ -52,7 +52,7 @@ public partial class OpenCertServerCliStepDefinitions
                 context.Request.Path = request.RequestUri!.AbsolutePath;
                 foreach (var header in request.Headers)
                 {
-                    context.Request.Headers[header.Key] = header.Value.ToArray();
+                    context.Request.Headers[header.Key] = [.. header.Value];
                 }
 
                 if (request.Content != null)
@@ -60,7 +60,7 @@ public partial class OpenCertServerCliStepDefinitions
                     context.Request.Body = await request.Content.ReadAsStreamAsync(cancellationToken);
                     foreach (var header in request.Content.Headers)
                     {
-                        context.Request.Headers[header.Key] = header.Value.ToArray();
+                        context.Request.Headers[header.Key] = [.. header.Value];
                     }
                 }
             }, cancellationToken);
@@ -69,9 +69,9 @@ public partial class OpenCertServerCliStepDefinitions
                 { Content = content, RequestMessage = request };
             foreach (var header in context.Response.Headers)
             {
-                if (!response.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()))
+                if (!response.Headers.TryAddWithoutValidation(header.Key, [.. header.Value]))
                 {
-                    content.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
+                    content.Headers.TryAddWithoutValidation(header.Key, [.. header.Value]);
                 }
             }
 
@@ -114,7 +114,7 @@ public partial class OpenCertServerCliStepDefinitions
     private static void ConfigureEstServices(IServiceCollection services)
     {
         services
-            .AddSingleton<IResponderId>(new ResponderIdByKey("cli-est"u8.ToArray()))
+            .AddSingleton<IResponderId>(new ResponderIdByKey([.. "cli-est"u8]))
             .AddInMemoryCertificateStore()
             .AddSelfSignedCertificateAuthority(new X500DistinguishedName("CN=OpenCertServer CLI EST"),
                 ocspUrls: ["test"])

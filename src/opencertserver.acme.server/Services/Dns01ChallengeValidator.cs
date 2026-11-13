@@ -69,7 +69,7 @@ public sealed partial class ValidateDns01Challenges : TokenChallengeValidator
                 .ResolveTxtRecordsAsync(dnsRecordName, cancellationToken)
                 .ConfigureAwait(false);
 
-            return (txtRecords.ToList(), null);
+            return ([.. txtRecords], null);
         }
         catch (DnsPerspectiveMismatchException ex)
         {

@@ -137,7 +137,7 @@ public sealed partial class MultiPerspectiveDnsResolver : IDnsResolver
             throw new DnsPerspectiveMismatchException(
                 $"The {recordType} response for '{name}' differs between Network Perspectives "
                 + $"'{primary.Perspective}' and '{candidate.Perspective}'.",
-                _perspectives.Select(perspective => perspective.Name).ToArray());
+                [.. _perspectives.Select(perspective => perspective.Name)]);
         }
 
         return primary.Records!;
@@ -164,24 +164,30 @@ public sealed partial class MultiPerspectiveDnsResolver : IDnsResolver
     }
 
     private static string[] CanonicalizeCaaRecords(IReadOnlyList<CaaRecord> records)
-        => records
-            .Select(record => $"{record.Flags}\t{record.Tag?.ToLowerInvariant()}\t{record.Value}")
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(value => value, StringComparer.Ordinal)
-            .ToArray();
+        =>
+        [
+            .. records
+                .Select(record => $"{record.Flags}\t{record.Tag?.ToLowerInvariant()}\t{record.Value}")
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal)
+        ];
 
     private static string[] CanonicalizeTxtRecords(IReadOnlyList<string> records)
-        => records
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(value => value, StringComparer.Ordinal)
-            .ToArray();
+        =>
+        [
+            .. records
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal)
+        ];
 
     private static string[] CanonicalizeIpAddresses(IReadOnlyList<IPAddress> records)
-        => records
-            .Select(address => address.ToString())
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(value => value, StringComparer.Ordinal)
-            .ToArray();
+        =>
+        [
+            .. records
+                .Select(address => address.ToString())
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal)
+        ];
 
     private sealed record PerspectiveResponse<T>(
         string Perspective,

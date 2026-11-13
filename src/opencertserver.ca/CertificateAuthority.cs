@@ -362,7 +362,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         else
         {
             var r = request.AsSpan(fields.Base64Data);
-            csr = Convert.FromBase64CharArray(r.ToArray(), 0, r.Length);
+            csr = Convert.FromBase64CharArray([.. r], 0, r.Length);
         }
 
         var response = await SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, notBefore, notAfter,

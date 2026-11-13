@@ -108,7 +108,7 @@ public sealed class RaServerSteps
         var token = new JwtSecurityToken(
             issuer: "ra.example.com",
             audience: "ra.example.com",
-            claims: new[] { new System.Security.Claims.Claim("ra", "ra-tenant-a") },
+            claims: [new System.Security.Claims.Claim("ra", "ra-tenant-a")],
             expires: DateTimeOffset.UtcNow.AddMinutes(5).DateTime,
             signingCredentials: credentials);
         return handler.WriteToken(token);
