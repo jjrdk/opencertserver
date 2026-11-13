@@ -48,6 +48,7 @@ internal static partial class Program
         cmd.SetAction(CreateCsrFromKeys);
 
         rootCommand.Add(cmd);
+        return;
 
         async Task CreateCsrFromKeys(ParseResult parse)
         {

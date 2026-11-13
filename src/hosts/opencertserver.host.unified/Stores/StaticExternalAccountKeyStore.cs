@@ -6,14 +6,11 @@
 // The ACME server ships an empty in-memory EAB key store, which cannot bind any external account.
 // Installing this store, configured out-of-band, lets a hardened deployment accept EAB-authenticated
 // account creation without ever writing a credential to disk.
-namespace OpenCertServer.Host.Unified;
 
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using Acme.Abstractions.Model;
-using Acme.Abstractions.Storage;
+using OpenCertServer.Acme.Abstractions.Model;
+using OpenCertServer.Acme.Abstractions.Storage;
+
+namespace OpenCertServer.Host.Unified.Stores;
 
 /// <summary>
 /// An <see cref="IStoreExternalAccountKeys"/> backed by an immutable, configuration-seeded set of

@@ -4892,7 +4892,7 @@ public partial class TpmHandle : TpmStructureBase
     /// <param name = "_handle"> Handle value </param>
     public TpmHandle(uint _handle) { handle = _handle; }
 
-    new public TpmHandle Copy() { return CreateCopy<TpmHandle>(); }
+    public new TpmHandle Copy() { return CreateCopy<TpmHandle>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -4909,7 +4909,7 @@ public partial class NullUnion : TpmStructureBase, ISymDetailsUnion, ISchemeKeye
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Null; }
 
-    new public NullUnion Copy() { return CreateCopy<NullUnion>(); }
+    public new NullUnion Copy() { return CreateCopy<NullUnion>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -4925,7 +4925,7 @@ public partial class Empty : TpmStructureBase, IAsymSchemeUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Rsaes; }
 
-    new public Empty Copy() { return CreateCopy<Empty>(); }
+    public new Empty Copy() { return CreateCopy<Empty>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -4964,7 +4964,7 @@ public partial class AlgorithmDescription : TpmStructureBase
         attributes = _attributes;
     }
 
-    new public AlgorithmDescription Copy() { return CreateCopy<AlgorithmDescription>(); }
+    public new AlgorithmDescription Copy() { return CreateCopy<AlgorithmDescription>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5008,7 +5008,7 @@ public partial class TpmHash : TpmStructureBase, ISignatureUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Hmac; }
 
-    new public TpmHash Copy() { return CreateCopy<TpmHash>(); }
+    public new TpmHash Copy() { return CreateCopy<TpmHash>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5034,7 +5034,7 @@ public partial class Tpm2bDigest : TpmStructureBase, IPublicIdUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Keyedhash; }
 
-    new public Tpm2bDigest Copy() { return CreateCopy<Tpm2bDigest>(); }
+    public new Tpm2bDigest Copy() { return CreateCopy<Tpm2bDigest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5057,7 +5057,7 @@ public partial class Tpm2bData : TpmStructureBase
     /// <param name = "_buffer"> TBD </param>
     public Tpm2bData(byte[] _buffer) { buffer = _buffer; }
 
-    new public Tpm2bData Copy() { return CreateCopy<Tpm2bData>(); }
+    public new Tpm2bData Copy() { return CreateCopy<Tpm2bData>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5074,7 +5074,7 @@ public partial class Tpm2bNonce : Tpm2bDigest
     /// <param name = "_buffer"> The buffer area that can be no larger than a digest </param>
     public Tpm2bNonce(byte[] _buffer) : base(_buffer) { }
 
-    new public Tpm2bNonce Copy() { return CreateCopy<Tpm2bNonce>(); }
+    public new Tpm2bNonce Copy() { return CreateCopy<Tpm2bNonce>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5095,7 +5095,7 @@ public partial class Tpm2bAuth : Tpm2bDigest
     /// <param name = "_buffer"> The buffer area that can be no larger than a digest </param>
     public Tpm2bAuth(byte[] _buffer) : base(_buffer) { }
 
-    new public Tpm2bAuth Copy() { return CreateCopy<Tpm2bAuth>(); }
+    public new Tpm2bAuth Copy() { return CreateCopy<Tpm2bAuth>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5115,7 +5115,7 @@ public partial class Tpm2bOperand : Tpm2bDigest
     /// <param name = "_buffer"> The buffer area that can be no larger than a digest </param>
     public Tpm2bOperand(byte[] _buffer) : base(_buffer) { }
 
-    new public Tpm2bOperand Copy() { return CreateCopy<Tpm2bOperand>(); }
+    public new Tpm2bOperand Copy() { return CreateCopy<Tpm2bOperand>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5138,7 +5138,7 @@ public partial class Tpm2bEvent : TpmStructureBase
     /// <param name = "_buffer"> The operand </param>
     public Tpm2bEvent(byte[] _buffer) { buffer = _buffer; }
 
-    new public Tpm2bEvent Copy() { return CreateCopy<Tpm2bEvent>(); }
+    public new Tpm2bEvent Copy() { return CreateCopy<Tpm2bEvent>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5163,7 +5163,7 @@ public partial class Tpm2bMaxBuffer : TpmStructureBase
     /// <param name = "_buffer"> The operand </param>
     public Tpm2bMaxBuffer(byte[] _buffer) { buffer = _buffer; }
 
-    new public Tpm2bMaxBuffer Copy() { return CreateCopy<Tpm2bMaxBuffer>(); }
+    public new Tpm2bMaxBuffer Copy() { return CreateCopy<Tpm2bMaxBuffer>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5189,7 +5189,7 @@ public partial class Tpm2bMaxNvBuffer : TpmStructureBase
     ///        NOTE MAX_NV_BUFFER_SIZE is TPM-dependent </param>
     public Tpm2bMaxNvBuffer(byte[] _buffer) { buffer = _buffer; }
 
-    new public Tpm2bMaxNvBuffer Copy() { return CreateCopy<Tpm2bMaxNvBuffer>(); }
+    public new Tpm2bMaxNvBuffer Copy() { return CreateCopy<Tpm2bMaxNvBuffer>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5213,7 +5213,7 @@ public partial class Tpm2bTimeout : TpmStructureBase
     /// <param name = "_buffer"> The timeout value </param>
     public Tpm2bTimeout(byte[] _buffer) { buffer = _buffer; }
 
-    new public Tpm2bTimeout Copy() { return CreateCopy<Tpm2bTimeout>(); }
+    public new Tpm2bTimeout Copy() { return CreateCopy<Tpm2bTimeout>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5238,7 +5238,7 @@ public partial class Tpm2bIv : TpmStructureBase
     /// <param name = "_buffer"> The IV value </param>
     public Tpm2bIv(byte[] _buffer) { buffer = _buffer; }
 
-    new public Tpm2bIv Copy() { return CreateCopy<Tpm2bIv>(); }
+    public new Tpm2bIv Copy() { return CreateCopy<Tpm2bIv>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5261,7 +5261,7 @@ public partial class Tpm2bName : TpmStructureBase
     /// <param name = "_name"> The Name structure </param>
     public Tpm2bName(byte[] _name) { name = _name; }
 
-    new public Tpm2bName Copy() { return CreateCopy<Tpm2bName>(); }
+    public new Tpm2bName Copy() { return CreateCopy<Tpm2bName>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5284,7 +5284,7 @@ public partial class PcrSelect : TpmStructureBase
     /// <param name = "_pcrSelect"> The bit map of selected PCR </param>
     public PcrSelect(byte[] _pcrSelect) { pcrSelect = _pcrSelect; }
 
-    new public PcrSelect Copy() { return CreateCopy<PcrSelect>(); }
+    public new PcrSelect Copy() { return CreateCopy<PcrSelect>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5322,7 +5322,7 @@ public partial class PcrSelection : TpmStructureBase
         pcrSelect = _pcrSelect;
     }
 
-    new public PcrSelection Copy() { return CreateCopy<PcrSelection>(); }
+    public new PcrSelection Copy() { return CreateCopy<PcrSelection>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5368,7 +5368,7 @@ public partial class TkCreation : TpmStructureBase
         digest = _digest;
     }
 
-    new public TkCreation Copy() { return CreateCopy<TkCreation>(); }
+    public new TkCreation Copy() { return CreateCopy<TkCreation>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5414,7 +5414,7 @@ public partial class TkVerified : TpmStructureBase
         digest = _digest;
     }
 
-    new public TkVerified Copy() { return CreateCopy<TkVerified>(); }
+    public new TkVerified Copy() { return CreateCopy<TkVerified>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5464,7 +5464,7 @@ public partial class TkAuth : TpmStructureBase
         digest = _digest;
     }
 
-    new public TkAuth Copy() { return CreateCopy<TkAuth>(); }
+    public new TkAuth Copy() { return CreateCopy<TkAuth>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5510,7 +5510,7 @@ public partial class TkHashcheck : TpmStructureBase
         digest = _digest;
     }
 
-    new public TkHashcheck Copy() { return CreateCopy<TkHashcheck>(); }
+    public new TkHashcheck Copy() { return CreateCopy<TkHashcheck>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5549,7 +5549,7 @@ public partial class AlgProperty : TpmStructureBase
         algProperties = _algProperties;
     }
 
-    new public AlgProperty Copy() { return CreateCopy<AlgProperty>(); }
+    public new AlgProperty Copy() { return CreateCopy<AlgProperty>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5587,7 +5587,7 @@ public partial class TaggedProperty : TpmStructureBase
         value = _value;
     }
 
-    new public TaggedProperty Copy() { return CreateCopy<TaggedProperty>(); }
+    public new TaggedProperty Copy() { return CreateCopy<TaggedProperty>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5626,7 +5626,7 @@ public partial class TaggedPcrSelect : TpmStructureBase
         pcrSelect = _pcrSelect;
     }
 
-    new public TaggedPcrSelect Copy() { return CreateCopy<TaggedPcrSelect>(); }
+    public new TaggedPcrSelect Copy() { return CreateCopy<TaggedPcrSelect>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5665,7 +5665,7 @@ public partial class TaggedPolicy : TpmStructureBase
         policyHash = _policyHash;
     }
 
-    new public TaggedPolicy Copy() { return CreateCopy<TaggedPolicy>(); }
+    public new TaggedPolicy Copy() { return CreateCopy<TaggedPolicy>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5711,7 +5711,7 @@ public partial class ActData : TpmStructureBase
         attributes = _attributes;
     }
 
-    new public ActData Copy() { return CreateCopy<ActData>(); }
+    public new ActData Copy() { return CreateCopy<ActData>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5741,7 +5741,7 @@ public partial class CcArray : TpmStructureBase, ICapabilitiesUnion
 
     public virtual Cap GetUnionSelector() { return Cap.PpCommands; }
 
-    new public CcArray Copy() { return CreateCopy<CcArray>(); }
+    public new CcArray Copy() { return CreateCopy<CcArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5767,7 +5767,7 @@ public partial class CcaArray : TpmStructureBase, ICapabilitiesUnion
 
     public virtual Cap GetUnionSelector() { return Cap.Commands; }
 
-    new public CcaArray Copy() { return CreateCopy<CcaArray>(); }
+    public new CcaArray Copy() { return CreateCopy<CcaArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5794,7 +5794,7 @@ public partial class AlgArray : TpmStructureBase
     ///        limited only by the size of the parameter buffer. </param>
     public AlgArray(TpmAlgId[] _algorithms) { algorithms = _algorithms; }
 
-    new public AlgArray Copy() { return CreateCopy<AlgArray>(); }
+    public new AlgArray Copy() { return CreateCopy<AlgArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5820,7 +5820,7 @@ public partial class HandleArray : TpmStructureBase, ICapabilitiesUnion
 
     public virtual Cap GetUnionSelector() { return Cap.Handles; }
 
-    new public HandleArray Copy() { return CreateCopy<HandleArray>(); }
+    public new HandleArray Copy() { return CreateCopy<HandleArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5850,7 +5850,7 @@ public partial class DigestArray : TpmStructureBase
     ///        the bank containing the PCR. </param>
     public DigestArray(Tpm2bDigest[] _digests) { digests = _digests; }
 
-    new public DigestArray Copy() { return CreateCopy<DigestArray>(); }
+    public new DigestArray Copy() { return CreateCopy<DigestArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5875,7 +5875,7 @@ public partial class DigestValuesArray : TpmStructureBase
     /// <param name = "_digests"> A list of tagged digests </param>
     public DigestValuesArray(TpmHash[] _digests) { digests = _digests; }
 
-    new public DigestValuesArray Copy() { return CreateCopy<DigestValuesArray>(); }
+    public new DigestValuesArray Copy() { return CreateCopy<DigestValuesArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5901,7 +5901,7 @@ public partial class PcrSelectionArray : TpmStructureBase, ICapabilitiesUnion
 
     public virtual Cap GetUnionSelector() { return Cap.Pcrs; }
 
-    new public PcrSelectionArray Copy() { return CreateCopy<PcrSelectionArray>(); }
+    public new PcrSelectionArray Copy() { return CreateCopy<PcrSelectionArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5927,7 +5927,7 @@ public partial class AlgPropertyArray : TpmStructureBase, ICapabilitiesUnion
 
     public virtual Cap GetUnionSelector() { return Cap.Algs; }
 
-    new public AlgPropertyArray Copy() { return CreateCopy<AlgPropertyArray>(); }
+    public new AlgPropertyArray Copy() { return CreateCopy<AlgPropertyArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5953,7 +5953,7 @@ public partial class TaggedTpmPropertyArray : TpmStructureBase, ICapabilitiesUni
 
     public virtual Cap GetUnionSelector() { return Cap.TpmProperties; }
 
-    new public TaggedTpmPropertyArray Copy() { return CreateCopy<TaggedTpmPropertyArray>(); }
+    public new TaggedTpmPropertyArray Copy() { return CreateCopy<TaggedTpmPropertyArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -5979,7 +5979,7 @@ public partial class TaggedPcrPropertyArray : TpmStructureBase, ICapabilitiesUni
 
     public virtual Cap GetUnionSelector() { return Cap.PcrProperties; }
 
-    new public TaggedPcrPropertyArray Copy() { return CreateCopy<TaggedPcrPropertyArray>(); }
+    public new TaggedPcrPropertyArray Copy() { return CreateCopy<TaggedPcrPropertyArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6005,7 +6005,7 @@ public partial class EccCurveArray : TpmStructureBase, ICapabilitiesUnion
 
     public virtual Cap GetUnionSelector() { return Cap.EccCurves; }
 
-    new public EccCurveArray Copy() { return CreateCopy<EccCurveArray>(); }
+    public new EccCurveArray Copy() { return CreateCopy<EccCurveArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6032,7 +6032,7 @@ public partial class TaggedPolicyArray : TpmStructureBase, ICapabilitiesUnion
 
     public virtual Cap GetUnionSelector() { return Cap.AuthPolicies; }
 
-    new public TaggedPolicyArray Copy() { return CreateCopy<TaggedPolicyArray>(); }
+    public new TaggedPolicyArray Copy() { return CreateCopy<TaggedPolicyArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6058,7 +6058,7 @@ public partial class ActDataArray : TpmStructureBase, ICapabilitiesUnion
 
     public virtual Cap GetUnionSelector() { return Cap.Act; }
 
-    new public ActDataArray Copy() { return CreateCopy<ActDataArray>(); }
+    public new ActDataArray Copy() { return CreateCopy<ActDataArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6104,7 +6104,7 @@ public partial class CapabilityData : TpmStructureBase
     ///        ActDataArray. </param>
     public CapabilityData(ICapabilitiesUnion _data) { data = _data; }
 
-    new public CapabilityData Copy() { return CreateCopy<CapabilityData>(); }
+    public new CapabilityData Copy() { return CreateCopy<CapabilityData>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6171,7 +6171,7 @@ public partial class ClockInfo : TpmStructureBase
         safe = _safe;
     }
 
-    new public ClockInfo Copy() { return CreateCopy<ClockInfo>(); }
+    public new ClockInfo Copy() { return CreateCopy<ClockInfo>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6211,7 +6211,7 @@ public partial class TimeInfo : TpmStructureBase
         clockInfo = _clockInfo;
     }
 
-    new public TimeInfo Copy() { return CreateCopy<TimeInfo>(); }
+    public new TimeInfo Copy() { return CreateCopy<TimeInfo>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6251,7 +6251,7 @@ public partial class TimeAttestInfo : TpmStructureBase, IAttestUnion
 
     public virtual TpmSt GetUnionSelector() { return TpmSt.AttestTime; }
 
-    new public TimeAttestInfo Copy() { return CreateCopy<TimeAttestInfo>(); }
+    public new TimeAttestInfo Copy() { return CreateCopy<TimeAttestInfo>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6289,7 +6289,7 @@ public partial class CertifyInfo : TpmStructureBase, IAttestUnion
 
     public virtual TpmSt GetUnionSelector() { return TpmSt.AttestCertify; }
 
-    new public CertifyInfo Copy() { return CreateCopy<CertifyInfo>(); }
+    public new CertifyInfo Copy() { return CreateCopy<CertifyInfo>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6327,7 +6327,7 @@ public partial class QuoteInfo : TpmStructureBase, IAttestUnion
 
     public virtual TpmSt GetUnionSelector() { return TpmSt.AttestQuote; }
 
-    new public QuoteInfo Copy() { return CreateCopy<QuoteInfo>(); }
+    public new QuoteInfo Copy() { return CreateCopy<QuoteInfo>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6382,7 +6382,7 @@ public partial class CommandAuditInfo : TpmStructureBase, IAttestUnion
 
     public virtual TpmSt GetUnionSelector() { return TpmSt.AttestCommandAudit; }
 
-    new public CommandAuditInfo Copy() { return CreateCopy<CommandAuditInfo>(); }
+    public new CommandAuditInfo Copy() { return CreateCopy<CommandAuditInfo>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6424,7 +6424,7 @@ public partial class SessionAuditInfo : TpmStructureBase, IAttestUnion
 
     public virtual TpmSt GetUnionSelector() { return TpmSt.AttestSessionAudit; }
 
-    new public SessionAuditInfo Copy() { return CreateCopy<SessionAuditInfo>(); }
+    public new SessionAuditInfo Copy() { return CreateCopy<SessionAuditInfo>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6462,7 +6462,7 @@ public partial class CreationInfo : TpmStructureBase, IAttestUnion
 
     public virtual TpmSt GetUnionSelector() { return TpmSt.AttestCreation; }
 
-    new public CreationInfo Copy() { return CreateCopy<CreationInfo>(); }
+    public new CreationInfo Copy() { return CreateCopy<CreationInfo>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6509,7 +6509,7 @@ public partial class NvCertifyInfo : TpmStructureBase, IAttestUnion
 
     public virtual TpmSt GetUnionSelector() { return TpmSt.AttestNv; }
 
-    new public NvCertifyInfo Copy() { return CreateCopy<NvCertifyInfo>(); }
+    public new NvCertifyInfo Copy() { return CreateCopy<NvCertifyInfo>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6549,7 +6549,7 @@ public partial class NvDigestCertifyInfo : TpmStructureBase, IAttestUnion
 
     public virtual TpmSt GetUnionSelector() { return TpmSt.AttestNvDigest; }
 
-    new public NvDigestCertifyInfo Copy() { return CreateCopy<NvDigestCertifyInfo>(); }
+    public new NvDigestCertifyInfo Copy() { return CreateCopy<NvDigestCertifyInfo>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6649,7 +6649,7 @@ public partial class Attest : TpmStructureBase
         attested = _attested;
     }
 
-    new public Attest Copy() { return CreateCopy<Attest>(); }
+    public new Attest Copy() { return CreateCopy<Attest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6674,7 +6674,7 @@ public partial class Tpm2bAttest : TpmStructureBase
     /// <param name = "_attestationData"> The signed structure </param>
     public Tpm2bAttest(Attest _attestationData) { attestationData = _attestationData; }
 
-    new public Tpm2bAttest Copy() { return CreateCopy<Tpm2bAttest>(); }
+    public new Tpm2bAttest Copy() { return CreateCopy<Tpm2bAttest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6729,7 +6729,7 @@ public partial class AuthCommand : TpmStructureBase
         hmac = _hmac;
     }
 
-    new public AuthCommand Copy() { return CreateCopy<AuthCommand>(); }
+    public new AuthCommand Copy() { return CreateCopy<AuthCommand>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6777,7 +6777,7 @@ public partial class AuthResponse : TpmStructureBase
         hmac = _hmac;
     }
 
-    new public AuthResponse Copy() { return CreateCopy<AuthResponse>(); }
+    public new AuthResponse Copy() { return CreateCopy<AuthResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6793,7 +6793,7 @@ public partial class TdesSymDetails : NullUnion
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Tdes; }
 
-    new public TdesSymDetails Copy() { return CreateCopy<TdesSymDetails>(); }
+    public new TdesSymDetails Copy() { return CreateCopy<TdesSymDetails>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6808,7 +6808,7 @@ public partial class AesSymDetails : NullUnion
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Aes; }
 
-    new public AesSymDetails Copy() { return CreateCopy<AesSymDetails>(); }
+    public new AesSymDetails Copy() { return CreateCopy<AesSymDetails>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6823,7 +6823,7 @@ public partial class Sm4SymDetails : NullUnion
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Sm4; }
 
-    new public Sm4SymDetails Copy() { return CreateCopy<Sm4SymDetails>(); }
+    public new Sm4SymDetails Copy() { return CreateCopy<Sm4SymDetails>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6839,7 +6839,7 @@ public partial class CamelliaSymDetails : NullUnion
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Camellia; }
 
-    new public CamelliaSymDetails Copy() { return CreateCopy<CamelliaSymDetails>(); }
+    public new CamelliaSymDetails Copy() { return CreateCopy<CamelliaSymDetails>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6854,7 +6854,7 @@ public partial class AnySymDetails : NullUnion
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Any; }
 
-    new public AnySymDetails Copy() { return CreateCopy<AnySymDetails>(); }
+    public new AnySymDetails Copy() { return CreateCopy<AnySymDetails>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6869,7 +6869,7 @@ public partial class XorSymDetails : NullUnion
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Xor; }
 
-    new public XorSymDetails Copy() { return CreateCopy<XorSymDetails>(); }
+    public new XorSymDetails Copy() { return CreateCopy<XorSymDetails>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6885,7 +6885,7 @@ public partial class NullSymDetails : NullUnion
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Null; }
 
-    new public NullSymDetails Copy() { return CreateCopy<NullSymDetails>(); }
+    public new NullSymDetails Copy() { return CreateCopy<NullSymDetails>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6936,7 +6936,7 @@ public partial class SymDef : TpmStructureBase
         Mode = _Mode;
     }
 
-    new public SymDef Copy() { return CreateCopy<SymDef>(); }
+    public new SymDef Copy() { return CreateCopy<SymDef>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -6993,7 +6993,7 @@ public partial class SymDefObject : TpmStructureBase
         Mode = _Mode;
     }
 
-    new public SymDefObject Copy() { return CreateCopy<SymDefObject>(); }
+    public new SymDefObject Copy() { return CreateCopy<SymDefObject>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7019,7 +7019,7 @@ public partial class Tpm2bSymKey : TpmStructureBase, ISensitiveCompositeUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Symcipher; }
 
-    new public Tpm2bSymKey Copy() { return CreateCopy<Tpm2bSymKey>(); }
+    public new Tpm2bSymKey Copy() { return CreateCopy<Tpm2bSymKey>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7044,7 +7044,7 @@ public partial class SymcipherParms : TpmStructureBase, IPublicParmsUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Symcipher; }
 
-    new public SymcipherParms Copy() { return CreateCopy<SymcipherParms>(); }
+    public new SymcipherParms Copy() { return CreateCopy<SymcipherParms>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7071,7 +7071,7 @@ public partial class Tpm2bLabel : TpmStructureBase
     ///        a derived object </param>
     public Tpm2bLabel(byte[] _buffer) { buffer = _buffer; }
 
-    new public Tpm2bLabel Copy() { return CreateCopy<Tpm2bLabel>(); }
+    public new Tpm2bLabel Copy() { return CreateCopy<Tpm2bLabel>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7109,7 +7109,7 @@ public partial class TpmDerive : TpmStructureBase, ISensitiveCreateUnion, IPubli
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Any2; }
 
-    new public TpmDerive Copy() { return CreateCopy<TpmDerive>(); }
+    public new TpmDerive Copy() { return CreateCopy<TpmDerive>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7135,7 +7135,7 @@ public partial class Tpm2bDerive : TpmStructureBase
     ///        a derived object </param>
     public Tpm2bDerive(TpmDerive _buffer) { buffer = _buffer; }
 
-    new public Tpm2bDerive Copy() { return CreateCopy<Tpm2bDerive>(); }
+    public new Tpm2bDerive Copy() { return CreateCopy<Tpm2bDerive>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7162,7 +7162,7 @@ public partial class Tpm2bSensitiveData : TpmStructureBase, ISensitiveCompositeU
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Keyedhash; }
 
-    new public Tpm2bSensitiveData Copy() { return CreateCopy<Tpm2bSensitiveData>(); }
+    public new Tpm2bSensitiveData Copy() { return CreateCopy<Tpm2bSensitiveData>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7200,7 +7200,7 @@ public partial class SensitiveCreate : TpmStructureBase
         data = _data;
     }
 
-    new public SensitiveCreate Copy() { return CreateCopy<SensitiveCreate>(); }
+    public new SensitiveCreate Copy() { return CreateCopy<SensitiveCreate>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7226,7 +7226,7 @@ public partial class Tpm2bSensitiveCreate : TpmStructureBase
     /// <param name = "_sensitive"> Data to be sealed or a symmetric key value. </param>
     public Tpm2bSensitiveCreate(SensitiveCreate _sensitive) { sensitive = _sensitive; }
 
-    new public Tpm2bSensitiveCreate Copy() { return CreateCopy<Tpm2bSensitiveCreate>(); }
+    public new Tpm2bSensitiveCreate Copy() { return CreateCopy<Tpm2bSensitiveCreate>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7252,7 +7252,7 @@ public partial class SchemeHash : TpmStructureBase, ISchemeKeyedhashUnion, ISigS
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Hmac; }
 
-    new public SchemeHash Copy() { return CreateCopy<SchemeHash>(); }
+    public new SchemeHash Copy() { return CreateCopy<SchemeHash>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7292,7 +7292,7 @@ public partial class SchemeEcdaa : TpmStructureBase, ISigSchemeUnion, IAsymSchem
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Ecdaa; }
 
-    new public SchemeEcdaa Copy() { return CreateCopy<SchemeEcdaa>(); }
+    public new SchemeEcdaa Copy() { return CreateCopy<SchemeEcdaa>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7311,7 +7311,7 @@ public partial class SchemeHmac : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Hmac; }
 
-    new public SchemeHmac Copy() { return CreateCopy<SchemeHmac>(); }
+    public new SchemeHmac Copy() { return CreateCopy<SchemeHmac>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7354,7 +7354,7 @@ public partial class SchemeXor : TpmStructureBase, ISchemeKeyedhashUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Xor; }
 
-    new public SchemeXor Copy() { return CreateCopy<SchemeXor>(); }
+    public new SchemeXor Copy() { return CreateCopy<SchemeXor>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7370,7 +7370,7 @@ public partial class NullSchemeKeyedhash : NullUnion
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Null; }
 
-    new public NullSchemeKeyedhash Copy() { return CreateCopy<NullSchemeKeyedhash>(); }
+    public new NullSchemeKeyedhash Copy() { return CreateCopy<NullSchemeKeyedhash>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7405,7 +7405,7 @@ public partial class KeyedhashScheme : TpmStructureBase
     ///        One of: SchemeHmac, SchemeXor, NullSchemeKeyedhash. </param>
     public KeyedhashScheme(ISchemeKeyedhashUnion _details) { details = _details; }
 
-    new public KeyedhashScheme Copy() { return CreateCopy<KeyedhashScheme>(); }
+    public new KeyedhashScheme Copy() { return CreateCopy<KeyedhashScheme>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7425,7 +7425,7 @@ public partial class SigSchemeRsassa : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Rsassa; }
 
-    new public SigSchemeRsassa Copy() { return CreateCopy<SigSchemeRsassa>(); }
+    public new SigSchemeRsassa Copy() { return CreateCopy<SigSchemeRsassa>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7445,7 +7445,7 @@ public partial class SigSchemeRsapss : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Rsapss; }
 
-    new public SigSchemeRsapss Copy() { return CreateCopy<SigSchemeRsapss>(); }
+    public new SigSchemeRsapss Copy() { return CreateCopy<SigSchemeRsapss>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7466,7 +7466,7 @@ public partial class SigSchemeEcdsa : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Ecdsa; }
 
-    new public SigSchemeEcdsa Copy() { return CreateCopy<SigSchemeEcdsa>(); }
+    public new SigSchemeEcdsa Copy() { return CreateCopy<SigSchemeEcdsa>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7487,7 +7487,7 @@ public partial class SigSchemeSm2 : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Sm2; }
 
-    new public SigSchemeSm2 Copy() { return CreateCopy<SigSchemeSm2>(); }
+    public new SigSchemeSm2 Copy() { return CreateCopy<SigSchemeSm2>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7508,7 +7508,7 @@ public partial class SigSchemeEcschnorr : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Ecschnorr; }
 
-    new public SigSchemeEcschnorr Copy() { return CreateCopy<SigSchemeEcschnorr>(); }
+    public new SigSchemeEcschnorr Copy() { return CreateCopy<SigSchemeEcschnorr>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7533,7 +7533,7 @@ public partial class SigSchemeEcdaa : SchemeEcdaa
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Ecdaa; }
 
-    new public SigSchemeEcdaa Copy() { return CreateCopy<SigSchemeEcdaa>(); }
+    public new SigSchemeEcdaa Copy() { return CreateCopy<SigSchemeEcdaa>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7548,7 +7548,7 @@ public partial class NullSigScheme : NullUnion
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Null; }
 
-    new public NullSigScheme Copy() { return CreateCopy<NullSigScheme>(); }
+    public new NullSigScheme Copy() { return CreateCopy<NullSigScheme>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7591,7 +7591,7 @@ public partial class SigScheme : TpmStructureBase
     ///        SigSchemeSm2, SigSchemeEcschnorr, SchemeHmac, SchemeHash, NullSigScheme. </param>
     public SigScheme(ISigSchemeUnion _details) { details = _details; }
 
-    new public SigScheme Copy() { return CreateCopy<SigScheme>(); }
+    public new SigScheme Copy() { return CreateCopy<SigScheme>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7611,7 +7611,7 @@ public partial class EncSchemeOaep : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Oaep; }
 
-    new public EncSchemeOaep Copy() { return CreateCopy<EncSchemeOaep>(); }
+    public new EncSchemeOaep Copy() { return CreateCopy<EncSchemeOaep>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7626,7 +7626,7 @@ public partial class EncSchemeRsaes : Empty
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Rsaes; }
 
-    new public EncSchemeRsaes Copy() { return CreateCopy<EncSchemeRsaes>(); }
+    public new EncSchemeRsaes Copy() { return CreateCopy<EncSchemeRsaes>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7646,7 +7646,7 @@ public partial class KeySchemeEcdh : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Ecdh; }
 
-    new public KeySchemeEcdh Copy() { return CreateCopy<KeySchemeEcdh>(); }
+    public new KeySchemeEcdh Copy() { return CreateCopy<KeySchemeEcdh>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7666,7 +7666,7 @@ public partial class KeySchemeEcmqv : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Ecmqv; }
 
-    new public KeySchemeEcmqv Copy() { return CreateCopy<KeySchemeEcmqv>(); }
+    public new KeySchemeEcmqv Copy() { return CreateCopy<KeySchemeEcmqv>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7687,7 +7687,7 @@ public partial class KdfSchemeMgf1 : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Mgf1; }
 
-    new public KdfSchemeMgf1 Copy() { return CreateCopy<KdfSchemeMgf1>(); }
+    public new KdfSchemeMgf1 Copy() { return CreateCopy<KdfSchemeMgf1>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7708,7 +7708,7 @@ public partial class KdfSchemeKdf1Sp80056a : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Kdf1Sp80056a; }
 
-    new public KdfSchemeKdf1Sp80056a Copy() { return CreateCopy<KdfSchemeKdf1Sp80056a>(); }
+    public new KdfSchemeKdf1Sp80056a Copy() { return CreateCopy<KdfSchemeKdf1Sp80056a>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7729,7 +7729,7 @@ public partial class KdfSchemeKdf2 : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Kdf2; }
 
-    new public KdfSchemeKdf2 Copy() { return CreateCopy<KdfSchemeKdf2>(); }
+    public new KdfSchemeKdf2 Copy() { return CreateCopy<KdfSchemeKdf2>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7750,7 +7750,7 @@ public partial class KdfSchemeKdf1Sp800108 : SchemeHash
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Kdf1Sp800108; }
 
-    new public KdfSchemeKdf1Sp800108 Copy() { return CreateCopy<KdfSchemeKdf1Sp800108>(); }
+    public new KdfSchemeKdf1Sp800108 Copy() { return CreateCopy<KdfSchemeKdf1Sp800108>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7765,7 +7765,7 @@ public partial class NullKdfScheme : NullUnion
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Null; }
 
-    new public NullKdfScheme Copy() { return CreateCopy<NullKdfScheme>(); }
+    public new NullKdfScheme Copy() { return CreateCopy<NullKdfScheme>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7805,7 +7805,7 @@ public partial class KdfScheme : TpmStructureBase
     ///        SchemeHash, NullKdfScheme. </param>
     public KdfScheme(IKdfSchemeUnion _details) { details = _details; }
 
-    new public KdfScheme Copy() { return CreateCopy<KdfScheme>(); }
+    public new KdfScheme Copy() { return CreateCopy<KdfScheme>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7821,7 +7821,7 @@ public partial class NullAsymScheme : NullUnion
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Null; }
 
-    new public NullAsymScheme Copy() { return CreateCopy<NullAsymScheme>(); }
+    public new NullAsymScheme Copy() { return CreateCopy<NullAsymScheme>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7871,7 +7871,7 @@ public partial class AsymScheme : TpmStructureBase
     ///        EncSchemeOaep, SchemeHash, NullAsymScheme. </param>
     public AsymScheme(IAsymSchemeUnion _details) { details = _details; }
 
-    new public AsymScheme Copy() { return CreateCopy<AsymScheme>(); }
+    public new AsymScheme Copy() { return CreateCopy<AsymScheme>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7919,7 +7919,7 @@ public partial class RsaScheme : TpmStructureBase
     ///        EncSchemeOaep, SchemeHash, NullAsymScheme. </param>
     public RsaScheme(IAsymSchemeUnion _details) { details = _details; }
 
-    new public RsaScheme Copy() { return CreateCopy<RsaScheme>(); }
+    public new RsaScheme Copy() { return CreateCopy<RsaScheme>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7967,7 +7967,7 @@ public partial class RsaDecrypt : TpmStructureBase
     ///        EncSchemeOaep, SchemeHash, NullAsymScheme. </param>
     public RsaDecrypt(IAsymSchemeUnion _details) { details = _details; }
 
-    new public RsaDecrypt Copy() { return CreateCopy<RsaDecrypt>(); }
+    public new RsaDecrypt Copy() { return CreateCopy<RsaDecrypt>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -7992,7 +7992,7 @@ public partial class Tpm2bPublicKeyRsa : TpmStructureBase, IPublicIdUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Rsa; }
 
-    new public Tpm2bPublicKeyRsa Copy() { return CreateCopy<Tpm2bPublicKeyRsa>(); }
+    public new Tpm2bPublicKeyRsa Copy() { return CreateCopy<Tpm2bPublicKeyRsa>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8016,7 +8016,7 @@ public partial class Tpm2bPrivateKeyRsa : TpmStructureBase, ISensitiveCompositeU
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Rsa; }
 
-    new public Tpm2bPrivateKeyRsa Copy() { return CreateCopy<Tpm2bPrivateKeyRsa>(); }
+    public new Tpm2bPrivateKeyRsa Copy() { return CreateCopy<Tpm2bPrivateKeyRsa>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8042,7 +8042,7 @@ public partial class Tpm2bEccParameter : TpmStructureBase, ISensitiveCompositeUn
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Ecc; }
 
-    new public Tpm2bEccParameter Copy() { return CreateCopy<Tpm2bEccParameter>(); }
+    public new Tpm2bEccParameter Copy() { return CreateCopy<Tpm2bEccParameter>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8081,7 +8081,7 @@ public partial class EccPoint : TpmStructureBase, IPublicIdUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Ecc; }
 
-    new public EccPoint Copy() { return CreateCopy<EccPoint>(); }
+    public new EccPoint Copy() { return CreateCopy<EccPoint>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8105,7 +8105,7 @@ public partial class Tpm2bEccPoint : TpmStructureBase
     /// <param name = "_point"> Coordinates </param>
     public Tpm2bEccPoint(EccPoint _point) { point = _point; }
 
-    new public Tpm2bEccPoint Copy() { return CreateCopy<Tpm2bEccPoint>(); }
+    public new Tpm2bEccPoint Copy() { return CreateCopy<Tpm2bEccPoint>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8153,7 +8153,7 @@ public partial class EccScheme : TpmStructureBase
     ///        EncSchemeOaep, SchemeHash, NullAsymScheme. </param>
     public EccScheme(IAsymSchemeUnion _details) { details = _details; }
 
-    new public EccScheme Copy() { return CreateCopy<EccScheme>(); }
+    public new EccScheme Copy() { return CreateCopy<EccScheme>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8309,7 +8309,7 @@ public partial class AlgorithmDetailEcc : TpmStructureBase
         h = _h;
     }
 
-    new public AlgorithmDetailEcc Copy() { return CreateCopy<AlgorithmDetailEcc>(); }
+    public new AlgorithmDetailEcc Copy() { return CreateCopy<AlgorithmDetailEcc>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8350,7 +8350,7 @@ public partial class SignatureRsa : TpmStructureBase, ISignatureUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Rsassa; }
 
-    new public SignatureRsa Copy() { return CreateCopy<SignatureRsa>(); }
+    public new SignatureRsa Copy() { return CreateCopy<SignatureRsa>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8373,7 +8373,7 @@ public partial class SignatureRsassa : SignatureRsa
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Rsassa; }
 
-    new public SignatureRsassa Copy() { return CreateCopy<SignatureRsassa>(); }
+    public new SignatureRsassa Copy() { return CreateCopy<SignatureRsassa>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8396,7 +8396,7 @@ public partial class SignatureRsapss : SignatureRsa
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Rsapss; }
 
-    new public SignatureRsapss Copy() { return CreateCopy<SignatureRsapss>(); }
+    public new SignatureRsapss Copy() { return CreateCopy<SignatureRsapss>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8443,7 +8443,7 @@ public partial class SignatureEcc : TpmStructureBase, ISignatureUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Ecdsa; }
 
-    new public SignatureEcc Copy() { return CreateCopy<SignatureEcc>(); }
+    public new SignatureEcc Copy() { return CreateCopy<SignatureEcc>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8467,7 +8467,7 @@ public partial class SignatureEcdsa : SignatureEcc
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Ecdsa; }
 
-    new public SignatureEcdsa Copy() { return CreateCopy<SignatureEcdsa>(); }
+    public new SignatureEcdsa Copy() { return CreateCopy<SignatureEcdsa>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8491,7 +8491,7 @@ public partial class SignatureEcdaa : SignatureEcc
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Ecdaa; }
 
-    new public SignatureEcdaa Copy() { return CreateCopy<SignatureEcdaa>(); }
+    public new SignatureEcdaa Copy() { return CreateCopy<SignatureEcdaa>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8515,7 +8515,7 @@ public partial class SignatureSm2 : SignatureEcc
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Sm2; }
 
-    new public SignatureSm2 Copy() { return CreateCopy<SignatureSm2>(); }
+    public new SignatureSm2 Copy() { return CreateCopy<SignatureSm2>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8539,7 +8539,7 @@ public partial class SignatureEcschnorr : SignatureEcc
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Ecschnorr; }
 
-    new public SignatureEcschnorr Copy() { return CreateCopy<SignatureEcschnorr>(); }
+    public new SignatureEcschnorr Copy() { return CreateCopy<SignatureEcschnorr>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8554,7 +8554,7 @@ public partial class NullSignature : NullUnion
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Null; }
 
-    new public NullSignature Copy() { return CreateCopy<NullSignature>(); }
+    public new NullSignature Copy() { return CreateCopy<NullSignature>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8601,7 +8601,7 @@ public partial class Signature : TpmStructureBase
     ///        SignatureSm2, SignatureEcschnorr, TpmHash, SchemeHash, NullSignature. </param>
     public Signature(ISignatureUnion _signature) { signature = _signature; }
 
-    new public Signature Copy() { return CreateCopy<Signature>(); }
+    public new Signature Copy() { return CreateCopy<Signature>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8624,7 +8624,7 @@ public partial class Tpm2bEncryptedSecret : TpmStructureBase
     /// <param name = "_secret"> Secret </param>
     public Tpm2bEncryptedSecret(byte[] _secret) { secret = _secret; }
 
-    new public Tpm2bEncryptedSecret Copy() { return CreateCopy<Tpm2bEncryptedSecret>(); }
+    public new Tpm2bEncryptedSecret Copy() { return CreateCopy<Tpm2bEncryptedSecret>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8666,7 +8666,7 @@ public partial class KeyedhashParms : TpmStructureBase, IPublicParmsUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Keyedhash; }
 
-    new public KeyedhashParms Copy() { return CreateCopy<KeyedhashParms>(); }
+    public new KeyedhashParms Copy() { return CreateCopy<KeyedhashParms>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8744,7 +8744,7 @@ public partial class AsymParms : TpmStructureBase, IPublicParmsUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Any; }
 
-    new public AsymParms Copy() { return CreateCopy<AsymParms>(); }
+    public new AsymParms Copy() { return CreateCopy<AsymParms>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8851,7 +8851,7 @@ public partial class RsaParms : TpmStructureBase, IPublicParmsUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Rsa; }
 
-    new public RsaParms Copy() { return CreateCopy<RsaParms>(); }
+    public new RsaParms Copy() { return CreateCopy<RsaParms>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -8975,7 +8975,7 @@ public partial class EccParms : TpmStructureBase, IPublicParmsUnion
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Ecc; }
 
-    new public EccParms Copy() { return CreateCopy<EccParms>(); }
+    public new EccParms Copy() { return CreateCopy<EccParms>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9013,7 +9013,7 @@ public partial class PublicParms : TpmStructureBase
     ///        One of: KeyedhashParms, SymcipherParms, RsaParms, EccParms, AsymParms. </param>
     public PublicParms(IPublicParmsUnion _parameters) { parameters = _parameters; }
 
-    new public PublicParms Copy() { return CreateCopy<PublicParms>(); }
+    public new PublicParms Copy() { return CreateCopy<PublicParms>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9111,7 +9111,7 @@ public partial class TpmPublic : TpmStructureBase
         unique = _unique;
     }
 
-    new public TpmPublic Copy() { return CreateCopy<TpmPublic>(); }
+    public new TpmPublic Copy() { return CreateCopy<TpmPublic>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9139,7 +9139,7 @@ public partial class Tpm2bPublic : TpmStructureBase
     ///        allowed for nameAlg. </param>
     public Tpm2bPublic(TpmPublic _publicArea) { publicArea = _publicArea; }
 
-    new public Tpm2bPublic Copy() { return CreateCopy<Tpm2bPublic>(); }
+    public new Tpm2bPublic Copy() { return CreateCopy<Tpm2bPublic>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9162,7 +9162,7 @@ public partial class Tpm2bTemplate : TpmStructureBase
     /// <param name = "_buffer"> The public area </param>
     public Tpm2bTemplate(byte[] _buffer) { buffer = _buffer; }
 
-    new public Tpm2bTemplate Copy() { return CreateCopy<Tpm2bTemplate>(); }
+    public new Tpm2bTemplate Copy() { return CreateCopy<Tpm2bTemplate>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9191,7 +9191,7 @@ public partial class Tpm2bPrivateVendorSpecific : TpmStructureBase, ISensitiveCo
 
     public virtual TpmAlgId GetUnionSelector() { return TpmAlgId.Any; }
 
-    new public Tpm2bPrivateVendorSpecific Copy() { return CreateCopy<Tpm2bPrivateVendorSpecific>(); }
+    public new Tpm2bPrivateVendorSpecific Copy() { return CreateCopy<Tpm2bPrivateVendorSpecific>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9259,7 +9259,7 @@ public partial class Sensitive : TpmStructureBase
         sensitive = _sensitive;
     }
 
-    new public Sensitive Copy() { return CreateCopy<Sensitive>(); }
+    public new Sensitive Copy() { return CreateCopy<Sensitive>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9284,7 +9284,7 @@ public partial class Tpm2bSensitive : TpmStructureBase
     /// <param name = "_sensitiveArea"> An unencrypted sensitive area </param>
     public Tpm2bSensitive(Sensitive _sensitiveArea) { sensitiveArea = _sensitiveArea; }
 
-    new public Tpm2bSensitive Copy() { return CreateCopy<Tpm2bSensitive>(); }
+    public new Tpm2bSensitive Copy() { return CreateCopy<Tpm2bSensitive>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9329,7 +9329,7 @@ public partial class _Private : TpmStructureBase
         sensitive = _sensitive;
     }
 
-    new public _Private Copy() { return CreateCopy<_Private>(); }
+    public new _Private Copy() { return CreateCopy<_Private>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9353,7 +9353,7 @@ public partial class TpmPrivate : TpmStructureBase
     /// <param name = "_buffer"> An encrypted private area </param>
     public TpmPrivate(byte[] _buffer) { buffer = _buffer; }
 
-    new public TpmPrivate Copy() { return CreateCopy<TpmPrivate>(); }
+    public new TpmPrivate Copy() { return CreateCopy<TpmPrivate>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9399,7 +9399,7 @@ public partial class IdObject : TpmStructureBase
         encIdentity = _encIdentity;
     }
 
-    new public IdObject Copy() { return CreateCopy<IdObject>(); }
+    public new IdObject Copy() { return CreateCopy<IdObject>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9424,7 +9424,7 @@ public partial class Tpm2bIdObject : TpmStructureBase
     /// <param name = "_credential"> An encrypted credential area </param>
     public Tpm2bIdObject(IdObject _credential) { credential = _credential; }
 
-    new public Tpm2bIdObject Copy() { return CreateCopy<Tpm2bIdObject>(); }
+    public new Tpm2bIdObject Copy() { return CreateCopy<Tpm2bIdObject>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9468,7 +9468,7 @@ public partial class NvPinCounterParameters : TpmStructureBase
         pinLimit = _pinLimit;
     }
 
-    new public NvPinCounterParameters Copy() { return CreateCopy<NvPinCounterParameters>(); }
+    public new NvPinCounterParameters Copy() { return CreateCopy<NvPinCounterParameters>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9546,7 +9546,7 @@ public partial class NvPublic : TpmStructureBase
         dataSize = _dataSize;
     }
 
-    new public NvPublic Copy() { return CreateCopy<NvPublic>(); }
+    public new NvPublic Copy() { return CreateCopy<NvPublic>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9569,7 +9569,7 @@ public partial class Tpm2bNvPublic : TpmStructureBase
     /// <param name = "_nvPublic"> The public area </param>
     public Tpm2bNvPublic(NvPublic _nvPublic) { nvPublic = _nvPublic; }
 
-    new public Tpm2bNvPublic Copy() { return CreateCopy<Tpm2bNvPublic>(); }
+    public new Tpm2bNvPublic Copy() { return CreateCopy<Tpm2bNvPublic>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9593,7 +9593,7 @@ public partial class Tpm2bContextSensitive : TpmStructureBase
     /// <param name = "_buffer"> The sensitive data </param>
     public Tpm2bContextSensitive(byte[] _buffer) { buffer = _buffer; }
 
-    new public Tpm2bContextSensitive Copy() { return CreateCopy<Tpm2bContextSensitive>(); }
+    public new Tpm2bContextSensitive Copy() { return CreateCopy<Tpm2bContextSensitive>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9630,7 +9630,7 @@ public partial class ContextData : TpmStructureBase
         encrypted = _encrypted;
     }
 
-    new public ContextData Copy() { return CreateCopy<ContextData>(); }
+    public new ContextData Copy() { return CreateCopy<ContextData>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9653,7 +9653,7 @@ public partial class Tpm2bContextData : TpmStructureBase
     /// <param name = "_buffer"> TBD </param>
     public Tpm2bContextData(ContextData _buffer) { buffer = _buffer; }
 
-    new public Tpm2bContextData Copy() { return CreateCopy<Tpm2bContextData>(); }
+    public new Tpm2bContextData Copy() { return CreateCopy<Tpm2bContextData>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9718,7 +9718,7 @@ public partial class Context : TpmStructureBase
         contextBlob = _contextBlob;
     }
 
-    new public Context Copy() { return CreateCopy<Context>(); }
+    public new Context Copy() { return CreateCopy<Context>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9816,7 +9816,7 @@ public partial class CreationData : TpmStructureBase
         outsideInfo = _outsideInfo;
     }
 
-    new public CreationData Copy() { return CreateCopy<CreationData>(); }
+    public new CreationData Copy() { return CreateCopy<CreationData>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9839,7 +9839,7 @@ public partial class Tpm2bCreationData : TpmStructureBase
     /// <param name = "_creationData"> TBD </param>
     public Tpm2bCreationData(CreationData _creationData) { creationData = _creationData; }
 
-    new public Tpm2bCreationData Copy() { return CreateCopy<Tpm2bCreationData>(); }
+    public new Tpm2bCreationData Copy() { return CreateCopy<Tpm2bCreationData>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9877,7 +9877,7 @@ public partial class AcOutput : TpmStructureBase
         data = _data;
     }
 
-    new public AcOutput Copy() { return CreateCopy<AcOutput>(); }
+    public new AcOutput Copy() { return CreateCopy<AcOutput>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9900,7 +9900,7 @@ public partial class AcCapabilitiesArray : TpmStructureBase
     /// <param name = "_acCapabilities"> A list of AC values </param>
     public AcCapabilitiesArray(AcOutput[] _acCapabilities) { acCapabilities = _acCapabilities; }
 
-    new public AcCapabilitiesArray Copy() { return CreateCopy<AcCapabilitiesArray>(); }
+    public new AcCapabilitiesArray Copy() { return CreateCopy<AcCapabilitiesArray>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9926,7 +9926,7 @@ public partial class Tpm2StartupRequest : TpmStructureBase
     /// <param name = "_startupType"> TPM_SU_CLEAR or TPM_SU_STATE </param>
     public Tpm2StartupRequest(Su _startupType) { startupType = _startupType; }
 
-    new public Tpm2StartupRequest Copy() { return CreateCopy<Tpm2StartupRequest>(); }
+    public new Tpm2StartupRequest Copy() { return CreateCopy<Tpm2StartupRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9948,7 +9948,7 @@ public partial class Tpm2ShutdownRequest : TpmStructureBase
     /// <param name = "_shutdownType"> TPM_SU_CLEAR or TPM_SU_STATE </param>
     public Tpm2ShutdownRequest(Su _shutdownType) { shutdownType = _shutdownType; }
 
-    new public Tpm2ShutdownRequest Copy() { return CreateCopy<Tpm2ShutdownRequest>(); }
+    public new Tpm2ShutdownRequest Copy() { return CreateCopy<Tpm2ShutdownRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9972,7 +9972,7 @@ public partial class Tpm2SelfTestRequest : TpmStructureBase
     ///        NO if only test of untested functions required </param>
     public Tpm2SelfTestRequest(byte _fullTest) { fullTest = _fullTest; }
 
-    new public Tpm2SelfTestRequest Copy() { return CreateCopy<Tpm2SelfTestRequest>(); }
+    public new Tpm2SelfTestRequest Copy() { return CreateCopy<Tpm2SelfTestRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -9992,7 +9992,7 @@ public partial class Tpm2IncrementalSelfTestRequest : TpmStructureBase
     /// <param name = "_toTest"> List of algorithms that should be tested </param>
     public Tpm2IncrementalSelfTestRequest(TpmAlgId[] _toTest) { toTest = _toTest; }
 
-    new public Tpm2IncrementalSelfTestRequest Copy() { return CreateCopy<Tpm2IncrementalSelfTestRequest>(); }
+    public new Tpm2IncrementalSelfTestRequest Copy() { return CreateCopy<Tpm2IncrementalSelfTestRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10011,7 +10011,7 @@ public partial class Tpm2IncrementalSelfTestResponse : TpmStructureBase
 
     public Tpm2IncrementalSelfTestResponse(Tpm2IncrementalSelfTestResponse src) { toDoList = src.toDoList; }
 
-    new public Tpm2IncrementalSelfTestResponse Copy() { return CreateCopy<Tpm2IncrementalSelfTestResponse>(); }
+    public new Tpm2IncrementalSelfTestResponse Copy() { return CreateCopy<Tpm2IncrementalSelfTestResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10024,7 +10024,7 @@ public partial class Tpm2GetTestResultRequest : TpmStructureBase
 {
     public Tpm2GetTestResultRequest() { }
 
-    new public Tpm2GetTestResultRequest Copy() { return CreateCopy<Tpm2GetTestResultRequest>(); }
+    public new Tpm2GetTestResultRequest Copy() { return CreateCopy<Tpm2GetTestResultRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10054,7 +10054,7 @@ public partial class Tpm2GetTestResultResponse : TpmStructureBase
         testResult = src.testResult;
     }
 
-    new public Tpm2GetTestResultResponse Copy() { return CreateCopy<Tpm2GetTestResultResponse>(); }
+    public new Tpm2GetTestResultResponse Copy() { return CreateCopy<Tpm2GetTestResultResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10148,7 +10148,7 @@ public partial class Tpm2StartAuthSessionRequest : TpmStructureBase
         authHash = _authHash;
     }
 
-    new public Tpm2StartAuthSessionRequest Copy() { return CreateCopy<Tpm2StartAuthSessionRequest>(); }
+    public new Tpm2StartAuthSessionRequest Copy() { return CreateCopy<Tpm2StartAuthSessionRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10179,7 +10179,7 @@ public partial class Tpm2StartAuthSessionResponse : TpmStructureBase
         nonceTPM = src.nonceTPM;
     }
 
-    new public Tpm2StartAuthSessionResponse Copy() { return CreateCopy<Tpm2StartAuthSessionResponse>(); }
+    public new Tpm2StartAuthSessionResponse Copy() { return CreateCopy<Tpm2StartAuthSessionResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10205,7 +10205,7 @@ public partial class Tpm2PolicyRestartRequest : TpmStructureBase
     /// <param name = "_sessionHandle"> The handle for the policy session </param>
     public Tpm2PolicyRestartRequest(TpmHandle _sessionHandle) { sessionHandle = _sessionHandle; }
 
-    new public Tpm2PolicyRestartRequest Copy() { return CreateCopy<Tpm2PolicyRestartRequest>(); }
+    public new Tpm2PolicyRestartRequest Copy() { return CreateCopy<Tpm2PolicyRestartRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10272,7 +10272,7 @@ public partial class Tpm2CreateRequest : TpmStructureBase
         creationPCR = _creationPCR;
     }
 
-    new public Tpm2CreateRequest Copy() { return CreateCopy<Tpm2CreateRequest>(); }
+    public new Tpm2CreateRequest Copy() { return CreateCopy<Tpm2CreateRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10329,7 +10329,7 @@ public partial class Tpm2CreateResponse : TpmStructureBase
         creationTicket = src.creationTicket;
     }
 
-    new public Tpm2CreateResponse Copy() { return CreateCopy<Tpm2CreateResponse>(); }
+    public new Tpm2CreateResponse Copy() { return CreateCopy<Tpm2CreateResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10375,7 +10375,7 @@ public partial class Tpm2LoadRequest : TpmStructureBase
         inPublic = _inPublic;
     }
 
-    new public Tpm2LoadRequest Copy() { return CreateCopy<Tpm2LoadRequest>(); }
+    public new Tpm2LoadRequest Copy() { return CreateCopy<Tpm2LoadRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10406,7 +10406,7 @@ public partial class Tpm2LoadResponse : TpmStructureBase
         name = src.name;
     }
 
-    new public Tpm2LoadResponse Copy() { return CreateCopy<Tpm2LoadResponse>(); }
+    public new Tpm2LoadResponse Copy() { return CreateCopy<Tpm2LoadResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10448,7 +10448,7 @@ public partial class Tpm2LoadExternalRequest : TpmStructureBase
         hierarchy = _hierarchy;
     }
 
-    new public Tpm2LoadExternalRequest Copy() { return CreateCopy<Tpm2LoadExternalRequest>(); }
+    public new Tpm2LoadExternalRequest Copy() { return CreateCopy<Tpm2LoadExternalRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10479,7 +10479,7 @@ public partial class Tpm2LoadExternalResponse : TpmStructureBase
         name = src.name;
     }
 
-    new public Tpm2LoadExternalResponse Copy() { return CreateCopy<Tpm2LoadExternalResponse>(); }
+    public new Tpm2LoadExternalResponse Copy() { return CreateCopy<Tpm2LoadExternalResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10502,7 +10502,7 @@ public partial class Tpm2ReadPublicRequest : TpmStructureBase
     ///        Auth Index: None </param>
     public Tpm2ReadPublicRequest(TpmHandle _objectHandle) { objectHandle = _objectHandle; }
 
-    new public Tpm2ReadPublicRequest Copy() { return CreateCopy<Tpm2ReadPublicRequest>(); }
+    public new Tpm2ReadPublicRequest Copy() { return CreateCopy<Tpm2ReadPublicRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10537,7 +10537,7 @@ public partial class Tpm2ReadPublicResponse : TpmStructureBase
         qualifiedName = src.qualifiedName;
     }
 
-    new public Tpm2ReadPublicResponse Copy() { return CreateCopy<Tpm2ReadPublicResponse>(); }
+    public new Tpm2ReadPublicResponse Copy() { return CreateCopy<Tpm2ReadPublicResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10597,7 +10597,7 @@ public partial class Tpm2ActivateCredentialRequest : TpmStructureBase
         secret = _secret;
     }
 
-    new public Tpm2ActivateCredentialRequest Copy() { return CreateCopy<Tpm2ActivateCredentialRequest>(); }
+    public new Tpm2ActivateCredentialRequest Copy() { return CreateCopy<Tpm2ActivateCredentialRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10619,7 +10619,7 @@ public partial class Tpm2ActivateCredentialResponse : TpmStructureBase
 
     public Tpm2ActivateCredentialResponse(Tpm2ActivateCredentialResponse src) { certInfo = src.certInfo; }
 
-    new public Tpm2ActivateCredentialResponse Copy() { return CreateCopy<Tpm2ActivateCredentialResponse>(); }
+    public new Tpm2ActivateCredentialResponse Copy() { return CreateCopy<Tpm2ActivateCredentialResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10662,7 +10662,7 @@ public partial class Tpm2MakeCredentialRequest : TpmStructureBase
         objectName = _objectName;
     }
 
-    new public Tpm2MakeCredentialRequest Copy() { return CreateCopy<Tpm2MakeCredentialRequest>(); }
+    public new Tpm2MakeCredentialRequest Copy() { return CreateCopy<Tpm2MakeCredentialRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10693,7 +10693,7 @@ public partial class Tpm2MakeCredentialResponse : TpmStructureBase
         secret = src.secret;
     }
 
-    new public Tpm2MakeCredentialResponse Copy() { return CreateCopy<Tpm2MakeCredentialResponse>(); }
+    public new Tpm2MakeCredentialResponse Copy() { return CreateCopy<Tpm2MakeCredentialResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10718,7 +10718,7 @@ public partial class Tpm2UnsealRequest : TpmStructureBase
     ///        Auth Role: USER </param>
     public Tpm2UnsealRequest(TpmHandle _itemHandle) { itemHandle = _itemHandle; }
 
-    new public Tpm2UnsealRequest Copy() { return CreateCopy<Tpm2UnsealRequest>(); }
+    public new Tpm2UnsealRequest Copy() { return CreateCopy<Tpm2UnsealRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10738,7 +10738,7 @@ public partial class Tpm2UnsealResponse : TpmStructureBase
 
     public Tpm2UnsealResponse(Tpm2UnsealResponse src) { outData = src.outData; }
 
-    new public Tpm2UnsealResponse Copy() { return CreateCopy<Tpm2UnsealResponse>(); }
+    public new Tpm2UnsealResponse Copy() { return CreateCopy<Tpm2UnsealResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10787,7 +10787,7 @@ public partial class Tpm2ObjectChangeAuthRequest : TpmStructureBase
         newAuth = _newAuth;
     }
 
-    new public Tpm2ObjectChangeAuthRequest Copy() { return CreateCopy<Tpm2ObjectChangeAuthRequest>(); }
+    public new Tpm2ObjectChangeAuthRequest Copy() { return CreateCopy<Tpm2ObjectChangeAuthRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10808,7 +10808,7 @@ public partial class Tpm2ObjectChangeAuthResponse : TpmStructureBase
 
     public Tpm2ObjectChangeAuthResponse(Tpm2ObjectChangeAuthResponse src) { outPrivate = src.outPrivate; }
 
-    new public Tpm2ObjectChangeAuthResponse Copy() { return CreateCopy<Tpm2ObjectChangeAuthResponse>(); }
+    public new Tpm2ObjectChangeAuthResponse Copy() { return CreateCopy<Tpm2ObjectChangeAuthResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10858,7 +10858,7 @@ public partial class Tpm2CreateLoadedRequest : TpmStructureBase
         inPublic = _inPublic;
     }
 
-    new public Tpm2CreateLoadedRequest Copy() { return CreateCopy<Tpm2CreateLoadedRequest>(); }
+    public new Tpm2CreateLoadedRequest Copy() { return CreateCopy<Tpm2CreateLoadedRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10906,7 +10906,7 @@ public partial class Tpm2CreateLoadedResponse : TpmStructureBase
         name = src.name;
     }
 
-    new public Tpm2CreateLoadedResponse Copy() { return CreateCopy<Tpm2CreateLoadedResponse>(); }
+    public new Tpm2CreateLoadedResponse Copy() { return CreateCopy<Tpm2CreateLoadedResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -10972,7 +10972,7 @@ public partial class Tpm2DuplicateRequest : TpmStructureBase
         symmetricAlg = _symmetricAlg;
     }
 
-    new public Tpm2DuplicateRequest Copy() { return CreateCopy<Tpm2DuplicateRequest>(); }
+    public new Tpm2DuplicateRequest Copy() { return CreateCopy<Tpm2DuplicateRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11013,7 +11013,7 @@ public partial class Tpm2DuplicateResponse : TpmStructureBase
         outSymSeed = src.outSymSeed;
     }
 
-    new public Tpm2DuplicateResponse Copy() { return CreateCopy<Tpm2DuplicateResponse>(); }
+    public new Tpm2DuplicateResponse Copy() { return CreateCopy<Tpm2DuplicateResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11085,7 +11085,7 @@ public partial class Tpm2RewrapRequest : TpmStructureBase
         inSymSeed = _inSymSeed;
     }
 
-    new public Tpm2RewrapRequest Copy() { return CreateCopy<Tpm2RewrapRequest>(); }
+    public new Tpm2RewrapRequest Copy() { return CreateCopy<Tpm2RewrapRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11120,7 +11120,7 @@ public partial class Tpm2RewrapResponse : TpmStructureBase
         outSymSeed = src.outSymSeed;
     }
 
-    new public Tpm2RewrapResponse Copy() { return CreateCopy<Tpm2RewrapResponse>(); }
+    public new Tpm2RewrapResponse Copy() { return CreateCopy<Tpm2RewrapResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11209,7 +11209,7 @@ public partial class Tpm2ImportRequest : TpmStructureBase
         symmetricAlg = _symmetricAlg;
     }
 
-    new public Tpm2ImportRequest Copy() { return CreateCopy<Tpm2ImportRequest>(); }
+    public new Tpm2ImportRequest Copy() { return CreateCopy<Tpm2ImportRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11232,7 +11232,7 @@ public partial class Tpm2ImportResponse : TpmStructureBase
 
     public Tpm2ImportResponse(Tpm2ImportResponse src) { outPrivate = src.outPrivate; }
 
-    new public Tpm2ImportResponse Copy() { return CreateCopy<Tpm2ImportResponse>(); }
+    public new Tpm2ImportResponse Copy() { return CreateCopy<Tpm2ImportResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11321,7 +11321,7 @@ public partial class Tpm2RsaEncryptRequest : TpmStructureBase
         label = _label;
     }
 
-    new public Tpm2RsaEncryptRequest Copy() { return CreateCopy<Tpm2RsaEncryptRequest>(); }
+    public new Tpm2RsaEncryptRequest Copy() { return CreateCopy<Tpm2RsaEncryptRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11344,7 +11344,7 @@ public partial class Tpm2RsaEncryptResponse : TpmStructureBase
 
     public Tpm2RsaEncryptResponse(Tpm2RsaEncryptResponse src) { outData = src.outData; }
 
-    new public Tpm2RsaEncryptResponse Copy() { return CreateCopy<Tpm2RsaEncryptResponse>(); }
+    public new Tpm2RsaEncryptResponse Copy() { return CreateCopy<Tpm2RsaEncryptResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11424,7 +11424,7 @@ public partial class Tpm2RsaDecryptRequest : TpmStructureBase
         label = _label;
     }
 
-    new public Tpm2RsaDecryptRequest Copy() { return CreateCopy<Tpm2RsaDecryptRequest>(); }
+    public new Tpm2RsaDecryptRequest Copy() { return CreateCopy<Tpm2RsaDecryptRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11444,7 +11444,7 @@ public partial class Tpm2RsaDecryptResponse : TpmStructureBase
 
     public Tpm2RsaDecryptResponse(Tpm2RsaDecryptResponse src) { message = src.message; }
 
-    new public Tpm2RsaDecryptResponse Copy() { return CreateCopy<Tpm2RsaDecryptResponse>(); }
+    public new Tpm2RsaDecryptResponse Copy() { return CreateCopy<Tpm2RsaDecryptResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11469,7 +11469,7 @@ public partial class Tpm2EcdhKeyGenRequest : TpmStructureBase
     ///        Auth Index: None </param>
     public Tpm2EcdhKeyGenRequest(TpmHandle _keyHandle) { keyHandle = _keyHandle; }
 
-    new public Tpm2EcdhKeyGenRequest Copy() { return CreateCopy<Tpm2EcdhKeyGenRequest>(); }
+    public new Tpm2EcdhKeyGenRequest Copy() { return CreateCopy<Tpm2EcdhKeyGenRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11501,7 +11501,7 @@ public partial class Tpm2EcdhKeyGenResponse : TpmStructureBase
         pubPoint = src.pubPoint;
     }
 
-    new public Tpm2EcdhKeyGenResponse Copy() { return CreateCopy<Tpm2EcdhKeyGenResponse>(); }
+    public new Tpm2EcdhKeyGenResponse Copy() { return CreateCopy<Tpm2EcdhKeyGenResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11540,7 +11540,7 @@ public partial class Tpm2EcdhZGenRequest : TpmStructureBase
         inPoint = _inPoint;
     }
 
-    new public Tpm2EcdhZGenRequest Copy() { return CreateCopy<Tpm2EcdhZGenRequest>(); }
+    public new Tpm2EcdhZGenRequest Copy() { return CreateCopy<Tpm2EcdhZGenRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11564,7 +11564,7 @@ public partial class Tpm2EcdhZGenResponse : TpmStructureBase
 
     public Tpm2EcdhZGenResponse(Tpm2EcdhZGenResponse src) { outPoint = src.outPoint; }
 
-    new public Tpm2EcdhZGenResponse Copy() { return CreateCopy<Tpm2EcdhZGenResponse>(); }
+    public new Tpm2EcdhZGenResponse Copy() { return CreateCopy<Tpm2EcdhZGenResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11586,7 +11586,7 @@ public partial class Tpm2EccParametersRequest : TpmStructureBase
     /// <param name = "_curveID"> Parameter set selector </param>
     public Tpm2EccParametersRequest(EccCurve _curveID) { curveID = _curveID; }
 
-    new public Tpm2EccParametersRequest Copy() { return CreateCopy<Tpm2EccParametersRequest>(); }
+    public new Tpm2EccParametersRequest Copy() { return CreateCopy<Tpm2EccParametersRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11607,7 +11607,7 @@ public partial class Tpm2EccParametersResponse : TpmStructureBase
 
     public Tpm2EccParametersResponse(Tpm2EccParametersResponse src) { parameters = src.parameters; }
 
-    new public Tpm2EccParametersResponse Copy() { return CreateCopy<Tpm2EccParametersResponse>(); }
+    public new Tpm2EccParametersResponse Copy() { return CreateCopy<Tpm2EccParametersResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11675,7 +11675,7 @@ public partial class Tpm2ZGen2PhaseRequest : TpmStructureBase
         counter = _counter;
     }
 
-    new public Tpm2ZGen2PhaseRequest Copy() { return CreateCopy<Tpm2ZGen2PhaseRequest>(); }
+    public new Tpm2ZGen2PhaseRequest Copy() { return CreateCopy<Tpm2ZGen2PhaseRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11708,7 +11708,7 @@ public partial class Tpm2ZGen2PhaseResponse : TpmStructureBase
         outZ2 = src.outZ2;
     }
 
-    new public Tpm2ZGen2PhaseResponse Copy() { return CreateCopy<Tpm2ZGen2PhaseResponse>(); }
+    public new Tpm2ZGen2PhaseResponse Copy() { return CreateCopy<Tpm2ZGen2PhaseResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11766,7 +11766,7 @@ public partial class Tpm2EccEncryptRequest : TpmStructureBase
         inScheme = _inScheme;
     }
 
-    new public Tpm2EccEncryptRequest Copy() { return CreateCopy<Tpm2EccEncryptRequest>(); }
+    public new Tpm2EccEncryptRequest Copy() { return CreateCopy<Tpm2EccEncryptRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11801,7 +11801,7 @@ public partial class Tpm2EccEncryptResponse : TpmStructureBase
         C3 = src.C3;
     }
 
-    new public Tpm2EccEncryptResponse Copy() { return CreateCopy<Tpm2EccEncryptResponse>(); }
+    public new Tpm2EccEncryptResponse Copy() { return CreateCopy<Tpm2EccEncryptResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11876,7 +11876,7 @@ public partial class Tpm2EccDecryptRequest : TpmStructureBase
         inScheme = _inScheme;
     }
 
-    new public Tpm2EccDecryptRequest Copy() { return CreateCopy<Tpm2EccDecryptRequest>(); }
+    public new Tpm2EccDecryptRequest Copy() { return CreateCopy<Tpm2EccDecryptRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11895,7 +11895,7 @@ public partial class Tpm2EccDecryptResponse : TpmStructureBase
 
     public Tpm2EccDecryptResponse(Tpm2EccDecryptResponse src) { plainText = src.plainText; }
 
-    new public Tpm2EccDecryptResponse Copy() { return CreateCopy<Tpm2EccDecryptResponse>(); }
+    public new Tpm2EccDecryptResponse Copy() { return CreateCopy<Tpm2EccDecryptResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11961,7 +11961,7 @@ public partial class Tpm2EncryptDecryptRequest : TpmStructureBase
         inData = _inData;
     }
 
-    new public Tpm2EncryptDecryptRequest Copy() { return CreateCopy<Tpm2EncryptDecryptRequest>(); }
+    public new Tpm2EncryptDecryptRequest Copy() { return CreateCopy<Tpm2EncryptDecryptRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -11990,7 +11990,7 @@ public partial class Tpm2EncryptDecryptResponse : TpmStructureBase
         ivOut = src.ivOut;
     }
 
-    new public Tpm2EncryptDecryptResponse Copy() { return CreateCopy<Tpm2EncryptDecryptResponse>(); }
+    public new Tpm2EncryptDecryptResponse Copy() { return CreateCopy<Tpm2EncryptDecryptResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12056,7 +12056,7 @@ public partial class Tpm2EncryptDecrypt2Request : TpmStructureBase
         ivIn = _ivIn;
     }
 
-    new public Tpm2EncryptDecrypt2Request Copy() { return CreateCopy<Tpm2EncryptDecrypt2Request>(); }
+    public new Tpm2EncryptDecrypt2Request Copy() { return CreateCopy<Tpm2EncryptDecrypt2Request>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12085,7 +12085,7 @@ public partial class Tpm2EncryptDecrypt2Response : TpmStructureBase
         ivOut = src.ivOut;
     }
 
-    new public Tpm2EncryptDecrypt2Response Copy() { return CreateCopy<Tpm2EncryptDecrypt2Response>(); }
+    public new Tpm2EncryptDecrypt2Response Copy() { return CreateCopy<Tpm2EncryptDecrypt2Response>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12129,7 +12129,7 @@ public partial class Tpm2HashRequest : TpmStructureBase
         hierarchy = _hierarchy;
     }
 
-    new public Tpm2HashRequest Copy() { return CreateCopy<Tpm2HashRequest>(); }
+    public new Tpm2HashRequest Copy() { return CreateCopy<Tpm2HashRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12161,7 +12161,7 @@ public partial class Tpm2HashResponse : TpmStructureBase
         validation = src.validation;
     }
 
-    new public Tpm2HashResponse Copy() { return CreateCopy<Tpm2HashResponse>(); }
+    public new Tpm2HashResponse Copy() { return CreateCopy<Tpm2HashResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12209,7 +12209,7 @@ public partial class Tpm2HmacRequest : TpmStructureBase
         hashAlg = _hashAlg;
     }
 
-    new public Tpm2HmacRequest Copy() { return CreateCopy<Tpm2HmacRequest>(); }
+    public new Tpm2HmacRequest Copy() { return CreateCopy<Tpm2HmacRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12229,7 +12229,7 @@ public partial class Tpm2HmacResponse : TpmStructureBase
 
     public Tpm2HmacResponse(Tpm2HmacResponse src) { outHMAC = src.outHMAC; }
 
-    new public Tpm2HmacResponse Copy() { return CreateCopy<Tpm2HmacResponse>(); }
+    public new Tpm2HmacResponse Copy() { return CreateCopy<Tpm2HmacResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12277,7 +12277,7 @@ public partial class Tpm2MacRequest : TpmStructureBase
         inScheme = _inScheme;
     }
 
-    new public Tpm2MacRequest Copy() { return CreateCopy<Tpm2MacRequest>(); }
+    public new Tpm2MacRequest Copy() { return CreateCopy<Tpm2MacRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12297,7 +12297,7 @@ public partial class Tpm2MacResponse : TpmStructureBase
 
     public Tpm2MacResponse(Tpm2MacResponse src) { outMAC = src.outMAC; }
 
-    new public Tpm2MacResponse Copy() { return CreateCopy<Tpm2MacResponse>(); }
+    public new Tpm2MacResponse Copy() { return CreateCopy<Tpm2MacResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12318,7 +12318,7 @@ public partial class Tpm2GetRandomRequest : TpmStructureBase
     /// <param name = "_bytesRequested"> Number of octets to return </param>
     public Tpm2GetRandomRequest(ushort _bytesRequested) { bytesRequested = _bytesRequested; }
 
-    new public Tpm2GetRandomRequest Copy() { return CreateCopy<Tpm2GetRandomRequest>(); }
+    public new Tpm2GetRandomRequest Copy() { return CreateCopy<Tpm2GetRandomRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12338,7 +12338,7 @@ public partial class Tpm2GetRandomResponse : TpmStructureBase
 
     public Tpm2GetRandomResponse(Tpm2GetRandomResponse src) { randomBytes = src.randomBytes; }
 
-    new public Tpm2GetRandomResponse Copy() { return CreateCopy<Tpm2GetRandomResponse>(); }
+    public new Tpm2GetRandomResponse Copy() { return CreateCopy<Tpm2GetRandomResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12358,7 +12358,7 @@ public partial class Tpm2StirRandomRequest : TpmStructureBase
     /// <param name = "_inData"> Additional information </param>
     public Tpm2StirRandomRequest(byte[] _inData) { inData = _inData; }
 
-    new public Tpm2StirRandomRequest Copy() { return CreateCopy<Tpm2StirRandomRequest>(); }
+    public new Tpm2StirRandomRequest Copy() { return CreateCopy<Tpm2StirRandomRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12407,7 +12407,7 @@ public partial class Tpm2HmacStartRequest : TpmStructureBase
         hashAlg = _hashAlg;
     }
 
-    new public Tpm2HmacStartRequest Copy() { return CreateCopy<Tpm2HmacStartRequest>(); }
+    public new Tpm2HmacStartRequest Copy() { return CreateCopy<Tpm2HmacStartRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12429,7 +12429,7 @@ public partial class Tpm2HmacStartResponse : TpmStructureBase
 
     public Tpm2HmacStartResponse(Tpm2HmacStartResponse src) { handle = src.handle; }
 
-    new public Tpm2HmacStartResponse Copy() { return CreateCopy<Tpm2HmacStartResponse>(); }
+    public new Tpm2HmacStartResponse Copy() { return CreateCopy<Tpm2HmacStartResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12478,7 +12478,7 @@ public partial class Tpm2MacStartRequest : TpmStructureBase
         inScheme = _inScheme;
     }
 
-    new public Tpm2MacStartRequest Copy() { return CreateCopy<Tpm2MacStartRequest>(); }
+    public new Tpm2MacStartRequest Copy() { return CreateCopy<Tpm2MacStartRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12500,7 +12500,7 @@ public partial class Tpm2MacStartResponse : TpmStructureBase
 
     public Tpm2MacStartResponse(Tpm2MacStartResponse src) { handle = src.handle; }
 
-    new public Tpm2MacStartResponse Copy() { return CreateCopy<Tpm2MacStartResponse>(); }
+    public new Tpm2MacStartResponse Copy() { return CreateCopy<Tpm2MacStartResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12536,7 +12536,7 @@ public partial class Tpm2HashSequenceStartRequest : TpmStructureBase
         hashAlg = _hashAlg;
     }
 
-    new public Tpm2HashSequenceStartRequest Copy() { return CreateCopy<Tpm2HashSequenceStartRequest>(); }
+    public new Tpm2HashSequenceStartRequest Copy() { return CreateCopy<Tpm2HashSequenceStartRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12559,7 +12559,7 @@ public partial class Tpm2HashSequenceStartResponse : TpmStructureBase
 
     public Tpm2HashSequenceStartResponse(Tpm2HashSequenceStartResponse src) { handle = src.handle; }
 
-    new public Tpm2HashSequenceStartResponse Copy() { return CreateCopy<Tpm2HashSequenceStartResponse>(); }
+    public new Tpm2HashSequenceStartResponse Copy() { return CreateCopy<Tpm2HashSequenceStartResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12595,7 +12595,7 @@ public partial class Tpm2SequenceUpdateRequest : TpmStructureBase
         buffer = _buffer;
     }
 
-    new public Tpm2SequenceUpdateRequest Copy() { return CreateCopy<Tpm2SequenceUpdateRequest>(); }
+    public new Tpm2SequenceUpdateRequest Copy() { return CreateCopy<Tpm2SequenceUpdateRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12642,7 +12642,7 @@ public partial class Tpm2SequenceCompleteRequest : TpmStructureBase
         hierarchy = _hierarchy;
     }
 
-    new public Tpm2SequenceCompleteRequest Copy() { return CreateCopy<Tpm2SequenceCompleteRequest>(); }
+    public new Tpm2SequenceCompleteRequest Copy() { return CreateCopy<Tpm2SequenceCompleteRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12674,7 +12674,7 @@ public partial class Tpm2SequenceCompleteResponse : TpmStructureBase
         validation = src.validation;
     }
 
-    new public Tpm2SequenceCompleteResponse Copy() { return CreateCopy<Tpm2SequenceCompleteResponse>(); }
+    public new Tpm2SequenceCompleteResponse Copy() { return CreateCopy<Tpm2SequenceCompleteResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12729,7 +12729,7 @@ public partial class Tpm2EventSequenceCompleteRequest : TpmStructureBase
         buffer = _buffer;
     }
 
-    new public Tpm2EventSequenceCompleteRequest Copy() { return CreateCopy<Tpm2EventSequenceCompleteRequest>(); }
+    public new Tpm2EventSequenceCompleteRequest Copy() { return CreateCopy<Tpm2EventSequenceCompleteRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12753,7 +12753,7 @@ public partial class Tpm2EventSequenceCompleteResponse : TpmStructureBase
 
     public Tpm2EventSequenceCompleteResponse(Tpm2EventSequenceCompleteResponse src) { results = src.results; }
 
-    new public Tpm2EventSequenceCompleteResponse Copy() { return CreateCopy<Tpm2EventSequenceCompleteResponse>(); }
+    public new Tpm2EventSequenceCompleteResponse Copy() { return CreateCopy<Tpm2EventSequenceCompleteResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12835,7 +12835,7 @@ public partial class Tpm2CertifyRequest : TpmStructureBase
         inScheme = _inScheme;
     }
 
-    new public Tpm2CertifyRequest Copy() { return CreateCopy<Tpm2CertifyRequest>(); }
+    public new Tpm2CertifyRequest Copy() { return CreateCopy<Tpm2CertifyRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12888,7 +12888,7 @@ public partial class Tpm2CertifyResponse : TpmStructureBase
         signature = src.signature;
     }
 
-    new public Tpm2CertifyResponse Copy() { return CreateCopy<Tpm2CertifyResponse>(); }
+    public new Tpm2CertifyResponse Copy() { return CreateCopy<Tpm2CertifyResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -12983,7 +12983,7 @@ public partial class Tpm2CertifyCreationRequest : TpmStructureBase
         creationTicket = _creationTicket;
     }
 
-    new public Tpm2CertifyCreationRequest Copy() { return CreateCopy<Tpm2CertifyCreationRequest>(); }
+    public new Tpm2CertifyCreationRequest Copy() { return CreateCopy<Tpm2CertifyCreationRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13034,7 +13034,7 @@ public partial class Tpm2CertifyCreationResponse : TpmStructureBase
         signature = src.signature;
     }
 
-    new public Tpm2CertifyCreationResponse Copy() { return CreateCopy<Tpm2CertifyCreationResponse>(); }
+    public new Tpm2CertifyCreationResponse Copy() { return CreateCopy<Tpm2CertifyCreationResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13104,7 +13104,7 @@ public partial class Tpm2QuoteRequest : TpmStructureBase
         PCRselect = _PCRselect;
     }
 
-    new public Tpm2QuoteRequest Copy() { return CreateCopy<Tpm2QuoteRequest>(); }
+    public new Tpm2QuoteRequest Copy() { return CreateCopy<Tpm2QuoteRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13152,7 +13152,7 @@ public partial class Tpm2QuoteResponse : TpmStructureBase
         signature = src.signature;
     }
 
-    new public Tpm2QuoteResponse Copy() { return CreateCopy<Tpm2QuoteResponse>(); }
+    public new Tpm2QuoteResponse Copy() { return CreateCopy<Tpm2QuoteResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13240,7 +13240,7 @@ public partial class Tpm2GetSessionAuditDigestRequest : TpmStructureBase
         inScheme = _inScheme;
     }
 
-    new public Tpm2GetSessionAuditDigestRequest Copy() { return CreateCopy<Tpm2GetSessionAuditDigestRequest>(); }
+    public new Tpm2GetSessionAuditDigestRequest Copy() { return CreateCopy<Tpm2GetSessionAuditDigestRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13288,7 +13288,7 @@ public partial class Tpm2GetSessionAuditDigestResponse : TpmStructureBase
         signature = src.signature;
     }
 
-    new public Tpm2GetSessionAuditDigestResponse Copy() { return CreateCopy<Tpm2GetSessionAuditDigestResponse>(); }
+    public new Tpm2GetSessionAuditDigestResponse Copy() { return CreateCopy<Tpm2GetSessionAuditDigestResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13368,7 +13368,7 @@ public partial class Tpm2GetCommandAuditDigestRequest : TpmStructureBase
         inScheme = _inScheme;
     }
 
-    new public Tpm2GetCommandAuditDigestRequest Copy() { return CreateCopy<Tpm2GetCommandAuditDigestRequest>(); }
+    public new Tpm2GetCommandAuditDigestRequest Copy() { return CreateCopy<Tpm2GetCommandAuditDigestRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13418,7 +13418,7 @@ public partial class Tpm2GetCommandAuditDigestResponse : TpmStructureBase
         signature = src.signature;
     }
 
-    new public Tpm2GetCommandAuditDigestResponse Copy() { return CreateCopy<Tpm2GetCommandAuditDigestResponse>(); }
+    public new Tpm2GetCommandAuditDigestResponse Copy() { return CreateCopy<Tpm2GetCommandAuditDigestResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13497,7 +13497,7 @@ public partial class Tpm2GetTimeRequest : TpmStructureBase
         inScheme = _inScheme;
     }
 
-    new public Tpm2GetTimeRequest Copy() { return CreateCopy<Tpm2GetTimeRequest>(); }
+    public new Tpm2GetTimeRequest Copy() { return CreateCopy<Tpm2GetTimeRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13545,7 +13545,7 @@ public partial class Tpm2GetTimeResponse : TpmStructureBase
         signature = src.signature;
     }
 
-    new public Tpm2GetTimeResponse Copy() { return CreateCopy<Tpm2GetTimeResponse>(); }
+    public new Tpm2GetTimeResponse Copy() { return CreateCopy<Tpm2GetTimeResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13635,7 +13635,7 @@ public partial class Tpm2CertifyX509Request : TpmStructureBase
         partialCertificate = _partialCertificate;
     }
 
-    new public Tpm2CertifyX509Request Copy() { return CreateCopy<Tpm2CertifyX509Request>(); }
+    public new Tpm2CertifyX509Request Copy() { return CreateCopy<Tpm2CertifyX509Request>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13694,7 +13694,7 @@ public partial class Tpm2CertifyX509Response : TpmStructureBase
         signature = src.signature;
     }
 
-    new public Tpm2CertifyX509Response Copy() { return CreateCopy<Tpm2CertifyX509Response>(); }
+    public new Tpm2CertifyX509Response Copy() { return CreateCopy<Tpm2CertifyX509Response>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13747,7 +13747,7 @@ public partial class Tpm2CommitRequest : TpmStructureBase
         y2 = _y2;
     }
 
-    new public Tpm2CommitRequest Copy() { return CreateCopy<Tpm2CommitRequest>(); }
+    public new Tpm2CommitRequest Copy() { return CreateCopy<Tpm2CommitRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13793,7 +13793,7 @@ public partial class Tpm2CommitResponse : TpmStructureBase
         counter = src.counter;
     }
 
-    new public Tpm2CommitResponse Copy() { return CreateCopy<Tpm2CommitResponse>(); }
+    public new Tpm2CommitResponse Copy() { return CreateCopy<Tpm2CommitResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13815,7 +13815,7 @@ public partial class Tpm2EcEphemeralRequest : TpmStructureBase
     /// <param name = "_curveID"> The curve for the computed ephemeral point </param>
     public Tpm2EcEphemeralRequest(EccCurve _curveID) { curveID = _curveID; }
 
-    new public Tpm2EcEphemeralRequest Copy() { return CreateCopy<Tpm2EcEphemeralRequest>(); }
+    public new Tpm2EcEphemeralRequest Copy() { return CreateCopy<Tpm2EcEphemeralRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13845,7 +13845,7 @@ public partial class Tpm2EcEphemeralResponse : TpmStructureBase
         counter = src.counter;
     }
 
-    new public Tpm2EcEphemeralResponse Copy() { return CreateCopy<Tpm2EcEphemeralResponse>(); }
+    public new Tpm2EcEphemeralResponse Copy() { return CreateCopy<Tpm2EcEphemeralResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13907,7 +13907,7 @@ public partial class Tpm2VerifySignatureRequest : TpmStructureBase
         signature = _signature;
     }
 
-    new public Tpm2VerifySignatureRequest Copy() { return CreateCopy<Tpm2VerifySignatureRequest>(); }
+    public new Tpm2VerifySignatureRequest Copy() { return CreateCopy<Tpm2VerifySignatureRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -13927,7 +13927,7 @@ public partial class Tpm2VerifySignatureResponse : TpmStructureBase
 
     public Tpm2VerifySignatureResponse(Tpm2VerifySignatureResponse src) { validation = src.validation; }
 
-    new public Tpm2VerifySignatureResponse Copy() { return CreateCopy<Tpm2VerifySignatureResponse>(); }
+    public new Tpm2VerifySignatureResponse Copy() { return CreateCopy<Tpm2VerifySignatureResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14003,7 +14003,7 @@ public partial class Tpm2SignRequest : TpmStructureBase
         validation = _validation;
     }
 
-    new public Tpm2SignRequest Copy() { return CreateCopy<Tpm2SignRequest>(); }
+    public new Tpm2SignRequest Copy() { return CreateCopy<Tpm2SignRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14042,7 +14042,7 @@ public partial class Tpm2SignResponse : TpmStructureBase
 
     public Tpm2SignResponse(Tpm2SignResponse src) { signature = src.signature; }
 
-    new public Tpm2SignResponse Copy() { return CreateCopy<Tpm2SignResponse>(); }
+    public new Tpm2SignResponse Copy() { return CreateCopy<Tpm2SignResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14101,7 +14101,7 @@ public partial class Tpm2SetCommandCodeAuditStatusRequest : TpmStructureBase
         clearList = _clearList;
     }
 
-    new public Tpm2SetCommandCodeAuditStatusRequest Copy() { return CreateCopy<Tpm2SetCommandCodeAuditStatusRequest>(); }
+    public new Tpm2SetCommandCodeAuditStatusRequest Copy() { return CreateCopy<Tpm2SetCommandCodeAuditStatusRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14139,7 +14139,7 @@ public partial class Tpm2PcrExtendRequest : TpmStructureBase
         digests = _digests;
     }
 
-    new public Tpm2PcrExtendRequest Copy() { return CreateCopy<Tpm2PcrExtendRequest>(); }
+    public new Tpm2PcrExtendRequest Copy() { return CreateCopy<Tpm2PcrExtendRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14174,7 +14174,7 @@ public partial class Tpm2PcrEventRequest : TpmStructureBase
         eventData = _eventData;
     }
 
-    new public Tpm2PcrEventRequest Copy() { return CreateCopy<Tpm2PcrEventRequest>(); }
+    public new Tpm2PcrEventRequest Copy() { return CreateCopy<Tpm2PcrEventRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14192,7 +14192,7 @@ public partial class Tpm2PcrEventResponse : TpmStructureBase
 
     public Tpm2PcrEventResponse(Tpm2PcrEventResponse src) { digests = src.digests; }
 
-    new public Tpm2PcrEventResponse Copy() { return CreateCopy<Tpm2PcrEventResponse>(); }
+    public new Tpm2PcrEventResponse Copy() { return CreateCopy<Tpm2PcrEventResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14212,7 +14212,7 @@ public partial class Tpm2PcrReadRequest : TpmStructureBase
     /// <param name = "_pcrSelectionIn"> The selection of PCR to read </param>
     public Tpm2PcrReadRequest(PcrSelection[] _pcrSelectionIn) { pcrSelectionIn = _pcrSelectionIn; }
 
-    new public Tpm2PcrReadRequest Copy() { return CreateCopy<Tpm2PcrReadRequest>(); }
+    public new Tpm2PcrReadRequest Copy() { return CreateCopy<Tpm2PcrReadRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14247,7 +14247,7 @@ public partial class Tpm2PcrReadResponse : TpmStructureBase
         pcrValues = src.pcrValues;
     }
 
-    new public Tpm2PcrReadResponse Copy() { return CreateCopy<Tpm2PcrReadResponse>(); }
+    public new Tpm2PcrReadResponse Copy() { return CreateCopy<Tpm2PcrReadResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14283,7 +14283,7 @@ public partial class Tpm2PcrAllocateRequest : TpmStructureBase
         pcrAllocation = _pcrAllocation;
     }
 
-    new public Tpm2PcrAllocateRequest Copy() { return CreateCopy<Tpm2PcrAllocateRequest>(); }
+    public new Tpm2PcrAllocateRequest Copy() { return CreateCopy<Tpm2PcrAllocateRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14324,7 +14324,7 @@ public partial class Tpm2PcrAllocateResponse : TpmStructureBase
         sizeAvailable = src.sizeAvailable;
     }
 
-    new public Tpm2PcrAllocateResponse Copy() { return CreateCopy<Tpm2PcrAllocateResponse>(); }
+    public new Tpm2PcrAllocateResponse Copy() { return CreateCopy<Tpm2PcrAllocateResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14380,7 +14380,7 @@ public partial class Tpm2PcrSetAuthPolicyRequest : TpmStructureBase
         pcrNum = _pcrNum;
     }
 
-    new public Tpm2PcrSetAuthPolicyRequest Copy() { return CreateCopy<Tpm2PcrSetAuthPolicyRequest>(); }
+    public new Tpm2PcrSetAuthPolicyRequest Copy() { return CreateCopy<Tpm2PcrSetAuthPolicyRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14415,7 +14415,7 @@ public partial class Tpm2PcrSetAuthValueRequest : TpmStructureBase
         auth = _auth;
     }
 
-    new public Tpm2PcrSetAuthValueRequest Copy() { return CreateCopy<Tpm2PcrSetAuthValueRequest>(); }
+    public new Tpm2PcrSetAuthValueRequest Copy() { return CreateCopy<Tpm2PcrSetAuthValueRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14443,7 +14443,7 @@ public partial class Tpm2PcrResetRequest : TpmStructureBase
     ///        Auth Role: USER </param>
     public Tpm2PcrResetRequest(TpmHandle _pcrHandle) { pcrHandle = _pcrHandle; }
 
-    new public Tpm2PcrResetRequest Copy() { return CreateCopy<Tpm2PcrResetRequest>(); }
+    public new Tpm2PcrResetRequest Copy() { return CreateCopy<Tpm2PcrResetRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14555,7 +14555,7 @@ public partial class Tpm2PolicySignedRequest : TpmStructureBase
         auth = _auth;
     }
 
-    new public Tpm2PolicySignedRequest Copy() { return CreateCopy<Tpm2PolicySignedRequest>(); }
+    public new Tpm2PolicySignedRequest Copy() { return CreateCopy<Tpm2PolicySignedRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14589,7 +14589,7 @@ public partial class Tpm2PolicySignedResponse : TpmStructureBase
         policyTicket = src.policyTicket;
     }
 
-    new public Tpm2PolicySignedResponse Copy() { return CreateCopy<Tpm2PolicySignedResponse>(); }
+    public new Tpm2PolicySignedResponse Copy() { return CreateCopy<Tpm2PolicySignedResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14677,7 +14677,7 @@ public partial class Tpm2PolicySecretRequest : TpmStructureBase
         expiration = _expiration;
     }
 
-    new public Tpm2PolicySecretRequest Copy() { return CreateCopy<Tpm2PolicySecretRequest>(); }
+    public new Tpm2PolicySecretRequest Copy() { return CreateCopy<Tpm2PolicySecretRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14712,7 +14712,7 @@ public partial class Tpm2PolicySecretResponse : TpmStructureBase
         policyTicket = src.policyTicket;
     }
 
-    new public Tpm2PolicySecretResponse Copy() { return CreateCopy<Tpm2PolicySecretResponse>(); }
+    public new Tpm2PolicySecretResponse Copy() { return CreateCopy<Tpm2PolicySecretResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14785,7 +14785,7 @@ public partial class Tpm2PolicyTicketRequest : TpmStructureBase
         ticket = _ticket;
     }
 
-    new public Tpm2PolicyTicketRequest Copy() { return CreateCopy<Tpm2PolicyTicketRequest>(); }
+    public new Tpm2PolicyTicketRequest Copy() { return CreateCopy<Tpm2PolicyTicketRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14821,7 +14821,7 @@ public partial class Tpm2PolicyORRequest : TpmStructureBase
         pHashList = _pHashList;
     }
 
-    new public Tpm2PolicyORRequest Copy() { return CreateCopy<Tpm2PolicyORRequest>(); }
+    public new Tpm2PolicyORRequest Copy() { return CreateCopy<Tpm2PolicyORRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14866,7 +14866,7 @@ public partial class Tpm2PolicyPCRRequest : TpmStructureBase
         pcrs = _pcrs;
     }
 
-    new public Tpm2PolicyPCRRequest Copy() { return CreateCopy<Tpm2PolicyPCRRequest>(); }
+    public new Tpm2PolicyPCRRequest Copy() { return CreateCopy<Tpm2PolicyPCRRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14901,7 +14901,7 @@ public partial class Tpm2PolicyLocalityRequest : TpmStructureBase
         locality = _locality;
     }
 
-    new public Tpm2PolicyLocalityRequest Copy() { return CreateCopy<Tpm2PolicyLocalityRequest>(); }
+    public new Tpm2PolicyLocalityRequest Copy() { return CreateCopy<Tpm2PolicyLocalityRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -14976,7 +14976,7 @@ public partial class Tpm2PolicyNVRequest : TpmStructureBase
         operation = _operation;
     }
 
-    new public Tpm2PolicyNVRequest Copy() { return CreateCopy<Tpm2PolicyNVRequest>(); }
+    public new Tpm2PolicyNVRequest Copy() { return CreateCopy<Tpm2PolicyNVRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15026,7 +15026,7 @@ public partial class Tpm2PolicyCounterTimerRequest : TpmStructureBase
         operation = _operation;
     }
 
-    new public Tpm2PolicyCounterTimerRequest Copy() { return CreateCopy<Tpm2PolicyCounterTimerRequest>(); }
+    public new Tpm2PolicyCounterTimerRequest Copy() { return CreateCopy<Tpm2PolicyCounterTimerRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15061,7 +15061,7 @@ public partial class Tpm2PolicyCommandCodeRequest : TpmStructureBase
         code = _code;
     }
 
-    new public Tpm2PolicyCommandCodeRequest Copy() { return CreateCopy<Tpm2PolicyCommandCodeRequest>(); }
+    public new Tpm2PolicyCommandCodeRequest Copy() { return CreateCopy<Tpm2PolicyCommandCodeRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15085,7 +15085,7 @@ public partial class Tpm2PolicyPhysicalPresenceRequest : TpmStructureBase
     ///        Auth Index: None </param>
     public Tpm2PolicyPhysicalPresenceRequest(TpmHandle _policySession) { policySession = _policySession; }
 
-    new public Tpm2PolicyPhysicalPresenceRequest Copy() { return CreateCopy<Tpm2PolicyPhysicalPresenceRequest>(); }
+    public new Tpm2PolicyPhysicalPresenceRequest Copy() { return CreateCopy<Tpm2PolicyPhysicalPresenceRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15119,7 +15119,7 @@ public partial class Tpm2PolicyCpHashRequest : TpmStructureBase
         cpHashA = _cpHashA;
     }
 
-    new public Tpm2PolicyCpHashRequest Copy() { return CreateCopy<Tpm2PolicyCpHashRequest>(); }
+    public new Tpm2PolicyCpHashRequest Copy() { return CreateCopy<Tpm2PolicyCpHashRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15155,7 +15155,7 @@ public partial class Tpm2PolicyNameHashRequest : TpmStructureBase
         nameHash = _nameHash;
     }
 
-    new public Tpm2PolicyNameHashRequest Copy() { return CreateCopy<Tpm2PolicyNameHashRequest>(); }
+    public new Tpm2PolicyNameHashRequest Copy() { return CreateCopy<Tpm2PolicyNameHashRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15205,7 +15205,7 @@ public partial class Tpm2PolicyDuplicationSelectRequest : TpmStructureBase
         includeObject = _includeObject;
     }
 
-    new public Tpm2PolicyDuplicationSelectRequest Copy() { return CreateCopy<Tpm2PolicyDuplicationSelectRequest>(); }
+    public new Tpm2PolicyDuplicationSelectRequest Copy() { return CreateCopy<Tpm2PolicyDuplicationSelectRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15263,7 +15263,7 @@ public partial class Tpm2PolicyAuthorizeRequest : TpmStructureBase
         checkTicket = _checkTicket;
     }
 
-    new public Tpm2PolicyAuthorizeRequest Copy() { return CreateCopy<Tpm2PolicyAuthorizeRequest>(); }
+    public new Tpm2PolicyAuthorizeRequest Copy() { return CreateCopy<Tpm2PolicyAuthorizeRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15287,7 +15287,7 @@ public partial class Tpm2PolicyAuthValueRequest : TpmStructureBase
     ///        Auth Index: None </param>
     public Tpm2PolicyAuthValueRequest(TpmHandle _policySession) { policySession = _policySession; }
 
-    new public Tpm2PolicyAuthValueRequest Copy() { return CreateCopy<Tpm2PolicyAuthValueRequest>(); }
+    public new Tpm2PolicyAuthValueRequest Copy() { return CreateCopy<Tpm2PolicyAuthValueRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15311,7 +15311,7 @@ public partial class Tpm2PolicyPasswordRequest : TpmStructureBase
     ///        Auth Index: None </param>
     public Tpm2PolicyPasswordRequest(TpmHandle _policySession) { policySession = _policySession; }
 
-    new public Tpm2PolicyPasswordRequest Copy() { return CreateCopy<Tpm2PolicyPasswordRequest>(); }
+    public new Tpm2PolicyPasswordRequest Copy() { return CreateCopy<Tpm2PolicyPasswordRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15336,7 +15336,7 @@ public partial class Tpm2PolicyGetDigestRequest : TpmStructureBase
     ///        Auth Index: None </param>
     public Tpm2PolicyGetDigestRequest(TpmHandle _policySession) { policySession = _policySession; }
 
-    new public Tpm2PolicyGetDigestRequest Copy() { return CreateCopy<Tpm2PolicyGetDigestRequest>(); }
+    public new Tpm2PolicyGetDigestRequest Copy() { return CreateCopy<Tpm2PolicyGetDigestRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15357,7 +15357,7 @@ public partial class Tpm2PolicyGetDigestResponse : TpmStructureBase
 
     public Tpm2PolicyGetDigestResponse(Tpm2PolicyGetDigestResponse src) { policyDigest = src.policyDigest; }
 
-    new public Tpm2PolicyGetDigestResponse Copy() { return CreateCopy<Tpm2PolicyGetDigestResponse>(); }
+    public new Tpm2PolicyGetDigestResponse Copy() { return CreateCopy<Tpm2PolicyGetDigestResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15394,7 +15394,7 @@ public partial class Tpm2PolicyNvWrittenRequest : TpmStructureBase
         writtenSet = _writtenSet;
     }
 
-    new public Tpm2PolicyNvWrittenRequest Copy() { return CreateCopy<Tpm2PolicyNvWrittenRequest>(); }
+    public new Tpm2PolicyNvWrittenRequest Copy() { return CreateCopy<Tpm2PolicyNvWrittenRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15429,7 +15429,7 @@ public partial class Tpm2PolicyTemplateRequest : TpmStructureBase
         templateHash = _templateHash;
     }
 
-    new public Tpm2PolicyTemplateRequest Copy() { return CreateCopy<Tpm2PolicyTemplateRequest>(); }
+    public new Tpm2PolicyTemplateRequest Copy() { return CreateCopy<Tpm2PolicyTemplateRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15484,7 +15484,7 @@ public partial class Tpm2PolicyAuthorizeNVRequest : TpmStructureBase
         policySession = _policySession;
     }
 
-    new public Tpm2PolicyAuthorizeNVRequest Copy() { return CreateCopy<Tpm2PolicyAuthorizeNVRequest>(); }
+    public new Tpm2PolicyAuthorizeNVRequest Copy() { return CreateCopy<Tpm2PolicyAuthorizeNVRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15550,7 +15550,7 @@ public partial class Tpm2CreatePrimaryRequest : TpmStructureBase
         creationPCR = _creationPCR;
     }
 
-    new public Tpm2CreatePrimaryRequest Copy() { return CreateCopy<Tpm2CreatePrimaryRequest>(); }
+    public new Tpm2CreatePrimaryRequest Copy() { return CreateCopy<Tpm2CreatePrimaryRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15611,7 +15611,7 @@ public partial class Tpm2CreatePrimaryResponse : TpmStructureBase
         name = src.name;
     }
 
-    new public Tpm2CreatePrimaryResponse Copy() { return CreateCopy<Tpm2CreatePrimaryResponse>(); }
+    public new Tpm2CreatePrimaryResponse Copy() { return CreateCopy<Tpm2CreatePrimaryResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15661,7 +15661,7 @@ public partial class Tpm2HierarchyControlRequest : TpmStructureBase
         state = _state;
     }
 
-    new public Tpm2HierarchyControlRequest Copy() { return CreateCopy<Tpm2HierarchyControlRequest>(); }
+    public new Tpm2HierarchyControlRequest Copy() { return CreateCopy<Tpm2HierarchyControlRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15717,7 +15717,7 @@ public partial class Tpm2SetPrimaryPolicyRequest : TpmStructureBase
         hashAlg = _hashAlg;
     }
 
-    new public Tpm2SetPrimaryPolicyRequest Copy() { return CreateCopy<Tpm2SetPrimaryPolicyRequest>(); }
+    public new Tpm2SetPrimaryPolicyRequest Copy() { return CreateCopy<Tpm2SetPrimaryPolicyRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15743,7 +15743,7 @@ public partial class Tpm2ChangePPSRequest : TpmStructureBase
     ///        Auth Role: USER </param>
     public Tpm2ChangePPSRequest(TpmHandle _authHandle) { authHandle = _authHandle; }
 
-    new public Tpm2ChangePPSRequest Copy() { return CreateCopy<Tpm2ChangePPSRequest>(); }
+    public new Tpm2ChangePPSRequest Copy() { return CreateCopy<Tpm2ChangePPSRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15773,7 +15773,7 @@ public partial class Tpm2ChangeEPSRequest : TpmStructureBase
     ///        Auth Role: USER </param>
     public Tpm2ChangeEPSRequest(TpmHandle _authHandle) { authHandle = _authHandle; }
 
-    new public Tpm2ChangeEPSRequest Copy() { return CreateCopy<Tpm2ChangeEPSRequest>(); }
+    public new Tpm2ChangeEPSRequest Copy() { return CreateCopy<Tpm2ChangeEPSRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15798,7 +15798,7 @@ public partial class Tpm2ClearRequest : TpmStructureBase
     ///        Auth Role: USER </param>
     public Tpm2ClearRequest(TpmHandle _authHandle) { authHandle = _authHandle; }
 
-    new public Tpm2ClearRequest Copy() { return CreateCopy<Tpm2ClearRequest>(); }
+    public new Tpm2ClearRequest Copy() { return CreateCopy<Tpm2ClearRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15835,7 +15835,7 @@ public partial class Tpm2ClearControlRequest : TpmStructureBase
         disable = _disable;
     }
 
-    new public Tpm2ClearControlRequest Copy() { return CreateCopy<Tpm2ClearControlRequest>(); }
+    public new Tpm2ClearControlRequest Copy() { return CreateCopy<Tpm2ClearControlRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15871,7 +15871,7 @@ public partial class Tpm2HierarchyChangeAuthRequest : TpmStructureBase
         newAuth = _newAuth;
     }
 
-    new public Tpm2HierarchyChangeAuthRequest Copy() { return CreateCopy<Tpm2HierarchyChangeAuthRequest>(); }
+    public new Tpm2HierarchyChangeAuthRequest Copy() { return CreateCopy<Tpm2HierarchyChangeAuthRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15898,7 +15898,7 @@ public partial class Tpm2DictionaryAttackLockResetRequest : TpmStructureBase
     ///        Auth Role: USER </param>
     public Tpm2DictionaryAttackLockResetRequest(TpmHandle _lockHandle) { lockHandle = _lockHandle; }
 
-    new public Tpm2DictionaryAttackLockResetRequest Copy() { return CreateCopy<Tpm2DictionaryAttackLockResetRequest>(); }
+    public new Tpm2DictionaryAttackLockResetRequest Copy() { return CreateCopy<Tpm2DictionaryAttackLockResetRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -15954,7 +15954,7 @@ public partial class Tpm2DictionaryAttackParametersRequest : TpmStructureBase
         lockoutRecovery = _lockoutRecovery;
     }
 
-    new public Tpm2DictionaryAttackParametersRequest Copy() { return CreateCopy<Tpm2DictionaryAttackParametersRequest>(); }
+    public new Tpm2DictionaryAttackParametersRequest Copy() { return CreateCopy<Tpm2DictionaryAttackParametersRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16001,7 +16001,7 @@ public partial class Tpm2PpCommandsRequest : TpmStructureBase
         clearList = _clearList;
     }
 
-    new public Tpm2PpCommandsRequest Copy() { return CreateCopy<Tpm2PpCommandsRequest>(); }
+    public new Tpm2PpCommandsRequest Copy() { return CreateCopy<Tpm2PpCommandsRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16038,7 +16038,7 @@ public partial class Tpm2SetAlgorithmSetRequest : TpmStructureBase
         algorithmSet = _algorithmSet;
     }
 
-    new public Tpm2SetAlgorithmSetRequest Copy() { return CreateCopy<Tpm2SetAlgorithmSetRequest>(); }
+    public new Tpm2SetAlgorithmSetRequest Copy() { return CreateCopy<Tpm2SetAlgorithmSetRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16119,7 +16119,7 @@ public partial class Tpm2FieldUpgradeStartRequest : TpmStructureBase
         manifestSignature = _manifestSignature;
     }
 
-    new public Tpm2FieldUpgradeStartRequest Copy() { return CreateCopy<Tpm2FieldUpgradeStartRequest>(); }
+    public new Tpm2FieldUpgradeStartRequest Copy() { return CreateCopy<Tpm2FieldUpgradeStartRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16143,7 +16143,7 @@ public partial class Tpm2FieldUpgradeDataRequest : TpmStructureBase
     /// <param name = "_fuData"> Field upgrade image data </param>
     public Tpm2FieldUpgradeDataRequest(byte[] _fuData) { fuData = _fuData; }
 
-    new public Tpm2FieldUpgradeDataRequest Copy() { return CreateCopy<Tpm2FieldUpgradeDataRequest>(); }
+    public new Tpm2FieldUpgradeDataRequest Copy() { return CreateCopy<Tpm2FieldUpgradeDataRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16178,7 +16178,7 @@ public partial class Tpm2FieldUpgradeDataResponse : TpmStructureBase
         firstDigest = src.firstDigest;
     }
 
-    new public Tpm2FieldUpgradeDataResponse Copy() { return CreateCopy<Tpm2FieldUpgradeDataResponse>(); }
+    public new Tpm2FieldUpgradeDataResponse Copy() { return CreateCopy<Tpm2FieldUpgradeDataResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16201,7 +16201,7 @@ public partial class Tpm2FirmwareReadRequest : TpmStructureBase
     ///        set to 0 on the first call </param>
     public Tpm2FirmwareReadRequest(uint _sequenceNumber) { sequenceNumber = _sequenceNumber; }
 
-    new public Tpm2FirmwareReadRequest Copy() { return CreateCopy<Tpm2FirmwareReadRequest>(); }
+    public new Tpm2FirmwareReadRequest Copy() { return CreateCopy<Tpm2FirmwareReadRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16221,7 +16221,7 @@ public partial class Tpm2FirmwareReadResponse : TpmStructureBase
 
     public Tpm2FirmwareReadResponse(Tpm2FirmwareReadResponse src) { fuData = src.fuData; }
 
-    new public Tpm2FirmwareReadResponse Copy() { return CreateCopy<Tpm2FirmwareReadResponse>(); }
+    public new Tpm2FirmwareReadResponse Copy() { return CreateCopy<Tpm2FirmwareReadResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16245,7 +16245,7 @@ public partial class Tpm2ContextSaveRequest : TpmStructureBase
     ///        Auth Index: None </param>
     public Tpm2ContextSaveRequest(TpmHandle _saveHandle) { saveHandle = _saveHandle; }
 
-    new public Tpm2ContextSaveRequest Copy() { return CreateCopy<Tpm2ContextSaveRequest>(); }
+    public new Tpm2ContextSaveRequest Copy() { return CreateCopy<Tpm2ContextSaveRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16265,7 +16265,7 @@ public partial class Tpm2ContextSaveResponse : TpmStructureBase
 
     public Tpm2ContextSaveResponse(Tpm2ContextSaveResponse src) { context = src.context; }
 
-    new public Tpm2ContextSaveResponse Copy() { return CreateCopy<Tpm2ContextSaveResponse>(); }
+    public new Tpm2ContextSaveResponse Copy() { return CreateCopy<Tpm2ContextSaveResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16287,7 +16287,7 @@ public partial class Tpm2ContextLoadRequest : TpmStructureBase
     /// <param name = "_context"> The context blob </param>
     public Tpm2ContextLoadRequest(Context _context) { context = _context; }
 
-    new public Tpm2ContextLoadRequest Copy() { return CreateCopy<Tpm2ContextLoadRequest>(); }
+    public new Tpm2ContextLoadRequest Copy() { return CreateCopy<Tpm2ContextLoadRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16308,7 +16308,7 @@ public partial class Tpm2ContextLoadResponse : TpmStructureBase
 
     public Tpm2ContextLoadResponse(Tpm2ContextLoadResponse src) { handle = src.handle; }
 
-    new public Tpm2ContextLoadResponse Copy() { return CreateCopy<Tpm2ContextLoadResponse>(); }
+    public new Tpm2ContextLoadResponse Copy() { return CreateCopy<Tpm2ContextLoadResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16332,7 +16332,7 @@ public partial class Tpm2FlushContextRequest : TpmStructureBase
     ///        NOTE This is a use of a handle as a parameter. </param>
     public Tpm2FlushContextRequest(TpmHandle _flushHandle) { flushHandle = _flushHandle; }
 
-    new public Tpm2FlushContextRequest Copy() { return CreateCopy<Tpm2FlushContextRequest>(); }
+    public new Tpm2FlushContextRequest Copy() { return CreateCopy<Tpm2FlushContextRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16388,7 +16388,7 @@ public partial class Tpm2EvictControlRequest : TpmStructureBase
         persistentHandle = _persistentHandle;
     }
 
-    new public Tpm2EvictControlRequest Copy() { return CreateCopy<Tpm2EvictControlRequest>(); }
+    public new Tpm2EvictControlRequest Copy() { return CreateCopy<Tpm2EvictControlRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16401,7 +16401,7 @@ public partial class Tpm2ReadClockRequest : TpmStructureBase
 {
     public Tpm2ReadClockRequest() { }
 
-    new public Tpm2ReadClockRequest Copy() { return CreateCopy<Tpm2ReadClockRequest>(); }
+    public new Tpm2ReadClockRequest Copy() { return CreateCopy<Tpm2ReadClockRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16421,7 +16421,7 @@ public partial class Tpm2ReadClockResponse : TpmStructureBase
 
     public Tpm2ReadClockResponse(Tpm2ReadClockResponse src) { currentTime = src.currentTime; }
 
-    new public Tpm2ReadClockResponse Copy() { return CreateCopy<Tpm2ReadClockResponse>(); }
+    public new Tpm2ReadClockResponse Copy() { return CreateCopy<Tpm2ReadClockResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16460,7 +16460,7 @@ public partial class Tpm2ClockSetRequest : TpmStructureBase
         newTime = _newTime;
     }
 
-    new public Tpm2ClockSetRequest Copy() { return CreateCopy<Tpm2ClockSetRequest>(); }
+    public new Tpm2ClockSetRequest Copy() { return CreateCopy<Tpm2ClockSetRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16497,7 +16497,7 @@ public partial class Tpm2ClockRateAdjustRequest : TpmStructureBase
         rateAdjust = _rateAdjust;
     }
 
-    new public Tpm2ClockRateAdjustRequest Copy() { return CreateCopy<Tpm2ClockRateAdjustRequest>(); }
+    public new Tpm2ClockRateAdjustRequest Copy() { return CreateCopy<Tpm2ClockRateAdjustRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16536,7 +16536,7 @@ public partial class Tpm2GetCapabilityRequest : TpmStructureBase
         propertyCount = _propertyCount;
     }
 
-    new public Tpm2GetCapabilityRequest Copy() { return CreateCopy<Tpm2GetCapabilityRequest>(); }
+    public new Tpm2GetCapabilityRequest Copy() { return CreateCopy<Tpm2GetCapabilityRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16586,7 +16586,7 @@ public partial class Tpm2GetCapabilityResponse : TpmStructureBase
         capabilityData = src.capabilityData;
     }
 
-    new public Tpm2GetCapabilityResponse Copy() { return CreateCopy<Tpm2GetCapabilityResponse>(); }
+    public new Tpm2GetCapabilityResponse Copy() { return CreateCopy<Tpm2GetCapabilityResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16622,7 +16622,7 @@ public partial class Tpm2TestParmsRequest : TpmStructureBase
     ///        One of: KeyedhashParms, SymcipherParms, RsaParms, EccParms, AsymParms. </param>
     public Tpm2TestParmsRequest(IPublicParmsUnion _parameters) { parameters = _parameters; }
 
-    new public Tpm2TestParmsRequest Copy() { return CreateCopy<Tpm2TestParmsRequest>(); }
+    public new Tpm2TestParmsRequest Copy() { return CreateCopy<Tpm2TestParmsRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16667,7 +16667,7 @@ public partial class Tpm2NvDefineSpaceRequest : TpmStructureBase
         publicInfo = _publicInfo;
     }
 
-    new public Tpm2NvDefineSpaceRequest Copy() { return CreateCopy<Tpm2NvDefineSpaceRequest>(); }
+    public new Tpm2NvDefineSpaceRequest Copy() { return CreateCopy<Tpm2NvDefineSpaceRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16708,7 +16708,7 @@ public partial class Tpm2NvUndefineSpaceRequest : TpmStructureBase
         nvIndex = _nvIndex;
     }
 
-    new public Tpm2NvUndefineSpaceRequest Copy() { return CreateCopy<Tpm2NvUndefineSpaceRequest>(); }
+    public new Tpm2NvUndefineSpaceRequest Copy() { return CreateCopy<Tpm2NvUndefineSpaceRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16752,7 +16752,7 @@ public partial class Tpm2NvUndefineSpaceSpecialRequest : TpmStructureBase
         platform = _platform;
     }
 
-    new public Tpm2NvUndefineSpaceSpecialRequest Copy() { return CreateCopy<Tpm2NvUndefineSpaceSpecialRequest>(); }
+    public new Tpm2NvUndefineSpaceSpecialRequest Copy() { return CreateCopy<Tpm2NvUndefineSpaceSpecialRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16777,7 +16777,7 @@ public partial class Tpm2NvReadPublicRequest : TpmStructureBase
     ///        Auth Index: None </param>
     public Tpm2NvReadPublicRequest(TpmHandle _nvIndex) { nvIndex = _nvIndex; }
 
-    new public Tpm2NvReadPublicRequest Copy() { return CreateCopy<Tpm2NvReadPublicRequest>(); }
+    public new Tpm2NvReadPublicRequest Copy() { return CreateCopy<Tpm2NvReadPublicRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16808,7 +16808,7 @@ public partial class Tpm2NvReadPublicResponse : TpmStructureBase
         nvName = src.nvName;
     }
 
-    new public Tpm2NvReadPublicResponse Copy() { return CreateCopy<Tpm2NvReadPublicResponse>(); }
+    public new Tpm2NvReadPublicResponse Copy() { return CreateCopy<Tpm2NvReadPublicResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16864,7 +16864,7 @@ public partial class Tpm2NvWriteRequest : TpmStructureBase
         offset = _offset;
     }
 
-    new public Tpm2NvWriteRequest Copy() { return CreateCopy<Tpm2NvWriteRequest>(); }
+    public new Tpm2NvWriteRequest Copy() { return CreateCopy<Tpm2NvWriteRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16906,7 +16906,7 @@ public partial class Tpm2NvIncrementRequest : TpmStructureBase
         nvIndex = _nvIndex;
     }
 
-    new public Tpm2NvIncrementRequest Copy() { return CreateCopy<Tpm2NvIncrementRequest>(); }
+    public new Tpm2NvIncrementRequest Copy() { return CreateCopy<Tpm2NvIncrementRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -16955,7 +16955,7 @@ public partial class Tpm2NvExtendRequest : TpmStructureBase
         data = _data;
     }
 
-    new public Tpm2NvExtendRequest Copy() { return CreateCopy<Tpm2NvExtendRequest>(); }
+    public new Tpm2NvExtendRequest Copy() { return CreateCopy<Tpm2NvExtendRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17005,7 +17005,7 @@ public partial class Tpm2NvSetBitsRequest : TpmStructureBase
         bits = _bits;
     }
 
-    new public Tpm2NvSetBitsRequest Copy() { return CreateCopy<Tpm2NvSetBitsRequest>(); }
+    public new Tpm2NvSetBitsRequest Copy() { return CreateCopy<Tpm2NvSetBitsRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17048,7 +17048,7 @@ public partial class Tpm2NvWriteLockRequest : TpmStructureBase
         nvIndex = _nvIndex;
     }
 
-    new public Tpm2NvWriteLockRequest Copy() { return CreateCopy<Tpm2NvWriteLockRequest>(); }
+    public new Tpm2NvWriteLockRequest Copy() { return CreateCopy<Tpm2NvWriteLockRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17074,7 +17074,7 @@ public partial class Tpm2NvGlobalWriteLockRequest : TpmStructureBase
     ///        Auth Role: USER </param>
     public Tpm2NvGlobalWriteLockRequest(TpmHandle _authHandle) { authHandle = _authHandle; }
 
-    new public Tpm2NvGlobalWriteLockRequest Copy() { return CreateCopy<Tpm2NvGlobalWriteLockRequest>(); }
+    public new Tpm2NvGlobalWriteLockRequest Copy() { return CreateCopy<Tpm2NvGlobalWriteLockRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17132,7 +17132,7 @@ public partial class Tpm2NvReadRequest : TpmStructureBase
         offset = _offset;
     }
 
-    new public Tpm2NvReadRequest Copy() { return CreateCopy<Tpm2NvReadRequest>(); }
+    public new Tpm2NvReadRequest Copy() { return CreateCopy<Tpm2NvReadRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17152,7 +17152,7 @@ public partial class Tpm2NvReadResponse : TpmStructureBase
 
     public Tpm2NvReadResponse(Tpm2NvReadResponse src) { data = src.data; }
 
-    new public Tpm2NvReadResponse Copy() { return CreateCopy<Tpm2NvReadResponse>(); }
+    public new Tpm2NvReadResponse Copy() { return CreateCopy<Tpm2NvReadResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17194,7 +17194,7 @@ public partial class Tpm2NvReadLockRequest : TpmStructureBase
         nvIndex = _nvIndex;
     }
 
-    new public Tpm2NvReadLockRequest Copy() { return CreateCopy<Tpm2NvReadLockRequest>(); }
+    public new Tpm2NvReadLockRequest Copy() { return CreateCopy<Tpm2NvReadLockRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17229,7 +17229,7 @@ public partial class Tpm2NvChangeAuthRequest : TpmStructureBase
         newAuth = _newAuth;
     }
 
-    new public Tpm2NvChangeAuthRequest Copy() { return CreateCopy<Tpm2NvChangeAuthRequest>(); }
+    public new Tpm2NvChangeAuthRequest Copy() { return CreateCopy<Tpm2NvChangeAuthRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17335,7 +17335,7 @@ public partial class Tpm2NvCertifyRequest : TpmStructureBase
         offset = _offset;
     }
 
-    new public Tpm2NvCertifyRequest Copy() { return CreateCopy<Tpm2NvCertifyRequest>(); }
+    public new Tpm2NvCertifyRequest Copy() { return CreateCopy<Tpm2NvCertifyRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17385,7 +17385,7 @@ public partial class Tpm2NvCertifyResponse : TpmStructureBase
         signature = src.signature;
     }
 
-    new public Tpm2NvCertifyResponse Copy() { return CreateCopy<Tpm2NvCertifyResponse>(); }
+    public new Tpm2NvCertifyResponse Copy() { return CreateCopy<Tpm2NvCertifyResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17427,7 +17427,7 @@ public partial class Tpm2AcGetCapabilityRequest : TpmStructureBase
         count = _count;
     }
 
-    new public Tpm2AcGetCapabilityRequest Copy() { return CreateCopy<Tpm2AcGetCapabilityRequest>(); }
+    public new Tpm2AcGetCapabilityRequest Copy() { return CreateCopy<Tpm2AcGetCapabilityRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17456,7 +17456,7 @@ public partial class Tpm2AcGetCapabilityResponse : TpmStructureBase
         capabilitiesData = src.capabilitiesData;
     }
 
-    new public Tpm2AcGetCapabilityResponse Copy() { return CreateCopy<Tpm2AcGetCapabilityResponse>(); }
+    public new Tpm2AcGetCapabilityResponse Copy() { return CreateCopy<Tpm2AcGetCapabilityResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17517,7 +17517,7 @@ public partial class Tpm2AcSendRequest : TpmStructureBase
         acDataIn = _acDataIn;
     }
 
-    new public Tpm2AcSendRequest Copy() { return CreateCopy<Tpm2AcSendRequest>(); }
+    public new Tpm2AcSendRequest Copy() { return CreateCopy<Tpm2AcSendRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17538,7 +17538,7 @@ public partial class Tpm2AcSendResponse : TpmStructureBase
 
     public Tpm2AcSendResponse(Tpm2AcSendResponse src) { acDataOut = src.acDataOut; }
 
-    new public Tpm2AcSendResponse Copy() { return CreateCopy<Tpm2AcSendResponse>(); }
+    public new Tpm2AcSendResponse Copy() { return CreateCopy<Tpm2AcSendResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17599,7 +17599,7 @@ public partial class Tpm2PolicyAcSendSelectRequest : TpmStructureBase
         includeObject = _includeObject;
     }
 
-    new public Tpm2PolicyAcSendSelectRequest Copy() { return CreateCopy<Tpm2PolicyAcSendSelectRequest>(); }
+    public new Tpm2PolicyAcSendSelectRequest Copy() { return CreateCopy<Tpm2PolicyAcSendSelectRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17635,7 +17635,7 @@ public partial class Tpm2ActSetTimeoutRequest : TpmStructureBase
         startTimeout = _startTimeout;
     }
 
-    new public Tpm2ActSetTimeoutRequest Copy() { return CreateCopy<Tpm2ActSetTimeoutRequest>(); }
+    public new Tpm2ActSetTimeoutRequest Copy() { return CreateCopy<Tpm2ActSetTimeoutRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17655,7 +17655,7 @@ public partial class Tpm2VendorTcgTestRequest : TpmStructureBase
     /// <param name = "_inputData"> Dummy data </param>
     public Tpm2VendorTcgTestRequest(byte[] _inputData) { inputData = _inputData; }
 
-    new public Tpm2VendorTcgTestRequest Copy() { return CreateCopy<Tpm2VendorTcgTestRequest>(); }
+    public new Tpm2VendorTcgTestRequest Copy() { return CreateCopy<Tpm2VendorTcgTestRequest>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17674,7 +17674,7 @@ public partial class Tpm2VendorTcgTestResponse : TpmStructureBase
 
     public Tpm2VendorTcgTestResponse(Tpm2VendorTcgTestResponse src) { outputData = src.outputData; }
 
-    new public Tpm2VendorTcgTestResponse Copy() { return CreateCopy<Tpm2VendorTcgTestResponse>(); }
+    public new Tpm2VendorTcgTestResponse Copy() { return CreateCopy<Tpm2VendorTcgTestResponse>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17692,7 +17692,7 @@ public partial class SchemeRsassa : SigSchemeRsassa
     /// <param name = "_hashAlg"> The hash algorithm used to digest the message </param>
     public SchemeRsassa(TpmAlgId _hashAlg) : base(_hashAlg) { }
 
-    new public SchemeRsassa Copy() { return CreateCopy<SchemeRsassa>(); }
+    public new SchemeRsassa Copy() { return CreateCopy<SchemeRsassa>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17710,7 +17710,7 @@ public partial class SchemeRsapss : SigSchemeRsapss
     /// <param name = "_hashAlg"> The hash algorithm used to digest the message </param>
     public SchemeRsapss(TpmAlgId _hashAlg) : base(_hashAlg) { }
 
-    new public SchemeRsapss Copy() { return CreateCopy<SchemeRsapss>(); }
+    public new SchemeRsapss Copy() { return CreateCopy<SchemeRsapss>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17729,7 +17729,7 @@ public partial class SchemeEcdsa : SigSchemeEcdsa
     /// <param name = "_hashAlg"> The hash algorithm used to digest the message </param>
     public SchemeEcdsa(TpmAlgId _hashAlg) : base(_hashAlg) { }
 
-    new public SchemeEcdsa Copy() { return CreateCopy<SchemeEcdsa>(); }
+    public new SchemeEcdsa Copy() { return CreateCopy<SchemeEcdsa>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17748,7 +17748,7 @@ public partial class SchemeSm2 : SigSchemeSm2
     /// <param name = "_hashAlg"> The hash algorithm used to digest the message </param>
     public SchemeSm2(TpmAlgId _hashAlg) : base(_hashAlg) { }
 
-    new public SchemeSm2 Copy() { return CreateCopy<SchemeSm2>(); }
+    public new SchemeSm2 Copy() { return CreateCopy<SchemeSm2>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17767,7 +17767,7 @@ public partial class SchemeEcschnorr : SigSchemeEcschnorr
     /// <param name = "_hashAlg"> The hash algorithm used to digest the message </param>
     public SchemeEcschnorr(TpmAlgId _hashAlg) : base(_hashAlg) { }
 
-    new public SchemeEcschnorr Copy() { return CreateCopy<SchemeEcschnorr>(); }
+    public new SchemeEcschnorr Copy() { return CreateCopy<SchemeEcschnorr>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17785,7 +17785,7 @@ public partial class SchemeOaep : EncSchemeOaep
     /// <param name = "_hashAlg"> The hash algorithm used to digest the message </param>
     public SchemeOaep(TpmAlgId _hashAlg) : base(_hashAlg) { }
 
-    new public SchemeOaep Copy() { return CreateCopy<SchemeOaep>(); }
+    public new SchemeOaep Copy() { return CreateCopy<SchemeOaep>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17798,7 +17798,7 @@ public partial class SchemeRsaes : EncSchemeRsaes
 {
     public SchemeRsaes() { }
 
-    new public SchemeRsaes Copy() { return CreateCopy<SchemeRsaes>(); }
+    public new SchemeRsaes Copy() { return CreateCopy<SchemeRsaes>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17816,7 +17816,7 @@ public partial class SchemeEcdh : KeySchemeEcdh
     /// <param name = "_hashAlg"> The hash algorithm used to digest the message </param>
     public SchemeEcdh(TpmAlgId _hashAlg) : base(_hashAlg) { }
 
-    new public SchemeEcdh Copy() { return CreateCopy<SchemeEcdh>(); }
+    public new SchemeEcdh Copy() { return CreateCopy<SchemeEcdh>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17834,7 +17834,7 @@ public partial class SchemeEcmqv : KeySchemeEcmqv
     /// <param name = "_hashAlg"> The hash algorithm used to digest the message </param>
     public SchemeEcmqv(TpmAlgId _hashAlg) : base(_hashAlg) { }
 
-    new public SchemeEcmqv Copy() { return CreateCopy<SchemeEcmqv>(); }
+    public new SchemeEcmqv Copy() { return CreateCopy<SchemeEcmqv>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17853,7 +17853,7 @@ public partial class SchemeMgf1 : KdfSchemeMgf1
     /// <param name = "_hashAlg"> The hash algorithm used to digest the message </param>
     public SchemeMgf1(TpmAlgId _hashAlg) : base(_hashAlg) { }
 
-    new public SchemeMgf1 Copy() { return CreateCopy<SchemeMgf1>(); }
+    public new SchemeMgf1 Copy() { return CreateCopy<SchemeMgf1>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17872,7 +17872,7 @@ public partial class SchemeKdf1Sp80056a : KdfSchemeKdf1Sp80056a
     /// <param name = "_hashAlg"> The hash algorithm used to digest the message </param>
     public SchemeKdf1Sp80056a(TpmAlgId _hashAlg) : base(_hashAlg) { }
 
-    new public SchemeKdf1Sp80056a Copy() { return CreateCopy<SchemeKdf1Sp80056a>(); }
+    public new SchemeKdf1Sp80056a Copy() { return CreateCopy<SchemeKdf1Sp80056a>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17891,7 +17891,7 @@ public partial class SchemeKdf2 : KdfSchemeKdf2
     /// <param name = "_hashAlg"> The hash algorithm used to digest the message </param>
     public SchemeKdf2(TpmAlgId _hashAlg) : base(_hashAlg) { }
 
-    new public SchemeKdf2 Copy() { return CreateCopy<SchemeKdf2>(); }
+    public new SchemeKdf2 Copy() { return CreateCopy<SchemeKdf2>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17910,7 +17910,7 @@ public partial class SchemeKdf1Sp800108 : KdfSchemeKdf1Sp800108
     /// <param name = "_hashAlg"> The hash algorithm used to digest the message </param>
     public SchemeKdf1Sp800108(TpmAlgId _hashAlg) : base(_hashAlg) { }
 
-    new public SchemeKdf1Sp800108 Copy() { return CreateCopy<SchemeKdf1Sp800108>(); }
+    public new SchemeKdf1Sp800108 Copy() { return CreateCopy<SchemeKdf1Sp800108>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17958,7 +17958,7 @@ public partial class TssObject : TpmStructureBase
         Private = _Private;
     }
 
-    new public TssObject Copy() { return CreateCopy<TssObject>(); }
+    public new TssObject Copy() { return CreateCopy<TssObject>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -17995,7 +17995,7 @@ public partial class PcrValue : TpmStructureBase
         value = _value;
     }
 
-    new public PcrValue Copy() { return CreateCopy<PcrValue>(); }
+    public new PcrValue Copy() { return CreateCopy<PcrValue>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -18049,7 +18049,7 @@ public partial class SessionIn : TpmStructureBase
         auth = _auth;
     }
 
-    new public SessionIn Copy() { return CreateCopy<SessionIn>(); }
+    public new SessionIn Copy() { return CreateCopy<SessionIn>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -18094,7 +18094,7 @@ public partial class SessionOut : TpmStructureBase
         auth = _auth;
     }
 
-    new public SessionOut Copy() { return CreateCopy<SessionOut>(); }
+    public new SessionOut Copy() { return CreateCopy<SessionOut>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -18140,7 +18140,7 @@ public partial class CommandHeader : TpmStructureBase
         CommandCode = _CommandCode;
     }
 
-    new public CommandHeader Copy() { return CreateCopy<CommandHeader>(); }
+    public new CommandHeader Copy() { return CreateCopy<CommandHeader>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -18177,7 +18177,7 @@ public partial class TssKey : TpmStructureBase
         privatePart = _privatePart;
     }
 
-    new public TssKey Copy() { return CreateCopy<TssKey>(); }
+    public new TssKey Copy() { return CreateCopy<TssKey>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -18197,7 +18197,7 @@ public partial class Tpm2bDigestSymcipher : Tpm2bDigest
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Symcipher; }
 
-    new public Tpm2bDigestSymcipher Copy() { return CreateCopy<Tpm2bDigestSymcipher>(); }
+    public new Tpm2bDigestSymcipher Copy() { return CreateCopy<Tpm2bDigestSymcipher>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }
@@ -18216,7 +18216,7 @@ public partial class Tpm2bDigestKeyedhash : Tpm2bDigest
 
     public override TpmAlgId GetUnionSelector() { return TpmAlgId.Keyedhash; }
 
-    new public Tpm2bDigestKeyedhash Copy() { return CreateCopy<Tpm2bDigestKeyedhash>(); }
+    public new Tpm2bDigestKeyedhash Copy() { return CreateCopy<Tpm2bDigestKeyedhash>(); }
 
     public override TpmStructureBase Clone() { return Copy(); }
 }

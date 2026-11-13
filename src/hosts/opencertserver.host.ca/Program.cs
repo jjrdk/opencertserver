@@ -1,22 +1,22 @@
+using System.Net.Security;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using OpenCertServer.Data;
-using OpenCertServer.Data.PostgreSql;
-using OpenCertServer.Data.MsSql;
-using OpenCertServer.Ca.Utils;
-using OpenCertServer.Ca.Utils.Ca;
-using OpenCertServer.Est.Server;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using OpenCertServer.Ca;
 using OpenCertServer.Ca.Server;
+using OpenCertServer.Ca.Utils;
+using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Data;
+using OpenCertServer.Data.MsSql;
+using OpenCertServer.Data.PostgreSql;
+using OpenCertServer.Est.Server;
+using OpenCertServer.Host.Ca;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using OpenCertServer.Host.Ca;
-using System.Net.Security;
 
 // Hardened certificate-authority appliance. It hosts the CA core, the EST server, and the CA-side RA
 // bindings, with relational (PostgreSQL/MSSQL) or in-memory storage selected at runtime. It intentionally
@@ -102,7 +102,7 @@ builder.Services.AddHostFiltering(options =>
 // either backend; the connection is read from ConnectionStrings:OpenCertServer. Schema migrations are an
 // out-of-band step - never applied at start-up.
 var relationalEngine =
-    configuration["Appliance:Engine"]?.Trim()?.ToLowerInvariant();
+    configuration["Appliance:Engine"]?.Trim().ToLowerInvariant();
 switch (configuration["Ca:Persistence"]?.ToLowerInvariant())
 {
     case null:
@@ -200,10 +200,11 @@ app.UseHsts()
     .UseAuthorization();
 app.UseCertificateAuthorityServer();
 await app.RunAsync().ConfigureAwait(false);
+return;
 
 // The certificate authority: with a distinguished name a self-signed CA is created at start-up; otherwise
 // the configured profiles and their trust anchors are used, exactly as the monolith does.
-async static Task AddCaCore(IServiceCollection services, IConfiguration configuration, string[] args,
+static async Task AddCaCore(IServiceCollection services, IConfiguration configuration, string[] args,
     bool hardened)
 {
     services.AddRa(configuration);
@@ -508,19 +509,22 @@ static IServiceCollection RegisterTelemetry(IServiceCollection services, IConfig
     return services;
 }
 
-/// <summary>Appliance hardening flags read from configuration.</summary>
-internal sealed record ApplianceOptions(bool Hardened, string? DataDirectory)
+namespace OpenCertServer.Host.Ca
 {
-    public System.Security.Authentication.SslProtocols Protocols =>
-        Hardened ? System.Security.Authentication.SslProtocols.Tls13
-                 : System.Security.Authentication.SslProtocols.Tls12 |
-                   System.Security.Authentication.SslProtocols.Tls13;
-
-    public static ApplianceOptions Read(IConfiguration configuration)
+    /// <summary>Appliance hardening flags read from configuration.</summary>
+    internal sealed record ApplianceOptions(bool Hardened, string? DataDirectory)
     {
-        var section = configuration.GetSection("Appliance");
-        var hardened = section["Hardened"] is not { } raw ||
-                       bool.TryParse(raw, out var value) && value;
-        return new ApplianceOptions(hardened, section["DataDirectory"]);
+        public System.Security.Authentication.SslProtocols Protocols =>
+            Hardened ? System.Security.Authentication.SslProtocols.Tls13
+                : System.Security.Authentication.SslProtocols.Tls12 |
+                System.Security.Authentication.SslProtocols.Tls13;
+
+        public static ApplianceOptions Read(IConfiguration configuration)
+        {
+            var section = configuration.GetSection("Appliance");
+            var hardened = section["Hardened"] is not { } raw ||
+                bool.TryParse(raw, out var value) && value;
+            return new ApplianceOptions(hardened, section["DataDirectory"]);
+        }
     }
 }

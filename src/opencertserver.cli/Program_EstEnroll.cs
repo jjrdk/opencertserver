@@ -102,6 +102,7 @@ internal static partial class Program
         cmd.SetAction(Enroll);
 
         rootCommand.Add(cmd);
+        return;
 
         async Task Enroll(ParseResult parse)
         {

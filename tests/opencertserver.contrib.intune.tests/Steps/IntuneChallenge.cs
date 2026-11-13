@@ -122,6 +122,7 @@ public sealed class IntuneChallenge : IDisposable
         using var issued = new CertificateRequest(Subject, key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
             .CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddDays(1));
         await validator.NotifySuccess(second, issued, CancellationToken.None).ConfigureAwait(false);
+        return;
 
         ScepChallengeContext Context()
         {

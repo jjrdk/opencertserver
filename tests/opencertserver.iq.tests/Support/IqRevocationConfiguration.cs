@@ -37,6 +37,7 @@ internal sealed class IqRevocationConfiguration
         AdminToken = Token("ca_admin");
         UserToken = Token("ca_reader");
         EnrollmentToken = Token("est_device", IqAuthorityConfiguration.EstIdentity);
+        return;
 
         string Token(string role, string? name = null)
         {

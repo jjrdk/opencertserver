@@ -48,6 +48,7 @@ if (intuneConfigured)
 }
 
 app.Run();
+return;
 
 // Load the RA cert from --scep-ra / --scep-ra-key, or make a transient one.
 static X509Certificate2 LoadRaCertificate(string[] args)

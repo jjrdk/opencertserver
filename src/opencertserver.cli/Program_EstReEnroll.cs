@@ -79,6 +79,7 @@ internal static partial class Program
         cmd.SetAction(ReEnroll);
 
         rootCommand.Add(cmd);
+        return;
 
         async Task ReEnroll(ParseResult parse)
         {

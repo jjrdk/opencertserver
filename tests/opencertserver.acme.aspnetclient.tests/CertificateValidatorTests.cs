@@ -120,6 +120,7 @@ public sealed class CertificateValidatorTests
             null,
             TimeSpan.FromDays(30),
             false);
+        yield break;
 
         static object[] Make(
             DateTime certStart,

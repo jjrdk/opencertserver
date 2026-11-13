@@ -264,7 +264,7 @@ public abstract partial class TpmStructureBase
         return members.Values.ToArray();
     }
 
-    virtual internal void ToStringInternal(TpmStructPrinter p)
+    internal virtual void ToStringInternal(TpmStructPrinter p)
     {
         var enabled = dbg.Enabled;
         dbg.Enabled = false;
@@ -646,7 +646,7 @@ public class EmptyResponse : TpmStructureBase
     {
     }
 
-    new public EmptyResponse Copy()
+    public new EmptyResponse Copy()
     {
         return new EmptyResponse();
     }

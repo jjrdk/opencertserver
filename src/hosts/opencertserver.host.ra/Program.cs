@@ -3,6 +3,7 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using OpenCertServer.Est.Server;
 using OpenCertServer.Est.Server.Handlers;
+using OpenCertServer.Host.Ra;
 using OpenCertServer.Ra;
 
 // Hardened registration-authority appliance. Unlike opencertserver.ra.server (a plain RA front-end),
@@ -146,6 +147,8 @@ finally
     foreach (var root in roots) root.Dispose();
 }
 
+return;
+
 static async Task<IResult> Enroll(HttpContext context, RaPeerClient peer)
 {
     using var reader = new StreamReader(context.Request.Body);
@@ -183,18 +186,21 @@ static IResult PeerFailure(HttpContext context, HttpRequestException exception)
             : StatusCodes.Status502BadGateway);
 }
 
-/// <summary>Appliance hardening flags read from configuration.</summary>
-internal sealed record ApplianceOptions(bool Hardened)
+namespace OpenCertServer.Host.Ra
 {
-    public System.Security.Authentication.SslProtocols Protocols =>
-        Hardened ? System.Security.Authentication.SslProtocols.Tls13
-                 : System.Security.Authentication.SslProtocols.Tls12 |
-                   System.Security.Authentication.SslProtocols.Tls13;
-
-    public static ApplianceOptions Read(IConfiguration configuration)
+    /// <summary>Appliance hardening flags read from configuration.</summary>
+    internal sealed record ApplianceOptions(bool Hardened)
     {
-        var hardened = configuration.GetSection("Appliance")["Hardened"] is not { } raw ||
-                       bool.TryParse(raw, out var value) && value;
-        return new ApplianceOptions(hardened);
+        public System.Security.Authentication.SslProtocols Protocols =>
+            Hardened ? System.Security.Authentication.SslProtocols.Tls13
+                : System.Security.Authentication.SslProtocols.Tls12 |
+                System.Security.Authentication.SslProtocols.Tls13;
+
+        public static ApplianceOptions Read(IConfiguration configuration)
+        {
+            var hardened = configuration.GetSection("Appliance")["Hardened"] is not { } raw ||
+                bool.TryParse(raw, out var value) && value;
+            return new ApplianceOptions(hardened);
+        }
     }
 }

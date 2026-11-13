@@ -44,6 +44,7 @@ internal static partial class Program
         cmd.SetAction(CreateCsr);
 
         rootCommand.Add(cmd);
+        return;
 
         async Task CreateCsr(ParseResult parse)
         {

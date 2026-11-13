@@ -3,6 +3,7 @@ using OpenCertServer.Est.Server.TrustAnchor;
 using OpenCertServer.Data;
 using OpenCertServer.Data.PostgreSql;
 using OpenCertServer.Data.MsSql;
+using OpenCertServer.Host.Unified.Stores;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
