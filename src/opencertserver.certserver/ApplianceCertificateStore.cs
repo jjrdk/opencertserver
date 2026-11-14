@@ -47,14 +47,9 @@ internal sealed class ApplianceCertificateStore : IStoreCertificates, IDisposabl
         }
     }
 
-    public async Task AddCertificate(X509Certificate2 certificate, CancellationToken cancellationToken = default)
-    {
-        await AddCertificateCore(certificate, issuingProfile: null, cancellationToken).ConfigureAwait(false);
-    }
-
     public Task AddCertificate(
         X509Certificate2 certificate,
-        string issuingProfile,
+        string? issuingProfile,
         CancellationToken cancellationToken = default) =>
         AddCertificateCore(certificate, issuingProfile, cancellationToken);
 
@@ -92,6 +87,7 @@ internal sealed class ApplianceCertificateStore : IStoreCertificates, IDisposabl
 
     public async Task<bool> RemoveCertificate(
         string serialNumber,
+        string? issuingProfile,
         X509RevocationReason reason,
         CancellationToken cancellationToken = default)
     {
@@ -100,6 +96,7 @@ internal sealed class ApplianceCertificateStore : IStoreCertificates, IDisposabl
         {
             var updated = _certificates.ToArray();
             var index = Array.FindIndex(updated, item =>
+                string.Equals(item.IssuingProfile, issuingProfile, StringComparison.Ordinal) &&
                 string.Equals(item.SerialNumber, serialNumber, StringComparison.OrdinalIgnoreCase));
             if (index < 0)
             {
@@ -135,7 +132,7 @@ internal sealed class ApplianceCertificateStore : IStoreCertificates, IDisposabl
         int pageSize = 100,
         CancellationToken cancellationToken = default) =>
         _certificates.Where(item => item.IsRevoked
-         && string.Equals(item.IssuingProfile, issuingProfile, StringComparison.Ordinal))
+             && string.Equals(item.IssuingProfile, issuingProfile, StringComparison.Ordinal))
             .OrderBy(item => item.SerialNumber, StringComparer.Ordinal)
             .Skip(page * pageSize).Take(pageSize).Select(item => item.AsInfo()).ToAsyncEnumerable();
 
@@ -155,11 +152,15 @@ internal sealed class ApplianceCertificateStore : IStoreCertificates, IDisposabl
     }
 
     public IAsyncEnumerable<X509Certificate2> GetCertificatesById(
+        string? issuingProfile,
         CancellationToken cancellationToken,
         params IEnumerable<ReadOnlyMemory<byte>> ids)
     {
         var serials = ids.Select(id => Convert.ToHexString(id.Span)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return ReadCertificates(_certificates.Where(item => serials.Contains(item.SerialNumber)), cancellationToken);
+        return ReadCertificates(
+            _certificates.Where(item =>
+                serials.Contains(item.SerialNumber) &&
+                string.Equals(item.IssuingProfile, issuingProfile, StringComparison.Ordinal)), cancellationToken);
     }
 
     public IAsyncEnumerable<X509Certificate2> GetCertificatesByThumbprint(

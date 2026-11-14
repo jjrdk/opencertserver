@@ -55,6 +55,8 @@ public static class RaProtocol
     /// <summary>Query parameter carrying the base64 proof-of-possession signature for a revocation.</summary>
     public const string QuerySignature = "signature";
 
+    public static string QueryProfile = "profile";
+
     /// <summary>The CA endpoint that publishes the certificate revocation list.</summary>
     public const string CrlPath = "ca/crl";
 

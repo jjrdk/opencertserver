@@ -8,11 +8,14 @@
 # ship (Npgsql tolerates invariant mode, which is why the postgres variant can stay chiseled). Built
 # from a separate, non-invariant publish.
 ARG PLATFORM=linux/amd64
+ARG DOTNET_VERSION=11.0
+ARG UBUNTU_CODENAME=resolute
 # runtime-deps (full) carries the glibc deps + ICU but no .NET runtime, so the publish is self-contained
 # (it bundles coreclr + hostfxr + the ASP.NET Core framework), published WITHOUT InvariantGlobalization.
-FROM --platform=${PLATFORM} mcr.microsoft.com/dotnet/runtime-deps:10.0-noble
+FROM --platform=${PLATFORM} mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_VERSION}-${UBUNTU_CODENAME}
 
 ARG RID=linux-x64
+ARG TFM=net11.0
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 ENV DOTNET_NOLOGO=true
 # The mssql EF provider needs ICU; the full runtime-deps image ships it, so the runtime is NOT invariant.
@@ -31,7 +34,7 @@ ENV Appliance__Engine=mssql
 ENV AcmeServer__Persistence=relational
 ENV Ca__Persistence=relational
 # The mssql variant is built from a separate, non-invariant publish (the SQL Server provider needs ICU).
-COPY artifacts/publish/ra/mssql/${RID}/ app/
+COPY artifacts/publish/${TFM}/ra/mssql/${RID}/ app/
 WORKDIR /app
 
 # The full runtime-deps image runs as the unprivileged "app" user (UID 1654).

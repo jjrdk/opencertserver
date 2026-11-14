@@ -1,6 +1,6 @@
 <Project>
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
+        <TargetFrameworks>net10.0;net11.0</TargetFrameworks>
         <Authors>Jacob Reimers</Authors>
         <Company>Reimers.dk</Company>
         <Product>OpenCertServer</Product>

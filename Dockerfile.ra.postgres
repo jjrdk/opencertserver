@@ -6,11 +6,14 @@
 # ICU-less chiseled posture as Dockerfile.unified; only the role differs (see Dockerfile.unified for the
 # chisel rationale: runtime-deps chiseled + a self-contained publish that bundles the framework).
 ARG PLATFORM=linux/amd64
+ARG DOTNET_VERSION=11.0
+ARG UBUNTU_CODENAME=resolute
 # runtime-deps chiseled carries the glibc deps but no .NET runtime, so the publish is self-contained
 # (it bundles coreclr + hostfxr + the ASP.NET Core framework).
-FROM --platform=${PLATFORM} mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled
+FROM --platform=${PLATFORM} mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_VERSION}-${UBUNTU_CODENAME}-chiseled
 
 ARG RID=linux-x64
+ARG TFM=net11.0
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 ENV DOTNET_NOLOGO=true
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
@@ -26,7 +29,7 @@ ENV Telemetry__Enabled=false
 ENV Appliance__Engine=postgres
 ENV AcmeServer__Persistence=relational
 ENV Ca__Persistence=relational
-COPY artifacts/publish/ra/${RID}/ app/
+COPY artifacts/publish/${TFM}/ra/${RID}/ app/
 WORKDIR /app
 
 USER 1654

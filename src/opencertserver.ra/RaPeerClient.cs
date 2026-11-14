@@ -87,8 +87,12 @@ public sealed class RaPeerClient
 
         var reasonName = reason.ToString();
         var signature = Sign(raIdentityCertificate, RaProtocol.BuildRevocationMessage(serialNumberHex, reasonName));
+        var profileName = _options.Profile;
+        var profileQuery = string.IsNullOrWhiteSpace(profileName)
+            ? string.Empty
+            : $"{RaProtocol.QueryProfile}={Uri.EscapeDataString(profileName)}&";
         var requestUri = new Uri(_options.PeerUrl,
-            $"{RaProtocol.RevokePath}?{RaProtocol.QuerySn}={Uri.EscapeDataString(serialNumberHex)}" +
+            $"{RaProtocol.RevokePath}?{profileQuery}{RaProtocol.QuerySn}={Uri.EscapeDataString(serialNumberHex)}" +
             $"&{RaProtocol.QueryReason}={Uri.EscapeDataString(reasonName)}" +
             $"&{RaProtocol.QuerySignature}={Uri.EscapeDataString(Convert.ToBase64String(signature))}");
         using var request = CreateRequest(HttpMethod.Delete, requestUri);

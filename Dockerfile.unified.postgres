@@ -10,11 +10,15 @@
 # chiseled ASP.NET Core image exists), so the app is published self-contained: the publish output
 # bundles coreclr + hostfxr + the ASP.NET Core framework, and runs on top of these glibc deps.
 # PLATFORM/RID default to amd64; the IQ harness overrides both to run natively on the Docker host.
-# The runtime output is published to artifacts/publish/appliance/${RID} by the harness/CI, then copied.
+# The IQ harness stages the matching target framework's publish output under
+# artifacts/publish/${TFM}/unified/${RID}, then copies it.
 ARG PLATFORM=linux/amd64
-FROM --platform=${PLATFORM} mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled
+ARG DOTNET_VERSION=11.0
+ARG UBUNTU_CODENAME=resolute
+FROM --platform=${PLATFORM} mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_VERSION}-${UBUNTU_CODENAME}-chiseled
 
 ARG RID=linux-x64
+ARG TFM=net11.0
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 ENV DOTNET_NOLOGO=true
 # Invariant globalization: the chiseled image ships no ICU, so the runtime must not call into it.
@@ -32,7 +36,7 @@ ENV Telemetry__Enabled=false
 ENV Appliance__Engine=postgres
 ENV AcmeServer__Persistence=relational
 ENV Ca__Persistence=relational
-COPY artifacts/publish/unified/${RID}/ app/
+COPY artifacts/publish/${TFM}/unified/${RID}/ app/
 WORKDIR /app
 
 # Chiseled ships no user-creation tooling; the image already runs as "app" (UID 1654).

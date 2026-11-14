@@ -69,7 +69,8 @@ public partial class CertificateServerFeatures
             request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(extendedKeyUsage, critical: false));
             var ca = _server.Services.GetRequiredService<ICertificateAuthority>();
             var response = ca.SignCertificateRequest(request, "default").GetAwaiter().GetResult();
-            revokeIdentity = Assert.IsType<SignCertificateResponse.Success>(response).Certificate.CopyWithPrivateKey(key);
+            revokeIdentity = Assert.IsType<SignCertificateResponse.Success>(response).Certificate
+                .CopyWithPrivateKey(key);
             client.DefaultRequestHeaders.Add(
                 "X-Client-Cert",
                 Convert.ToBase64String(revokeIdentity.RawData));
@@ -180,7 +181,9 @@ public partial class CertificateServerFeatures
         _caClientRevoked = await _caClient.Revoke(
             _caClientIdentity!,
             issued.GetSerialNumberString(),
-            X509RevocationReason.CessationOfOperation).ConfigureAwait(false);
+            "default",
+            X509RevocationReason.CessationOfOperation,
+            TestContext.Current.CancellationToken);
     }
 
     [Then("the client revocation succeeds")]

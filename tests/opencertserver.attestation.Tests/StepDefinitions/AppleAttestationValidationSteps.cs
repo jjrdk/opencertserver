@@ -1,3 +1,6 @@
+using System;
+using System.Threading.Tasks;
+
 namespace OpenCertServer.Attestation.Tests.StepDefinitions;
 
 using System.Security.Cryptography;

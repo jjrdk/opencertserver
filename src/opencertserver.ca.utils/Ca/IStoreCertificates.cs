@@ -95,6 +95,10 @@ public interface IStoreCertificates
         CancellationToken cancellationToken,
         params IEnumerable<ReadOnlyMemory<byte>> ids) => GetCertificatesById(null, cancellationToken, ids);
 
+    /// <summary>
+    /// Finds certificates by serial number and exact issuing-profile name. A null profile matches
+    /// only certificates stored without an issuing profile.
+    /// </summary>
     IAsyncEnumerable<X509Certificate2> GetCertificatesById(
         string? issuingProfile,
         CancellationToken cancellationToken,

@@ -22,10 +22,10 @@ also used by the monolith's RA peer wiring (`AddRa` / `AddPublicRa` in
   - `GetSupportedProfiles()` — `GET ca/profiles`; returns only profile **names**, so an
     RA can offer the full set the CA supports and refresh it on demand.
   - `RenewAsync(csr)` — re-enrollment via `EnrollAsync` with the configured profile.
-  - `RevokeAsync(identity, serial, reason)` — `DELETE ca/revoke` with a
-    proof-of-possession signature over `serial + reason` (the canonical message lives in
-    `RaProtocol.BuildRevocationMessage` so both sides agree). A `404` returns `false`;
-    any other non-success throws.
+  - `RevokeAsync(identity, serial, reason)` — `DELETE ca/revoke` with the configured
+    profile and a proof-of-possession signature over `serial + reason` (the canonical
+    message lives in `RaProtocol.BuildRevocationMessage` so both sides agree). A `404`
+    returns `false`; any other non-success throws.
 - **`RaPeerOptions`** — the `Ra` configuration section, read by hand (no `Bind`) so the
   client stays AOT-safe. A non-HTTPS `PeerUrl` or a blank `Scope` is rejected.
 - **`RaPeerServiceCollectionExtensions.AddRaPeerClient`** — registers the client and

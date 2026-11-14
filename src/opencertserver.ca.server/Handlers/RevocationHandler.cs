@@ -37,7 +37,9 @@ public static class RevocationHandler
 
             var signature = context.Request.Query[RaProtocol.QuerySignature].ToString().Base64DecodeBytes();
             var serialNumberHex = context.Request.Query[RaProtocol.QuerySn].ToString();
-            var asymmetricAlgorithm = clientCert.GetRSAPublicKey() ?? (AsymmetricAlgorithm?)clientCert.GetECDsaPublicKey();
+            var profileName = context.Request.Query.TryGetValue(RaProtocol.QueryProfile, out var profileNameValue) ? profileNameValue.ToString() : null;
+            var asymmetricAlgorithm =
+                clientCert.GetRSAPublicKey() ?? (AsymmetricAlgorithm?)clientCert.GetECDsaPublicKey();
             var reasonString = context.Request.Query[RaProtocol.QueryReason].ToString();
             if (asymmetricAlgorithm == null
              || !asymmetricAlgorithm.VerifySignature(
@@ -87,7 +89,7 @@ public static class RevocationHandler
             {
                 var store = context.RequestServices.GetRequiredService<IStoreCertificates>();
                 var storedCert = await store
-                    .GetCertificatesById(context.RequestAborted, [serialBytes.AsMemory()])
+                    .GetCertificatesById(profileName, context.RequestAborted, [serialBytes.AsMemory()])
                     .FirstOrDefaultAsync(context.RequestAborted)
                     .ConfigureAwait(false);
 
@@ -110,7 +112,7 @@ public static class RevocationHandler
                     scopes.Count == 1 && !string.IsNullOrWhiteSpace(scopes[0]))
                 {
                     var targetCertificate = await context.RequestServices.GetRequiredService<IStoreCertificates>()
-                        .GetCertificatesById(context.RequestAborted, [serialBytes.AsMemory()])
+                        .GetCertificatesById(profileName, context.RequestAborted, [serialBytes.AsMemory()])
                         .FirstOrDefaultAsync(context.RequestAborted)
                         .ConfigureAwait(false);
                     var raValidator = context.RequestServices.GetService<RaScopeValidator>();
@@ -140,7 +142,7 @@ public static class RevocationHandler
             }
 
             var ca = context.RequestServices.GetRequiredService<ICertificateAuthority>();
-            var result = await ca.RevokeCertificate(serialNumberHex, reason).ConfigureAwait(false);
+            var result = await ca.RevokeCertificate(serialNumberHex, profileName, reason).ConfigureAwait(false);
             context.Response.StatusCode = result ? (int)HttpStatusCode.OK : (int)HttpStatusCode.NotFound;
             await context.Response.CompleteAsync().ConfigureAwait(false);
 

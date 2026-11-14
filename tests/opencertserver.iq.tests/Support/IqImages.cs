@@ -2,15 +2,18 @@ namespace OpenCertServer.Iq.Tests.Support;
 
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Images;
 
 /// <summary>
-/// Builds the two images the IQ scenarios run: the OpenCertServer server image (the repository root
+/// Builds the images the IQ scenarios run: the OpenCertServer server image (the repository root
 /// <c>Dockerfile</c> over a freshly published, self-contained server) and the Ubuntu client image
 /// (<c>client/Dockerfile</c> over a freshly published <c>opencert</c> CLI). Both are built once per
-/// test run for the Docker host's architecture, so the server runs natively instead of under emulation.
+/// target framework and test run for the Docker host's architecture, so each image uses the matching
+/// self-contained publish and runs natively instead of under emulation.
 /// </summary>
 /// <remarks>
 /// Set <c>IQ_SERVER_IMAGE</c> / <c>IQ_CLIENT_IMAGE</c> to use prebuilt images instead (e.g. in CI), and
@@ -21,10 +24,39 @@ internal static class IqImages
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static IImage? _server;
     private static IImage? _client;
+
+    public static string TargetFramework
+    {
+        get
+        {
+            const string frameworkPrefix = ".NETCoreApp,Version=v";
+            var frameworkName = typeof(IqImages).Assembly.GetCustomAttribute<TargetFrameworkAttribute>()?.FrameworkName;
+            if (frameworkName is null
+                || !frameworkName.StartsWith(frameworkPrefix, StringComparison.Ordinal)
+                || !Version.TryParse(frameworkName[frameworkPrefix.Length..], out var version))
+            {
+                throw new InvalidOperationException(
+                    $"Unable to determine the IQ test target framework from '{frameworkName}'.");
+            }
+
+            return $"net{version.Major}.{version.Minor}";
+        }
+    }
+
+    private static string DotNetRuntimeVersion => TargetFramework["net".Length..];
+    private static string UbuntuCodename => TargetFramework switch
+    {
+        "net10.0" => "noble",
+        "net11.0" => "resolute",
+        _ => throw new InvalidOperationException($"Unsupported IQ target framework '{TargetFramework}'.")
+    };
+
     private readonly record struct ApplianceRole(string Role, string Dockerfile, string Project);
+
     private static readonly Dictionary<string, ApplianceRole> ApplianceRoles = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Unified"] = new("Unified", "Dockerfile.unified", "src/hosts/opencertserver.host.unified/opencertserver.host.unified.csproj"),
+        ["Unified"] = new("Unified", "Dockerfile.unified",
+            "src/hosts/opencertserver.host.unified/opencertserver.host.unified.csproj"),
         ["Ca"] = new("Ca", "Dockerfile.ca", "src/hosts/opencertserver.host.ca/opencertserver.host.ca.csproj"),
         ["Ra"] = new("Ra", "Dockerfile.ra", "src/hosts/opencertserver.host.ra/opencertserver.host.ra.csproj")
     };
@@ -89,7 +121,9 @@ internal static class IqImages
     /// roles; each role's Dockerfile only differs in the baked <c>Appliance__Role</c> default and exposed ports.
     /// </summary>
     public static async Task<(IImage Image, string Name)> GetApplianceImageAsync(
-        string role, CancellationToken cancellationToken = default, string engine = "")
+        string role,
+        CancellationToken cancellationToken = default,
+        string engine = "")
     {
         if (!ApplianceRoles.TryGetValue(role, out var applianceRole))
         {
@@ -117,25 +151,31 @@ internal static class IqImages
             Gate.Release();
         }
     }
+
     private static async Task<(IImage Image, string Name)> BuildApplianceImage(
-        ApplianceRole applianceRole, string engine, CancellationToken cancellationToken)
+        ApplianceRole applianceRole,
+        string engine,
+        CancellationToken cancellationToken)
     {
         var rid = $"linux-{Arch}";
         // A blank engine keeps the original per-role Dockerfile (no relational backend baked in); a
         // concrete engine selects the matching variant that bakes Appliance__Engine plus the relational
         // persistence selectors.
-        var engineTag = string.IsNullOrWhiteSpace(engine) ? "" : engine.Trim().ToLowerInvariant() switch
-        {
-            "mssql" or "sqlserver" => "mssql",
-            _ => "postgres"
-        };
+        var engineTag = string.IsNullOrWhiteSpace(engine)
+            ? ""
+            : engine.Trim().ToLowerInvariant() switch
+            {
+                "mssql" or "sqlserver" => "mssql",
+                _ => "postgres"
+            };
         var dockerfile = engineTag.Length == 0
             ? applianceRole.Dockerfile
             : $"Dockerfile.{applianceRole.Role.ToLowerInvariant()}.{engineTag}";
         var imageSuffix = engineTag.Length == 0 ? "" : $"-{engineTag}";
+        imageSuffix += $"-{TargetFramework}";
         var imageName = $"opencertserver-iq-appliance-{applianceRole.Role.ToLowerInvariant()}{imageSuffix}:local";
 
-        if (Environment.GetEnvironmentVariable($"IQ_APPLIANCE_{applianceRole.Role.ToUpperInvariant()}_IMAGE")
+        if (GetImageOverride($"IQ_APPLIANCE_{applianceRole.Role.ToUpperInvariant()}_IMAGE")
             is { Length: > 0 } prebuilt)
         {
             imageName = prebuilt;
@@ -155,7 +195,7 @@ internal static class IqImages
         // variants stay on the ICU-less invariant publish.
         var mssql = engineTag == "mssql";
         var ridDir = mssql ? Path.Combine("mssql", rid) : rid;
-        var publishDir = Path.Combine(RepositoryPaths.IqArtifacts, "appliance-publish",
+        var publishDir = Path.Combine(RepositoryPaths.IqArtifacts, "appliance-publish", TargetFramework,
             applianceRole.Role.ToLowerInvariant(), ridDir);
         var hostBinary = $"opencertserver.host.{applianceRole.Role.ToLowerInvariant()}";
         if (!File.Exists(Path.Combine(publishDir, hostBinary)))
@@ -171,7 +211,7 @@ internal static class IqImages
 
         // The appliance Dockerfiles COPY their variant's publish dir (…/<role>/${RID} for the
         // chiseled variants, …/<role>/mssql/${RID} for mssql); stage the publish there.
-        var stageDir = Path.Combine(context, "artifacts", "publish",
+        var stageDir = Path.Combine(context, "artifacts", "publish", TargetFramework,
             applianceRole.Role.ToLowerInvariant(), ridDir);
         if (Directory.Exists(stageDir))
         {
@@ -187,6 +227,9 @@ internal static class IqImages
             .WithName(imageName)
             .WithBuildArgument("PLATFORM", Platform)
             .WithBuildArgument("RID", rid)
+            .WithBuildArgument("TFM", TargetFramework)
+            .WithBuildArgument("DOTNET_VERSION", DotNetRuntimeVersion)
+            .WithBuildArgument("UBUNTU_CODENAME", UbuntuCodename)
             .WithImageBuildPolicy(PullPolicy.Always)
             .WithCleanUp(false)
             .Build();
@@ -224,18 +267,23 @@ internal static class IqImages
 
     private static string Platform => Arch == "arm64" ? "linux/arm64" : "linux/amd64";
 
+    private static string? GetImageOverride(string name) =>
+        Environment.GetEnvironmentVariable($"{name}_{TargetFramework.Replace('.', '_').ToUpperInvariant()}")
+        ?? Environment.GetEnvironmentVariable(name);
+
     private static async Task<IImage> BuildServerImage(CancellationToken cancellationToken)
     {
-        if (Environment.GetEnvironmentVariable("IQ_SERVER_IMAGE") is { Length: > 0 } prebuilt)
+        if (GetImageOverride("IQ_SERVER_IMAGE") is { Length: > 0 } prebuilt)
         {
             return new DockerImage(prebuilt);
         }
 
         var rid = $"linux-musl-{Arch}";
-        var context = Path.Combine(RepositoryPaths.IqArtifacts, "server-context");
-        var publishDir = Path.Combine(context, "artifacts", "publish", "server", rid);
+        var context = Path.Combine(RepositoryPaths.IqArtifacts, $"server-context-{TargetFramework}");
+        var publishDir = Path.Combine(context, "artifacts", "publish", TargetFramework, "server", rid);
         await DotNetPublish(
-                Path.Combine(RepositoryPaths.Root, "src", "opencertserver.certserver", "opencertserver.certserver.csproj"),
+                Path.Combine(RepositoryPaths.Root, "src", "opencertserver.certserver",
+                    "opencertserver.certserver.csproj"),
                 rid,
                 publishDir,
                 cancellationToken)
@@ -245,9 +293,11 @@ internal static class IqImages
         var image = new ImageFromDockerfileBuilder()
             .WithDockerfileDirectory(context)
             .WithDockerfile("Dockerfile")
-            .WithName("opencertserver-iq-server:local")
+            .WithName($"opencertserver-iq-server-{TargetFramework}:local")
             .WithBuildArgument("PLATFORM", Platform)
             .WithBuildArgument("RID", rid)
+            .WithBuildArgument("TFM", TargetFramework)
+            .WithBuildArgument("DOTNET_VERSION", DotNetRuntimeVersion)
             .WithImageBuildPolicy(PullPolicy.Always)
             .WithCleanUp(false)
             .Build();
@@ -257,13 +307,13 @@ internal static class IqImages
 
     private static async Task<IImage> BuildClientImage(CancellationToken cancellationToken)
     {
-        if (Environment.GetEnvironmentVariable("IQ_CLIENT_IMAGE") is { Length: > 0 } prebuilt)
+        if (GetImageOverride("IQ_CLIENT_IMAGE") is { Length: > 0 } prebuilt)
         {
             return new DockerImage(prebuilt);
         }
 
-        var context = Path.Combine(RepositoryPaths.IqArtifacts, "client-context");
-        var publishDir = Path.Combine(RepositoryPaths.IqArtifacts, "cli");
+        var context = Path.Combine(RepositoryPaths.IqArtifacts, $"client-context-{TargetFramework}");
+        var publishDir = Path.Combine(RepositoryPaths.IqArtifacts, "cli", TargetFramework);
         await DotNetPublish(
                 Path.Combine(RepositoryPaths.Root, "src", "opencertserver.cli", "opencertserver.cli.csproj"),
                 $"linux-{Arch}",
@@ -273,14 +323,15 @@ internal static class IqImages
             .ConfigureAwait(false);
         Directory.CreateDirectory(context);
         File.Copy(Path.Combine(publishDir, "opencert"), Path.Combine(context, "opencert"), true);
-        File.Copy(Path.Combine(RepositoryPaths.IqProject, "client", "Dockerfile"), Path.Combine(context, "Dockerfile"), true);
+        File.Copy(Path.Combine(RepositoryPaths.IqProject, "client", "Dockerfile"), Path.Combine(context, "Dockerfile"),
+            true);
         File.Copy(Path.Combine(RepositoryPaths.IqProject, "client", "libest-compat.patch"),
             Path.Combine(context, "libest-compat.patch"), true);
 
         var image = new ImageFromDockerfileBuilder()
             .WithDockerfileDirectory(context)
             .WithDockerfile("Dockerfile")
-            .WithName("opencertserver-iq-client:local")
+            .WithName($"opencertserver-iq-client-{TargetFramework}:local")
             .WithImageBuildPolicy(PullPolicy.Always)
             .WithCleanUp(false)
             .Build();
@@ -302,15 +353,17 @@ internal static class IqImages
             WorkingDirectory = RepositoryPaths.Root
         };
         foreach (var arg in (string[])
-                 [
-                     "publish", project, "-c", "Release", "-r", rid, "--self-contained", "-o", output, "-nologo",
-                     "-v", "q", .. extra
-                 ])
+            [
+                "publish", project, "-c", "Release", "-f", TargetFramework, "-r", rid, "--self-contained", "-o",
+                output, "-nologo",
+                "-v", "q", .. extra
+            ])
         {
             info.ArgumentList.Add(arg);
         }
 
-        using var process = Process.Start(info) ?? throw new InvalidOperationException("Could not start dotnet publish.");
+        using var process = Process.Start(info) ??
+            throw new InvalidOperationException("Could not start dotnet publish.");
         var stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var stderr = process.StandardError.ReadToEndAsync(cancellationToken);
         await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);

@@ -11,14 +11,7 @@ public class InMemoryCertificateStore : IStoreCertificates
     /// <summary>
     /// Executes the new operation.
     /// </summary>
-    private readonly Dictionary<string, CertificateItem> _certificates = new();
-
-    /// <inheritdoc />
-    public Task AddCertificate(X509Certificate2 certificate, CancellationToken cancellationToken = default)
-    {
-        _certificates.Add(certificate.GetSerialNumberString(), CertificateItem.FromX509Certificate2(certificate));
-        return Task.CompletedTask;
-    }
+    private readonly Dictionary<(string, string?), CertificateItem> _certificates = new();
 
     /// <inheritdoc />
     public Task AddCertificate(
@@ -28,25 +21,26 @@ public class InMemoryCertificateStore : IStoreCertificates
     {
         var item = CertificateItem.FromX509Certificate2(certificate);
         item.IssuingProfile = issuingProfile;
-        _certificates.Add(item.SerialNumber, item);
+        _certificates.Add((item.SerialNumber, issuingProfile), item);
         return Task.CompletedTask;
     }
 
     /// <inheritdoc />
     public Task<string?> GetIssuingProfile(string thumbprint, CancellationToken cancellationToken = default)
     {
-        var item = _certificates.Values.SingleOrDefault(
-            item => string.Equals(item.Thumbprint, thumbprint, StringComparison.OrdinalIgnoreCase));
+        var item = _certificates.Values.SingleOrDefault(item =>
+            string.Equals(item.Thumbprint, thumbprint, StringComparison.OrdinalIgnoreCase));
         return Task.FromResult(item?.IssuingProfile);
     }
 
     /// <inheritdoc />
     public Task<bool> RemoveCertificate(
         string serialNumber,
+        string? issuingProfile,
         X509RevocationReason reason,
         CancellationToken cancellationToken = default)
     {
-        if (!_certificates.TryGetValue(serialNumber, out var certificateItem))
+        if (!_certificates.TryGetValue((serialNumber, issuingProfile), out var certificateItem))
         {
             return Task.FromResult(false);
         }
@@ -64,11 +58,11 @@ public class InMemoryCertificateStore : IStoreCertificates
         CancellationToken cancellationToken = default)
     {
         return _certificates
-            .OrderBy(x => x.Key, StringComparer.Ordinal)
             .Where(x => x.Value.IsRevoked
              && string.Equals(x.Value.IssuingProfile, issuingProfile, StringComparison.Ordinal))
             .Skip(page * pageSize)
             .Take(pageSize)
+            .OrderBy(x => x.Key.Item1, StringComparer.Ordinal)
             .Select(x => x.Value.AsInfo())
             .ToAsyncEnumerable();
     }
@@ -78,14 +72,15 @@ public class InMemoryCertificateStore : IStoreCertificates
         CertId certId,
         CancellationToken cancellationToken = default)
     {
-        var found = _certificates.TryGetValue(Convert.ToHexString(certId.SerialNumber), out var certificateItem);
-        if (!found)
+        var kvp = _certificates.FirstOrDefault(x => x.Key.Item1 == Convert.ToHexString(certId.SerialNumber));
+        var certificateItem = kvp.Value;
+        if (certificateItem == null)
         {
             return Task.FromResult<(CertId, CertificateStatus, RevokedInfo?)>((
                 certId, CertificateStatus.Unknown, null));
         }
 
-        var result = certificateItem!.IsRevoked
+        var result = certificateItem.IsRevoked
             ? (certId, CertificateStatus.Revoked,
                (RevokedInfo?)new RevokedInfo(certificateItem.RevocationDate!.Value, certificateItem.RevocationReason))
             : (certId, CertificateStatus.Good, (RevokedInfo?)null);
@@ -99,7 +94,7 @@ public class InMemoryCertificateStore : IStoreCertificates
         CancellationToken cancellationToken = default)
     {
         return _certificates
-            .OrderBy(x => x.Key, StringComparer.Ordinal)
+            .OrderBy(x => x.Key.Item1, StringComparer.Ordinal)
             .Skip(page * pageSize)
             .Take(pageSize)
             .Select(x => x.Value.AsInfo())
@@ -108,13 +103,15 @@ public class InMemoryCertificateStore : IStoreCertificates
 
     /// <inheritdoc />
     public IAsyncEnumerable<X509Certificate2> GetCertificatesById(
+        string? issuingProfile,
         CancellationToken cancellationToken,
         params IEnumerable<ReadOnlyMemory<byte>> ids)
     {
         var idSet = new HashSet<string>(ids.Select(i => Convert.ToHexString(i.Span)));
         return _certificates
-            .Where(x => idSet.Contains(x.Key))
-            .OrderBy(x => x.Key, StringComparer.Ordinal)
+            .Where(x => idSet.Contains(x.Key.Item1) &&
+                string.Equals(x.Key.Item2, issuingProfile, StringComparison.Ordinal))
+            .OrderBy(x => x.Key.Item1, StringComparer.Ordinal)
             .Select(x => X509Certificate2.CreateFromPem(x.Value.PublicKeyPem))
             .ToAsyncEnumerable();
     }
@@ -130,7 +127,7 @@ public class InMemoryCertificateStore : IStoreCertificates
         // item. Comparing against the key found nothing, ever.
         return _certificates
             .Where(x => thumbprintSet.Contains(x.Value.Thumbprint))
-            .OrderBy(x => x.Key, StringComparer.Ordinal)
+            .OrderBy(x => x.Key.Item1, StringComparer.Ordinal)
             .Select(x => X509Certificate2.CreateFromPem(x.Value.PublicKeyPem))
             .ToAsyncEnumerable();
     }

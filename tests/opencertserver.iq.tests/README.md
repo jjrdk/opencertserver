@@ -55,6 +55,14 @@ their project references share `bin`/`obj` directories even with distinct publis
 output paths. Keep every IQ publish under that gate so parallel features cannot
 overwrite one another's build artifacts; scenario execution remains parallel.
 
+IQ, certificate-server, data, SCEP and TPM test runs share an exclusive
+per-user container-test lease across processes, target frameworks and runners.
+The lease is held until test-run cleanup finishes, and each of these assemblies
+uses at most two parallel test collections. A run waiting for another run logs
+the lease path; this deliberately limits Docker memory pressure when Rider and
+terminal tests overlap. The operating system releases the lease if a process
+terminates unexpectedly.
+
 The raw HTTP perimeter probe reads the server's rejection response even if an
 oversized request triggers a broken pipe during the send. A broken pipe alone is
 not a passing result: the header-limit scenario still requires HTTP 400 or 431.
@@ -121,13 +129,20 @@ cancellation and unchanged HTTP status codes without Docker.
 >
 > Run the ACME feature (requires Docker; the first run publishes and builds both images):
 >
+> The IQ suite runs for both `net10.0` and `net11.0`. Each target publishes into its own
+> artifact directory and builds a matching runtime image, so both framework-specific deployments
+> are qualified without sharing generated binaries or Docker image tags. The test assembly determines
+> the target framework, independently of the test host used by Rider or the CLI.
+>
 > ```sh
 > dotnet test --project tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj \
 >   --filter-class "OpenCertServer.Iq.Tests.Features.RFC8555ACMEIssuanceWorksForALinuxWeb_ApplicationClientFeature"
 > ```
 >
-> `IQ_SERVER_IMAGE` / `IQ_CLIENT_IMAGE` select prebuilt images; `IQ_DOCKER_ARCH` (`x64`/`arm64`)
-> overrides the detected Docker architecture.
+> `IQ_SERVER_IMAGE` / `IQ_CLIENT_IMAGE` select prebuilt images; append `_NET10_0` or `_NET11_0`
+> to select a different image per target framework. `IQ_DOCKER_ARCH` (`x64`/`arm64`) overrides
+> the detected Docker architecture. Appliance overrides use the same suffix, for example
+> `IQ_APPLIANCE_UNIFIED_IMAGE_NET11_0`.
 
 ### Certificate-server penetration scenarios
 

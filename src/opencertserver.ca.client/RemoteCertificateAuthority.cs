@@ -89,6 +89,7 @@ public sealed class RemoteCertificateAuthority : ICertificateAuthority
     /// <inheritdoc />
     public Task<bool> RevokeCertificate(
         string serialNumber,
+        string? profileName,
         X509RevocationReason reason,
         CancellationToken cancellationToken = default)
     {
@@ -99,7 +100,7 @@ public sealed class RemoteCertificateAuthority : ICertificateAuthority
                 "proof-of-possession message. Configure a client certificate with a private key."));
         }
 
-        return _client.Revoke(_revokeIdentity, serialNumber, reason, cancellationToken);
+        return _client.Revoke(_revokeIdentity, serialNumber, profileName, reason, cancellationToken);
     }
 
     /// <inheritdoc />

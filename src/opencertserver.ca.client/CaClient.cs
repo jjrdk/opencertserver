@@ -31,6 +31,7 @@ public sealed partial class CaClient
 
     private static readonly Counter<int> SignCounter =
         Meter.CreateCounter<int>("opencertserver.ca.client.sign", "operations", "result");
+
     private static readonly Counter<int> RevokeCounter =
         Meter.CreateCounter<int>("opencertserver.ca.client.revoke", "operations", "result");
 
@@ -94,6 +95,7 @@ public sealed partial class CaClient
             request.Headers.TryAddWithoutValidation(RaProtocol.ReenrollingFromHeader,
                 reenrollingFrom.ExportCertificatePem());
         }
+
         ApplyAuth(request, effectiveScope);
 
         LogSigningCsrViaBackingCaAtUri(requestUri);
@@ -119,6 +121,7 @@ public sealed partial class CaClient
     public async Task<bool> Revoke(
         X509Certificate2 identity,
         string serialNumberHex,
+        string? profile,
         X509RevocationReason reason,
         CancellationToken cancellationToken = default)
     {
@@ -131,11 +134,11 @@ public sealed partial class CaClient
 
         var reasonName = reason.ToString();
         var signature = Sign(identity, RaProtocol.BuildRevocationMessage(serialNumberHex, reasonName));
+        var profileName = profile ?? _options.Profile;
         var requestUri = new Uri(_options.BaseUrl,
-            $"{RaProtocol.RevokePath}?" +
-            $"{RaProtocol.QuerySn}={Uri.EscapeDataString(serialNumberHex)}" +
-            $"&{RaProtocol.QueryReason}={Uri.EscapeDataString(reasonName)}" +
-            $"&{RaProtocol.QuerySignature}={Uri.EscapeDataString(Convert.ToBase64String(signature))}");
+            $"{RaProtocol.RevokePath}?{(string.IsNullOrEmpty(profileName)
+                ? ""
+                : $"{RaProtocol.QueryProfile}={Uri.EscapeDataString(profileName)}&")}&{RaProtocol.QuerySn}={Uri.EscapeDataString(serialNumberHex)}&{RaProtocol.QueryReason}={Uri.EscapeDataString(reasonName)}&{RaProtocol.QuerySignature}={Uri.EscapeDataString(Convert.ToBase64String(signature))}");
         using var request = new HttpRequestMessage(HttpMethod.Delete, requestUri);
         ApplyAuth(request);
 
@@ -202,6 +205,7 @@ public sealed partial class CaClient
         collection.ImportFromPem(pem);
         return collection;
     }
+
     ///<summary>
     /// refresh call: an RA may call it at startup to learn the profiles to offer and again later to
     /// pick up a profile set the CA has updated. Only names come back over the wire.
@@ -225,7 +229,8 @@ public sealed partial class CaClient
     {
         var path = profile == null
             ? _options.RevocationListPath
-            : string.Format(System.Globalization.CultureInfo.InvariantCulture, RaProtocol.ProfileCrlPathFormat, Uri.EscapeDataString(profile));
+            : string.Format(System.Globalization.CultureInfo.InvariantCulture, RaProtocol.ProfileCrlPathFormat,
+                Uri.EscapeDataString(profile));
         var requestUri = new Uri(_options.BaseUrl, path);
         using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
         ApplyAuth(request);
@@ -289,7 +294,7 @@ public sealed partial class CaClient
 
         using var ecdsa = certificate.GetECDsaPrivateKey();
         return ecdsa?.SignData(data, HashAlgorithmName.SHA256)
-               ?? throw new NotSupportedException("The revoking identity must use RSA or ECDSA.");
+         ?? throw new NotSupportedException("The revoking identity must use RSA or ECDSA.");
     }
 
     [LoggerMessage(LogLevel.Debug, "Signing CSR via backing CA at {Uri}")]

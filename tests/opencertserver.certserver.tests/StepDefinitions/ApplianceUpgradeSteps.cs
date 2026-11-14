@@ -394,7 +394,8 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
         var configuration = new ConfigurationManager();
         configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["Appliance:Hardened"] = "true", ["Appliance:DataDirectory"] = _directory,
+            ["Appliance:Hardened"] = "true",
+            ["Appliance:DataDirectory"] = _directory,
             ["AcmeServer:DisableCaaChecks"] = "true"
         });
         Assert.Throws<InvalidOperationException>(() => ApplianceOptions.Read(configuration));
@@ -409,8 +410,9 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
         using var key = RSA.Create(2048);
         var request = new CertificateRequest("CN=persistent", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         _certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddDays(1));
-        await _store!.AddCertificate(_certificate, "rsa");
-        Assert.True(await _store.RemoveCertificate(_certificate.SerialNumber, X509RevocationReason.KeyCompromise));
+        const string issuingProfile = "rsa";
+        await _store!.AddCertificate(_certificate, issuingProfile);
+        Assert.True(await _store.RemoveCertificate(_certificate.SerialNumber, issuingProfile, X509RevocationReason.KeyCompromise));
         _store.Dispose();
         _store = null;
     }

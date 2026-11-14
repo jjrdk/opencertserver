@@ -4,6 +4,8 @@
         <RootNamespace>OpenCertServer.Ra.Server</RootNamespace>
         <AssemblyName>opencertserver.ra.server</AssemblyName>
         <OutputType>Exe</OutputType>
+        <!-- This API-only host has no web assets; do not export SDK browser tools to referencing hosts. -->
+        <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
         <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
         <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>

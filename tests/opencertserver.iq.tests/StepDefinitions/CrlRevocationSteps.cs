@@ -132,6 +132,7 @@ public sealed class CrlRevocationSteps
             + $" && curl -sS --cert '{w}/{_caller}.pem' --key '{w}/{_caller}.key'{authorization}"
             + " -X DELETE -G"
             + $" --data-urlencode 'sn={_state.Serial}' --data-urlencode 'reason={_reason}'"
+            + " --data-urlencode 'profile=rsa'"
             + $" --data-urlencode 'signature@{w}/signature.b64'"
             + $" -D '{w}/headers' -o '{w}/body' -w '%{{http_code}}' '{Server}/ca/revoke'")
             .ConfigureAwait(false);

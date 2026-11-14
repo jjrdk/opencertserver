@@ -23,7 +23,6 @@
   -->
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <PackageId>OpenCertServer.Sgx.Native</PackageId>
     <Version>1.0.0</Version>

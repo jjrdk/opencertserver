@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <!-- The suite runs for each solution target framework; image publish outputs and build contexts
+             are isolated by TFM so each test host exercises the matching runtime. -->
         <IsPackable>false</IsPackable>
         <RootNamespace>OpenCertServer.Iq.Tests</RootNamespace>
         <OutputType>exe</OutputType>

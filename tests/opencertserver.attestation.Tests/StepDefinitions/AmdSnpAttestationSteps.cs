@@ -1,3 +1,7 @@
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+
 namespace OpenCertServer.Attestation.Tests.StepDefinitions;
 
 using System.Net;

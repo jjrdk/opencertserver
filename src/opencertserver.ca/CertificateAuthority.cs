@@ -4,7 +4,6 @@ using OpenCertServer.Ca.Utils.X509;
 namespace OpenCertServer.Ca;
 
 using System;
-using System.Formats.Asn1;
 using System.Linq;
 using System.Numerics;
 using System.Security.Claims;
@@ -257,7 +256,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             await _certificateStore.AddCertificate(cert, profile.Name, cancellationToken).ConfigureAwait(false);
             if (reenrollingFrom != null)
             {
-                await _certificateStore.RemoveCertificate(reenrollingFrom.SerialNumber, X509RevocationReason.Superseded,
+                await _certificateStore.RemoveCertificate(reenrollingFrom.SerialNumber, profile.Name, X509RevocationReason.Superseded,
                     cancellationToken).ConfigureAwait(false);
             }
 
@@ -469,21 +468,14 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     }
 
     /// <inheritdoc/>
-    public Task<bool> RevokeCertificate(
+    public async Task<bool> RevokeCertificate(
         string serialNumber,
+        string? profileName,
         X509RevocationReason reason,
         CancellationToken cancellationToken = default)
     {
-        return RevokeCertificateCore(serialNumber, reason, cancellationToken);
-    }
-
-    private async Task<bool> RevokeCertificateCore(
-        string serialNumber,
-        X509RevocationReason reason,
-        CancellationToken cancellationToken)
-    {
         using var telemetry = CaCoreInstruments.Start("revoke_certificate");
-        var revoked = await _certificateStore.RemoveCertificate(serialNumber, reason, cancellationToken)
+        var revoked = await _certificateStore.RemoveCertificate(serialNumber, profileName, reason, cancellationToken)
             .ConfigureAwait(false);
         telemetry.Complete(revoked);
         return revoked;
@@ -537,7 +529,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             // RFC 5280 §5.2.5: a critical issuingDistributionPoint scopes this (partial) CRL to the
             // profile-specific distribution point carried in that profile's certificates, so relying
             // parties never accept another profile's CRL as authoritative for a certificate.
-            crlExtensions.Add(BuildIssuingDistributionPoint(profileCrlUrls));
+            crlExtensions.Add(new IssuingDistributionPointExtension(profileCrlUrls, true));
         }
 
         var crl = new CertificateRevocationList(
@@ -553,25 +545,6 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         var encoded = crl.Build(HashAlgorithmName.SHA256, profile.PrivateKey);
         telemetry.Complete();
         return encoded;
-    }
-
-    private static X509Extension BuildIssuingDistributionPoint(IEnumerable<string> uris)
-    {
-        var writer = new AsnWriter(AsnEncodingRules.DER);
-        using (writer.PushSequence())
-            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
-                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
-                {
-                    foreach (var uri in uris)
-                    {
-                        writer.WriteCharacterString(
-                            UniversalTagNumber.IA5String,
-                            uri,
-                            new Asn1Tag(TagClass.ContextSpecific, 6));
-                    }
-                }
-
-        return new X509Extension(Oids.IssuingDistributionPoint, writer.Encode(), true);
     }
 
     private static (RSA, X509Certificate2) CreateSelfSignedRsaCert(
@@ -908,7 +881,7 @@ public sealed partial class DistinguishedNameValidation : IValidateCertificateRe
 /// A client that is authenticated but has no name claim (e.g. a JWT with only role claims) is allowed through;
 /// subject binding only applies when the identity carries a name claim.
 /// </summary>
-public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertificateRequestValueConverter
+public sealed class AuthenticatedSubjectRequestValueConverter : ICertificateRequestValueConverter
 {
     public IReadOnlyCollection<string> GetValues(
         CertificateRequest request,

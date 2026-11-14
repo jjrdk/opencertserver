@@ -11,12 +11,15 @@
 # SslStream loads) but NOT the .NET runtime (and no chiseled ASP.NET Core image exists), so the app is
 # published self-contained WITHOUT InvariantGlobalization: the publish bundles coreclr + hostfxr + the
 # ASP.NET Core framework, and the harness builds this variant from a non-invariant publish
-# (artifacts/publish/appliance/mssql/${RID}). PLATFORM/RID default to amd64; the IQ harness overrides
-# both to run natively on the Docker host. The image already runs as the unprivileged "app" user.
+# (artifacts/publish/${TFM}/unified/mssql/${RID}). PLATFORM/RID default to amd64; the IQ harness
+# overrides both to run natively on the Docker host. The image already runs as the unprivileged "app" user.
 ARG PLATFORM=linux/amd64
-FROM --platform=${PLATFORM} mcr.microsoft.com/dotnet/runtime-deps:10.0-noble
+ARG DOTNET_VERSION=11.0
+ARG UBUNTU_CODENAME=resolute
+FROM --platform=${PLATFORM} mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_VERSION}-${UBUNTU_CODENAME}
 
 ARG RID=linux-x64
+ARG TFM=net11.0
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 ENV DOTNET_NOLOGO=true
 # The mssql EF provider needs ICU; the full runtime-deps image ships it, so the runtime is NOT invariant.
@@ -35,7 +38,7 @@ ENV Appliance__Engine=mssql
 ENV AcmeServer__Persistence=relational
 ENV Ca__Persistence=relational
 # The mssql variant is built from a separate, non-invariant publish (the SQL Server provider needs ICU).
-COPY artifacts/publish/unified/mssql/${RID}/ app/
+COPY artifacts/publish/${TFM}/unified/mssql/${RID}/ app/
 WORKDIR /app
 
 # The full runtime-deps image runs as the unprivileged "app" user (UID 1654).

@@ -3,7 +3,6 @@ namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using CertesSlim.Acme;
-using CertesSlim.Acme.Resource;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -42,7 +41,8 @@ public partial class CertificateServerFeatures
             request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(extendedKeyUsage, critical: false));
             var ca = _server.Services.GetRequiredService<ICertificateAuthority>();
             var response = ca.SignCertificateRequest(request, "default").GetAwaiter().GetResult();
-            revokeIdentity = Assert.IsType<SignCertificateResponse.Success>(response).Certificate.CopyWithPrivateKey(key);
+            revokeIdentity = Assert.IsType<SignCertificateResponse.Success>(response).Certificate
+                .CopyWithPrivateKey(key);
             client.DefaultRequestHeaders.Add(
                 "X-Client-Cert",
                 Convert.ToBase64String(revokeIdentity.RawData));
@@ -153,6 +153,7 @@ public partial class CertificateServerFeatures
         _acmeRemoteRevoked = await _acmeRemoteCaClient!.Revoke(
             _acmeRemoteRevokeIdentity!,
             issued.GetSerialNumberString(),
+            "default",
             X509RevocationReason.CessationOfOperation).ConfigureAwait(false);
     }
 
