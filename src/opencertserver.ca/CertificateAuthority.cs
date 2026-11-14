@@ -3,7 +3,6 @@
 namespace OpenCertServer.Ca;
 
 using System;
-using System.Formats.Asn1;
 using System.Linq;
 using System.Numerics;
 using System.Security.Claims;
@@ -484,7 +483,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             // RFC 5280 §5.2.5: a critical issuingDistributionPoint scopes this (partial) CRL to the
             // profile-specific distribution point carried in that profile's certificates, so relying
             // parties never accept another profile's CRL as authoritative for a certificate.
-            crlExtensions.Add(BuildIssuingDistributionPoint(profileCrlUrls));
+            crlExtensions.Add(new IssuingDistributionPointExtension(profileCrlUrls, true));
         }
 
         var crl = new CertificateRevocationList(
@@ -500,25 +499,6 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         var encoded = crl.Build(HashAlgorithmName.SHA256, profile.PrivateKey);
         telemetry.Complete();
         return encoded;
-    }
-
-    private static X509Extension BuildIssuingDistributionPoint(IEnumerable<string> uris)
-    {
-        var writer = new AsnWriter(AsnEncodingRules.DER);
-        using (writer.PushSequence())
-            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
-                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
-                {
-                    foreach (var uri in uris)
-                    {
-                        writer.WriteCharacterString(
-                            UniversalTagNumber.IA5String,
-                            uri,
-                            new Asn1Tag(TagClass.ContextSpecific, 6));
-                    }
-                }
-
-        return new X509Extension(Oids.IssuingDistributionPoint, writer.Encode(), true);
     }
 
     private static (RSA, X509Certificate2) CreateSelfSignedRsaCert(
