@@ -1,3 +1,4 @@
+using System;
 using Cake.Common.Tools.DotNet;
 using Cake.Common.Tools.DotNet.Publish;
 using Cake.Docker;
@@ -125,7 +126,10 @@ public sealed class ApplianceDockerBuildTask : FrostingTask<BuildContext>
     {
         var path = dockerfile.Replace("\\", "/").TrimStart('.');
         if (path.EndsWith(".dockerfile", System.StringComparison.OrdinalIgnoreCase))
+        {
             path = path.Substring(0, path.Length - ".dockerfile".Length);
+        }
+
         // "Dockerfile.unified.postgres" -> "unified-postgres"
         path = path.Replace("Dockerfile", string.Empty).Trim('.');
         path = path.Replace('.', '-');

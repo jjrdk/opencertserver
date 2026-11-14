@@ -9,9 +9,9 @@
         <Project Path="src\opencertserver.ra.server\opencertserver.ra.server.csproj" />
         <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
         <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
-        <Project Path="src/opencertserver.scep.server/opencertserver.scep.server.csproj"/>
-        <Project Path="src/opencertserver.scep/opencertserver.scep.csproj"/>
-        <Project Path="src/opencertserver.contrib.intune/opencertserver.contrib.intune.csproj"/>
+        <Project Path="src/opencertserver.scep.server/opencertserver.scep.server.csproj" />
+        <Project Path="src/opencertserver.scep/opencertserver.scep.csproj" />
+        <Project Path="src/opencertserver.contrib.intune/opencertserver.contrib.intune.csproj" />
     </Folder>
     <Folder Name="/hosts/">
         <Project Path="src/hosts/opencertserver.host.ca/opencertserver.host.ca.csproj" />
@@ -25,7 +25,6 @@
         <File Path="docs\opencertserver_cp.md" />
         <File Path="docs\opencertserver_cps.md" />
         <File Path="README.md" />
-        <File Path="Docker.md" />
     </Folder>
     <Folder Name="/tests/">
         <Project Path="tests/opencertserver.data.tests/opencertserver.data.tests.csproj" />
@@ -39,8 +38,8 @@
         <Project Path="tests\opencertserver.ca.tests\opencertserver.ca.tests.csproj" />
         <Project Path="tests\opencertserver.certserver.tests\opencertserver.certserver.tests.csproj" />
         <Project Path="tests\opencertserver.est.server.tests\opencertserver.est.server.tests.csproj" />
-        <Project Path="tests/opencertserver.scep.server.tests/opencertserver.scep.server.tests.csproj"/>
-        <Project Path="tests/opencertserver.contrib.intune.tests/opencertserver.contrib.intune.tests.csproj"/>
+        <Project Path="tests/opencertserver.scep.server.tests/opencertserver.scep.server.tests.csproj" />
+        <Project Path="tests/opencertserver.contrib.intune.tests/opencertserver.contrib.intune.tests.csproj" />
         <Project Path="tests\opencertserver.tpm.tests\opencertserver.tpm.tests.csproj" />
         <Project Path="tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj" />
     </Folder>

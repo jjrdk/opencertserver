@@ -93,8 +93,15 @@ public sealed partial class ApplianceUpgradeSteps
         {
             ["alg"] = "RS256", ["nonce"] = ReadHeader(headers, "Replay-Nonce"), ["url"] = url
         };
-        if (accountUrl is null) header["jwk"] = jwk.DeepClone();
-        else header["kid"] = accountUrl;
+        if (accountUrl is null)
+        {
+            header["jwk"] = jwk.DeepClone();
+        }
+        else
+        {
+            header["kid"] = accountUrl;
+        }
+
         var protectedHeader = Encode(header.ToJsonString());
         var encodedPayload = Encode(payload);
         var signature = key.SignData(Encoding.ASCII.GetBytes(protectedHeader + "." + encodedPayload),
@@ -131,8 +138,8 @@ public sealed partial class ApplianceUpgradeSteps
         var account = new Model.Account(JsonWebKeyConverter.ConvertFromRSASecurityKey(new RsaSecurityKey(key)),
                 ["mailto:operator@example.test"], DateTimeOffset.UtcNow, "external-account")
             { AccountUri = "https://ca.example.test/acme/account/test" };
-        await accounts.SaveAccount(account, default);
-        var loadedAccount = await new AccountStore(options).LoadAccount(account.AccountId, default);
+        await accounts.SaveAccount(account, CancellationToken.None);
+        var loadedAccount = await new AccountStore(options).LoadAccount(account.AccountId, CancellationToken.None);
         Assert.NotNull(loadedAccount);
         Assert.Equal(account.AccountId, loadedAccount.AccountId);
         Assert.Equal(account.ExternalAccountId, loadedAccount.ExternalAccountId);
@@ -145,8 +152,8 @@ public sealed partial class ApplianceUpgradeSteps
         var authorization = new Model.Authorization(order, order.Identifiers[0], DateTimeOffset.UtcNow.AddDays(1));
         var challenge = new Model.Challenge(authorization, ChallengeTypes.Http01) { ExtraData = "evidence" };
         challenge.SetStatus(ChallengeStatus.Processing);
-        await orders.SaveOrder(order, default);
-        var loaded = await new OrderStore(options, NullLogger<OrderStore>.Instance).LoadOrder(order.OrderId, default);
+        await orders.SaveOrder(order, CancellationToken.None);
+        var loaded = await new OrderStore(options, NullLogger<OrderStore>.Instance).LoadOrder(order.OrderId, CancellationToken.None);
         Assert.NotNull(loaded);
         Assert.Equal(order.OrderId, loaded.OrderId);
         Assert.Equal(account.AccountId, loaded.AccountId);
@@ -168,9 +175,9 @@ public sealed partial class ApplianceUpgradeSteps
     {
         var store = new NonceStore(Options.Create(new FileStoreOptions { BasePath = _directory }));
         var nonce = new Model.Nonce(Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(32)));
-        await store.SaveNonceAsync(nonce, default);
+        await store.SaveNonceAsync(nonce, CancellationToken.None);
         var attempts = Enumerable.Range(0, 20)
-            .Select(_ => Task.Run(() => store.TryRemoveNonceAsync(nonce, default)));
+            .Select(_ => Task.Run(() => store.TryRemoveNonceAsync(nonce, CancellationToken.None)));
         Assert.Single(await Task.WhenAll(attempts), consumed => consumed);
     }
 }

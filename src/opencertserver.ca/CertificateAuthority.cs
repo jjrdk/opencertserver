@@ -197,7 +197,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         if (!validationResult.IsApproved)
         {
             LogCouldNotValidateRequest();
-            return new SignCertificateResponse.Error(validationResult.RequiresApproval
+            return new SignCertificateResponse.Error(true, validationResult.RequiresApproval
                 ? "Certificate request requires approval."
                 : string.Join("\n", validationResult.Reasons));
         }
@@ -218,7 +218,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         var effectiveNotAfter = notAfter?.ToUniversalTime() ?? effectiveNotBefore.Add(profile.CertificateValidity);
         if (effectiveNotAfter <= effectiveNotBefore)
         {
-            return new SignCertificateResponse.Error("Requested certificate validity window is invalid.");
+            return new SignCertificateResponse.Error(false, "Requested certificate validity window is invalid.");
         }
 
         var cert = request.Create(
@@ -234,7 +234,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         {
             LogCouldNotValidateRequest();
             cert.Dispose();
-            return new SignCertificateResponse.Error(postResult.RequiresApproval
+            return new SignCertificateResponse.Error(true, postResult.RequiresApproval
                 ? "Issued certificate requires approval."
                 : string.Join("\n", postResult.Reasons));
         }
@@ -271,7 +271,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             .ToArray();
         LogErrors(string.Join(";", errors));
 
-        return new SignCertificateResponse.Error(errors);
+        return new SignCertificateResponse.Error(false, errors);
     }
 
     private CertificateRequest CleanCsrExtensions(CertificateRequest request, CaProfile profile)
@@ -784,21 +784,25 @@ public sealed partial class KeyCrlSignatureValidation : IValidateCertificateRequ
         {
             // RFC 5280 §4.2.1.3: keyCertSign MUST only appear when the cA bit is also asserted.
             // cRLSign without keyCertSign is legitimate (indirect CRL issuers).
-            if (keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.KeyCertSign))
+            if (!keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.KeyCertSign))
             {
-                var basicConstraints = request.CertificateExtensions
-                    .OfType<X509BasicConstraintsExtension>().FirstOrDefault();
-                if (basicConstraints?.CertificateAuthority != true)
-                {
-                    LogCsrRequestsKeyCertSignWithoutCaTrue();
-                    return
-                        "CSR requests keyCertSign but does not assert CA:TRUE in basicConstraints (RFC 5280 §4.2.1.3)";
-                }
+                return null;
             }
 
-            return null;
+            var basicConstraints = request.CertificateExtensions
+                .OfType<X509BasicConstraintsExtension>().FirstOrDefault();
+            if (basicConstraints?.CertificateAuthority == true)
+            {
+                return null;
+            }
+
+            LogCsrRequestsKeyCertSignWithoutCaTrue();
+            return
+                "CSR requests keyCertSign but does not assert CA:TRUE in basicConstraints (RFC 5280 §4.2.1.3)";
+
         }
 
+        // This is a non-CA profile; keyCertSign and cRLSign are never allowed.
         if (keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.CrlSign))
         {
             LogCsrRequestsCrlSignInKeyUsage();

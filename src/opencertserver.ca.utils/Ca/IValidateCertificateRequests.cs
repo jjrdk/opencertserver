@@ -34,7 +34,7 @@ public interface IValidateCertificateRequests
     /// <returns>The outcome for this validator.</returns>
     async Task<ValidationResult> Validate(ValidatorContext context, CancellationToken cancellationToken = default)
     {
-        var token = cancellationToken == default ? context.CancellationToken : cancellationToken;
+        var token = cancellationToken == CancellationToken.None ? context.CancellationToken : cancellationToken;
         var error = await Validate(
             context.Request,
             context.Profile,

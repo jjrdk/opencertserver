@@ -41,10 +41,16 @@ public abstract class SignCertificateResponse
         /// <summary>
         /// Initializes a new instance of the <see cref="Error"/> class.
         /// </summary>
-        public Error(params Span<string> errors)
+        public Error(bool requiresApproval, params Span<string> errors)
         {
+            RequiresApproval = requiresApproval;
             Errors = [.. errors];
         }
+
+        /// <summary>
+        /// Gets a value indicating whether the signing operation requires approval.
+        /// </summary>
+        public bool RequiresApproval { get; }
 
         /// <summary>
         /// Gets the list of signing errors.

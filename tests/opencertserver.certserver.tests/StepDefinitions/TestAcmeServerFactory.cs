@@ -79,7 +79,9 @@ internal static class TestAcmeServerFactory
         for (var i = services.Count - 1; i >= 0; i--)
         {
             if (services[i].ServiceType == typeof(IValidateChallenges))
+            {
                 services.RemoveAt(i);
+            }
         }
 
         services.Add(ServiceDescriptor.Scoped<IValidateChallenges, AlwaysValidHttp01Validator>());

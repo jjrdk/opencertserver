@@ -108,7 +108,7 @@ public sealed partial class CaClient
 
         LogBackingsCaRejectedTheCsrWithHttpStatusDetail((int)response.StatusCode, body);
         SignCounter.Add(1, new KeyValuePair<string, object?>("result", "rejected"));
-        return new SignCertificateResponse.Error(SplitErrors(body));
+        return new SignCertificateResponse.Error(false, SplitErrors(body));
     }
 
     /// <summary>
@@ -202,6 +202,7 @@ public sealed partial class CaClient
         collection.ImportFromPem(pem);
         return collection;
     }
+    ///<summary>
     /// refresh call: an RA may call it at startup to learn the profiles to offer and again later to
     /// pick up a profile set the CA has updated. Only names come back over the wire.
     /// </summary>

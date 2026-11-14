@@ -208,7 +208,9 @@ public partial class CertificateServerFeatures
             for (var i = services.Count - 1; i >= 0; i--)
             {
                 if (services[i].ServiceType == typeof(IValidateChallenges))
+                {
                     services.RemoveAt(i);
+                }
             }
 
             services.Add(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeHttp01ChallengeValidator>());

@@ -224,9 +224,21 @@ public sealed partial class ApplianceUpgradeSteps
 
     private void DisposeRaTopology()
     {
-        if (_caContainer != null) Execute("docker", ["rm", "--force", _caContainer]).GetAwaiter().GetResult();
-        if (_network != null) Execute("docker", ["network", "rm", _network]).GetAwaiter().GetResult();
-        if (_identityProvider != null) _identityProvider.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        if (_caContainer != null)
+        {
+            Execute("docker", ["rm", "--force", _caContainer]).GetAwaiter().GetResult();
+        }
+
+        if (_network != null)
+        {
+            Execute("docker", ["network", "rm", _network]).GetAwaiter().GetResult();
+        }
+
+        if (_identityProvider != null)
+        {
+            _identityProvider.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+
         _issuerTls?.Dispose();
     }
 }

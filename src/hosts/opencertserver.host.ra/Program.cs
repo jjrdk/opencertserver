@@ -20,9 +20,14 @@ var authority = configuration["Jwt:Authority"];
 var audiences = configuration.GetSection("Jwt:Audiences").GetChildren()
     .Select(value => value.Value).OfType<string>().Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
 if (!Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri) || authorityUri.Scheme != "https")
+{
     throw new InvalidOperationException("Set Jwt:Authority to an HTTPS identity provider for RA operators.");
+}
+
 if (audiences.Length == 0)
+{
     throw new InvalidOperationException("Set Jwt:Audiences for RA operator authentication.");
+}
 
 using var identity = X509Certificate2.CreateFromPemFile(
     configuration["Ra:ClientCertificatePath"]
@@ -42,7 +47,10 @@ try
         imported.ImportFromPemFile(path.Value
          ?? throw new InvalidOperationException("Ra:CaTrustRoots requires PEM file paths."));
         if (imported.Count == 0)
+        {
             throw new InvalidOperationException("An RA peer trust file contains no certificates.");
+        }
+
         roots.AddRange(imported);
     }
 
@@ -57,7 +65,10 @@ try
             {
                 if (certificate is null ||
                     (errors & ~SslPolicyErrors.RemoteCertificateChainErrors) != SslPolicyErrors.None)
+                {
                     return false;
+                }
+
                 using var chain = new X509Chain();
                 chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
                 chain.ChainPolicy.CustomTrustStore.AddRange(roots);

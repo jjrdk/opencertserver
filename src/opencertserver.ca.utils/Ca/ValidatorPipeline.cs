@@ -141,7 +141,7 @@ public sealed class ValidatorPipeline : IValidatorPipeline
 		IEnumerable<ValidatorPhase> phases,
 		CancellationToken cancellationToken)
 	{
-		var token = cancellationToken == default ? context.CancellationToken : cancellationToken;
+		var token = cancellationToken == CancellationToken.None ? context.CancellationToken : cancellationToken;
 		token.ThrowIfCancellationRequested();
 		var reasons = new List<string>();
 		foreach (var phase in phases)

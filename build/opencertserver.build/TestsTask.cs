@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace OpenCertServer.Build;
 
 using Cake.Common.Tools.DotNet.Run;

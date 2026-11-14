@@ -40,7 +40,9 @@ var jwtConfigured = Uri.TryCreate(authority, UriKind.Absolute, out var authority
     && authorityUri.Scheme == "https"
     && audiences.Length > 0;
 if (!jwtConfigured && authority != null)
+{
     throw new InvalidOperationException("Jwt:Authority must be an HTTPS identity provider when configured.");
+}
 
 await AddCaCore(builder.Services, configuration, args, appliance.Hardened).ConfigureAwait(false);
 if (configuration["Ca:Persistence"]?.ToLowerInvariant() != "relational")

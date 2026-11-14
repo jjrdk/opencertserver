@@ -163,14 +163,18 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
         _server.OutputDataReceived += (_, args) =>
         {
             if (args.Data is { } line)
+            {
                 lock (_output)
                     _output.Add(line);
+            }
         };
         _server.ErrorDataReceived += (_, args) =>
         {
             if (args.Data is { } line)
+            {
                 lock (_output)
                     _output.Add(line);
+            }
         };
         Assert.True(_server.Start());
         _server.BeginOutputReadLine();
@@ -184,7 +188,11 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
             }
 
             var response = await Probe("/health", SslProtocols.Tls13);
-            if (response.Status == 200) return;
+            if (response.Status == 200)
+            {
+                return;
+            }
+
             lastError = response.Error;
 
             await Task.Delay(100);
@@ -201,9 +209,12 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
         config["Appliance"]!["DataDirectory"] = "/var/lib/opencertserver";
         await File.WriteAllTextAsync(Source, config.ToJsonString().Replace(_directory, "/run/secrets", StringComparison.Ordinal));
         if (!OperatingSystem.IsWindows())
+        {
             File.SetUnixFileMode(_directory, UnixFileMode.UserRead | UnixFileMode.UserWrite |
                 UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
                 UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        }
+
         _container = "opencert-appliance-" + Guid.NewGuid().ToString("N");
         var arguments = new List<string>
         {
@@ -216,11 +227,18 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
             "--mount", $"type=bind,src={Source},dst=/config/appsettings.json,readonly"
         };
         if (_network != null)
+        {
             arguments.AddRange(["--network", _network, "--network-alias", role.ToLowerInvariant()]);
+        }
+
         foreach (var file in Directory.GetFiles(_directory)
             .Where(path => path.EndsWith(".pem") || path.EndsWith(".key")))
         {
-            if (role == "Ra" && Path.GetFileName(file) is "rsa.key" or "ecdsa.key") continue;
+            if (role == "Ra" && Path.GetFileName(file) is "rsa.key" or "ecdsa.key")
+            {
+                continue;
+            }
+
             arguments.Add("--mount");
             arguments.Add($"type=bind,src={file},dst=/run/secrets/{Path.GetFileName(file)},readonly");
         }
@@ -230,7 +248,11 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
         Assert.True(result.ExitCode == 0, result.Error);
         for (var attempt = 0; attempt < 100; attempt++)
         {
-            if ((await Probe("/health", SslProtocols.Tls13)).Status == 200) return;
+            if ((await Probe("/health", SslProtocols.Tls13)).Status == 200)
+            {
+                return;
+            }
+
             await Task.Delay(100);
         }
 
@@ -250,7 +272,11 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
             "--cacert", Path.Combine(_directory, "tls.pem"), "--tlsv" + protocol, "--tls-max", protocol,
             "--output", OperatingSystem.IsWindows() ? "NUL" : "/dev/null", "--write-out", "%{http_code}"
         };
-        if (method != null) arguments.AddRange(["--request", method]);
+        if (method != null)
+        {
+            arguments.AddRange(["--request", method]);
+        }
+
         arguments.Add($"https://localhost:{_port}{path}");
         var result = await Execute("curl", arguments);
         return (result.ExitCode, int.TryParse(result.Output, out var status) ? status : 0, result.Error);
@@ -403,13 +429,20 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
 
     public void Dispose()
     {
-        if (_server is { HasExited: false }) _server.Kill(entireProcessTree: true);
+        if (_server is { HasExited: false })
+        {
+            _server.Kill(entireProcessTree: true);
+        }
+
         _server?.WaitForExit();
         _server?.Dispose();
         _store?.Dispose();
         _certificate?.Dispose();
         if (_container != null)
+        {
             Execute("docker", ["rm", "--force", _container]).GetAwaiter().GetResult();
+        }
+
         DisposeRaTopology();
         Directory.Delete(_directory, recursive: true);
     }
