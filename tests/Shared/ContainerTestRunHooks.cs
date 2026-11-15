@@ -1,7 +1,4 @@
 using Reqnroll;
-using Xunit.v3;
-
-[assembly: Parallelization(MaxThreads = 2)]
 
 namespace OpenCertServer.Testing;
 

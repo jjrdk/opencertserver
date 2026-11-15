@@ -1,7 +1,6 @@
 <Project>
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'opencertserver.certserver.tests' Or
                         '$(MSBuildProjectName)' == 'opencertserver.data.tests' Or
-                        '$(MSBuildProjectName)' == 'opencertserver.iq.tests' Or
                         '$(MSBuildProjectName)' == 'opencertserver.scep.server.tests' Or
                         '$(MSBuildProjectName)' == 'opencertserver.tpm.tests'">
     <Compile Include="$(MSBuildThisFileDirectory)Shared/ContainerTestRunHooks.cs" Link="Support/ContainerTestRunHooks.cs" />

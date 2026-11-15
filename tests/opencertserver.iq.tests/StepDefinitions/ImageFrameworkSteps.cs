@@ -25,4 +25,22 @@ public sealed class ImageFrameworkSteps
         Assert.Equal($".NETCoreApp,Version=v{expected["net".Length..]}", framework.FrameworkName);
         Assert.Equal(expected, IqImages.TargetFramework);
     }
+
+    [Then("the IQ {string} image tag includes the compiled framework and the test run identity")]
+    public void ImageTagIsIsolated(string image)
+    {
+        Assert.Equal(
+            $"opencertserver-iq-{image}:{IqImages.TargetFramework}-{RepositoryPaths.RunId}",
+            IqImages.ImageName(image));
+        Assert.True(Guid.TryParseExact(RepositoryPaths.RunId, "N", out _));
+        Assert.DoesNotContain("ContainerTestRunHooks",
+            typeof(IqImages).Assembly.GetTypes().Select(type => type.Name));
+    }
+
+    [Then("the IQ publish artifacts are isolated to the test run")]
+    public void PublishArtifactsAreIsolated()
+    {
+        Assert.Equal(Path.Combine(RepositoryPaths.Root, "artifacts", "iq", RepositoryPaths.RunId),
+            RepositoryPaths.IqArtifacts);
+    }
 }

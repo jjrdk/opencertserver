@@ -50,15 +50,23 @@ bring-up programmatically.
 
 MCP is the stdio exception to the network topology: it reuses the client image and
 publish infrastructure, but needs no HTTP server, DNS container or private network.
-Its publish uses the same semaphore as the server, client and appliance image builds:
-their project references share `bin`/`obj` directories even with distinct publish
-output paths. Keep every IQ publish under that gate so parallel features cannot
-overwrite one another's build artifacts; scenario execution remains parallel.
+Each IQ run uses its own `artifacts/iq/<run-id>` directory, including the MSBuild
+intermediates selected by `dotnet publish --artifacts-path`. Generated server,
+client and appliance images use tags such as
+`opencertserver-iq-server:net10.0-<run-id>` and
+`opencertserver-iq-appliance-unified:net11.0-<run-id>`. Both frameworks (and separate
+runners of the same framework) can build and run concurrently without sharing
+image tags, build contexts or publish artifacts. Within one run, image preparation
+and MCP publishing still share a semaphore to protect shared dependency intermediates
+and the image cache; scenario execution remains parallel, with at most two collections.
+Run artifacts are deleted after test-run teardown, and generated images are registered
+with Testcontainers' resource reaper. Prebuilt image overrides are not deleted.
 
-IQ, certificate-server, data, SCEP and TPM test runs share an exclusive
+Certificate-server, data, SCEP and TPM test runs share an exclusive
 per-user container-test lease across processes, target frameworks and runners.
 The lease is held until test-run cleanup finishes, and each of these assemblies
-uses at most two parallel test collections. A run waiting for another run logs
+uses at most two parallel test collections. IQ does not acquire this lease.
+A run waiting for another run logs
 the lease path; this deliberately limits Docker memory pressure when Rider and
 terminal tests overlap. The operating system releases the lease if a process
 terminates unexpectedly.

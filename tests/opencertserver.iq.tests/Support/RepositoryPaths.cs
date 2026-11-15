@@ -7,8 +7,10 @@ internal static class RepositoryPaths
 
     public static string IqProject => Path.Combine(Root, "tests", "opencertserver.iq.tests");
 
-    /// <summary>Scratch space for publish output and docker build contexts (git-ignored).</summary>
-    public static string IqArtifacts => Path.Combine(Root, "artifacts", "iq");
+    public static string RunId { get; } = Guid.NewGuid().ToString("N");
+
+    /// <summary>Run-isolated scratch space for publishes and Docker build contexts (git-ignored).</summary>
+    public static string IqArtifacts { get; } = Path.Combine(Root, "artifacts", "iq", RunId);
 
     private static string FindRoot()
     {

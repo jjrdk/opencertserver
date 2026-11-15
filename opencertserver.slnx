@@ -1,19 +1,16 @@
 <Solution>
     <Folder Name="/servers/">
         <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
-        <Project Path="src/opencertserver.ca.client/opencertserver.ca.client.csproj" />
         <Project Path="src/opencertserver.mcp/opencertserver.mcp.csproj" />
         <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
-        <Project Path="src\opencertserver.acme.remote\opencertserver.acme.remote.csproj" />
-        <Project Path="src\opencertserver.acme\opencertserver.acme.csproj" />
         <Project Path="src\opencertserver.ra.server\opencertserver.ra.server.csproj" />
         <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
         <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
         <Project Path="src/opencertserver.scep.server/opencertserver.scep.server.csproj" />
         <Project Path="src/opencertserver.scep/opencertserver.scep.csproj" />
-        <Project Path="src/opencertserver.contrib.intune/opencertserver.contrib.intune.csproj" />
     </Folder>
     <Folder Name="/hosts/">
+        <Project Path="src\opencertserver.acme\opencertserver.acme.csproj" />
         <Project Path="src/hosts/opencertserver.host.ca/opencertserver.host.ca.csproj" />
         <Project Path="src/hosts/opencertserver.host.ra/opencertserver.host.ra.csproj" />
         <Project Path="src/hosts/opencertserver.host.unified/opencertserver.host.unified.csproj" />
@@ -43,6 +40,9 @@
         <Project Path="tests\opencertserver.tpm.tests\opencertserver.tpm.tests.csproj" />
         <Project Path="tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj" />
     </Folder>
+    <Project Path="src/opencertserver.ca.client/opencertserver.ca.client.csproj" />
+    <Project Path="src\opencertserver.acme.remote\opencertserver.acme.remote.csproj" />
+    <Project Path="src/opencertserver.contrib.intune/opencertserver.contrib.intune.csproj" />
     <Project Path="src/opencertserver.data/opencertserver.data.csproj" />
     <Project Path="src/opencertserver.data.postgresql/opencertserver.data.postgresql.csproj" />
     <Project Path="src/opencertserver.data.mssql/opencertserver.data.mssql.csproj" />

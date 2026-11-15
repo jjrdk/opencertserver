@@ -32,8 +32,8 @@ internal static class IqImages
             const string frameworkPrefix = ".NETCoreApp,Version=v";
             var frameworkName = typeof(IqImages).Assembly.GetCustomAttribute<TargetFrameworkAttribute>()?.FrameworkName;
             if (frameworkName is null
-                || !frameworkName.StartsWith(frameworkPrefix, StringComparison.Ordinal)
-                || !Version.TryParse(frameworkName[frameworkPrefix.Length..], out var version))
+             || !frameworkName.StartsWith(frameworkPrefix, StringComparison.Ordinal)
+             || !Version.TryParse(frameworkName[frameworkPrefix.Length..], out var version))
             {
                 throw new InvalidOperationException(
                     $"Unable to determine the IQ test target framework from '{frameworkName}'.");
@@ -44,6 +44,9 @@ internal static class IqImages
     }
 
     private static string DotNetRuntimeVersion => TargetFramework["net".Length..];
+    public static string ImageTag => $"{TargetFramework}-{RepositoryPaths.RunId}";
+    public static string ImageName(string name) => $"opencertserver-iq-{name}:{ImageTag}";
+
     private static string UbuntuCodename => TargetFramework switch
     {
         "net10.0" => "noble",
@@ -76,7 +79,7 @@ internal static class IqImages
 
     public static async Task PublishMcpAsync(string output, CancellationToken cancellationToken = default)
     {
-        // All IQ publishes share dependency bin/obj directories, even with separate output paths.
+        // Publishes within this run share intermediates; other runs use their own artifacts path.
         await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -136,7 +139,7 @@ internal static class IqImages
         {
             var key = string.IsNullOrEmpty(engine) ? role : $"{role}:{engine}";
             if (ApplianceImages.TryGetValue(key, out var image)
-                && ApplianceImageNames.TryGetValue(key, out var name))
+             && ApplianceImageNames.TryGetValue(key, out var name))
             {
                 return (image, name);
             }
@@ -172,8 +175,8 @@ internal static class IqImages
             ? applianceRole.Dockerfile
             : $"Dockerfile.{applianceRole.Role.ToLowerInvariant()}.{engineTag}";
         var imageSuffix = engineTag.Length == 0 ? "" : $"-{engineTag}";
+        var imageName = ImageName($"appliance-{applianceRole.Role.ToLowerInvariant()}{imageSuffix}");
         imageSuffix += $"-{TargetFramework}";
-        var imageName = $"opencertserver-iq-appliance-{applianceRole.Role.ToLowerInvariant()}{imageSuffix}:local";
 
         if (GetImageOverride($"IQ_APPLIANCE_{applianceRole.Role.ToUpperInvariant()}_IMAGE")
             is { Length: > 0 } prebuilt)
@@ -231,7 +234,7 @@ internal static class IqImages
             .WithBuildArgument("DOTNET_VERSION", DotNetRuntimeVersion)
             .WithBuildArgument("UBUNTU_CODENAME", UbuntuCodename)
             .WithImageBuildPolicy(PullPolicy.Always)
-            .WithCleanUp(false)
+            .WithCleanUp(true)
             .Build();
         await image.CreateAsync(cancellationToken).ConfigureAwait(false);
         return (image, imageName);
@@ -240,7 +243,7 @@ internal static class IqImages
 
     private static string Arch =>
         Environment.GetEnvironmentVariable("IQ_DOCKER_ARCH")
-        ?? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64");
+     ?? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64");
 
     private static void CopyRecursively(string source, string destination)
     {
@@ -269,7 +272,7 @@ internal static class IqImages
 
     private static string? GetImageOverride(string name) =>
         Environment.GetEnvironmentVariable($"{name}_{TargetFramework.Replace('.', '_').ToUpperInvariant()}")
-        ?? Environment.GetEnvironmentVariable(name);
+     ?? Environment.GetEnvironmentVariable(name);
 
     private static async Task<IImage> BuildServerImage(CancellationToken cancellationToken)
     {
@@ -293,13 +296,13 @@ internal static class IqImages
         var image = new ImageFromDockerfileBuilder()
             .WithDockerfileDirectory(context)
             .WithDockerfile("Dockerfile")
-            .WithName($"opencertserver-iq-server-{TargetFramework}:local")
+            .WithName(ImageName("server"))
             .WithBuildArgument("PLATFORM", Platform)
             .WithBuildArgument("RID", rid)
             .WithBuildArgument("TFM", TargetFramework)
             .WithBuildArgument("DOTNET_VERSION", DotNetRuntimeVersion)
             .WithImageBuildPolicy(PullPolicy.Always)
-            .WithCleanUp(false)
+            .WithCleanUp(true)
             .Build();
         await image.CreateAsync(cancellationToken).ConfigureAwait(false);
         return image;
@@ -331,9 +334,9 @@ internal static class IqImages
         var image = new ImageFromDockerfileBuilder()
             .WithDockerfileDirectory(context)
             .WithDockerfile("Dockerfile")
-            .WithName($"opencertserver-iq-client-{TargetFramework}:local")
+            .WithName(ImageName("client"))
             .WithImageBuildPolicy(PullPolicy.Always)
-            .WithCleanUp(false)
+            .WithCleanUp(true)
             .Build();
         await image.CreateAsync(cancellationToken).ConfigureAwait(false);
         return image;
@@ -355,7 +358,7 @@ internal static class IqImages
         foreach (var arg in (string[])
             [
                 "publish", project, "-c", "Release", "-f", TargetFramework, "-r", rid, "--self-contained", "-o",
-                output, "-nologo",
+                output, "--artifacts-path", Path.Combine(RepositoryPaths.IqArtifacts, "build"), "-nologo",
                 "-v", "q", .. extra
             ])
         {
