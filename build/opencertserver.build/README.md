@@ -16,6 +16,7 @@ their ordering with `IsDependentOn`, so a single entry point runs the whole pipe
 | `Tests` | `Build` | Runs the test suites. |
 | `Pack` | `Tests` | Produces the NuGet packages. |
 | `Linux-Docker-Build` | `Pack` | Builds the Linux Docker image (`Cake.Docker`). |
+| `Appliance-Docker-Build` | `Pack` | Publishes each appliance role for .NET 10 and 11 and builds framework-tagged images. |
 | `CLI Publish` | `Linux-Docker-Build` | Publishes the `opencert` CLI as trimmed, self-contained single-file binaries. |
 | `Default` | `CLI Publish` | Deliberately empty; because it depends on the whole chain above, running it (or running with no task name) executes `Version → … → CLI Publish`. |
 

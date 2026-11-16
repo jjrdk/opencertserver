@@ -27,20 +27,22 @@ public sealed class TestsTask : FrostingTask<BuildContext>
         {
             context.Log.Information("Testing: {0}", project.FullPath);
             var filename = Path.GetFileNameWithoutExtension(project.FullPath).Replace('.', '_');
-            var reportName = Path.GetFullPath($"./artifacts/testreports/{context.BuildVersion}_{filename}.xml");
-
-            context.Log.Information($"{reportName}", reportName);
-
-            var coreTestSettings = new DotNetRunSettings
+            foreach (var framework in new[] { "net10.0", "net11.0" })
             {
-                NoBuild = true,
-                NoRestore = true,
-                // Set configuration as passed by command line
-                Configuration = context.BuildConfiguration,
-                ArgumentCustomization = x => x.Append("--").AppendSwitchQuoted("-result-xml", reportName)
-            };
+                var reportName = Path.GetFullPath($"./artifacts/testreports/{context.BuildVersion}_{filename}_{framework}.xml");
+                context.Log.Information("Test report: {0}", reportName);
 
-            context.DotNetRun(project.FullPath, coreTestSettings);
+                var coreTestSettings = new DotNetRunSettings
+                {
+                    NoBuild = true,
+                    NoRestore = true,
+                    Configuration = context.BuildConfiguration,
+                    Framework = framework,
+                    ArgumentCustomization = x => x.Append("--").AppendSwitchQuoted("-result-xml", reportName)
+                };
+
+                context.DotNetRun(project.FullPath, coreTestSettings);
+            }
         }
     }
 }

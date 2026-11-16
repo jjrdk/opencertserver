@@ -163,36 +163,43 @@ The published image is built by the Cake `Linux-Docker-Build` task
 
 The appliance images are built by the Cake `Appliance-Docker-Build` task
 (`build/opencertserver.build/ApplianceDockerBuildTask.cs`), which publishes **each role's own host
-project** to `artifacts/publish/<role>/linux-x64/` (base + postgres, `InvariantGlobalization=true`) and
-to `artifacts/publish/<role>/mssql/linux-x64/` (mssql, no `InvariantGlobalization` — ICU required), then
-builds every `Dockerfile.{appliance,unified,ca,ra}` and `Dockerfile.{unified,ca,ra}.{postgres,mssql}`.
-Each image is tagged with the same version tag the rest of the build uses (`<image>:latest` and
-`<image>:<version>`), e.g. `opencertserver-appliance-ca:<version>`. Run it with:
+project** for both `net10.0` and `net11.0` to
+`artifacts/publish/<tfm>/<role>/linux-x64/` (base + postgres, `InvariantGlobalization=true`) and
+`artifacts/publish/<tfm>/<role>/mssql/linux-x64/` (mssql, `InvariantGlobalization=false` — ICU required).
+It builds every `Dockerfile.{appliance,unified,ca,ra}` and
+`Dockerfile.{unified,ca,ra}.{postgres,mssql}` with the matching runtime-deps base:
+.NET 10 on Ubuntu Noble or .NET 11 on Ubuntu Resolute. Tags include the target framework, for example
+`opencertserver-appliance-ca:latest-net10.0` and
+`opencertserver-appliance-ca:<version>-net11.0`. Run it with:
 
 ```sh
-dotnet run --project build/opencertserver.build/opencertserver.build.csproj -c Release -- --target=Appliance-Docker-Build
+dotnet run --project build/opencertserver.build/opencertserver.build.csproj -c Release -f net11.0 -- --target=Appliance-Docker-Build
 ```
 
 You can also build them by hand: each appliance Dockerfile copies the self-contained publish of its own
-host project from `artifacts/publish/<role>/${RID}/` (mssql from
-`artifacts/publish/<role>/mssql/${RID}/`). Stage that publish first, then build from the repository root
+host project from `artifacts/publish/${TFM}/<role>/${RID}/` (mssql from
+`artifacts/publish/${TFM}/<role>/mssql/${RID}/`). Stage each required publish first, then build from the repository root
 as the build context:
 
 ```sh
-# Stage the per-role publish (example: CA, base + postgres)
-dotnet publish src/hosts/opencertserver.host.ca -c Release -r linux-x64 \
+# Stage the CA publish for .NET 10 (base + postgres)
+dotnet publish src/hosts/opencertserver.host.ca -c Release -f net10.0 -r linux-x64 \
   -p:SelfContained=true -p:PublishTrimmed=false -p:InvariantGlobalization=true \
-  --artifacts-path artifacts/publish/ca
-# Unified (file store)
-docker build -f Dockerfile.unified -t opencertserver-appliance-unified:local .
-# CA / RA
-docker build -f Dockerfile.ca -t opencertserver-appliance-ca:local .
-docker build -f Dockerfile.ra -t opencertserver-appliance-ra:local .
-# Relational
-docker build -f Dockerfile.unified.postgres -t opencertserver-appliance-unified-postgres:local .
-docker build -f Dockerfile.unified.mssql   -t opencertserver-appliance-unified-mssql:local .
+  -o artifacts/publish/net10.0/ca/linux-x64
+docker build -f Dockerfile.ca --build-arg TFM=net10.0 --build-arg DOTNET_VERSION=10.0 \
+  --build-arg UBUNTU_CODENAME=noble -t opencertserver-appliance-ca:local-net10.0 .
+
+# Stage the unified SQL Server publish for .NET 11 (ICU required)
+dotnet publish src/hosts/opencertserver.host.unified -c Release -f net11.0 -r linux-x64 \
+  -p:SelfContained=true -p:PublishTrimmed=false -p:InvariantGlobalization=false \
+  -o artifacts/publish/net11.0/unified/mssql/linux-x64
+docker build -f Dockerfile.unified.mssql --build-arg TFM=net11.0 --build-arg DOTNET_VERSION=11.0 \
+  --build-arg UBUNTU_CODENAME=resolute -t opencertserver-appliance-unified-mssql:local-net11.0 .
 ```
 
+For other roles or variants, replace the host project, role, Dockerfile and matching publish
+destination. For `linux-arm64`, use `-r linux-arm64` and pass
+`--build-arg RID=linux-arm64 --build-arg PLATFORM=linux/arm64` to Docker.
 Build from the repository root (the Dockerfiles reference `artifacts/publish/...` relative to the
 context). Pin the published image by immutable digest rather than a mutable tag, and use the same
 version-pinned application release for the CA and RA.
@@ -215,11 +222,11 @@ docker run -d --name opencertserver-unified --restart unless-stopped \
   -e AllowedHosts="pki.example.com;localhost" \
   --mount type=bind,src="$PWD/config/appsettings.json",dst=/config/appsettings.json,readonly \
   --mount type=bind,src="$PWD/keys",dst=/run/secrets,readonly \
-  opencertserver-unified:local
+  opencertserver-appliance-unified:latest-net11.0
 ```
 
 For a CA or Unified role that persists state, add a data volume the operator owns (UID `1654`),
-e.g. `--mount type=volume,src=opencertserver-data,dst=/var/lib/opencertserver`. The RA role holds no
+e.g. `--mount type=bind,src="$PWD/data",dst=/var/lib/opencertserver`. The RA role holds no
 issuing CA state, so it needs no data volume. Because the appliance runs unprivileged (UID `1654`), a
 root-owned volume is not writable — use an operator-owned directory. The CA and RA roles configure
 `port` `5001`; Unified does too in the supplied example, with the listener bound by the config.
@@ -238,7 +245,7 @@ docker run -d --name opencertserver-unified-postgres --restart unless-stopped \
   -e 'ConnectionStrings__OpenCertServer=Host=db;Port=5432;Database=opencert;Username=ocs;Password=REPLACE_WITH_SECRET' \
   --mount type=bind,src="$PWD/config/appsettings.json",dst=/config/appsettings.json,readonly \
   --mount type=bind,src="$PWD/keys",dst=/run/secrets,readonly \
-  opencertserver-unified-postgres:local
+  opencertserver-appliance-unified-postgres:latest-net11.0
 ```
 
 For MSSQL, use `Dockerfile.unified.mssql` and an MSSQL connection string. Start the MSSQL database

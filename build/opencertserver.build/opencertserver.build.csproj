@@ -5,6 +5,7 @@
         <RootNamespace>OpenCertServer.Build</RootNamespace>
     </PropertyGroup>
     <ItemGroup>
+        <InternalsVisibleTo Include="opencertserver.iq.tests" />
         <PackageReference Include="Cake.Frosting" />
         <PackageReference Include="Cake.Docker" />
         <PackageReference Include="GitVersion.MsBuild">

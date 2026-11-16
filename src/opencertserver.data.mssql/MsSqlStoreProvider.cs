@@ -27,13 +27,18 @@ public sealed class MsSqlStoreProvider : IRelationalStoreProvider
     public async Task SaveNonceAsync(CaDbContext context, Nonce nonce, CancellationToken cancellationToken)
     {
         using var telemetry = MsSqlInstruments.Start("save_nonce");
+#if NET10_0
         await context.Database.ExecuteSqlInterpolatedAsync(
+#else
+        await context.Database.ExecuteSqlAsync(
+#endif
             $"""
              INSERT INTO [Nonces] ([Token], [Created])
              SELECT {nonce.Token}, {DateTimeOffset.UtcNow}
              WHERE NOT EXISTS (
                  SELECT 1 FROM [Nonces] WITH (UPDLOCK, HOLDLOCK) WHERE [Token] = {nonce.Token})
              """, cancellationToken);
+
         telemetry.Complete();
     }
 
@@ -44,7 +49,12 @@ public sealed class MsSqlStoreProvider : IRelationalStoreProvider
         CancellationToken cancellationToken)
     {
         using var telemetry = MsSqlInstruments.Start("consume_nonce");
-        var removed = await context.Database.ExecuteSqlInterpolatedAsync(
+        var removed =
+#if NET10_0
+            await context.Database.ExecuteSqlInterpolatedAsync(
+#else
+        await context.Database.ExecuteSqlAsync(
+#endif
             $"DELETE FROM [Nonces] WHERE [Token] = {nonce.Token}", cancellationToken) == 1;
         telemetry.Complete();
         return removed;
@@ -59,7 +69,12 @@ public sealed class MsSqlStoreProvider : IRelationalStoreProvider
         CancellationToken cancellationToken)
     {
         using var telemetry = MsSqlInstruments.Start("revoke_certificate");
-        var revoked = await context.Database.ExecuteSqlInterpolatedAsync(
+        var revoked =
+#if NET10_0
+            await context.Database.ExecuteSqlInterpolatedAsync(
+#else
+        await context.Database.ExecuteSqlAsync(
+#endif
             $"""
              UPDATE [Certificates] SET [RevocationReason] = {(int)reason}, [RevocationDate] = {DateTimeOffset.UtcNow}
              WHERE [SerialNumber] = {serialNumber}
@@ -101,6 +116,7 @@ public sealed class MsSqlStoreProvider : IRelationalStoreProvider
         {
             yield return item;
         }
+
         telemetry.Complete();
     }
 }

@@ -12,6 +12,18 @@ configuration they consume. The appliance is headless and provides protocol endp
 | `opencertserver-ra` (`Dockerfile.ra`) | Operator API `/ra/*` and liveness `/health` | No | Authenticated RA service delegating issuance to a CA |
 | `Dockerfile.appliance` | Same unified role as `Dockerfile.unified` | Yes | Compatibility build name for the unified image |
 
+Each appliance Dockerfile has a colocated build and runtime guide:
+[`appliance`](../Dockerfile.appliance.README.md),
+[`unified`](../Dockerfile.unified.README.md),
+[`unified.postgres`](../Dockerfile.unified.postgres.README.md),
+[`unified.mssql`](../Dockerfile.unified.mssql.README.md),
+[`ca`](../Dockerfile.ca.README.md),
+[`ca.postgres`](../Dockerfile.ca.postgres.README.md),
+[`ca.mssql`](../Dockerfile.ca.mssql.README.md),
+[`ra`](../Dockerfile.ra.README.md),
+[`ra.postgres`](../Dockerfile.ra.postgres.README.md), and
+[`ra.mssql`](../Dockerfile.ra.mssql.README.md).
+
 The in-container, file-backed store is the default for every role above. For a
 relational backend, build the matching engine variant instead —
 [`Dockerfile.<role>.postgres`](#relational-storage) /
@@ -23,20 +35,22 @@ which uses that library's outbound `RaPeerClient`. It does not expose EST, ACME,
 `/ca/*` routes, or an inbound CA peer API. The CA and RA communicate over the RA client's
 outbound HTTPS connection.
 
-Build from the repository root:
+Build the appliance images from the repository root:
 
 ```sh
-docker build -f Dockerfile.unified -t opencertserver-unified:local .
-docker build -f Dockerfile.ca -t opencertserver-ca:local .
-docker build -f Dockerfile.ra -t opencertserver-ra:local .
+dotnet run --project build/opencertserver.build/opencertserver.build.csproj -c Release -f net11.0 -- --target=Appliance-Docker-Build
 ```
 
 Use the same version-pinned application release for the CA and RA. In production, pin the
-published image by immutable digest rather than a mutable tag. All appliance images are
-chiseled Ubuntu 24.04 (Noble) for .NET 10, run as non-root UID `1654`, and enforce TLS 1.3.
+published image by immutable digest rather than a mutable tag. Image tags include the target
+framework, such as `opencertserver-appliance-ca:latest-net10.0` and
+`opencertserver-appliance-ca:<version>-net11.0`. Base and PostgreSQL images use chiseled Ubuntu
+24.04 (Noble) for .NET 10 and Ubuntu 26.04 (Resolute) for .NET 11; MSSQL images use the
+corresponding full runtime-deps image for ICU. All run as non-root UID `1654` and enforce TLS 1.3.
 
 The appliance Dockerfiles build on the chiseled `runtime-deps` image
-(`mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled`), which carries the glibc native
+(`mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled` or
+`mcr.microsoft.com/dotnet/runtime-deps:11.0-resolute-chiseled`), which carries the glibc native
 runtime dependencies (including OpenSSL 3, which .NET's `SslStream` loads) but no .NET runtime —
 and no chiseled ASP.NET Core image exists. The application is therefore published
 **self-contained** with the glibc RID (`linux-x64` / `linux-arm64`) and
@@ -45,7 +59,8 @@ on top of the glibc dependencies. The chiseled base already runs as the unprivil
 (UID `1654`), so the images add no root tooling.
 Because the image ships no ICU, the runtime is configured for invariant globalization; the
 self-contained publish sets this via `-p:InvariantGlobalization=true` and the Dockerfiles export
-`DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`.
+`DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`. For manual builds and MSSQL publishes, see
+the [Docker build guide](docker.md#build).
 
 ## Files and configuration
 
@@ -177,10 +192,10 @@ Prepare host directories for `config/` and `keys/`, place the role's JSON file a
 Ensure the mounted files are readable by UID 1654. Never bake private keys, bearer tokens,
 or identity-provider secrets into an image or source-controlled configuration.
 
-Create persistent state for a CA or unified role:
+Create persistent state for a CA or unified role and ensure it is writable by container UID 1654:
 
 ```sh
-docker volume create opencertserver-data
+mkdir -p data
 ```
 
 Example unified deployment:
@@ -192,12 +207,12 @@ docker run -d --name opencertserver-unified --restart unless-stopped \
   -p 5001:5001 \
   --mount type=bind,src="$PWD/config/appsettings.json",dst=/config/appsettings.json,readonly \
   --mount type=bind,src="$PWD/keys",dst=/run/secrets,readonly \
-  --mount type=volume,src=opencertserver-data,dst=/var/lib/opencertserver \
-  opencertserver-unified:local
+  --mount type=bind,src="$PWD/data",dst=/var/lib/opencertserver \
+  opencertserver-appliance-unified:latest-net11.0
 ```
 
 For the CA-only image, use the same command with the CA configuration and image name
-`opencertserver-ca:local`. For the RA image, use `deploy/appliance/ra.json`, mount the RA
+`opencertserver-appliance-ca:latest-net11.0`. For the RA image, use `deploy/appliance/ra.json`, mount the RA
 client certificate/key and any custom trust roots, and omit the state volume because the RA
 does not hold issuing CA state:
 
@@ -208,7 +223,7 @@ docker run -d --name opencertserver-ra --restart unless-stopped \
   -p 5001:5001 \
   --mount type=bind,src="$PWD/config/appsettings.json",dst=/config/appsettings.json,readonly \
   --mount type=bind,src="$PWD/keys",dst=/run/secrets,readonly \
-  opencertserver-ra:local
+  opencertserver-appliance-ra:latest-net11.0
 ```
 
 Restrict inbound network access to the intended TLS port and operators. The appliance
@@ -267,17 +282,14 @@ The **postgres** variants are chiseled like their base image. The **mssql** vari
 SQL Server EF Core provider (`Microsoft.Data.SqlClient`, via `RelationalConnection`) hard-requires ICU,
 which the chiseled `runtime-deps` image does not ship. The PostgreSQL provider (`Npgsql`) tolerates
 invariant globalization, so the postgres variant can stay chiseled and invariant; the mssql variant
-must instead build on the **full** `mcr.microsoft.com/dotnet/runtime-deps:10.0-noble` base (which
+must instead build on the **full** matching `runtime-deps` base (for example
+`mcr.microsoft.com/dotnet/runtime-deps:10.0-noble`), which
 carries ICU) from a **non-invariant** self-contained publish — it keeps the same hardened posture
 (UID 1654, TLS 1.3, HTTPS-only) but is larger because ICU and the full locale data ship in the image.
 The mssql image therefore omits `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`.
 
-Build from the repository root:
-
-```sh
-docker build -f Dockerfile.unified.postgres -t opencertserver-unified-postgres:local .
-docker build -f Dockerfile.unified.mssql   -t opencertserver-unified-mssql:local .
-```
+Build both variants with `Appliance-Docker-Build` as shown above, or follow the
+[manual build guide](docker.md#build) to stage the matching publish first.
 
 ### Migrations are out of band
 
@@ -307,7 +319,7 @@ docker run -d --name opencertserver-unified-postgres --restart unless-stopped \
   -e 'ConnectionStrings__OpenCertServer=Host=db;Port=5432;Database=opencert;Username=ocs;Password=REPLACE_WITH_SECRET' \
   --mount type=bind,src="$PWD/config/appsettings.json",dst=/config/appsettings.json,readonly \
   --mount type=bind,src="$PWD/keys",dst=/run/secrets,readonly \
-  opencertserver-unified-postgres:local
+  opencertserver-appliance-unified-postgres:latest-net11.0
 ```
 
 The database is reached over the network at `ConnectionStrings:OpenCertServer`; the engine variant
@@ -326,8 +338,8 @@ mechanism a deployment uses to supply a database password.
 
 ## Container image verification
 
-All four appliance Dockerfiles (`Dockerfile.appliance`, `Dockerfile.unified`, `Dockerfile.ca`,
-and `Dockerfile.ra`) build chiseled Ubuntu 24.04 images successfully. Each publishes the
+The base appliance Dockerfiles (`Dockerfile.appliance`, `Dockerfile.unified`, `Dockerfile.ca`,
+and `Dockerfile.ra`) use chiseled Ubuntu images. Each publishes the
 application self-contained over the glibc `runtime-deps` base (no .NET runtime is present on the
 chiseled image), so the framework and coreclr ship in the publish output. The
 [AOT qualification limits](standards.md#hardened-headless-appliance-t18) no longer apply —
@@ -353,14 +365,9 @@ Build and select the images as follows:
 the role-specific image variables are optional and otherwise fall back to the unified image:
 
 ```sh
-docker build -f Dockerfile.appliance -t opencertserver-appliance:test .
-docker build -f Dockerfile.unified -t opencertserver-unified:test .
-docker build -f Dockerfile.ca -t opencertserver-ca:test .
-docker build -f Dockerfile.ra -t opencertserver-ra:test .
-
-OPENCERT_APPLIANCE_TEST_IMAGE=opencertserver-unified:test \
-OPENCERT_APPLIANCE_TEST_CA_IMAGE=opencertserver-ca:test \
-OPENCERT_APPLIANCE_TEST_RA_IMAGE=opencertserver-ra:test \
+OPENCERT_APPLIANCE_TEST_IMAGE=opencertserver-appliance-unified:latest-net11.0 \
+OPENCERT_APPLIANCE_TEST_CA_IMAGE=opencertserver-appliance-ca:latest-net11.0 \
+OPENCERT_APPLIANCE_TEST_RA_IMAGE=opencertserver-appliance-ra:latest-net11.0 \
   dotnet test --project tests/opencertserver.certserver.tests/opencertserver.certserver.tests.csproj \
     --filter-class '*HardenedAppliance*'
 ```
@@ -413,11 +420,11 @@ mkdir -p config/input config/output config/export
 docker run --rm --user 1654:1654 \
   --mount type=bind,src="$PWD/config/input",dst=/input,readonly \
   --mount type=bind,src="$PWD/config/output",dst=/output \
-  opencertserver-unified:local configload /input/v1.json /output/v2.json
+  opencertserver-appliance-unified:latest-net11.0 configload /input/v1.json /output/v2.json
 docker run --rm --user 1654:1654 \
   --mount type=bind,src="$PWD/config/output",dst=/input,readonly \
   --mount type=bind,src="$PWD/config/export",dst=/output \
-  opencertserver-unified:local configdump /input/v2.json /output/export.json
+  opencertserver-appliance-unified:latest-net11.0 configdump /input/v2.json /output/export.json
 ```
 
 Alternatively, `Migration:AutoApply=true` opts into a supported older configuration upgrade
