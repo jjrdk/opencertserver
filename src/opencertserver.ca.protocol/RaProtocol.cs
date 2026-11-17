@@ -10,7 +10,7 @@ namespace OpenCertServer.Ca.Protocol;
 public static class RaProtocol
 {
     /// <summary>The current protocol version both sides negotiate against.</summary>
-    public const string RaProtocolVersion = "1";
+    public const string RaProtocolVersion = "1.0";
 
     /// <summary>The HTTP request header an RA may send to declare the protocol version it targets.</summary>
     public const string RaProtocolVersionHeader = "X-Ra-Protocol-Version";
@@ -57,9 +57,6 @@ public static class RaProtocol
 
     public static string QueryProfile = "profile";
 
-    /// <summary>The CA endpoint that publishes the certificate revocation list.</summary>
-    public const string CrlPath = "ca/crl";
-
     /// <summary>
     /// The CA endpoint that publishes the full published chain (root and issuing CA) for the default
     /// profile. A SCEP or EST peer that cannot host the CA core fetches its GetCACert chain and
@@ -88,9 +85,6 @@ public static class RaProtocol
     /// <summary>Format for the CA endpoint that publishes the revocation list for a named profile.</summary>
     public const string ProfileCrlPathFormat = "ca/{0}/crl";
 
-    /// <summary>The digest used for the revocation proof-of-possession signature.</summary>
-    public const string SignatureHashAlgorithm = "SHA256";
-
     /// <summary>The MIME type of a PKCS#10 certificate signing request.</summary>
     public const string CsrMimeType = "application/pkcs10";
 
@@ -113,7 +107,7 @@ public static class RaProtocol
     /// </summary>
     public static string BuildRevocationMessage(string serialNumberHex, string reasonName)
     {
-        return serialNumberHex + reasonName;
+        return $"{serialNumberHex}{reasonName}";
     }
 
     /// <summary>

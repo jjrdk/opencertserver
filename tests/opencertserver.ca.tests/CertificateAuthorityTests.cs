@@ -101,7 +101,7 @@ public sealed class CertificateAuthorityTests : IDisposable
         var instruments = new HashSet<string>(StringComparer.Ordinal);
         var metricTags = new List<KeyValuePair<string, string?>>();
         var activities = new List<Activity>();
-        using var meterListener = new MeterListener
+        var meterListener = new MeterListener
         {
             InstrumentPublished = (instrument, listener) =>
             {
@@ -111,6 +111,7 @@ public sealed class CertificateAuthorityTests : IDisposable
                 }
             }
         };
+        using var _ = meterListener;
         meterListener.SetMeasurementEventCallback<long>((instrument, _, tags, _) =>
         {
             instruments.Add(instrument.Name);
@@ -132,7 +133,7 @@ public sealed class CertificateAuthorityTests : IDisposable
         using var activityListener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == "opencertserver.ca.core",
-            Sample = static (ref ActivityCreationOptions<ActivityContext> _) =>
+            Sample = static (ref _) =>
                 ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activities.Add
         };
@@ -173,7 +174,8 @@ public sealed class CertificateAuthorityTests : IDisposable
                     .OrderBy(x => x, StringComparer.Ordinal)),
             string.Join("",
                 cert!.Certificate.SubjectName.Format(true)
-                    .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).OrderBy(x => x, StringComparer.Ordinal)));
+                    .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+                    .OrderBy(x => x, StringComparer.Ordinal)));
     }
 
     [Fact]
@@ -310,15 +312,17 @@ public sealed class CertificateAuthorityTests : IDisposable
             new AuthenticatedSubjectRequestValueConverter());
 
         var result = await validator.Validate(
-            req,
-            profile: null,
-            requestor: new ClaimsIdentity([
-                new Claim(ClaimTypes.Name, "alice@example.com")
-            ], "test"),
-            cancellationToken: TestContext.Current.CancellationToken);
+            PreIssuingContext.Create(
+                req,
+                profile: null,
+                requestor: new ClaimsIdentity([
+                    new Claim(ClaimTypes.Name, "alice@example.com")
+                ], "test"),
+                cancellationToken: TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken);
 
-        Assert.NotNull(result);
-        Assert.Contains("www.example.com", result!, StringComparison.OrdinalIgnoreCase);
+        Assert.True(result.IsError);
+        Assert.Contains("www.example.com", result.Reason!, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -329,7 +333,8 @@ public sealed class CertificateAuthorityTests : IDisposable
         // surfaced as a generic CSR parse failure rather than being validated.
         // The CN is the identity's name as well: every name the request asserts is bound.
         using var rsa = RSA.Create(2048);
-        var req = new CertificateRequest("CN=alice@example.com", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var req = new CertificateRequest("CN=alice@example.com", rsa, HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pss);
         var sanBuilder = new SubjectAlternativeNameBuilder();
         sanBuilder.AddUserPrincipalName("alice@example.com");
         req.CertificateExtensions.Add(sanBuilder.Build());
@@ -339,14 +344,16 @@ public sealed class CertificateAuthorityTests : IDisposable
             new AuthenticatedSubjectRequestValueConverter());
 
         var result = await validator.Validate(
-            req,
-            profile: null,
-            requestor: new ClaimsIdentity([
-                new Claim(ClaimTypes.Name, "alice@example.com")
-            ], "test"),
-            cancellationToken: TestContext.Current.CancellationToken);
+            PreIssuingContext.Create(
+                req,
+                profile: null,
+                requestor: new ClaimsIdentity([
+                    new Claim(ClaimTypes.Name, "alice@example.com")
+                ], "test"),
+                cancellationToken: TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken);
 
-        Assert.Null(result);
+        Assert.False(result.IsError);
     }
 
     [Fact]
@@ -363,15 +370,17 @@ public sealed class CertificateAuthorityTests : IDisposable
             new AuthenticatedSubjectRequestValueConverter());
 
         var result = await validator.Validate(
-            req,
-            profile: null,
-            requestor: new ClaimsIdentity([
-                new Claim(ClaimTypes.Name, "alice@example.com")
-            ], "test"),
-            cancellationToken: TestContext.Current.CancellationToken);
+            PreIssuingContext.Create(
+                req,
+                profile: null,
+                requestor: new ClaimsIdentity([
+                    new Claim(ClaimTypes.Name, "alice@example.com")
+                ], "test"),
+                cancellationToken: TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken);
 
-        Assert.NotNull(result);
-        Assert.Contains("bob@example.com", result!, StringComparison.OrdinalIgnoreCase);
+        Assert.True(result.IsError);
+        Assert.Contains("bob@example.com", result.Reason!, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -382,7 +391,8 @@ public sealed class CertificateAuthorityTests : IDisposable
         // certificate as that address, whatever the UPN next to it says - so every name the
         // request asserts has to be the requestor's, not just one of them.
         using var rsa = RSA.Create(2048);
-        var req = new CertificateRequest("CN=alice@example.com", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+        var req = new CertificateRequest("CN=alice@example.com", rsa, HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pss);
         var sanBuilder = new SubjectAlternativeNameBuilder();
         sanBuilder.AddEmailAddress("no-reply@other-domain.example");
         sanBuilder.AddUserPrincipalName("alice@example.com");
@@ -393,15 +403,17 @@ public sealed class CertificateAuthorityTests : IDisposable
             new AuthenticatedSubjectRequestValueConverter());
 
         var result = await validator.Validate(
-            req,
-            profile: null,
-            requestor: new ClaimsIdentity([
-                new Claim(ClaimTypes.Name, "alice@example.com")
-            ], "test"),
-            cancellationToken: TestContext.Current.CancellationToken);
+            PreIssuingContext.Create(
+                req,
+                profile: null,
+                requestor: new ClaimsIdentity([
+                    new Claim(ClaimTypes.Name, "alice@example.com")
+                ], "test"),
+                cancellationToken: TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken);
 
-        Assert.NotNull(result);
-        Assert.Contains("no-reply@other-domain.example", result!, StringComparison.OrdinalIgnoreCase);
+        Assert.True(result.IsError);
+        Assert.Contains("no-reply@other-domain.example", result.Reason!, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -420,12 +432,14 @@ public sealed class CertificateAuthorityTests : IDisposable
             new AuthenticatedSubjectRequestValueConverter());
 
         var result = await validator.Validate(
-            req,
-            profile: null,
-            requestor: new ClaimsIdentity([], "test"),
-            cancellationToken: TestContext.Current.CancellationToken);
+            PreIssuingContext.Create(
+                req,
+                profile: null,
+                requestor: new ClaimsIdentity([], "test"),
+                cancellationToken: TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken);
 
-        Assert.Null(result);
+        Assert.False(result.IsError);
     }
 
     [Fact]
@@ -604,12 +618,16 @@ public sealed class CertificateAuthorityTests : IDisposable
         var nextRequest = CreateCertificateRequest(nextKey);
 
         var error = await validator.Validate(
-            nextRequest,
-            "rsa",
-            reenrollingFrom: previous,
-            cancellationToken: TestContext.Current.CancellationToken);
+            PreIssuingContext.Create(
+                request: nextRequest,
+                profile: "rsa",
+                reenrollingFrom: previous,
+                requestId: null,
+                requestor: null,
+                cancellationToken: TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken);
 
-        Assert.Null(error);
+        Assert.False(error.IsError);
     }
 
     [Fact]
@@ -688,7 +706,8 @@ public sealed class CertificateAuthorityTests : IDisposable
             DateTimeOffset.UtcNow.Date.AddYears(1));
         using var leafKey = RSA.Create(2048);
         var leafReq = CreateCertificateRequest(leafKey);
-        leafReq.CertificateExtensions.Add(X509AuthorityKeyIdentifierExtension.CreateFromCertificate(lookAlike, true, false));
+        leafReq.CertificateExtensions.Add(
+            X509AuthorityKeyIdentifierExtension.CreateFromCertificate(lookAlike, true, false));
         using var previous = leafReq.Create(
             lookAlike,
             DateTimeOffset.UtcNow.Date.AddDays(-1),

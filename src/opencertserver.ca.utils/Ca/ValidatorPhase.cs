@@ -23,4 +23,9 @@ public enum ValidatorPhase
 
 	/// <summary>Post-issue — runs after signing, on the issued certificate (hook point: PostIssue).</summary>
 	Post = 4,
+
+	/// <summary>
+	/// Revocation — runs during revocation, on the revoked certificate (hook point: PreRevoke).
+	/// </summary>
+	Revocation = 5
 }

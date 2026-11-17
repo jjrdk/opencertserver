@@ -88,21 +88,15 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator
                 });
         }
 
-        foreach (var ip in resolvedIps)
+        if (resolvedIps.Any(ip => SsrfBlockingSocketsHandler.ProhibitedRanges.Any(range => range.Contains(ip))))
         {
-            foreach (var range in SsrfBlockingSocketsHandler.ProhibitedRanges)
-            {
-                if (range.Contains(ip))
-                {
-                    return (null,
-                        new AcmeError
-                        {
-                            Type = "rejectedIdentifier",
-                            Detail = "Challenge target resolves to prohibited address range.",
-                            Identifier = challenge.Authorization.Identifier
-                        });
-                }
-            }
+            return (null,
+                    new AcmeError
+                    {
+                        Type = "rejectedIdentifier",
+                        Detail = "Challenge target resolves to prohibited address range.",
+                        Identifier = challenge.Authorization.Identifier
+                    });
         }
 
         var challengeUrl =
@@ -145,4 +139,3 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator
         }
     }
 }
-

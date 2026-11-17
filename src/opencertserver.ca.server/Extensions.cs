@@ -41,13 +41,13 @@ public static class Extensions
                 throw new ArgumentOutOfRangeException(nameof(options), "PublicRa rate limit must be at least one.");
             }
 
-            if (options.Enabled && options.Profiles.Count == 0)
+            if (options is { Enabled: true, Profiles.Count: 0 })
             {
                 throw new InvalidOperationException(
                     "PublicRa:Profiles must list at least one profile when public enrollment is enabled.");
             }
 
-            if (options.Enabled && options.RequireApproval)
+            if (options is { Enabled: true, RequireApproval: true })
             {
                 throw new InvalidOperationException(
                     "PublicRa:RequireApproval is not supported until the certificate approval workflow is available.");
@@ -78,9 +78,8 @@ public static class Extensions
         {
             services.AddSingleton(options);
             services.TryAddSingleton<IStoreRas>(_ => new InMemoryRaStore(options.Bindings));
-            services.TryAddSingleton<RaScopeValidator>();
-            services.AddSingleton<IValidateCertificateRequests>(
-                serviceProvider => serviceProvider.GetRequiredService<RaScopeValidator>());
+            services.TryAddSingleton<IValidateCertificateRequests, RaScopeValidator>();
+            services.TryAddSingleton<IValidateCertificateRequests, RaRevocationValidator>();
             return services;
         }
 
@@ -178,11 +177,17 @@ public static class Extensions
                 ? TimeSpan.FromHours(1)
                 : ocspFreshnessWindow;
             var rsaProfile = CertificateAuthority.CreateSelfSignedRsa(
-                "default", distinguishedName, validity, BigInteger.Zero, freshness)
-                with { AllowPublicEnrollment = allowPublicEnrollment };
+                    "default", distinguishedName, validity, BigInteger.Zero, freshness)
+                with
+                {
+                    AllowPublicEnrollment = allowPublicEnrollment
+                };
             var ecdsaProfile = CertificateAuthority.CreateSelfSignedEcdsa(
-                "ecdsa", distinguishedName, validity, BigInteger.Zero, freshness)
-                with { AllowPublicEnrollment = allowPublicEnrollment };
+                    "ecdsa", distinguishedName, validity, BigInteger.Zero, freshness)
+                with
+                {
+                    AllowPublicEnrollment = allowPublicEnrollment
+                };
             var config = new CaConfiguration(
                 new CaProfileSet(
                     "default",

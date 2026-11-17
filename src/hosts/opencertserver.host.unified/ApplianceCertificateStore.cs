@@ -211,4 +211,5 @@ internal sealed class ApplianceStoreDocument
 }
 
 [JsonSerializable(typeof(ApplianceStoreDocument))]
+[JsonSerializable(typeof(CertificateItem))]
 internal partial class ApplianceStoreJsonContext : JsonSerializerContext;

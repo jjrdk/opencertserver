@@ -3,27 +3,33 @@
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 
-/// <summary>
-/// Defines the interface for validating certificate requests.
-/// </summary>
 public interface IValidateCertificateRequests
 {
     /// <summary>
-    /// Validates the given <see cref="CertificateRequest"/> using the original request-validation contract.
+    /// Validates a request in the phased pipeline. Existing request validators are adapted by default: a
+    /// <c>null</c> error passes, while a non-null error is recorded and the pipeline continues.
     /// </summary>
-    /// <param name="request">The request to validate.</param>
-    /// <param name="profile">The CA profile to validate for</param>
-    /// <param name="requestor">The user requesting the certificate.</param>
-    /// <param name="reenrollingFrom">The optional <see cref="X509Certificate2"/> if re-enrolling.</param>
-    /// <param name="cancellationToken">The cancellation token to use for asynchronous operations.</param>
-    /// <returns>A <see cref="string"/> with error descriptions, or <c>null</c></returns>
-    Task<string?> Validate(
-        CertificateRequest request,
-        string? profile = null,
-        ClaimsIdentity? requestor = null,
-        X509Certificate2? reenrollingFrom = null,
-        CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException("Implement either the request-validation or pipeline-validation overload.");
+    /// <param name="context">The complete validation context.</param>
+    /// <param name="cancellationToken">The cancellation token for asynchronous operations.</param>
+    /// <returns>The outcome for this validator.</returns>
+    Task<ValidationResult> Validate(IssuingContext context, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Defines the interface for validating certificate requests.
+/// </summary>
+public interface IValidateCertificateRequests<TIssuingContext> : IValidateCertificateRequests
+    where TIssuingContext : IssuingContext
+{
+    async Task<ValidationResult> IValidateCertificateRequests.Validate(IssuingContext context, CancellationToken cancellationToken)
+    {
+        if (context is not TIssuingContext typedContext)
+        {
+            throw new ArgumentException($"{GetType().Name} expected context of type {typeof(TIssuingContext).Name}, but got {context.GetType().Name}.", nameof(context));
+        }
+
+        return await Validate(typedContext, cancellationToken);
+    }
 
     /// <summary>
     /// Validates a request in the phased pipeline. Existing request validators are adapted by default: a
@@ -32,17 +38,7 @@ public interface IValidateCertificateRequests
     /// <param name="context">The complete validation context.</param>
     /// <param name="cancellationToken">The cancellation token for asynchronous operations.</param>
     /// <returns>The outcome for this validator.</returns>
-    async Task<ValidationResult> Validate(ValidatorContext context, CancellationToken cancellationToken = default)
-    {
-        var token = cancellationToken == CancellationToken.None ? context.CancellationToken : cancellationToken;
-        var error = await Validate(
-            context.Request,
-            context.Profile,
-            context.Requestor,
-            context.ReenrollingFrom,
-            token).ConfigureAwait(false);
-        return error is null ? ValidationResult.Passed : ValidationResult.Error(error);
-    }
+    Task<ValidationResult> Validate(TIssuingContext context, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

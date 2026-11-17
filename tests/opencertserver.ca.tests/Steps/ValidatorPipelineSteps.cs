@@ -16,14 +16,16 @@ public sealed partial class ValidatorPipelineSteps
 {
 	private readonly List<ValidatorPhase> _executedPhases;
 	private readonly List<RecordingValidator> _validators;
-	private ValidatorContext _context;
+	private PreIssuingContext _preContext;
+	private PostIssuingContext _postContext;
 	private ValidatorPipelineResult _result;
 
 	public ValidatorPipelineSteps(ScenarioContext scenarioContext)
 	{
 		_executedPhases = new List<ValidatorPhase>();
 		_validators = new List<RecordingValidator>();
-		_context = null!;
+		_preContext = null!;
+		_postContext = null!;
 		_result = ValidatorPipelineResult.Passed;
 	}
 
@@ -33,7 +35,7 @@ public sealed partial class ValidatorPipelineSteps
 		_validators.Clear();
 		_executedPhases.Clear();
 		_result = ValidatorPipelineResult.Passed;
-		_context = null!;
+		_preContext = null!;
 	}
 
 	[Given("""^a validator in the "([^"]+)" phase that passes$""")]
@@ -70,17 +72,16 @@ public sealed partial class ValidatorPipelineSteps
 	[When(@"the pipeline runs the request")]
 	public Task When_The_Pipeline_Runs_The_Request()
 	{
-		_context = ValidatorContext.Create(SampleRequest, null, null);
-		_result = BuildPipeline().Run(_context).GetAwaiter().GetResult();
+		_preContext = PreIssuingContext.Create(SampleRequest, null, null);
+		_result = BuildPipeline().RunPre(_preContext).GetAwaiter().GetResult();
 		return Task.CompletedTask;
 	}
 
 	[When(@"the pipeline runs the post-issue phase with the signed certificate")]
 	public Task When_The_Pipeline_Runs_The_Post_Issue_Phase_With_The_Signed_Certificate()
 	{
-		_context = ValidatorContext.Create(SampleRequest, null, null);
-		_context.IssuedCertificate = SampleIssuedCertificate;
-		_result = BuildPipeline().RunPost(_context).GetAwaiter().GetResult();
+		_postContext = PostIssuingContext.Create(SampleIssuedCertificate, null, null);
+		_result = BuildPipeline().RunPost(_postContext).GetAwaiter().GetResult();
 		return Task.CompletedTask;
 	}
 
@@ -140,7 +141,7 @@ public sealed partial class ValidatorPipelineSteps
 	public void Then_The_Validator_In_The_Phase_Ran_With_The_Issued_Certificate(string phase)
 	{
 		Assert.Contains(ParsePhase(phase), _executedPhases);
-		Assert.NotNull(_context.IssuedCertificate);
+		Assert.NotNull(_postContext.IssuedCertificate);
 	}
 
 	private static CertificateRequest SampleRequest { get; } =
@@ -201,7 +202,7 @@ public sealed partial class ValidatorPipelineSteps
 
 		public ValidatorPhase Phase => _phase;
 
-		public Task<ValidationResult> Validate(ValidatorContext context, CancellationToken cancellationToken = default)
+		public Task<ValidationResult> Validate(IssuingContext context, CancellationToken cancellationToken = default)
 		{
 			_onRun(_phase);
 			return _behaviour switch

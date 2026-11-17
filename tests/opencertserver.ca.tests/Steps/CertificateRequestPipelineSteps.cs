@@ -71,15 +71,18 @@ public sealed class CertificateRequestPipelineSteps : IDisposable
         {
             services.AddSingleton(validator);
         }
+
         foreach (var registration in _registrations)
         {
             services.AddSingleton(registration);
         }
+
         services.AddValidatorPipeline();
-        using var provider = services.BuildServiceProvider();
+        await using var provider = services.BuildServiceProvider();
         var authority = constructor == "request-validator"
             ? new CertificateAuthority(configuration, _store, new AcceptChain(),
-                new RandomNumberCertificateIdGenerator(), NullLogger<CertificateAuthority>.Instance, _validators.ToArray())
+                new RandomNumberCertificateIdGenerator(), NullLogger<CertificateAuthority>.Instance,
+                _validators.ToArray())
             : new CertificateAuthority(configuration, _store, new AcceptChain(),
                 new RandomNumberCertificateIdGenerator(), NullLogger<CertificateAuthority>.Instance,
                 provider.GetRequiredService<IValidatorPipeline>());
@@ -138,8 +141,11 @@ public sealed class CertificateRequestPipelineSteps : IDisposable
     }
 
     private void AssertContext(
-        CertificateRequest request, string? profile, ClaimsIdentity? identity,
-        X509Certificate2? previous, CancellationToken token)
+        CertificateRequest request,
+        string? profile,
+        ClaimsIdentity? identity,
+        X509Certificate2? previous,
+        CancellationToken token)
     {
         Assert.Same(_request, request);
         Assert.Equal("default", profile);
@@ -151,28 +157,34 @@ public sealed class CertificateRequestPipelineSteps : IDisposable
     public void Dispose()
     {
         (_response as SignCertificateResponse.Success)?.Certificate.Dispose();
-        _previous?.Dispose();
+        _previous.Dispose();
         _key.Dispose();
         _cancellation.Dispose();
     }
 
-    private sealed class LegacyValidator(CertificateRequestPipelineSteps state) : IValidateCertificateRequests
+    private sealed class LegacyValidator(CertificateRequestPipelineSteps state)
+        : IValidateCertificateRequests<PreIssuingContext>
     {
-        public Task<string?> Validate(
-            CertificateRequest request, string? profile = null, ClaimsIdentity? requestor = null,
-            X509Certificate2? reenrollingFrom = null, CancellationToken cancellationToken = default)
+        public Task<ValidationResult> Validate(
+            PreIssuingContext context,
+            CancellationToken cancellationToken = default)
         {
-            state.AssertContext(request, profile, requestor, reenrollingFrom, cancellationToken);
+            state.AssertContext(context.Request, context.Profile, context.Requestor, context.ReenrollingFrom,
+                cancellationToken);
             state._executed.Add("legacy");
-            return Task.FromResult(state._legacyError);
+            return Task.FromResult(state._legacyError != null
+                ? ValidationResult.Error(state._legacyError)
+                : ValidationResult.Passed);
         }
     }
 
-    private sealed class ContextValidator(CertificateRequestPipelineSteps state) : IValidateCertificateRequests
+    private sealed class ContextValidator(CertificateRequestPipelineSteps state)
+        : IValidateCertificateRequests<PreIssuingContext>
     {
-        public Task<ValidationResult> Validate(ValidatorContext context, CancellationToken cancellationToken = default)
+        public Task<ValidationResult> Validate(PreIssuingContext context, CancellationToken cancellationToken = default)
         {
-            state.AssertContext(context.Request, context.Profile, context.Requestor, context.ReenrollingFrom, cancellationToken);
+            state.AssertContext(context.Request, context.Profile, context.Requestor, context.ReenrollingFrom,
+                cancellationToken);
             Assert.Equal(state._cancellation.Token, context.CancellationToken);
             state._executed.Add("context");
             return Task.FromResult(state._contextResult);
@@ -180,22 +192,30 @@ public sealed class CertificateRequestPipelineSteps : IDisposable
     }
 
     private sealed class PhaseValidator(
-        CertificateRequestPipelineSteps state, string phase, ValidationResult result) : IValidateCertificateRequests
+        CertificateRequestPipelineSteps state,
+        string phase,
+        ValidationResult result) : IValidateCertificateRequests
     {
-        public async Task<ValidationResult> Validate(ValidatorContext context, CancellationToken cancellationToken = default)
+        public async Task<ValidationResult> Validate(
+            IssuingContext context,
+            CancellationToken cancellationToken = default)
         {
-            state.AssertContext(context.Request, context.Profile, context.Requestor, context.ReenrollingFrom, cancellationToken);
+            switch (context)
+            {
+                case PreIssuingContext pre:
+                    state.AssertContext(pre.Request, pre.Profile, pre.Requestor, pre.ReenrollingFrom, cancellationToken);
+                    break;
+                case PostIssuingContext post:
+                {
+                    var certificate = Assert.IsType<X509Certificate2>(post.IssuedCertificate);
+                    state._postSubject = certificate.SubjectName.RawData;
+                    Assert.Null(await state._store.GetIssuingProfile(certificate.Thumbprint, cancellationToken));
+                    break;
+                }
+            }
+
             state._executed.Add(phase);
-            if (phase == "Post")
-            {
-                var certificate = Assert.IsType<X509Certificate2>(context.IssuedCertificate);
-                state._postSubject = certificate.SubjectName.RawData;
-                Assert.Null(await state._store.GetIssuingProfile(certificate.Thumbprint));
-            }
-            else
-            {
-                Assert.Null(context.IssuedCertificate);
-            }
+
             return result;
         }
     }
