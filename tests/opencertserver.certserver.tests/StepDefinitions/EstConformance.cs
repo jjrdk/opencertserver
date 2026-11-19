@@ -1112,7 +1112,7 @@ public partial class CertificateServerFeatures
         reader.ThrowIfNotEmpty();
     }
 
-    [Then("the request content type MUST be \"(.+)\"$")]
+    [Then("^the request content type MUST be \"([^\"]+)\"$")]
     public void ThenTheRequestContentTypeMustBe(string contentType)
     {
         Assert.Equal(contentType, ConformanceState.CapturedRequest?.Content?.Headers.ContentType?.MediaType);
