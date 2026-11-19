@@ -465,8 +465,15 @@ internal static class Program
 
                 context.Response.OnCompleted(() =>
                 {
+                    var sanitizedMethod = (context.Request.Method ?? string.Empty)
+                        .Replace("\r", string.Empty)
+                        .Replace("\n", string.Empty);
+                    var sanitizedPath = context.Request.Path.ToString()
+                        .Replace("\r", string.Empty)
+                        .Replace("\n", string.Empty);
+
                     app.Logger.LogWarning("Appliance audit {TraceId} {Method} {Path} {StatusCode} {Authenticated}",
-                        context.TraceIdentifier, context.Request.Method, context.Request.Path,
+                        context.TraceIdentifier, sanitizedMethod, sanitizedPath,
                         context.Response.StatusCode, context.User.Identity?.IsAuthenticated == true);
                     return Task.CompletedTask;
                 });
