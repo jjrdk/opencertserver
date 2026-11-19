@@ -19,7 +19,7 @@ builder.Services.AddCaClient(CaClientOptions.FromConfiguration(builder.Configura
 // The SCEP challenge: Intune when configured, otherwise a shared secret. PKIOperation
 // issues nothing until a challenge is configured.
 var scepSection = builder.Configuration.GetSection("Scep");
-var intuneConfigured = scepSection.Exists() && scepSection.GetSection("Intune").Exists();
+var intuneConfigured = !string.IsNullOrWhiteSpace(scepSection["Intune:TenantId"]);
 var challenge = scepSection["Challenge"];
 builder.Services.AddScepServer(
     new ScepServerOptions

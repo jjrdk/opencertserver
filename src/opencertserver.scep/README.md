@@ -17,7 +17,7 @@ Stays **local** to this host (not CA authority):
   host signs responses with it. Load it from `--scep-ra` / `--scep-ra-key`; when no
   key is supplied a transient one is made (matching the ACME RA cert).
 - **The challenge validator** — a shared secret (`Scep:Challenge`) or Intune
-  (`Scep__Intune`). `PKIOperation` issues nothing until a challenge is configured.
+  (`Scep:Intune`). `PKIOperation` issues nothing until a challenge is configured.
 - **The replay store.** A window of accepted transaction IDs + sender nonces so a
   captured `PKCSReq`/`RenewalReq` cannot be replayed (`ScepServerOptions`).
 
@@ -41,7 +41,7 @@ Delegated to the **backing CA**:
 | `Ca:BearerToken` / `Ca:ClientCert` | Trusted-connection secret / mTLS identity. |
 | `Scep:Challenge` | Shared-secret challenge. When set, it replaces the "not configured" validator. |
 | `Scep:DefaultProfile` | SCEP profile used when the path names none (default `rsa`). |
-| `Scep__Intune:*` | When present, Intune replaces the challenge and the host also maps the revocation sync. |
+| `Scep:Intune:*` | When `TenantId` is configured, Intune replaces the challenge and the host also maps the revocation sync. |
 
 The SCEP RA cert is a command-line concern: `--scep-ra <cert.pem> --scep-ra-key
 <key.pem>`.
