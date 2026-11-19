@@ -24,7 +24,7 @@
   },
   "CaServer": {
     "OCSP": ["https://pki.example.com:5001/ca/ocsp"],
-    "CrlDistributionPoints": ["https://pki.example.com:5001/ca/crl"]
+    "CrlDistributionPoints": ["https://pki.example.com:5001/ca/{profile}/crl"]
   },
   "AcmeServer": {
     "CAAIdentities": ["pki.example.com"]
