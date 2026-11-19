@@ -68,9 +68,13 @@ app.MapPost("/ra/enroll", async (HttpContext context, ICertificateAuthority ca, 
             "application/x-pem-file");
     }
 
-    return Results.BadRequest(response is SignCertificateResponse.Error error
+    var errorMessage = response is SignCertificateResponse.Error error
         ? string.Join(Environment.NewLine, error.Errors)
-        : "The certificate request could not be signed.");
+        : "The certificate request could not be signed.";
+    return Results.Content(
+        System.Net.WebUtility.HtmlEncode(errorMessage),
+        "text/plain; charset=utf-8",
+        statusCode: StatusCodes.Status400BadRequest);
 });
 
 // The RA can request the set of profiles the backing CA currently supports, refresh it on demand, and
