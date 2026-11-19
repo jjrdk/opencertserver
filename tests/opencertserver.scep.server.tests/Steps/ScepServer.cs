@@ -234,6 +234,7 @@ public sealed class ScepServer : IDisposable
                     .UseAuthorization()
                     .UseEndpoints(e => e.MapScepServer())))
             .Build();
+        await storage.SeedProfilesAsync(_host.Services, CancellationToken.None).ConfigureAwait(false);
         await _host.StartAsync().ConfigureAwait(false);
         _client = new ScepTestClient(_host.GetTestClient());
     }

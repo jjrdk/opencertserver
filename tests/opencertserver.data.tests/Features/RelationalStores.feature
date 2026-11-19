@@ -65,6 +65,14 @@ Feature: Relational ACME and CA stores
       | PostgreSQL |
       | MSSQL      |
 
+  Scenario Outline: CA profiles round trip and resolve the default
+    Given the relational database is "<Database>"
+    Then ca profiles persist and the default is resolved for null or unknown names
+    Examples:
+      | Database   |
+      | PostgreSQL |
+      | MSSQL      |
+
   Scenario Outline: Relational store telemetry excludes sensitive values
     Given the relational database is "<Database>"
     Then nonce telemetry contains only fixed operation metadata

@@ -10,7 +10,13 @@
 # step definitions start it with TestContainers (see Support/IqAcmeEnvironment.cs)
 # and run each tool inside it via docker exec.
 # ---------------------------------------------------------------------------
-FROM ubuntu:26.04 AS estclient-build
+FROM mcr.microsoft.com/dotnet/runtime-deps:11.0-resolute AS client-base
+
+# The runtime-deps image includes CA certificates, so apt can use HTTPS before
+# any packages are installed. Ubuntu's minimal image does not include them.
+RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources
+
+FROM client-base AS estclient-build
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
@@ -42,7 +48,7 @@ RUN curl -fsSL https://archive.ubuntu.com/ubuntu/pool/universe/libe/libest/libes
 # sscep (BSD-style, with parts under the OpenSSL License - see COPYING) is the independent
 # SCEP (RFC 8894) client. No Debian or Ubuntu release packages it, so the pinned release is
 # built from source, like libest above.
-FROM ubuntu:26.04 AS sscep-build
+FROM client-base AS sscep-build
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
@@ -63,7 +69,7 @@ RUN curl -fsSL "https://github.com/certnanny/sscep/archive/refs/tags/v${SSCEP_VE
  && make install \
  && install -D -m 0644 COPYING /opt/sscep/share/doc/sscep/COPYING
 
-FROM ubuntu:26.04
+FROM client-base
 
 # 1. Standard HTTP/TLS + JSON tooling, all available through apt on Debian/Ubuntu.
 RUN apt-get update \

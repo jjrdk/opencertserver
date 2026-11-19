@@ -2,6 +2,7 @@ namespace OpenCertServer.Scep.Tests.Steps;
 
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
+using OpenCertServer.Ca;
 using OpenCertServer.Data;
 using OpenCertServer.Testing;
 using Reqnroll;
@@ -74,6 +75,12 @@ public sealed class ScepServerStorage
         _database.RegisterProvider(services);
         services.AddCaRelationalStore(_connectionString!);
     }
+
+    internal Task SeedProfilesAsync(IServiceProvider services, CancellationToken cancellationToken) =>
+        _database is null
+            ? Task.CompletedTask
+            : _database.SeedProfilesAsync(_connectionString!,
+                services.GetRequiredService<CaConfiguration>().Profiles, cancellationToken);
 
     [AfterTestRun]
     public static async Task DisposeDatabases()

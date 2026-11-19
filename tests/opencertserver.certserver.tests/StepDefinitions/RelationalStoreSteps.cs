@@ -49,9 +49,16 @@ public sealed class RelationalStoreSteps
         await _database.StartAsync(TestContext.Current.CancellationToken).ConfigureAwait(false);
         _configuration = CreateConfiguration(_database.ConnectionString);
         _caConfiguration = CreateCaConfiguration();
+        await _database.SeedProfilesAsync(_database.ConnectionString, _caConfiguration.Profiles,
+            TestContext.Current.CancellationToken).ConfigureAwait(false);
         _host = CreateServer();
         await _host.StartAsync().ConfigureAwait(false);
         _server = _host.GetTestServer();
+        var storedProfiles = _host.Services.GetRequiredService<IStoreCaProfiles>();
+        var configuredProfile = await _caConfiguration.Profiles.GetProfile(null);
+        using var storedProfile = await storedProfiles.GetProfile(null);
+        Assert.Equal(configuredProfile.Name, storedProfile.Name);
+        Assert.Equal(configuredProfile.CertificateChain[0].Thumbprint, storedProfile.CertificateChain[0].Thumbprint);
     }
 
     [When("an ACME client registers an account and places an order")]

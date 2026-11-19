@@ -38,7 +38,8 @@ Two TestContainers images are orchestrated by the step definitions:
    auth configured, and a profile that fixes some `certificatePolicies` /
    `keyUsage` / `extendedKeyUsage`. It is reached on an ephemeral HTTPS port.
 2. **Client image** — [`client/Dockerfile`](./client/Dockerfile): an Ubuntu
-   26.04 image that installs the standard tools via `apt` plus Cisco libest's EST client,
+   26.04-based .NET runtime-deps image with CA certificates for HTTPS Ubuntu package
+   mirrors. It installs the standard tools via `apt` plus Cisco libest's EST client,
    built from the Ubuntu package sources, the ACME client
    `acme.sh` (fetched over curl, the canonical ACME client), EFF `certbot` (from `apt`)
    and the project's own `opencert` CLI. Every scenario's Given/When/Then is something

@@ -4,6 +4,7 @@ using System.Formats.Asn1;
 using System.Security.Authentication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.WebUtilities;
+using OpenCertServer.Ca;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Est.Server.Response;
 
@@ -17,6 +18,7 @@ using Ca.Utils;
 using Ca.Utils.Pkcs7;
 using Ca.Utils.X509;
 using Ca.Utils.X509.Templates;
+using OpenCertServer.Data.Stores;
 using Est.Client;
 using Reqnroll;
 using Xunit;
@@ -277,12 +279,11 @@ public partial class CertificateServerFeatures
     }
 
     [When("the active EST CA profile is rolled over to a new key and certificate")]
-    public void WhenTheActiveEstCaProfileIsRolledOverToANewKeyAndCertificate()
+    public async Task WhenTheActiveEstCaProfileIsRolledOverToANewKeyAndCertificate()
     {
-        var profile = _server.Services.GetRequiredService<IStoreCaProfiles>()
-            .GetProfile(GetCurrentProfileName(), CancellationToken.None)
-            .GetAwaiter()
-            .GetResult();
+        var profiles = _server.Services.GetRequiredService<IStoreCaProfiles>();
+        var configuredProfiles = _server.Services.GetRequiredService<CaConfiguration>().Profiles;
+        var profile = await configuredProfiles.GetProfile(GetCurrentProfileName(), CancellationToken.None).ConfigureAwait(false);
         var currentRoot = profile.CertificateChain[0];
         var (privateKey, certificate) = CreateReplacementCaMaterial(currentRoot, profile.CertificateValidity);
 
@@ -298,6 +299,13 @@ public partial class CertificateServerFeatures
         }
 
         certificate.Dispose();
+        if (profiles is RelationalCaProfileStore relationalProfiles)
+        {
+            using var defaultProfile = await profiles.GetProfile(null, CancellationToken.None).ConfigureAwait(false);
+            await relationalProfiles.SaveProfileAsync(profile, profile.Name == defaultProfile.Name, CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+
         ConformanceState.PostRollOverRootThumbprint = profile.CertificateChain[0].Thumbprint;
     }
 

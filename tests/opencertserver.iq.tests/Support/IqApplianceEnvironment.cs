@@ -8,6 +8,7 @@ using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Testing;
 
 /// <summary>
@@ -64,6 +65,7 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
 
     /// <summary>Whether the appliance was booted to trip the HTTPS-only startup guard (expected to fail).</summary>
     public bool HttpGuard { get; private set; }
+
     public string HttpGuardReason { get; private set; } = string.Empty;
     private readonly MemoryStream _guardStdout = new();
     private readonly MemoryStream _guardStderr = new();
@@ -77,9 +79,14 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
 
     /// <summary>The PEM material a booted appliance needs: a TLS leaf, a CA profile cert, and RA materials.</summary>
     public sealed record CertificateMaterials(
-        string RsaPem, string RsaKeyPem,
-        string EcdsaPem, string EcdsaKeyPem,
-        string ClientCertPem, string ClientKeyPem, string CaTrustRootPem);
+        string RsaPem,
+        string RsaKeyPem,
+        string EcdsaPem,
+        string EcdsaKeyPem,
+        string ClientCertPem,
+        string ClientKeyPem,
+        string CaTrustRootPem);
+
     public CertificateMaterials Certificates { get; }
 
     public static async Task<IqApplianceEnvironment> StartAsync(
@@ -107,11 +114,13 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
     }
 
     private static string NormalizeEngine(string? engine) =>
-        string.IsNullOrWhiteSpace(engine) ? "" : engine.Trim().ToLowerInvariant() switch
-        {
-            "mssql" or "sqlserver" => "mssql",
-            _ => "postgres"
-        };
+        string.IsNullOrWhiteSpace(engine)
+            ? ""
+            : engine.Trim().ToLowerInvariant() switch
+            {
+                "mssql" or "sqlserver" => "mssql",
+                _ => "postgres"
+            };
 
     /// <summary>
     /// Boots the appliance against a Testcontainers relational database: the database is created first
@@ -153,6 +162,13 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
             // on the shared network and migrates it, so the appliance only connects to a ready database.
             await database.StartAsync(_network, cancellationToken).ConfigureAwait(false);
             Database = database;
+            if (Role is "Unified" or "Ca")
+            {
+                using var rsaProfile = CreateProfile("rsa", Certificates.RsaPem, Certificates.RsaKeyPem);
+                using var ecdsaProfile = CreateProfile("ecdsa", Certificates.EcdsaPem, Certificates.EcdsaKeyPem);
+                await database.SeedProfilesAsync(database.ConnectionString, "rsa",
+                    [rsaProfile, ecdsaProfile], cancellationToken).ConfigureAwait(false);
+            }
         }
 
         var (applianceImage, applianceImageName) =
@@ -164,8 +180,10 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
             .WithNetwork(_network)
             .WithName(_containerName)
             .WithNetworkAliases(ServerAlias)
-            .WithResourceMapping(Encoding.ASCII.GetBytes(Tls.LeafPem), "/certs/tls.crt", fileMode: Unix.FileMode644)
-            .WithResourceMapping(Encoding.ASCII.GetBytes(Tls.LeafKeyPem), "/certs/tls.key", fileMode: Unix.FileMode644)
+            .WithResourceMapping(Encoding.ASCII.GetBytes(Tls.LeafPem), FilePath.Of("/certs/tls.crt"),
+                fileMode: Unix.FileMode644)
+            .WithResourceMapping(Encoding.ASCII.GetBytes(Tls.LeafKeyPem), FilePath.Of("/certs/tls.key"),
+                fileMode: Unix.FileMode644)
             .WithEnvironment("Kestrel__Certificates__Default__Path", "/certs/tls.crt")
             .WithEnvironment("Kestrel__Certificates__Default__KeyPath", "/certs/tls.key")
             .WithEnvironment("AllowedHosts", "localhost;127.0.0.1;[::1];" + ServerAlias)
@@ -204,10 +222,14 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
         {
             builder = builder
                 .WithTmpfsMount(DataDirectory, AccessMode.ReadWrite)
-                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.RsaPem), "/certs/rsa.pem", fileMode: Unix.FileMode644)
-                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.RsaKeyPem), "/certs/rsa.key", fileMode: Unix.FileMode644)
-                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.EcdsaPem), "/certs/ecdsa.pem", fileMode: Unix.FileMode644)
-                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.EcdsaKeyPem), "/certs/ecdsa.key", fileMode: Unix.FileMode644)
+                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.RsaPem), FilePath.Of("/certs/rsa.pem"),
+                    fileMode: Unix.FileMode644)
+                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.RsaKeyPem), FilePath.Of("/certs/rsa.key"),
+                    fileMode: Unix.FileMode644)
+                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.EcdsaPem), FilePath.Of("/certs/ecdsa.pem"),
+                    fileMode: Unix.FileMode644)
+                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.EcdsaKeyPem), FilePath.Of("/certs/ecdsa.key"),
+                    fileMode: Unix.FileMode644)
                 .WithEnvironment("rsa__Pem", "/certs/rsa.pem")
                 .WithEnvironment("rsa__KeyPem", "/certs/rsa.key")
                 .WithEnvironment("ecdsa__Pem", "/certs/ecdsa.pem")
@@ -231,9 +253,15 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
             builder = builder
                 .WithEnvironment("Ra__PeerUrl", "https://ca.example.com:5001")
                 .WithEnvironment("Ra__Scope", "ra.example.com")
-                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.ClientCertPem), "/certs/ra-client.crt", fileMode: Unix.FileMode644)
-                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.ClientKeyPem), "/certs/ra-client.key", fileMode: Unix.FileMode644)
-                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.CaTrustRootPem), "/certs/ra-trust.pem", fileMode: Unix.FileMode644)
+                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.ClientCertPem),
+                    FilePath.Of("/certs/ra-client.crt"),
+                    fileMode: Unix.FileMode644)
+                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.ClientKeyPem),
+                    FilePath.Of("/certs/ra-client.key"),
+                    fileMode: Unix.FileMode644)
+                .WithResourceMapping(Encoding.ASCII.GetBytes(Certificates.CaTrustRootPem),
+                    FilePath.Of("/certs/ra-trust.pem"),
+                    fileMode: Unix.FileMode644)
                 .WithEnvironment("Ra__ClientCertificatePath", "/certs/ra-client.crt")
                 .WithEnvironment("Ra__ClientPrivateKeyPath", "/certs/ra-client.key")
                 .WithEnvironment("Ra__CaTrustRoots__0", "/certs/ra-trust.pem");
@@ -266,7 +294,7 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
             .WithNetwork(_network)
             .WithNetworkAliases(ClientAlias)
             .WithResourceMapping(Encoding.ASCII.GetBytes(Tls.RootPem),
-                "/usr/local/share/ca-certificates/iq-appliance-root.crt", fileMode: Unix.FileMode644)
+                FilePath.Of("/usr/local/share/ca-certificates/iq-appliance-root.crt"), fileMode: Unix.FileMode644)
             .WithEntrypoint("sleep", "infinity")
             .Build());
 
@@ -283,8 +311,10 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
                 {
                     break;
                 }
+
                 await Task.Delay(100, cancellationToken).ConfigureAwait(false);
             }
+
             var (gstdout, gstderr) = await _server.GetLogsAsync().ConfigureAwait(false);
             HttpGuardReason =
                 System.Text.Encoding.UTF8.GetString(_guardStdout.ToArray()) +
@@ -315,13 +345,16 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
         Client.ExecAsync(["bash", "-c", script], cancellationToken);
 
     /// <summary>Waits for the client to reach the appliance over the given TLS version, capturing s_client output.</summary>
-    public Task<ExecResult> ClientTlsHandshakeAsync(string tlsFlag, bool legacy, CancellationToken cancellationToken = default)
+    public Task<ExecResult> ClientTlsHandshakeAsync(
+        string tlsFlag,
+        bool legacy,
+        CancellationToken cancellationToken = default)
     {
         var ciphers = legacy ? " -cipher 'ALL:@SECLEVEL=0'" : "";
         var script =
             $"mkdir -p /work && timeout 25s openssl s_client {tlsFlag}{ciphers}"
-            + $" -connect '{ServerAlias}:{ServerPort}' -servername '{ServerAlias}'"
-            + $" -CAfile /usr/local/share/ca-certificates/iq-appliance-root.crt < /dev/null 2>&1";
+          + $" -connect '{ServerAlias}:{ServerPort}' -servername '{ServerAlias}'"
+          + $" -CAfile /usr/local/share/ca-certificates/iq-appliance-root.crt < /dev/null 2>&1";
         return ExecClientAsync(script, cancellationToken);
     }
 
@@ -330,29 +363,34 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
     {
         var script =
             $"mkdir -p /work && curl -sS -D /work/headers -o /work/body -w '%{{http_code}}' "
-            + $"--cacert /usr/local/share/ca-certificates/iq-appliance-root.crt "
-            + $"'https://{ServerAlias}:{ServerPort}{path}' > /work/status";
+          + $"--cacert /usr/local/share/ca-certificates/iq-appliance-root.crt "
+          + $"'https://{ServerAlias}:{ServerPort}{path}' > /work/status";
         return await ExecClientAsync(script, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Performs a non-GET <paramref name="method"/> against the appliance with curl, writing the status to /work.</summary>
-    public async Task<ExecResult> ClientRequestAsync(string method, string path, CancellationToken cancellationToken = default)
+    public async Task<ExecResult> ClientRequestAsync(
+        string method,
+        string path,
+        CancellationToken cancellationToken = default)
     {
         var script =
             $"mkdir -p /work && curl -sS -X {method} -o /dev/null -w '%{{http_code}}' "
-            + $"--cacert /usr/local/share/ca-certificates/iq-appliance-root.crt "
-            + $"'https://{ServerAlias}:{ServerPort}{path}' > /work/status";
+          + $"--cacert /usr/local/share/ca-certificates/iq-appliance-root.crt "
+          + $"'https://{ServerAlias}:{ServerPort}{path}' > /work/status";
         return await ExecClientAsync(script, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Reads the status/headers/body a probe wrote to /work inside the client container.</summary>
-    public async Task<(int Status, string Headers, string Body)> ReadProbeAsync(CancellationToken cancellationToken = default)
+    public async Task<(int Status, string Headers, string Body)> ReadProbeAsync(
+        CancellationToken cancellationToken = default)
     {
         var status = await ExecClientAsync("cat /work/status", cancellationToken).ConfigureAwait(false);
-        var headers = await ExecClientAsync("cat /work/headers 2>/dev/null || echo", cancellationToken).ConfigureAwait(false);
+        var headers = await ExecClientAsync("cat /work/headers 2>/dev/null || echo", cancellationToken)
+            .ConfigureAwait(false);
         var body = await ExecClientAsync("cat /work/body 2>/dev/null || echo", cancellationToken).ConfigureAwait(false);
         return (int.Parse(status.Stdout.Trim(), System.Globalization.CultureInfo.InvariantCulture),
-            headers.Stdout, body.Stdout);
+                headers.Stdout, body.Stdout);
     }
 
     /// <summary>
@@ -363,7 +401,8 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
     /// </summary>
     public async Task<string> ContainerUserAsync(CancellationToken cancellationToken = default)
     {
-        var inspected = await DockerInspection.InspectContainerAsync(_containerName, cancellationToken).ConfigureAwait(false);
+        var inspected = await DockerInspection.InspectContainerAsync(_containerName, cancellationToken)
+            .ConfigureAwait(false);
         return string.IsNullOrEmpty(inspected) ? "0" : inspected; // A blank means the runtime default, i.e. root.
     }
 
@@ -374,7 +413,8 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
     /// </summary>
     public async Task<string> ImageUserAsync(CancellationToken cancellationToken = default)
     {
-        var inspected = await DockerInspection.InspectImageAsync(_applianceImageName, cancellationToken).ConfigureAwait(false);
+        var inspected = await DockerInspection.InspectImageAsync(_applianceImageName, cancellationToken)
+            .ConfigureAwait(false);
         return string.IsNullOrEmpty(inspected) ? "0" : inspected; // A blank means the runtime default, i.e. root.
     }
 
@@ -418,6 +458,7 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
                 logs = "server logs unavailable";
             }
         }
+
         return logs;
     }
 
@@ -435,11 +476,7 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
             }
         }
 
-        if (_network != null)
-        {
-            await _network.DisposeAsync().ConfigureAwait(false);
-        }
-
+        await _network.DisposeAsync().ConfigureAwait(false);
         Tls.Dispose();
     }
 
@@ -454,6 +491,22 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
             ecdsa.CertPem);
     }
 
+    private static CaProfile CreateProfile(string name, string certificatePem, string keyPem)
+    {
+        using var certificateWithKey = X509Certificate2.CreateFromPem(certificatePem, keyPem);
+        AsymmetricAlgorithm privateKey = name == "rsa"
+            ? certificateWithKey.GetRSAPrivateKey()!
+            : certificateWithKey.GetECDsaPrivateKey()!;
+        return new CaProfile
+        {
+            Name = name,
+            PrivateKey = privateKey,
+            CertificateChain = [X509Certificate2.CreateFromPem(certificatePem)],
+            PublishedCertificateChain = [X509Certificate2.CreateFromPem(certificatePem)],
+            CertificateValidity = TimeSpan.FromDays(90)
+        };
+    }
+
     private static (string CertPem, string KeyPem) SelfSigned(string subject, bool Ecdsa)
     {
         // The --profile rsa path calls GetRSAPrivateKey() on the configured cert, so the RSA material must
@@ -465,6 +518,9 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
             using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
             var request = new CertificateRequest(new X500DistinguishedName($"CN={subject}"),
                 key, HashAlgorithmName.SHA256);
+            request.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+            request.CertificateExtensions.Add(new X509KeyUsageExtension(
+                X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
             using var certificate = request.CreateSelfSigned(now.AddMinutes(-5), now.AddDays(30));
             return (certificate.ExportCertificatePem(), key.ExportPkcs8PrivateKeyPem());
         }
@@ -472,6 +528,9 @@ internal sealed class IqApplianceEnvironment : IAsyncDisposable
         using var rsa = RSA.Create(2048);
         var rsaRequest = new CertificateRequest(new X500DistinguishedName($"CN={subject}"), rsa,
             HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        rsaRequest.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+        rsaRequest.CertificateExtensions.Add(new X509KeyUsageExtension(
+            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
         using var rsaCertificate = rsaRequest.CreateSelfSigned(now.AddMinutes(-5), now.AddDays(30));
         return (rsaCertificate.ExportCertificatePem(), rsa.ExportPkcs8PrivateKeyPem());
     }

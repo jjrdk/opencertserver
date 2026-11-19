@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using CertesSlim.Acme;
@@ -15,6 +16,7 @@ using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Ocsp;
 using OpenCertServer.Data;
 using OpenCertServer.Data.PostgreSql;
+using OpenCertServer.Data.Stores;
 using OpenCertServer.Testing;
 using opencertserver.data.tests.Support;
 using Reqnroll;
@@ -32,6 +34,7 @@ public sealed class RelationalStoresSteps
     private ServiceProvider _services = null!;
     private string _connection = null!;
     private readonly List<X509Certificate2> _certificates = [];
+    private readonly List<CaProfile> _profiles = [];
     private Account _account = null!;
     private Order _order = null!;
     private ExternalAccountKey _key = null!;
@@ -42,6 +45,7 @@ public sealed class RelationalStoresSteps
     private INonceStore Nonces => _services.GetRequiredService<INonceStore>();
     private IStoreExternalAccountKeys Keys => _services.GetRequiredService<IStoreExternalAccountKeys>();
     private IStoreCertificates Certificates => _services.GetRequiredService<IStoreCertificates>();
+    private IStoreCaProfiles Profiles => _services.GetRequiredService<IStoreCaProfiles>();
 
     [Given("the certificate store is {string}")]
     public async Task StartCertificateStore(string storage)
@@ -135,6 +139,11 @@ public sealed class RelationalStoresSteps
         foreach (var certificate in _certificates)
         {
             certificate.Dispose();
+        }
+
+        foreach (var profile in _profiles)
+        {
+            profile.Dispose();
         }
 
         if (_services is not null)
@@ -347,6 +356,106 @@ public sealed class RelationalStoresSteps
         Assert.Equal("account",
             (await Keys.LoadKey(_key.KeyId, TestContext.Current.CancellationToken))?.BoundAccountId);
     }
+
+    [Then("ca profiles persist and the default is resolved for null or unknown names")]
+    public async Task CaProfileRoundTrip()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var store = Assert.IsType<RelationalCaProfileStore>(Profiles);
+
+        var defaultProfile = NewCaProfile("default", ecdsa: false);
+        var ecdsaProfile = NewCaProfile("ecdsa", ecdsa: true);
+        _profiles.Add(defaultProfile);
+        _profiles.Add(ecdsaProfile);
+
+        await store.SaveProfileAsync(defaultProfile, isDefault: true, ct);
+        await store.SaveProfileAsync(ecdsaProfile, isDefault: false, ct);
+
+        await Reload();
+        store = Assert.IsType<RelationalCaProfileStore>(Profiles);
+
+        var byName = await store.GetProfile("default", ct);
+        _profiles.Add(byName);
+        Assert.Equal(defaultProfile.Name, byName.Name);
+        Assert.True(byName.AllowPublicEnrollment);
+        Assert.Equal(defaultProfile.CertificateValidity, byName.CertificateValidity);
+        Assert.Equal(defaultProfile.CrlNumber, byName.CrlNumber);
+        Assert.Equal(defaultProfile.KeyUsage, byName.KeyUsage);
+        Assert.Equal(defaultProfile.ExtendedKeyUsages!.ToArray(), byName.ExtendedKeyUsages!.ToArray());
+        Assert.Equal(defaultProfile.CertificateChain.Select(certificate => certificate.Thumbprint).ToArray(),
+            byName.CertificateChain.Select(certificate => certificate.Thumbprint).ToArray());
+        Assert.Equal(SubjectPublicKeyInfo(defaultProfile.PrivateKey), SubjectPublicKeyInfo(byName.PrivateKey));
+        Assert.IsAssignableFrom<RSA>(byName.PrivateKey);
+
+        var byNull = await store.GetProfile(null, ct);
+        Assert.Equal("default", byNull.Name);
+        byNull.Dispose();
+
+        var byUnknown = await store.GetProfile("does-not-exist", ct);
+        Assert.Equal("default", byUnknown.Name);
+        byUnknown.Dispose();
+
+        var all = await store.GetProfiles(ct).ToListAsync(ct);
+        try
+        {
+            Assert.Equal(new[] { "default", "ecdsa" }, all.Select(profile => profile.Name).ToArray());
+            Assert.Contains(all, profile => profile.Name == "ecdsa");
+        }
+        finally
+        {
+            foreach (var profile in all)
+            {
+                profile.Dispose();
+            }
+        }
+
+        var ecdsaReloaded = await store.GetProfile("ecdsa", ct);
+        Assert.IsAssignableFrom<ECDsa>(ecdsaReloaded.PrivateKey);
+        ecdsaReloaded.Dispose();
+    }
+
+    private CaProfile NewCaProfile(string name, bool ecdsa)
+    {
+        var subject = new X500DistinguishedName($"CN={name}-ca.example.com");
+        var now = DateTimeOffset.UtcNow;
+        X509Certificate2 ca;
+        AsymmetricAlgorithm key;
+        if (ecdsa)
+        {
+            var ecdsaKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+            ca = new CertificateRequest(subject, ecdsaKey, HashAlgorithmName.SHA256)
+                .CreateSelfSigned(now.AddDays(-1), now.AddDays(365));
+            key = ecdsaKey;
+        }
+        else
+        {
+            var rsaKey = RSA.Create(2048);
+            ca = new CertificateRequest(subject, rsaKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
+                .CreateSelfSigned(now.AddDays(-1), now.AddDays(365));
+            key = rsaKey;
+        }
+        _certificates.Add(ca);
+        return new CaProfile
+        {
+            Name = name,
+            AllowPublicEnrollment = true,
+            PrivateKey = key,
+            CertificateChain = new X509Certificate2Collection { ca },
+            PublishedCertificateChain = new X509Certificate2Collection { ca },
+            CertificateValidity = TimeSpan.FromDays(90),
+            CrlNumber = new BigInteger(7),
+            KeyUsage = X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign,
+            ExtendedKeyUsages = ["1.3.6.1.5.5.7.3.1", "1.3.6.1.5.5.7.3.2"],
+            OcspFreshnessWindow = TimeSpan.FromHours(1),
+        };
+    }
+
+    private static byte[] SubjectPublicKeyInfo(AsymmetricAlgorithm key) => key switch
+    {
+        RSA rsa => rsa.ExportSubjectPublicKeyInfo(),
+        ECDsa ecdsa => ecdsa.ExportSubjectPublicKeyInfo(),
+        _ => throw new NotSupportedException($"Unsupported key type '{key.GetType().Name}'.")
+    };
 
     private X509Certificate2 NewCertificate(int serial)
     {

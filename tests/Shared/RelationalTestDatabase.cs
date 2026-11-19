@@ -10,9 +10,11 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Data;
 using OpenCertServer.Data.MsSql;
 using OpenCertServer.Data.PostgreSql;
+using OpenCertServer.Data.Stores;
 
 internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
 {
@@ -180,6 +182,36 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
         provider.GetRequiredService<IRelationalStoreProvider>().Configure(options, connectionString);
         await using var context = new CaDbContext(options.Options);
         await context.Database.MigrateAsync(cancellationToken);
+    }
+
+    public async Task SeedProfilesAsync(
+        string connectionString, IStoreCaProfiles profiles, CancellationToken cancellationToken)
+    {
+        var defaultProfile = await profiles.GetProfile(null, cancellationToken);
+        var allProfiles = await profiles.GetProfiles(cancellationToken).ToListAsync(cancellationToken);
+        await SeedProfilesAsync(connectionString, defaultProfile.Name, allProfiles, cancellationToken);
+    }
+
+    public async Task SeedProfilesAsync(
+        string connectionString, string defaultProfileName, IEnumerable<CaProfile> profiles,
+        CancellationToken cancellationToken)
+    {
+        var services = RegisterProvider(new ServiceCollection());
+        services.AddCaRelationalStore(connectionString);
+        await using var provider = services.BuildServiceProvider();
+        var store = (RelationalCaProfileStore)provider.GetRequiredService<IStoreCaProfiles>();
+        var foundDefault = false;
+        foreach (var profile in profiles)
+        {
+            var isDefault = string.Equals(profile.Name, defaultProfileName, StringComparison.Ordinal);
+            foundDefault |= isDefault;
+            await store.SaveProfileAsync(profile, isDefault, cancellationToken);
+        }
+
+        if (!foundDefault)
+        {
+            throw new InvalidOperationException($"Default CA profile '{defaultProfileName}' was not provided.");
+        }
     }
 
     /// <summary>Queries the relational database from the host, asserting a row the appliance seeded. Returns the row count.</summary>

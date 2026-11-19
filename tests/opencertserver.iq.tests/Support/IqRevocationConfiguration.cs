@@ -30,8 +30,11 @@ internal sealed class IqRevocationConfiguration
         {
             keys = new[]
             {
-                new { kty = "RSA", use = "sig", alg = "RS256", kid,
-                    n = Base64Url(parameters.Modulus!), e = Base64Url(parameters.Exponent!) }
+                new
+                {
+                    kty = "RSA", use = "sig", alg = "RS256", kid,
+                    n = Base64Url(parameters.Modulus!), e = Base64Url(parameters.Exponent!)
+                }
             }
         });
         AdminToken = Token("ca_admin");
@@ -68,7 +71,7 @@ internal sealed class IqRevocationConfiguration
     public ContainerBuilder Configure(ContainerBuilder builder, TestTlsPki tls) => builder
         .WithEnvironment("SSL_CERT_FILE", "/certs/iq-tls-root.crt")
         .WithResourceMapping(Encoding.ASCII.GetBytes(tls.RootPem),
-            "/certs/iq-tls-root.crt", fileMode: Unix.FileMode644)
+            FilePath.Of("/certs/iq-tls-root.crt"), fileMode: Unix.FileMode644)
         .WithEnvironment("CaServer__CrlDistributionPoints__0", CrlUrlTemplate);
 
     public IContainer BuildIssuer(INetwork network, TestTlsPki tls) =>
@@ -76,55 +79,55 @@ internal sealed class IqRevocationConfiguration
             .WithNetwork(network)
             .WithNetworkAliases(IssuerAlias)
             .WithResourceMapping(Encoding.ASCII.GetBytes(tls.LeafPem),
-                "/oidc/tls.crt", fileMode: Unix.FileMode644)
+                FilePath.Of("/oidc/tls.crt"), fileMode: Unix.FileMode644)
             .WithResourceMapping(Encoding.ASCII.GetBytes(tls.LeafKeyPem),
-                "/oidc/tls.key", fileMode: Unix.FileMode600)
+                FilePath.Of("/oidc/tls.key"), fileMode: Unix.FileMode600)
             .WithResourceMapping(Encoding.ASCII.GetBytes(tls.RootPem),
-                "/oidc/root.crt", fileMode: Unix.FileMode644)
+                FilePath.Of("/oidc/root.crt"), fileMode: Unix.FileMode644)
             .WithResourceMapping(JsonSerializer.SerializeToUtf8Bytes(new
-            {
-                issuer = IssuerUrl,
-                jwks_uri = $"{IssuerUrl}/jwks.json",
-                id_token_signing_alg_values_supported = new[] { "RS256" }
-            }),
-                "/oidc/.well-known/openid-configuration", fileMode: Unix.FileMode644)
-            .WithResourceMapping(_jwks, "/oidc/jwks.json", fileMode: Unix.FileMode644)
+                {
+                    issuer = IssuerUrl,
+                    jwks_uri = $"{IssuerUrl}/jwks.json",
+                    id_token_signing_alg_values_supported = new[] { "RS256" }
+                }),
+                FilePath.Of("/oidc/.well-known/openid-configuration"), fileMode: Unix.FileMode644)
+            .WithResourceMapping(_jwks, FilePath.Of("/oidc/jwks.json"), fileMode: Unix.FileMode644)
             .WithCommand("python", "-u", "-c", """
-                import os, re, ssl, threading, urllib.request
-                from http.server import BaseHTTPRequestHandler, SimpleHTTPRequestHandler, ThreadingHTTPServer
-                os.chdir("/oidc")
-                class CrlProxy(BaseHTTPRequestHandler):
-                    def do_GET(self):
-                        if not re.fullmatch(r"/ca/(?:[A-Za-z0-9_.-]+/)?crl", self.path):
-                            self.send_error(404)
-                            return
-                        try:
-                            with urllib.request.urlopen("https://opencertserver:6001" + self.path,
-                                    context=ssl.create_default_context(cafile="root.crt"), timeout=15) as response:
-                                body = response.read()
-                                self.send_response(response.status)
-                                self.send_header("Content-Type", response.headers["Content-Type"])
-                                self.send_header("Content-Length", str(len(body)))
-                                self.end_headers()
-                                self.wfile.write(body)
-                        except OSError as error:
-                            self.log_error("CRL upstream failed: %s", error)
-                            self.send_error(502)
-                proxy = ThreadingHTTPServer(("0.0.0.0", 8080), CrlProxy)
-                threading.Thread(target=proxy.serve_forever, daemon=True).start()
-                class OidcHandler(SimpleHTTPRequestHandler):
-                    def do_GET(self):
-                        if self.path not in ("/.well-known/openid-configuration", "/jwks.json"):
-                            self.send_error(404)
-                            return
-                        super().do_GET()
-                server = ThreadingHTTPServer(("0.0.0.0", 8443), OidcHandler)
-                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-                context.minimum_version = ssl.TLSVersion.TLSv1_2
-                context.load_cert_chain("tls.crt", "tls.key")
-                server.socket = context.wrap_socket(server.socket, server_side=True)
-                server.serve_forever()
-                """)
+                                               import os, re, ssl, threading, urllib.request
+                                               from http.server import BaseHTTPRequestHandler, SimpleHTTPRequestHandler, ThreadingHTTPServer
+                                               os.chdir("/oidc")
+                                               class CrlProxy(BaseHTTPRequestHandler):
+                                                   def do_GET(self):
+                                                       if not re.fullmatch(r"/ca/(?:[A-Za-z0-9_.-]+/)?crl", self.path):
+                                                           self.send_error(404)
+                                                           return
+                                                       try:
+                                                           with urllib.request.urlopen("https://opencertserver:6001" + self.path,
+                                                                   context=ssl.create_default_context(cafile="root.crt"), timeout=15) as response:
+                                                               body = response.read()
+                                                               self.send_response(response.status)
+                                                               self.send_header("Content-Type", response.headers["Content-Type"])
+                                                               self.send_header("Content-Length", str(len(body)))
+                                                               self.end_headers()
+                                                               self.wfile.write(body)
+                                                       except OSError as error:
+                                                           self.log_error("CRL upstream failed: %s", error)
+                                                           self.send_error(502)
+                                               proxy = ThreadingHTTPServer(("0.0.0.0", 8080), CrlProxy)
+                                               threading.Thread(target=proxy.serve_forever, daemon=True).start()
+                                               class OidcHandler(SimpleHTTPRequestHandler):
+                                                   def do_GET(self):
+                                                       if self.path not in ("/.well-known/openid-configuration", "/jwks.json"):
+                                                           self.send_error(404)
+                                                           return
+                                                       super().do_GET()
+                                               server = ThreadingHTTPServer(("0.0.0.0", 8443), OidcHandler)
+                                               context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                                               context.minimum_version = ssl.TLSVersion.TLSv1_2
+                                               context.load_cert_chain("tls.crt", "tls.key")
+                                               server.socket = context.wrap_socket(server.socket, server_side=True)
+                                               server.serve_forever()
+                                               """)
             .WithPortBinding(8443, true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(request => request
                 .ForPort(8443).ForPath("/.well-known/openid-configuration").UsingTls()

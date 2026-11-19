@@ -77,6 +77,7 @@ public partial class CertificateServerFeatures
                 .ConfigureServices(ConfigureServices)
                 .Configure(ConfigureApp);
         }).Build();
+        await storage.SeedProfilesAsync(host.Services, TestContext.Current.CancellationToken);
         await host.StartAsync(TestContext.Current.CancellationToken);
         _host = host;
         _server = host.GetTestServer();

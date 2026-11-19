@@ -31,6 +31,8 @@ public static class CaStoreExtensions
         RegisterContext(services, connectionString);
         services.RemoveAll<IStoreCertificates>();
         services.AddSingleton<IStoreCertificates, RelationalCertificateStore>();
+        services.RemoveAll<IStoreCaProfiles>();
+        services.AddSingleton<IStoreCaProfiles, RelationalCaProfileStore>();
         return services;
     }
 

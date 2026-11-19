@@ -118,32 +118,33 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
             TelemetryCollector = Track(new ContainerBuilder("otel/opentelemetry-collector-contrib:0.123.0")
                 .WithNetwork(_network)
                 .WithNetworkAliases("telemetry")
-                .WithResourceMapping([], "/tmp/traces.json", fileMode: Unix.FileMode666)
-                .WithResourceMapping(Encoding.UTF8.GetBytes("""
-                    receivers:
-                      otlp:
-                        protocols:
-                          grpc:
-                            endpoint: 0.0.0.0:4317
-                    exporters:
-                      prometheus:
-                        endpoint: 0.0.0.0:8889
-                      file:
-                        path: /tmp/traces.json
-                        flush_interval: 1s
-                    extensions:
-                      health_check:
-                        endpoint: 0.0.0.0:13133
-                    service:
-                      extensions: [health_check]
-                      pipelines:
-                        metrics:
-                          receivers: [otlp]
-                          exporters: [prometheus]
-                        traces:
-                          receivers: [otlp]
-                          exporters: [file]
-                    """), "/etc/otelcol-contrib/config.yaml", fileMode: Unix.FileMode644)
+                .WithResourceMapping([], FilePath.Of("/tmp/traces.json"), fileMode: Unix.FileMode666)
+                .WithResourceMapping("""
+                                     receivers:
+                                       otlp:
+                                         protocols:
+                                           grpc:
+                                             endpoint: 0.0.0.0:4317
+                                     exporters:
+                                       prometheus:
+                                         endpoint: 0.0.0.0:8889
+                                       file:
+                                         path: /tmp/traces.json
+                                         flush_interval: 1s
+                                     extensions:
+                                       health_check:
+                                         endpoint: 0.0.0.0:13133
+                                     service:
+                                       extensions: [health_check]
+                                       pipelines:
+                                         metrics:
+                                           receivers: [otlp]
+                                           exporters: [prometheus]
+                                         traces:
+                                           receivers: [otlp]
+                                           exporters: [file]
+                                     """u8.ToArray(), FilePath.Of("/etc/otelcol-contrib/config.yaml"),
+                    fileMode: Unix.FileMode644)
                 .WithPortBinding(13133, true)
                 .WithWaitStrategy(Wait.ForUnixContainer()
                     .UntilHttpRequestIsSucceeded(r => r.ForPort(13133).ForPath("/")
@@ -157,8 +158,9 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
             .WithNetworkAliases(DnsAlias)
             .WithCreateParameterModifier(p => StaticIp(p, DnsIp))
             .WithResourceMapping(
-                File.ReadAllBytes(Path.Combine(RepositoryPaths.IqProject, "acme", "dns_server.py")),
-                "/app/dns_server.py",
+                await File.ReadAllBytesAsync(Path.Combine(RepositoryPaths.IqProject, "acme", "dns_server.py"),
+                    cancellationToken),
+                FilePath.Of("/app/dns_server.py"),
                 fileMode: Unix.FileMode644)
             .WithEnvironment("IQ_DNS_ZONES", "example.com")
             .WithEnvironment("PYTHONUNBUFFERED", "1")
@@ -188,27 +190,34 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
             })
             .WithResourceMapping(
                 Encoding.ASCII.GetBytes(Tls.RootPem),
-                "/usr/local/share/ca-certificates/iq-tls-root.crt",
+                FilePath.Of("/usr/local/share/ca-certificates/iq-tls-root.crt"),
                 fileMode: Unix.FileMode644)
             .WithResourceMapping(
-                File.ReadAllBytes(Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "acme-raw.sh")),
-                "/usr/local/bin/acme-raw.sh",
+                await File.ReadAllBytesAsync(
+                    Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "acme-raw.sh"), cancellationToken),
+                FilePath.Of("/usr/local/bin/acme-raw.sh"),
                 fileMode: Unix.FileMode755)
             .WithResourceMapping(
-                File.ReadAllBytes(Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "dns_iq.sh")),
-                "/root/.acme.sh/dnsapi/dns_iq.sh",
+                await File.ReadAllBytesAsync(Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "dns_iq.sh"),
+                    cancellationToken),
+                FilePath.Of("/root/.acme.sh/dnsapi/dns_iq.sh"),
                 fileMode: Unix.FileMode755)
             .WithResourceMapping(
-                File.ReadAllBytes(Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "certbot-dns-iq.sh")),
-                "/usr/local/bin/certbot-dns-iq.sh",
+                await File.ReadAllBytesAsync(
+                    Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "certbot-dns-iq.sh"),
+                    cancellationToken),
+                FilePath.Of("/usr/local/bin/certbot-dns-iq.sh"),
                 fileMode: Unix.FileMode755)
             .WithResourceMapping(
-                File.ReadAllBytes(Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "est-crypto.py")),
-                "/usr/local/bin/est-crypto.py",
+                await File.ReadAllBytesAsync(
+                    Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "est-crypto.py"), cancellationToken),
+                FilePath.Of("/usr/local/bin/est-crypto.py"),
                 fileMode: Unix.FileMode644)
             .WithResourceMapping(
-                File.ReadAllBytes(Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "device-attest.py")),
-                "/usr/local/bin/device-attest.py",
+                await File.ReadAllBytesAsync(
+                    Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "device-attest.py"),
+                    cancellationToken),
+                FilePath.Of("/usr/local/bin/device-attest.py"),
                 fileMode: Unix.FileMode644)
             .WithEnvironment("ACME_DIRECTORY", DirectoryUrl)
             .WithEnvironment("IQ_DNS_API", $"http://{DnsAlias}:{DnsApiPort}")
@@ -249,10 +258,11 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
     /// TLS alias. Only the public root is copied; the software AIK private key stays in the client.
     /// </summary>
     public async Task<IContainer> StartAttestationServerAsync(
-        string rootPem, CancellationToken cancellationToken = default)
+        string rootPem,
+        CancellationToken cancellationToken = default)
     {
         var container = BuildServer(TosServerAlias, $"{_prefix}.11", b => b
-            .WithResourceMapping(Encoding.ASCII.GetBytes(rootPem), "/certs/manufacturer.pem",
+            .WithResourceMapping(Encoding.ASCII.GetBytes(rootPem), FilePath.Of("/certs/manufacturer.pem"),
                 fileMode: Unix.FileMode644)
             .WithEnvironment("Attestation__TrustAnchors__0", "/certs/manufacturer.pem"));
         try
@@ -272,7 +282,11 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
         Client.ExecAsync(["bash", "-c", script], cancellationToken);
 
     /// <summary>Publishes a record on the test DNS server through its mapped control API.</summary>
-    public async Task AddDnsRecord(string name, string type, string value, CancellationToken cancellationToken = default)
+    public async Task AddDnsRecord(
+        string name,
+        string type,
+        string value,
+        CancellationToken cancellationToken = default)
     {
         using var http = new HttpClient();
         var uri = new UriBuilder("http", _dns.Hostname, _dns.GetMappedPublicPort(DnsApiPort), "/records").Uri;
@@ -289,7 +303,8 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
     public async Task<string> GetDiagnosticsAsync(params IContainer?[] extra)
     {
         var builder = new StringBuilder();
-        foreach (var container in new[] { _server, _dns, _issuer, TelemetryCollector }.Concat(extra).OfType<IContainer>())
+        foreach (var container in new[] { _server, _dns, _issuer, TelemetryCollector }.Concat(extra)
+            .OfType<IContainer>())
         {
             try
             {
@@ -314,11 +329,7 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
             await container.DisposeAsync().ConfigureAwait(false);
         }
 
-        if (_network != null)
-        {
-            await _network.DisposeAsync().ConfigureAwait(false);
-        }
-
+        await _network.DisposeAsync().ConfigureAwait(false);
         Tls.Dispose();
     }
 
@@ -336,8 +347,8 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
                 p.HostConfig ??= new HostConfig();
                 p.HostConfig.DNS = [DnsIp];
             })
-            .WithResourceMapping(Encoding.ASCII.GetBytes(Tls.LeafPem), "/certs/tls.crt", fileMode: Unix.FileMode644)
-            .WithResourceMapping(Encoding.ASCII.GetBytes(Tls.LeafKeyPem), "/certs/tls.key", fileMode: Unix.FileMode644)
+            .WithResourceMapping(Encoding.ASCII.GetBytes(Tls.LeafPem), FilePath.Of("/certs/tls.crt"), fileMode: Unix.FileMode644)
+            .WithResourceMapping(Encoding.ASCII.GetBytes(Tls.LeafKeyPem), FilePath.Of("/certs/tls.key"), fileMode: Unix.FileMode644)
             .WithEnvironment("Kestrel__Certificates__Default__Path", "/certs/tls.crt")
             .WithEnvironment("Kestrel__Certificates__Default__KeyPath", "/certs/tls.key")
             .WithEnvironment("AllowedHosts", $"localhost;127.0.0.1;[::1];{ServerAlias};{TosServerAlias}")
@@ -401,7 +412,7 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
 
     private async Task CreateNetwork(CancellationToken cancellationToken)
     {
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0;; attempt++)
         {
             _prefix = $"198.{18 + Random.Shared.Next(2)}.{Random.Shared.Next(256)}";
             var network = new NetworkBuilder()

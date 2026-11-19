@@ -17,7 +17,7 @@ namespace OpenCertServer.Data.PostgreSql.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.14")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -56,6 +56,25 @@ namespace OpenCertServer.Data.PostgreSql.Migrations
                     b.ToTable("Accounts");
                 });
 
+            modelBuilder.Entity("OpenCertServer.Data.Entities.CaProfileEntity", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Name");
+
+                    b.HasIndex("IsDefault");
+
+                    b.ToTable("CaProfiles");
+                });
+
             modelBuilder.Entity("OpenCertServer.Data.Entities.CertificateEntity", b =>
                 {
                     b.Property<string>("SerialNumber")
@@ -68,10 +87,10 @@ namespace OpenCertServer.Data.PostgreSql.Migrations
                     b.Property<string>("Issuer")
                         .HasColumnType("text");
 
-                    b.Property<DateTime>("NotAfter")
+                    b.Property<DateTimeOffset>("NotAfter")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("NotBefore")
+                    b.Property<DateTimeOffset>("NotBefore")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ProfileName")
