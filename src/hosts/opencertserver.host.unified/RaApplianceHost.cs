@@ -102,11 +102,8 @@ internal static class RaApplianceHost
             {
                 context.Response.OnCompleted(() =>
                 {
-                    var sanitizedPath = context.Request.Path.ToString()
-                        .Replace("\r", string.Empty)
-                        .Replace("\n", string.Empty);
-                    app.Logger.LogWarning("RA audit {TraceId} {Method} {Path} {StatusCode} {Authenticated}",
-                        context.TraceIdentifier, context.Request.Method, sanitizedPath,
+                    app.Logger.LogWarning("RA audit {TraceId} {StatusCode} {Authenticated}",
+                        context.TraceIdentifier,
                         context.Response.StatusCode, context.User.Identity?.IsAuthenticated == true);
                     return Task.CompletedTask;
                 });
