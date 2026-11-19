@@ -200,7 +200,7 @@ public partial class CertificateServerFeatures
     public void GivenARemoteAcmeIssuerUsingTheClient()
     {
         Assert.NotNull(_caClient);
-        _remoteIssuer = new RemoteIssuer(_caClient);
+        _remoteIssuer = new RemoteIssuer(_caClient, new InMemoryCertificateStore());
     }
 
     [When("the remote issuer issues a certificate")]

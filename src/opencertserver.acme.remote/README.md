@@ -12,12 +12,17 @@ project (instead of the CA core) issues through the CA and hosts no CA key.
   consumes. It signs each order's CSR through `CaClient.SignCsr` and returns the
   signed chain as a PEM. A CA rejection is surfaced as an `AcmeError` (`Type:
   "multiple"`, the rejection reasons joined by commas) so the ACME order fails cleanly
-  instead of throwing. The requestor identity is **not** forwarded: the backing CA
+  instead of throwing. Successful issuance is recorded with its resolved CA profile in
+  the ACME host's certificate inventory so ACME revocation can target the same profile.
+  The requestor identity is **not** forwarded: the backing CA
   authenticates this process over the trusted connection (mTLS or bearer), and the
   delegated scope, when any, comes from the client configuration.
 - **`AcmeRemoteServiceCollectionExtensions.AddAcmeRemoteCa`** — registers the backing-CA
   `CaClient` (and, for ACME revocation, the `ICertificateAuthority` it exposes as a
-  `RemoteCertificateAuthority`) plus the `RemoteIssuer`. This is the wiring selected by
+  `RemoteCertificateAuthority`) plus the `RemoteIssuer`. It supplies an in-memory
+  certificate inventory only when the host has not registered its own; register a
+  persistent `IStoreCertificates` implementation when issuance provenance must survive
+  ACME-host restarts. This is the wiring selected by
   `AcmeServer:Issuer=remote` in the
   [`opencertserver.certserver`](../opencertserver.certserver/README.md) monolith, and
   the issuer the standalone [`opencertserver.acme`](../opencertserver.acme/README.md)

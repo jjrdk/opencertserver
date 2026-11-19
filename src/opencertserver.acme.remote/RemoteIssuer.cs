@@ -18,11 +18,13 @@ using OpenCertServer.Ca.Client;
 public sealed class RemoteIssuer : IIssueCertificates
 {
     private readonly CaClient _caClient;
+    private readonly IStoreCertificates _certificateStore;
 
     /// <summary>Creates a remote issuer backed by <paramref name="caClient"/>.</summary>
-    public RemoteIssuer(CaClient caClient)
+    public RemoteIssuer(CaClient caClient, IStoreCertificates certificateStore)
     {
         _caClient = caClient;
+        _certificateStore = certificateStore;
     }
 
     /// <inheritdoc />
@@ -47,16 +49,22 @@ public sealed class RemoteIssuer : IIssueCertificates
             notAfter: notAfter,
             cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        return response switch
+        switch (response)
         {
-            SignCertificateResponse.Success success => (
-                Encoding.UTF8.GetBytes(success.Certificate.ToPemChain(success.Issuers)), null),
-            SignCertificateResponse.Error error => (null, new AcmeError
+            case SignCertificateResponse.Success success:
+                await _certificateStore.AddCertificate(
+                    success.Certificate,
+                    profile ?? _caClient.Profile,
+                    cancellationToken).ConfigureAwait(false);
+                return (Encoding.UTF8.GetBytes(success.Certificate.ToPemChain(success.Issuers)), null);
+            case SignCertificateResponse.Error error:
+                return (null, new AcmeError
             {
                 Type = "multiple",
                 Detail = string.Join(", ", error.Errors)
-            }),
-            _ => throw new ArgumentException("Invalid response")
-        };
+            });
+            default:
+                throw new ArgumentException("Invalid response");
+        }
     }
 }

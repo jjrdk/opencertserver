@@ -16,6 +16,7 @@ public partial class CertificateServerFeatures
 {
     private CaClient? _acmeRemoteCaClient;
     private RemoteIssuer? _acmeRemoteIssuer;
+    private InMemoryCertificateStore? _acmeRemoteCertificateStore;
     private X509Certificate2? _acmeRemoteRevokeIdentity;
     private string? _acmeRemoteCsr;
     private byte[]? _acmeRemoteCert;
@@ -58,7 +59,8 @@ public partial class CertificateServerFeatures
 
         _acmeRemoteRevokeIdentity = revokeIdentity;
         _acmeRemoteCaClient = new CaClient(client, options, NullLogger<CaClient>.Instance);
-        _acmeRemoteIssuer = new RemoteIssuer(_acmeRemoteCaClient);
+        _acmeRemoteCertificateStore = new InMemoryCertificateStore();
+        _acmeRemoteIssuer = new RemoteIssuer(_acmeRemoteCaClient, _acmeRemoteCertificateStore);
         _acmeRemoteCsr = BuildCsr("host.tenant-a.example.com");
     }
 
@@ -121,7 +123,7 @@ public partial class CertificateServerFeatures
     }
 
     [Then(@"the backing CA returns a signed certificate chain")]
-    public void ThenTheBackingCaReturnsASignedCertificateChain()
+    public async Task ThenTheBackingCaReturnsASignedCertificateChain()
     {
         Assert.Null(_acmeRemoteError);
         Assert.NotNull(_acmeRemoteCert);
@@ -131,6 +133,8 @@ public partial class CertificateServerFeatures
         Assert.NotEmpty(certificates);
         using var leaf = certificates[0];
         Assert.Equal("CN=host.tenant-a.example.com", leaf.Subject);
+        Assert.Equal("default", await _acmeRemoteCertificateStore!.GetIssuingProfile(
+            leaf.Thumbprint, CancellationToken.None));
     }
 
     [Then(@"the order fails with a rejected identifier")]

@@ -3,7 +3,9 @@ namespace OpenCertServer.Acme.Remote;
 using Acme.Abstractions.IssuanceServices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenCertServer.Ca.Client;
+using OpenCertServer.Ca.Utils.Ca;
 
 /// <summary>
 /// Dependency-injection extensions that turn an ACME host into a remote ACME server: they register a
@@ -27,8 +29,9 @@ public static class AcmeRemoteServiceCollectionExtensions
     public static IServiceCollection AddAcmeRemoteCa(this IServiceCollection services, CaClientOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        return services
-            .AddCaClient(options)
-            .AddSingleton<IIssueCertificates, RemoteIssuer>();
+        services.AddCaClient(options);
+        services.TryAddSingleton<IStoreCertificates, InMemoryCertificateStore>();
+        services.AddSingleton<IIssueCertificates, RemoteIssuer>();
+        return services;
     }
 }

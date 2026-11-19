@@ -50,6 +50,9 @@ public sealed partial class CaClient
     /// <summary>The backing CA base address used by this client.</summary>
     public Uri BaseUrl => _options.BaseUrl;
 
+    /// <summary>The default certificate profile configured for the backing CA client.</summary>
+    public string? Profile => _options.Profile;
+
     /// <summary>
     /// Submits a PKCS#10 request to the backing CA and returns the signed result, or a typed error
     /// when the CA rejects it. Out-of-scope requests surface as <see cref="SignCertificateResponse.Error"/>
