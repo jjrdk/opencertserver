@@ -31,7 +31,7 @@ public sealed class NonceStore : INonceStore
         cancellationToken.ThrowIfCancellationRequested();
 
         var noncePath = Path.Combine(_options.Value.NoncePath, nonce.Token);
-        var consumedPath = noncePath + ".consumed";
+        var consumedPath = $"{noncePath}.consumed-{Guid.NewGuid():N}";
         try
         {
             File.Move(noncePath, consumedPath);
