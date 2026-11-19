@@ -11,7 +11,12 @@ namespace OpenCertServer.Ca.Protocol;
 public sealed record RaBinding(
     string RaId,
     IReadOnlySet<string> AllowedScopes,
-    IReadOnlySet<string> AllowedProfiles);
+    IReadOnlySet<string> AllowedProfiles)
+{
+    /// <summary>Gets the SHA-256 certificate fingerprints permitted to authenticate this RA over mTLS.</summary>
+    public IReadOnlySet<string> CertificateSha256Thumbprints { get; init; } =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+}
 
 /// <summary>
 /// Stores the registration-authority bindings accepted by a certificate authority.

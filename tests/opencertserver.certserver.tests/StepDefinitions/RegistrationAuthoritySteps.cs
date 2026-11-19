@@ -10,6 +10,7 @@ using Acme.AspNetClient.Certes;
 using Acme.AspNetClient.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using OpenCertServer.Ca.Protocol;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.CertServer.Tests;
 using OpenCertServer.Ra;
@@ -39,6 +40,17 @@ public partial class CertificateServerFeatures
     [Given(@"an outbound RA peer for ""(.*)"" using its client certificate")]
     public async Task GivenAnOutboundRaPeerUsingClientCertificateFor(string dnsName)
     {
+        await CreateRaPeerUsingClientCertificate(dnsName, provisionFingerprint: true).ConfigureAwait(false);
+    }
+
+    [Given(@"an outbound RA peer for ""(.*)"" using an unprovisioned client certificate")]
+    public async Task GivenAnOutboundRaPeerUsingUnprovisionedClientCertificateFor(string dnsName)
+    {
+        await CreateRaPeerUsingClientCertificate(dnsName, provisionFingerprint: false).ConfigureAwait(false);
+    }
+
+    private async Task CreateRaPeerUsingClientCertificate(string dnsName, bool provisionFingerprint)
+    {
         CreateRaPeer(dnsName, bearerToken: null);
         using var key = RSA.Create(2048);
         var request = new CertificateRequest(
@@ -52,6 +64,17 @@ public partial class CertificateServerFeatures
         var response = await ca.SignCertificateRequest(request, "default").ConfigureAwait(false);
         var issuedCertificate = Assert.IsType<SignCertificateResponse.Success>(response).Certificate;
         _raIdentityCertificate = issuedCertificate.CopyWithPrivateKey(key);
+        if (provisionFingerprint)
+        {
+            var binding = Assert.IsType<RaBinding>(await _raStore.Find("ra-tenant-a").ConfigureAwait(false));
+            _raStore.SetBinding(binding with
+            {
+                CertificateSha256Thumbprints = new HashSet<string>(
+                    [_raIdentityCertificate.GetCertHashString(HashAlgorithmName.SHA256)],
+                    StringComparer.OrdinalIgnoreCase)
+            });
+        }
+
         _raHttpClient!.DefaultRequestHeaders.Add(
             "X-Client-Cert",
             Convert.ToBase64String(_raIdentityCertificate.RawData));

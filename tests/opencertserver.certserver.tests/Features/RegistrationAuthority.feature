@@ -30,6 +30,12 @@ Feature: Outbound registration-authority peer
         And the RA revokes the certificate
         Then the RA revocation succeeds
 
+    Scenario: A certificate with an RA common name needs an explicitly provisioned fingerprint
+        Given a certificate server
+        And an outbound RA peer for "host.tenant-a.example.com" using an unprovisioned client certificate
+        When the RA enrolls a certificate
+        Then the central CA rejects the RA request
+
     Scenario: The customer RA needs no inbound listener
         Given a certificate server
         And an outbound RA peer for "host.tenant-a.example.com"

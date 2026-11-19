@@ -240,9 +240,10 @@ acceptance is disabled unless `Ca:AcceptRa` is true.
 | Key | Meaning |
 |---|---|
 | `Ca:AcceptRa` | Enables authenticated RA identities at the CA. Default: `false`. |
-| `Ca:RaBindings:<index>:RaId` | Stable identity bound to a JWT `ra` claim or, for mTLS, a CA-issued client certificate CN. |
+| `Ca:RaBindings:<index>:RaId` | Stable identity bound to a JWT `ra` claim or, for mTLS, a certificate CN and explicitly provisioned certificate fingerprint. |
 | `Ca:RaBindings:<index>:Scopes:<index>` | DNS suffixes the RA may act for. CSR SANs must contain DNS names only and each must equal or be a subdomain of one selected suffix. |
 | `Ca:RaBindings:<index>:Profiles:<index>` | CA profile names the RA may select. |
+| `Ca:RaBindings:<index>:CertificateSha256Thumbprints:<index>` | SHA-256 certificate fingerprint allowed to authenticate this RA over mTLS. A CN match alone never grants the `ra` claim. |
 | `PublicRa:Enabled` | Enables public ACME self-service issuance. Default: `false`. |
 | `PublicRa:Profiles` | Profiles exposed to public enrollment; each must also set `AllowPublicEnrollment=true`. |
 | `PublicRa:RateLimit` | ACME requests allowed per client IP per minute. Default: `60`; values below 1 fail startup. |
@@ -260,7 +261,8 @@ Example:
       {
         "RaId": "ra-tenant-a",
         "Scopes": [ "tenant-a.example.com" ],
-        "Profiles": [ "default" ]
+        "Profiles": [ "default" ],
+        "CertificateSha256Thumbprints": [ "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" ]
       }
     ]
   },

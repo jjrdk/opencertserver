@@ -98,8 +98,8 @@ If terms agreement is required, configure `AcmeServer:TOS:RequireAgreement`, `Ur
 `LastUpdate` with your own published terms.
 
 For a CA that accepts delegated RA requests, explicitly enable acceptance and bind the RA
-identity to the permitted DNS suffix and profiles. The RA ID is the common name (`CN`) of
-the CA-issued client certificate used by the RA:
+identity to the permitted DNS suffixes, profiles, and SHA-256 fingerprint of the CA-issued
+RA client certificate. A matching common name (`CN`) alone does not grant RA privileges:
 
 ```json
 {
@@ -109,7 +109,10 @@ the CA-issued client certificate used by the RA:
       {
         "RaId": "ra-tenant-a",
         "Scopes": ["tenant-a.example.com"],
-        "Profiles": ["rsa"]
+        "Profiles": ["rsa"],
+        "CertificateSha256Thumbprints": [
+          "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+        ]
       }
     ]
   }

@@ -31,15 +31,6 @@ public sealed partial class ApplianceUpgradeSteps
         HardenedConfiguration();
         var config = ApplianceConfiguration.ReadDocument(Source);
         config["AllowedHosts"] = "localhost;ca";
-        config["Ca"] = new JsonObject
-        {
-            ["AcceptRa"] = true,
-            ["RaBindings"] = new JsonArray(new JsonObject
-            {
-                ["RaId"] = "ra-tenant-a", ["Scopes"] = new JsonArray("tenant.example.test"),
-                ["Profiles"] = new JsonArray("rsa")
-            })
-        };
         _network = "opencert-topology-" + Guid.NewGuid().ToString("N");
         var network = await Execute("docker", ["network", "create", _network]);
         Assert.True(network.ExitCode == 0, network.Error);
@@ -55,6 +46,17 @@ public sealed partial class ApplianceUpgradeSteps
             [$"http://host.docker.internal:{crlPort}/ra.crl"]));
         using var identity = identityRequest.Create(root, DateTimeOffset.UtcNow.AddMinutes(-1),
             DateTimeOffset.UtcNow.AddDays(1), RandomNumberGenerator.GetBytes(16));
+        config["Ca"] = new JsonObject
+        {
+            ["AcceptRa"] = true,
+            ["RaBindings"] = new JsonArray(new JsonObject
+            {
+                ["RaId"] = "ra-tenant-a", ["Scopes"] = new JsonArray("tenant.example.test"),
+                ["Profiles"] = new JsonArray("rsa"),
+                ["CertificateSha256Thumbprints"] = new JsonArray(
+                    identity.GetCertHashString(HashAlgorithmName.SHA256))
+            })
+        };
         await File.WriteAllTextAsync(Path.Combine(_directory, "ra.pem"), identity.ExportCertificatePem());
         await File.WriteAllTextAsync(Path.Combine(_directory, "ra.key"), identityKey.ExportPkcs8PrivateKeyPem());
         var crl = new CertificateRevocationListBuilder().Build(root, BigInteger.One,

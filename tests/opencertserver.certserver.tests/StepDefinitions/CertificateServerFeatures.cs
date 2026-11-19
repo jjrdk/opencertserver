@@ -45,6 +45,7 @@ public partial class CertificateServerFeatures
     private bool _enablePublicRa;
     private int _publicRaRateLimit = 60;
     private bool _publicRaRequireEab;
+    private MutableTestRaStore _raStore = null!;
 
     [UnconditionalSuppressMessage("Trimming", "IL2111",
         Justification = "The test host registers known concrete services in the regular test runtime and is not trimmed.")]
@@ -103,19 +104,19 @@ public partial class CertificateServerFeatures
             Justification = "These certserver tests do not target AOT publishing.")]
         void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services)
         {
+            var raBinding = new RaBinding(
+                "ra-tenant-a",
+                new HashSet<string>(["tenant-a.example.com"], StringComparer.OrdinalIgnoreCase),
+                new HashSet<string>(["default", "ecdsa"], StringComparer.OrdinalIgnoreCase));
+            _raStore = new MutableTestRaStore(raBinding);
             services
                 .AddSingleton<IResponderId>(new ResponderIdByKey([.. "test"u8]))
                 .AddInMemoryCertificateStore()
+                .AddSingleton<IStoreRas>(_raStore)
                 .AddRa(new RaServerOptions
                 {
                     AcceptRa = true,
-                    Bindings =
-                    [
-                        new RaBinding(
-                            "ra-tenant-a",
-                            new HashSet<string>(["tenant-a.example.com"], StringComparer.OrdinalIgnoreCase),
-                            new HashSet<string>(["default", "ecdsa"], StringComparer.OrdinalIgnoreCase))
-                    ]
+                    Bindings = [raBinding]
                 })
                 .AddPublicRa(PublicRaOptions.FromConfiguration(ctx.Configuration))
                 .AddSelfSignedCertificateAuthority(

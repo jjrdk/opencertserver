@@ -380,8 +380,8 @@ signing path.
 **Scoped peer RA (T05).** `opencertserver.ra` is an outbound client; it does not host a listener.
 The CA must enable `Ca:AcceptRa` and configure each `Ca:RaBindings` entry with its authenticated
 RA ID, permitted DNS suffixes, and profiles. A JWT RA identity supplies the `ra` claim; for mTLS,
-the CA maps a CA-issued client certificate's CN to an RA ID only when that ID has a configured
-binding. Every CSR must contain DNS SANs exclusively, and each name must equal or be below the
+the CA maps a certificate CN to an RA ID only when its SHA-256 fingerprint is explicitly listed in
+that binding. Every CSR must contain DNS SANs exclusively, and each name must equal or be below the
 selected delegated suffix. `X-Delegated-Subject` is only a selector and grants no scope by itself.
 JWT subject/name matching is deferred to this scope validator for bound RA identities.
 `EnrollAsync` and `RenewAsync` submit a replacement PKCS#10 CSR; the central CA applies its normal

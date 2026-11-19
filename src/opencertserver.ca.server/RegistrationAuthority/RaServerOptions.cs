@@ -32,16 +32,27 @@ public sealed class RaServerOptions
 
             var scopes = ReadValues(binding.GetSection("Scopes"));
             var profiles = ReadValues(binding.GetSection("Profiles"));
+            var certificateThumbprints = ReadValues(binding.GetSection("CertificateSha256Thumbprints"));
             if (scopes.Count == 0 || profiles.Count == 0)
             {
                 throw new InvalidOperationException(
                     $"RA binding '{id}' must define at least one DNS scope and one CA profile.");
             }
+            if (certificateThumbprints.Any(thumbprint =>
+                thumbprint.Length != 64 || !thumbprint.All(Uri.IsHexDigit)))
+            {
+                throw new InvalidOperationException(
+                    $"RA binding '{id}' must use 64-character hexadecimal SHA-256 certificate fingerprints.");
+            }
 
             return new RaBinding(
                 id,
                 new HashSet<string>(scopes, StringComparer.OrdinalIgnoreCase),
-                new HashSet<string>(profiles, StringComparer.OrdinalIgnoreCase));
+                new HashSet<string>(profiles, StringComparer.OrdinalIgnoreCase))
+            {
+                CertificateSha256Thumbprints = new HashSet<string>(
+                    certificateThumbprints, StringComparer.OrdinalIgnoreCase)
+            };
         }).ToArray();
 
         return new RaServerOptions

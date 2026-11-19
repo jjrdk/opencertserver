@@ -793,7 +793,11 @@ Ca__AcceptRa=true
 Ca__RaBindings__0__RaId=ra-tenant-a
 Ca__RaBindings__0__Scopes__0=tenant-a.example.com
 Ca__RaBindings__0__Profiles__0=default
+Ca__RaBindings__0__CertificateSha256Thumbprints__0=<64-hex SHA-256 fingerprint of the RA client certificate>
 ```
+
+The fingerprint is required for mTLS RA identity; a matching certificate CN alone is not sufficient.
+JWT-based RAs do not need this fingerprint.
 
 The RA process initiates every connection; no inbound listener or CA-to-RA route is needed. Its
 configuration uses `Ra:PeerUrl` (HTTPS only), `Ra:Scope`, optional `Ra:Profile`, and optionally
@@ -920,7 +924,11 @@ Ca__AcceptRa=true
 Ca__RaBindings__0__RaId=ra-tenant-a
 Ca__RaBindings__0__Scopes__0=tenant-a.example.com
 Ca__RaBindings__0__Profiles__0=default
+Ca__RaBindings__0__CertificateSha256Thumbprints__0=<64-hex SHA-256 fingerprint of the RA client certificate>
 ```
+
+The fingerprint is required for mTLS RA identity; a matching certificate CN alone is not sufficient.
+JWT-based RAs do not need this fingerprint.
 
 The RA process initiates every connection; no inbound listener or CA-to-RA route is needed. Its
 configuration uses `Ra:PeerUrl` (HTTPS only), `Ra:Scope`, optional `Ra:Profile`, optional

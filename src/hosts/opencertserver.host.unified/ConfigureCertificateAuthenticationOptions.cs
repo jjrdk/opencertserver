@@ -213,11 +213,14 @@ public class ConfigureCertificateAuthenticationOptions : IPostConfigureOptions<C
         var principal = CreatePrincipal(certificate);
         var identity = (ClaimsIdentity)principal.Identity!;
         var raId = identity.FindFirst(ClaimTypes.Name)?.Value;
-        if (_raStore is not null &&
-            !string.IsNullOrWhiteSpace(raId) &&
-            await _raStore.Find(raId, cancellationToken).ConfigureAwait(false) is not null)
+        if (_raStore is not null && !string.IsNullOrWhiteSpace(raId))
         {
-            identity.AddClaim(new Claim(RaClaimTypes.RaId, raId));
+            var binding = await _raStore.Find(raId, cancellationToken).ConfigureAwait(false);
+            var certificateThumbprint = certificate.GetCertHashString(HashAlgorithmName.SHA256);
+            if (binding?.CertificateSha256Thumbprints.Contains(certificateThumbprint) == true)
+            {
+                identity.AddClaim(new Claim(RaClaimTypes.RaId, raId));
+            }
         }
 
         return principal;
