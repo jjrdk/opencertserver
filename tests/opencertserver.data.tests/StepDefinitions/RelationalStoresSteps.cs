@@ -123,6 +123,7 @@ public sealed class RelationalStoresSteps
         _database!.RegisterProvider(services)
             .AddAcmeRelationalStore(config, "TestDatabase")
             .AddCaRelationalStore(config, "TestDatabase");
+        services.AddSingleton<IStoreCaProfiles, RelationalCaProfileStore>();
         return services.BuildServiceProvider(new ServiceProviderOptions
             { ValidateScopes = true, ValidateOnBuild = true });
     }
@@ -669,6 +670,9 @@ public sealed class RelationalStoresSteps
             services.AddPostgreSqlStore()
                 .AddAcmeRelationalStore(configuration, "Selected")
                 .AddCaRelationalStore(configuration, "Selected");
+            Assert.DoesNotContain(services, descriptor =>
+                descriptor.ServiceType == typeof(IStoreCaProfiles) &&
+                descriptor.ImplementationType == typeof(RelationalCaProfileStore));
             using var provider = services.BuildServiceProvider();
             using var scope = provider.CreateScope();
             Assert.Equal(connection,

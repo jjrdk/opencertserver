@@ -198,6 +198,7 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
     {
         var services = RegisterProvider(new ServiceCollection());
         services.AddCaRelationalStore(connectionString);
+        services.AddSingleton<IStoreCaProfiles, RelationalCaProfileStore>();
         await using var provider = services.BuildServiceProvider();
         var store = (RelationalCaProfileStore)provider.GetRequiredService<IStoreCaProfiles>();
         var foundDefault = false;
