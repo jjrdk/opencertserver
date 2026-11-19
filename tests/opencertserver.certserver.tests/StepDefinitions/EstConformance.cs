@@ -432,7 +432,8 @@ public partial class CertificateServerFeatures
     [When("the client POSTs an invalid Full PKI Request to \"(.+)\"")]
     public async Task WhenTheClientPostsAnInvalidFullPkiRequestTo(string path)
     {
-        var content = new StringContent("invalid-full-cmc", Encoding.ASCII, "application/pkcs7-mime");
+        var invalidCmcDer = Convert.ToBase64String(new byte[] { 0x30, 0x00 });
+        var content = new StringContent(invalidCmcDer, Encoding.ASCII, "application/pkcs7-mime");
         await SendRequestAsync(HttpMethod.Post, path, content,
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
     }
@@ -1099,7 +1100,19 @@ public partial class CertificateServerFeatures
             RSASignaturePadding.Pss);
     }
 
-    [Then("the request content type MUST be \"(.+)\"")]
+    [Then("the request body MUST be RFC 4648 base64-encoded DER as updated by RFC 8951")]
+    public async Task ThenTheRequestBodyMustBeRfc4648Base64EncodedDerAsUpdatedByRfc8951()
+    {
+        var body = await ConformanceState.CapturedRequest!.Content!.ReadAsStringAsync().ConfigureAwait(false);
+        Assert.True(IsAsciiBase64(body), "The request body was not RFC 4648 base64 text.");
+
+        var reader = new AsnReader(Convert.FromBase64String(body), AsnEncodingRules.DER);
+        var sequence = reader.ReadSequence();
+        sequence.ThrowIfNotEmpty();
+        reader.ThrowIfNotEmpty();
+    }
+
+    [Then("the request content type MUST be \"(.+)\"$")]
     public void ThenTheRequestContentTypeMustBe(string contentType)
     {
         Assert.Equal(contentType, ConformanceState.CapturedRequest?.Content?.Headers.ContentType?.MediaType);
