@@ -1287,10 +1287,10 @@ public partial class CertificateServerFeatures
             "Expected a certs-only or CMC-response payload.");
     }
 
-    [Then("the response MUST include a CMC error body with the content type \"application/pkcs7-mime\"")]
-    public void ThenTheResponseMustIncludeACmcErrorBodyWithTheContentTypeApplicationPkcs7Mime()
+    [Then("the response MUST include a CMC error body with the content type {string}")]
+    public void ThenTheResponseMustIncludeACmcErrorBodyWithTheContentType(string contentType)
     {
-        Assert.Equal("application/pkcs7-mime", ConformanceState.Response?.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(contentType, ConformanceState.Response?.Content.Headers.ContentType?.MediaType);
     }
 
     [Then("cipher suites with NULL confidentiality MUST NOT be used")]
