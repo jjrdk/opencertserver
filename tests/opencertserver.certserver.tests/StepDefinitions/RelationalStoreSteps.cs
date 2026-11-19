@@ -1,6 +1,7 @@
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Ca.Server;
 using OpenCertServer.Data;
+using OpenCertServer.Data.Stores;
 
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
@@ -207,6 +208,7 @@ public sealed class RelationalStoreSteps
             .AddCaRelationalStore(configuration, "OpenCertServer")
             .AddRouting();
 
+        services.AddSingleton<IStoreCaProfiles, RelationalCaProfileStore>();
         services.AddSingleton<TestAcmeChallengeValidationState>();
         services.Replace(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeHttp01ChallengeValidator>());
         services.Replace(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeDns01ChallengeValidator>());
