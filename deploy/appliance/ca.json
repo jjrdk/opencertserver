@@ -32,10 +32,8 @@
       }
     ]
   },
-  "CaServer": {
-    "OCSP": ["https://ca.example.com:5001/ca/ocsp"],
-    "CrlDistributionPoints": ["https://ca.example.com:5001/ca/crl"]
-  },
+  "ocspUrls": ["https://ca.example.com:5001/ca/ocsp"],
+  "crlUrls": ["https://ca.example.com:5001/ca/{profile}/crl"],
   "Telemetry": {
     "Enabled": false
   }
