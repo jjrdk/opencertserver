@@ -120,7 +120,7 @@ changes; keys, profiles and authentication are not hot-reloaded. A missing selec
 | `version` | Required in mounted files. Current configuration schema: `2`; unsupported versions fail startup. |
 | `Appliance:Hardened` | `true` in appliance images. Rejects plaintext listeners and ephemeral CA keys; enables request audit logging and strict OCSP HTTP binding. CAA bypass, ACME worker, CAA, and EAB enforcement apply only to Unified, where those ACME settings are relevant. |
 | `Appliance:Role` | `Unified`, `Ca`, or `Ra`. Each image selects its role; the mounted JSON does not change it. |
-| `Appliance:DataDirectory` | `/var/lib/opencertserver` in Hardened. Local CA certificate/revocation snapshot and ACME file storage; mount a persistent volume. One CA writer per directory. |
+| `Appliance:DataDirectory` | `/var/lib/opencertserver` in Hardened. Local CA certificate/revocation snapshot, ACME file storage, and EAB consumption markers; mount a persistent volume. One CA writer per directory. |
 | `Migration:AutoApply` | `false`. If true, supported old configuration schemas are upgraded in memory without modifying the source. |
 | `Jwt:Authority` | Required HTTPS identity-provider URL (legacy `authority` / `--authority` also accepted). |
 | `Jwt:Audiences` | Required audience array or comma-separated list (legacy `audience` / `--audience` also accepted). |

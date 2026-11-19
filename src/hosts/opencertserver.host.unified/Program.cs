@@ -3,7 +3,6 @@ using OpenCertServer.Est.Server.TrustAnchor;
 using OpenCertServer.Data;
 using OpenCertServer.Data.PostgreSql;
 using OpenCertServer.Data.MsSql;
-using OpenCertServer.Host.Unified.Stores;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
@@ -27,10 +26,12 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Acme.Server;
 using Acme.Server.Extensions;
 using OpenCertServer.Acme.Remote;
 using Acme.Server.Services;
+using OpenCertServer.Acme.Server.Stores;
 using Acme.Abstractions.Storage;
 using Acme.Abstractions.Model;
 using Acme.Abstractions.Services;
@@ -625,8 +626,13 @@ internal static class Program
             return services;
         }
 
-        // Registered after AddAcmeInMemoryStore so the static store wins resolution.
-        return services.AddSingleton<IStoreExternalAccountKeys>(new StaticExternalAccountKeyStore(keys));
+        // Keep configured HMAC secrets in memory; persist only whether each key was consumed.
+        var consumedKeyPath = Path.Combine(
+            configuration["AcmeFileStore:BasePath"] ?? "./",
+            "ExternalAccountKeyUsage");
+        services.RemoveAll<IStoreExternalAccountKeys>();
+        return services.AddSingleton<IStoreExternalAccountKeys>(
+            new ConfiguredExternalAccountKeyStore(keys, consumedKeyPath));
     }
 
     /// <summary>

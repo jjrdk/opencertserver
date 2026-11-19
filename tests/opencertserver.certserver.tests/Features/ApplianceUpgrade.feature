@@ -28,6 +28,7 @@ Feature: Hardened appliance configuration and upgrades
   Scenario: ACME file persistence restores aggregate identity and challenge state
     Then the appliance ACME file store round-trips account and order aggregates
     And a persisted ACME nonce can only be consumed once concurrently
+    And configured external account key consumption survives a store reload
 
   Scenario: An operator enrolls and revokes through the RA container and remote CA
     Given a hardened CA and RA container topology

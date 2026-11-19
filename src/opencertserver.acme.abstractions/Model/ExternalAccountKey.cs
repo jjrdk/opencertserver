@@ -58,11 +58,18 @@ public sealed class ExternalAccountKey : IVersioned
     /// Marks this key as used and records which account it was bound to.
     /// </summary>
     /// <param name="accountId">The account identifier.</param>
-    public void MarkUsed(string? accountId)
+    public void MarkUsed(string? accountId) => MarkUsed(accountId, DateTimeOffset.UtcNow);
+
+    /// <summary>
+    /// Restores a consumed key with its original account binding time.
+    /// </summary>
+    /// <param name="accountId">The account identifier.</param>
+    /// <param name="boundAt">The UTC time at which the key was bound.</param>
+    public void MarkUsed(string? accountId, DateTimeOffset boundAt)
     {
         IsUsed = true;
         BoundAccountId = accountId;
-        BoundAt = DateTimeOffset.UtcNow;
+        BoundAt = boundAt;
     }
 
     /// <inheritdoc />

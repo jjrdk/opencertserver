@@ -92,6 +92,8 @@ Set `CaServer:OCSP` and `CaServer:CrlDistributionPoints` to the actual externall
 URLs, including the published port. Hardened defaults do not advertise placeholder
 revocation, issuer-certificate, or terms-of-service URLs. Provision EAB credentials under
 `AcmeServer:ExternalAccountKey` from your secret source before accepting ACME accounts.
+Consumed-key markers are stored under `Appliance:DataDirectory/acme/ExternalAccountKeyUsage`;
+mount that data directory persistently. HMAC key material is not copied to the marker files.
 If terms agreement is required, configure `AcmeServer:TOS:RequireAgreement`, `Url`, and
 `LastUpdate` with your own published terms.
 

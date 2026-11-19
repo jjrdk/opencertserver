@@ -180,4 +180,31 @@ public sealed partial class ApplianceUpgradeSteps
             .Select(_ => Task.Run(() => store.TryRemoveNonceAsync(nonce, CancellationToken.None)));
         Assert.Single(await Task.WhenAll(attempts), consumed => consumed);
     }
+
+    [Then("configured external account key consumption survives a store reload")]
+    public async Task ConfiguredExternalAccountKeyConsumptionSurvivesReload()
+    {
+        var key = new Model.ExternalAccountKey("configured-test", Base64UrlEncoder.Encode(
+            RandomNumberGenerator.GetBytes(32)));
+        var consumedPath = Path.Combine(_directory, "external-account-key-usage");
+        var store = new ConfiguredExternalAccountKeyStore([key], consumedPath);
+        var loaded = await store.FindActiveKey(key.KeyId, CancellationToken.None);
+        Assert.NotNull(loaded);
+
+        loaded!.MarkUsed("account-test");
+        await store.SaveKey(loaded, CancellationToken.None);
+
+        var reloadedStore = new ConfiguredExternalAccountKeyStore(
+            [new Model.ExternalAccountKey(key.KeyId, key.MacKey)],
+            consumedPath);
+        var reloadedKey = await reloadedStore.LoadKey(key.KeyId, CancellationToken.None);
+        Assert.NotNull(reloadedKey);
+        Assert.True(reloadedKey!.IsUsed);
+        Assert.Equal("account-test", reloadedKey.BoundAccountId);
+        Assert.Equal(key.BoundAt, reloadedKey.BoundAt);
+        Assert.Null(await reloadedStore.FindActiveKey(key.KeyId, CancellationToken.None));
+
+        var marker = Assert.Single(System.IO.Directory.GetFiles(consumedPath));
+        Assert.DoesNotContain(key.MacKey, await File.ReadAllTextAsync(marker));
+    }
 }
