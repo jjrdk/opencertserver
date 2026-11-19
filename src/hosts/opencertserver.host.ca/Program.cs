@@ -191,8 +191,9 @@ app.UseHsts()
 
         context.Response.OnCompleted(() =>
         {
+            var sanitizedPath = context.Request.Path.ToString().Replace("\r", "").Replace("\n", "");
             app.Logger.LogWarning("Appliance audit {TraceId} {Method} {Path} {StatusCode} {Authenticated}",
-                context.TraceIdentifier, context.Request.Method, context.Request.Path,
+                context.TraceIdentifier, context.Request.Method, sanitizedPath,
                 context.Response.StatusCode, context.User.Identity?.IsAuthenticated == true);
             return Task.CompletedTask;
         });
