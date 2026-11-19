@@ -125,7 +125,7 @@ public sealed class RaPeerClient
                 throw new InvalidDataException("The backing CA returned an empty certificate chain.");
             }
 
-            return string.Concat(certificates.Cast<X509Certificate2>()
+            return string.Join(Environment.NewLine, certificates.Cast<X509Certificate2>()
                 .Select(certificate => certificate.ExportCertificatePem()));
         }
         finally
