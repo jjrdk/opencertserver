@@ -115,7 +115,26 @@ public sealed class RaPeerClient
         request.Content = new StringContent(csrPem, System.Text.Encoding.UTF8, "application/pkcs10");
         using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var certificates = new X509Certificate2Collection();
+        try
+        {
+            certificates.ImportFromPem(body);
+            if (certificates.Count == 0)
+            {
+                throw new InvalidDataException("The backing CA returned an empty certificate chain.");
+            }
+
+            return string.Concat(certificates.Cast<X509Certificate2>()
+                .Select(certificate => certificate.ExportCertificatePem()));
+        }
+        finally
+        {
+            foreach (X509Certificate2 certificate in certificates)
+            {
+                certificate.Dispose();
+            }
+        }
     }
 
     private HttpRequestMessage CreateRequest(HttpMethod method, Uri requestUri)
