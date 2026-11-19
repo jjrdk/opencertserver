@@ -466,8 +466,8 @@ internal static class Program
 
                 context.Response.OnCompleted(() =>
                 {
-                    app.Logger.LogWarning("Appliance audit {TraceId} {Method} {Path} {StatusCode} {Authenticated}",
-                        context.TraceIdentifier, context.Request.Method, context.Request.Path,
+                    app.Logger.LogWarning("Appliance audit {TraceId} {StatusCode} {Authenticated}",
+                        context.TraceIdentifier,
                         context.Response.StatusCode, context.User.Identity?.IsAuthenticated == true);
                     return Task.CompletedTask;
                 });
