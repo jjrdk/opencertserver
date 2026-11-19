@@ -16,6 +16,7 @@ using Reqnroll;
 public sealed class ScepServerStorage
 {
     private const string StorageKey = "ScepServerStorage";
+    private const string ScenarioStorageKey = "ScepServerStorageInstance";
     private const string InMemory = "in-memory";
     private static readonly ConcurrentDictionary<string, Lazy<Task<RelationalTestDatabase>>> Databases = new();
 
@@ -56,7 +57,9 @@ public sealed class ScepServerStorage
             provider,
             p => new Lazy<Task<RelationalTestDatabase>>(() => Start(p))).Value;
         var connectionString = await database.CreateIsolatedDatabaseAsync(cancellationToken);
-        return new ScepServerStorage(database, connectionString);
+        var storageInstance = new ScepServerStorage(database, connectionString);
+        scenarioContext[ScenarioStorageKey] = storageInstance;
+        return storageInstance;
     }
 
     internal static void Select(ScenarioContext scenarioContext, string storage) =>
@@ -81,6 +84,21 @@ public sealed class ScepServerStorage
             ? Task.CompletedTask
             : _database.SeedProfilesAsync(_connectionString!,
                 services.GetRequiredService<CaConfiguration>().Profiles, cancellationToken);
+
+    private Task DisposeAsync() =>
+        _database is null || _connectionString is null
+            ? Task.CompletedTask
+            : _database.DropIsolatedDatabaseAsync(_connectionString);
+
+    [AfterScenario(Order = int.MaxValue)]
+    public static async Task DisposeScenarioDatabase(ScenarioContext scenarioContext)
+    {
+        if (scenarioContext.TryGetValue(ScenarioStorageKey, out ScepServerStorage? storageInstance) &&
+            storageInstance is not null)
+        {
+            await storageInstance.DisposeAsync();
+        }
+    }
 
     [AfterTestRun]
     public static async Task DisposeDatabases()

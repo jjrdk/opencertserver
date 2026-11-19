@@ -53,62 +53,64 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
         switch (database)
         {
             case "PostgreSQL":
-            {
-                var builder = new PostgreSqlBuilder("postgres:alpine")
-                    .WithUsername("postgres")
-                    .WithPassword(password)
-                    .WithDatabase(DatabaseName);
-                if (network is not null)
                 {
-                    builder = builder.WithNetwork(network).WithNetworkAliases(Alias);
+                    var builder = new PostgreSqlBuilder("postgres:alpine")
+                        .WithUsername("postgres")
+                        .WithPassword(password)
+                        .WithDatabase(DatabaseName);
+                    if (network is not null)
+                    {
+                        builder = builder.WithNetwork(network).WithNetworkAliases(Alias);
+                    }
+                    _container = builder.Build();
+                    await _container.StartAsync(cancellationToken);
+                    ConnectionString = new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
+                    {
+                        Pooling = false
+                    }.ConnectionString;
+                    NetworkConnectionString = new NpgsqlConnectionStringBuilder
+                    {
+                        Host = Alias,
+                        Port = 5432,
+                        Username = "postgres",
+                        Password = password,
+                        Database = DatabaseName,
+                        Pooling = false
+                    }.ConnectionString;
+                    Network = network;
+                    break;
                 }
-                _container = builder.Build();
-                await _container.StartAsync(cancellationToken);
-                ConnectionString = new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
-                {
-                    Pooling = false
-                }.ConnectionString;
-                NetworkConnectionString = new NpgsqlConnectionStringBuilder
-                {
-                    Host = Alias,
-                    Port = 5432,
-                    Username = "postgres",
-                    Password = password,
-                    Database = DatabaseName,
-                    Pooling = false
-                }.ConnectionString;
-                Network = network;
-                break;
-            }
             case "MSSQL":
-            {
-                // The module configures MSSQL_SA_PASSWORD and its sqlcmd readiness probe from WithPassword;
-                // overriding the env var or wait strategy makes the probe log in with the wrong password.
-                var builder = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
-                    .WithPassword(password);
-                if (network is not null)
                 {
-                    builder = builder.WithNetwork(network).WithNetworkAliases(Alias);
+                    // The module configures MSSQL_SA_PASSWORD and its sqlcmd readiness probe from WithPassword;
+                    // overriding the env var or wait strategy makes the probe log in with the wrong password.
+                    var builder = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
+                        .WithPassword(password);
+                    if (network is not null)
+                    {
+                        builder = builder.WithNetwork(network).WithNetworkAliases(Alias);
+                    }
+                    _container = builder.Build();
+                    await _container.StartAsync(cancellationToken);
+                    ConnectionString = new SqlConnectionStringBuilder(_container.GetConnectionString())
+                    {
+                        InitialCatalog = DatabaseName,
+                        TrustServerCertificate = true,
+                        Pooling = false
+                    }.ConnectionString;
+                    // MSSQL encodes the port in the DataSource (SqlConnectionStringBuilder has no Port property).
+                    NetworkConnectionString = new SqlConnectionStringBuilder
+                    {
+                        DataSource = $"{Alias},1433",
+                        UserID = "sa",
+                        Password = password,
+                        InitialCatalog = DatabaseName,
+                        TrustServerCertificate = true,
+                        Pooling = false
+                    }.ConnectionString;
+                    Network = network;
+                    break;
                 }
-                _container = builder.Build();
-                await _container.StartAsync(cancellationToken);
-                ConnectionString = new SqlConnectionStringBuilder(_container.GetConnectionString())
-                {
-                    InitialCatalog = DatabaseName, TrustServerCertificate = true, Pooling = false
-                }.ConnectionString;
-                // MSSQL encodes the port in the DataSource (SqlConnectionStringBuilder has no Port property).
-                NetworkConnectionString = new SqlConnectionStringBuilder
-                {
-                    DataSource = $"{Alias},1433",
-                    UserID = "sa",
-                    Password = password,
-                    InitialCatalog = DatabaseName,
-                    TrustServerCertificate = true,
-                    Pooling = false
-                }.ConnectionString;
-                Network = network;
-                break;
-            }
             default:
                 throw new NotSupportedException($"No relational test database factory is registered for '{database}'.");
         }
@@ -158,6 +160,45 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
         };
         await MigrateAsync(connectionString, cancellationToken);
         return connectionString;
+    }
+
+    /// <summary>Drops an isolated database created by <see cref="CreateIsolatedDatabaseAsync"/>.</summary>
+    public async Task DropIsolatedDatabaseAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        if (database == "PostgreSQL")
+        {
+            var databaseName = new NpgsqlConnectionStringBuilder(connectionString).Database;
+            ArgumentException.ThrowIfNullOrWhiteSpace(databaseName);
+            var quotedDatabaseName = databaseName.Replace("\"", "\"\"", StringComparison.Ordinal);
+            var adminConnectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Database = "postgres"
+            }.ConnectionString;
+            await using var connection = new NpgsqlConnection(adminConnectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"DROP DATABASE IF EXISTS \"{quotedDatabaseName}\"";
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            return;
+        }
+
+        if (database == "MSSQL")
+        {
+            var builder = new SqlConnectionStringBuilder(connectionString);
+            var databaseName = builder.InitialCatalog;
+            var escapedDatabaseName = databaseName.Replace("]", "]]", StringComparison.Ordinal);
+            builder.InitialCatalog = "master";
+            await using var connection = new SqlConnection(builder.ConnectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                $"IF DB_ID(@databaseName) IS NOT NULL BEGIN ALTER DATABASE [{escapedDatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{escapedDatabaseName}]; END";
+            command.Parameters.Add("@databaseName", System.Data.SqlDbType.NVarChar, 128).Value = databaseName;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            return;
+        }
+
+        throw new NotSupportedException($"No relational test database factory is registered for '{database}'.");
     }
 
     /// <summary>Runs the schema migration against a connection string (used for isolated and network databases).</summary>
