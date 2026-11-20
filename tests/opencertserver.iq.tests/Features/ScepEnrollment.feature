@@ -7,9 +7,9 @@ Feature: RFC 8894 SCEP enrollment works for a Linux device client
   it receives with `openssl`. sscep speaks plain HTTP; a `socat` bridge in the client
   carries it to the server over TLS and verifies the server certificate.
 
-  They complement the SCEP scenarios in-process; the new assertion is that a real SCEP
-  client completes enrollment over TLS against the hardened server, with the AES the
-  capabilities promise, and that an algorithm they do not promise is refused.
+  The MicroMDM/smallstep client SDK additionally sends real RenewalReq messages and
+  qualifies both HTTP transports and all default/named-profile endpoint forms directly
+  over verified HTTPS. The SDK, not OpenCertServer code, builds and verifies SCEP messages.
 
   Rule: A device learns what the server offers
   Scenario: The Linux client reads the SCEP capabilities
@@ -51,9 +51,67 @@ Feature: RFC 8894 SCEP enrollment works for a Linux device client
 
   Rule: A device enrolls again with the certificate it holds
   # sscep has no RenewalReq: it re-enrolls with a PKCSReq that carries the challenge and is
-  # signed with the certificate it holds. RenewalReq is covered in-process (ScepServer.feature).
+  # signed with the certificate it holds. MicroMDM below qualifies actual RenewalReq.
   Scenario: sscep enrolls again, signing with the certificate it holds
     Given sscep holds a certificate for "scep-renewal"
     When sscep enrolls again with a new key, signing with that certificate
     Then sscep exits with code 0
     And the renewed certificate has a new serial number and chains to the published CA
+
+  Rule: All endpoint forms support both transports with an independent client SDK
+  Scenario Outline: MicroMDM enrolls and renews over <Method> at <Path>
+    Given the hardened OpenCertServer is reachable over TLS
+    When the MicroMDM client enrolls and renews "micromdm-device" over "<Method>" at "<Path>"
+    Then the MicroMDM client verifies successful PKCSReq and RenewalReq replies
+    And the certificate names "micromdm-device" and chains to the published CA with "openssl verify"
+    And the certificate uses the issuing profile selected by the SCEP path
+    And the renewed certificate has a different key and serial from the original certificate
+
+    Examples:
+      | Method | Path                       |
+      | POST   | /scep                      |
+      | GET    | /scep                      |
+      | POST   | /scep/pkiclient.exe         |
+      | GET    | /scep/pkiclient.exe         |
+      | POST   | /scep/rsa                  |
+      | GET    | /scep/rsa                  |
+      | POST   | /scep/rsa/pkiclient.exe     |
+      | GET    | /scep/rsa/pkiclient.exe     |
+      | POST   | /scep/ecdsa                |
+      | GET    | /scep/ecdsa                |
+      | POST   | /scep/ecdsa/pkiclient.exe   |
+      | GET    | /scep/ecdsa/pkiclient.exe   |
+
+  Rule: Hardened refusals remain signed protocol replies, not transport errors
+  Scenario Outline: MicroMDM cannot enroll without the configured challenge over <Method>
+    Given the hardened OpenCertServer is reachable over TLS
+    When the MicroMDM client enrolls without a challenge over "<Method>"
+    Then the MicroMDM client verifies a signed PKCSReq badRequest refusal
+    And no certificate is written
+
+    Examples:
+      | Method |
+      | POST   |
+      | GET    |
+
+  Scenario Outline: MicroMDM cannot renew another subject over <Method>
+    Given the hardened OpenCertServer is reachable over TLS
+    When the MicroMDM client renews with a changed subject over "<Method>"
+    Then the MicroMDM client verifies a signed RenewalReq badRequest refusal
+    And no certificate is written
+
+    Examples:
+      | Method |
+      | POST   |
+      | GET    |
+
+  Scenario Outline: MicroMDM cannot replay an accepted enrollment over <Method>
+    Given the hardened OpenCertServer is reachable over TLS
+    When the MicroMDM client replays an accepted enrollment over "<Method>"
+    Then the MicroMDM client verifies a signed PKCSReq badRequest refusal
+    And no certificate is written
+
+    Examples:
+      | Method |
+      | POST   |
+      | GET    |

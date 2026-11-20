@@ -10,7 +10,8 @@
 # step definitions start it with TestContainers (see Support/IqAcmeEnvironment.cs)
 # and run each tool inside it via docker exec.
 # ---------------------------------------------------------------------------
-FROM ubuntu:26.04 AS estclient-build
+ARG PLATFORM=${TARGETPLATFORM}
+FROM --platform=${PLATFORM} ubuntu:26.04 AS estclient-build
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
@@ -42,7 +43,7 @@ RUN curl -fsSL https://archive.ubuntu.com/ubuntu/pool/universe/libe/libest/libes
 # sscep (BSD-style, with parts under the OpenSSL License - see COPYING) is the independent
 # SCEP (RFC 8894) client. No Debian or Ubuntu release packages it, so the pinned release is
 # built from source, like libest above.
-FROM ubuntu:26.04 AS sscep-build
+FROM --platform=${PLATFORM} ubuntu:26.04 AS sscep-build
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
@@ -63,7 +64,18 @@ RUN curl -fsSL "https://github.com/certnanny/sscep/archive/refs/tags/v${SSCEP_VE
  && make install \
  && install -D -m 0644 COPYING /opt/sscep/share/doc/sscep/COPYING
 
-FROM ubuntu:26.04
+FROM --platform=${PLATFORM} golang:1.26 AS scep-build
+WORKDIR /build
+COPY scep/go.mod scep/go.sum ./
+RUN go mod download
+COPY scep/main.go ./
+RUN CGO_ENABLED=0 go build -mod=readonly -trimpath -o /iq-scep . \
+ && mkdir /licenses \
+ && cp "$(go env GOPATH)/pkg/mod/github.com/micromdm/scep/v2@v2.0.0-20260122180621-9902c1a35498/LICENSE" /licenses/micromdm-scep \
+ && cp "$(go env GOPATH)/pkg/mod/github.com/smallstep/scep@v0.0.0-20241223071629-a37a330173bc/LICENSE" /licenses/smallstep-scep \
+ && cp "$(go env GOPATH)/pkg/mod/github.com/smallstep/pkcs7@v0.1.1/LICENSE" /licenses/smallstep-pkcs7
+
+FROM --platform=${PLATFORM} ubuntu:26.04
 
 # 1. Standard HTTP/TLS + JSON tooling, all available through apt on Debian/Ubuntu.
 RUN apt-get update \
@@ -117,6 +129,9 @@ RUN curl -fsSL "https://github.com/acmesh-official/acme.sh/archive/refs/tags/${A
 COPY --from=sscep-build /opt/sscep /opt/sscep
 RUN ln -s /opt/sscep/bin/sscep /usr/local/bin/sscep \
  && (sscep 2>&1 || true) | grep -q 'enroll'
+
+COPY --from=scep-build /iq-scep /usr/local/bin/iq-scep
+COPY --from=scep-build /licenses /usr/local/share/doc/iq-scep
 
 # 4. The project's own CLI. The image is built with the `opencert` binary already
 #    present on the image; the IQ harness copies the freshly built Linux binary at

@@ -1,8 +1,8 @@
 namespace OpenCertServer.Iq.Tests.Support;
 
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Images;
 
 /// <summary>
@@ -20,6 +20,7 @@ internal static class IqImages
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static IImage? _server;
     private static IImage? _client;
+    private static IqDockerPlatform? _platform;
 
     public static async Task<IImage> GetClientAsync(CancellationToken cancellationToken = default)
     {
@@ -34,13 +35,16 @@ internal static class IqImages
         }
     }
 
-    public static Task PublishMcpAsync(string output, CancellationToken cancellationToken = default) =>
-        DotNetPublish(
+    public static async Task PublishMcpAsync(string output, CancellationToken cancellationToken = default)
+    {
+        var platform = await GetPlatformAsync(cancellationToken).ConfigureAwait(false);
+        await DotNetPublish(
             Path.Combine(RepositoryPaths.Root, "src", "opencertserver.mcp", "opencertserver.mcp.csproj"),
-            $"linux-{Arch}",
+            $"linux-{platform.Architecture}",
             output,
             cancellationToken,
-            "-p:PublishTrimmed=false");
+            "-p:PublishTrimmed=false").ConfigureAwait(false);
+    }
 
     public static async Task<(IImage Server, IImage Client)> GetAsync(CancellationToken cancellationToken = default)
     {
@@ -57,20 +61,29 @@ internal static class IqImages
         }
     }
 
-    private static string Arch =>
-        Environment.GetEnvironmentVariable("IQ_DOCKER_ARCH")
-        ?? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64");
+    private static async Task<IqDockerPlatform> GetPlatformAsync(CancellationToken cancellationToken)
+    {
+        if (_platform is not null)
+        {
+            return _platform;
+        }
 
-    private static string Platform => Arch == "arm64" ? "linux/arm64" : "linux/amd64";
+        using var client = TestcontainersSettings.OS.DockerEndpointAuthConfig
+            .GetDockerClientBuilder(Guid.NewGuid()).Build();
+        var info = await client.System.GetSystemInfoAsync(cancellationToken).ConfigureAwait(false);
+        return _platform = IqDockerPlatform.Resolve(info.OSType, info.Architecture,
+            Environment.GetEnvironmentVariable("IQ_DOCKER_ARCH"));
+    }
 
     private static async Task<IImage> BuildServerImage(CancellationToken cancellationToken)
     {
+        var platform = await GetPlatformAsync(cancellationToken).ConfigureAwait(false);
         if (Environment.GetEnvironmentVariable("IQ_SERVER_IMAGE") is { Length: > 0 } prebuilt)
         {
             return new DockerImage(prebuilt);
         }
 
-        var rid = $"linux-musl-{Arch}";
+        var rid = $"linux-musl-{platform.Architecture}";
         var context = Path.Combine(RepositoryPaths.IqArtifacts, "server-context");
         var publishDir = Path.Combine(context, "artifacts", "publish", "server", rid);
         await DotNetPublish(
@@ -85,7 +98,7 @@ internal static class IqImages
             .WithDockerfileDirectory(context)
             .WithDockerfile("Dockerfile")
             .WithName("opencertserver-iq-server:local")
-            .WithBuildArgument("PLATFORM", Platform)
+            .WithBuildArgument("PLATFORM", platform.Platform)
             .WithBuildArgument("RID", rid)
             .WithImageBuildPolicy(PullPolicy.Always)
             .WithCleanUp(false)
@@ -96,6 +109,7 @@ internal static class IqImages
 
     private static async Task<IImage> BuildClientImage(CancellationToken cancellationToken)
     {
+        var platform = await GetPlatformAsync(cancellationToken).ConfigureAwait(false);
         if (Environment.GetEnvironmentVariable("IQ_CLIENT_IMAGE") is { Length: > 0 } prebuilt)
         {
             return new DockerImage(prebuilt);
@@ -105,7 +119,7 @@ internal static class IqImages
         var publishDir = Path.Combine(RepositoryPaths.IqArtifacts, "cli");
         await DotNetPublish(
                 Path.Combine(RepositoryPaths.Root, "src", "opencertserver.cli", "opencertserver.cli.csproj"),
-                $"linux-{Arch}",
+                $"linux-{platform.Architecture}",
                 publishDir,
                 cancellationToken,
                 "-p:PublishSingleFile=true")
@@ -115,11 +129,18 @@ internal static class IqImages
         File.Copy(Path.Combine(RepositoryPaths.IqProject, "client", "Dockerfile"), Path.Combine(context, "Dockerfile"), true);
         File.Copy(Path.Combine(RepositoryPaths.IqProject, "client", "libest-compat.patch"),
             Path.Combine(context, "libest-compat.patch"), true);
+        Directory.CreateDirectory(Path.Combine(context, "scep"));
+        foreach (var file in new[] { "go.mod", "go.sum", "main.go" })
+        {
+            File.Copy(Path.Combine(RepositoryPaths.IqProject, "client", "scep", file),
+                Path.Combine(context, "scep", file), true);
+        }
 
         var image = new ImageFromDockerfileBuilder()
             .WithDockerfileDirectory(context)
             .WithDockerfile("Dockerfile")
             .WithName("opencertserver-iq-client:local")
+            .WithBuildArgument("PLATFORM", platform.Platform)
             .WithImageBuildPolicy(PullPolicy.Always)
             .WithCleanUp(false)
             .Build();

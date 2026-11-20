@@ -50,6 +50,7 @@ public sealed class AcmeIssuanceHooks
         var isTelemetry = featureContext.FeatureInfo.Title == OpenTelemetrySteps.FeatureTitle;
         var isProfile = featureContext.FeatureInfo.Title == ProfileIssuanceSteps.FeatureTitle;
         var isPenetration = featureContext.FeatureInfo.Title == PenetrationSteps.FeatureTitle;
+        var isScep = featureContext.FeatureInfo.Title == ScepEnrollmentSteps.FeatureTitle;
         if (featureContext.FeatureInfo.Title == CrlRevocationSteps.FeatureTitle
             || isEst || isOcsp || isCli || isTelemetry || isPenetration)
         {
@@ -58,7 +59,7 @@ public sealed class AcmeIssuanceHooks
         }
 
         if (featureContext.FeatureInfo.Title is AuthorityInformationSteps.FeatureTitle or CrlRevocationSteps.FeatureTitle
-            || isEst || isOcsp || isCli || isTelemetry || isProfile || isPenetration)
+            || isEst || isOcsp || isCli || isTelemetry || isProfile || isPenetration || isScep)
         {
             authorityConfiguration = new IqAuthorityConfiguration(
                 revocationConfiguration is null ? "https://iq.test" : IqRevocationConfiguration.IssuerUrl,
