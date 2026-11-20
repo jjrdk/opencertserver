@@ -90,7 +90,7 @@ public interface ICertificateAuthority : IDisposable
     /// <returns>True if the certificate was successfully revoked, false otherwise.</returns>
     Task<bool> RevokeCertificate(
         string serialNumber,
-        string ? issuingProfile,
+        string? issuingProfile,
         X509RevocationReason reason,
         CancellationToken cancellationToken = default);
 

@@ -206,12 +206,12 @@ public sealed class CertificateRequestPipelineSteps : IDisposable
                     state.AssertContext(pre.Request, pre.Profile, pre.Requestor, pre.ReenrollingFrom, cancellationToken);
                     break;
                 case PostIssuingContext post:
-                {
-                    var certificate = Assert.IsType<X509Certificate2>(post.IssuedCertificate);
-                    state._postSubject = certificate.SubjectName.RawData;
-                    Assert.Null(await state._store.GetIssuingProfile(certificate.Thumbprint, cancellationToken));
-                    break;
-                }
+                    {
+                        var certificate = Assert.IsType<X509Certificate2>(post.IssuedCertificate);
+                        state._postSubject = certificate.SubjectName.RawData;
+                        Assert.Null(await state._store.GetIssuingProfile(certificate.Thumbprint, cancellationToken));
+                        break;
+                    }
             }
 
             state._executed.Add(phase);

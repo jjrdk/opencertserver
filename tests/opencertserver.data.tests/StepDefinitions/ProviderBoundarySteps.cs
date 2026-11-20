@@ -90,7 +90,7 @@ public sealed class ProviderBoundarySteps
         public Task<bool> RevokeCertificateAsync(
             CaDbContext context,
             string serialNumber,
-            string ? issuingProfile,
+            string? issuingProfile,
             X509RevocationReason reason,
             CancellationToken cancellationToken)
         {
@@ -111,7 +111,9 @@ public sealed class ProviderBoundarySteps
             await Task.CompletedTask;
             yield return new CertificateItemInfo
             {
-                SerialNumber = "01", DistinguishedName = "CN=probe", Thumbprint = "probe"
+                SerialNumber = "01",
+                DistinguishedName = "CN=probe",
+                Thumbprint = "probe"
             };
         }
     }

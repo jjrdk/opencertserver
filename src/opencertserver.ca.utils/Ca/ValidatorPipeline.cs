@@ -73,7 +73,7 @@ public interface IValidatorPipeline
     /// with <see cref="PostIssuingContext.IssuedCertificate"/> set.</summary>
     Task<ValidatorPipelineResult> RunPost(PostIssuingContext context, CancellationToken cancellationToken = default);
 
-	Task<ValidatorPipelineResult> RunRevoke(RevokeContext context, CancellationToken cancellationToken = default);
+    Task<ValidatorPipelineResult> RunRevoke(RevokeContext context, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

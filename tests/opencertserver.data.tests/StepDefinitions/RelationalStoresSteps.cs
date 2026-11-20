@@ -125,7 +125,7 @@ public sealed class RelationalStoresSteps
             .AddCaRelationalStore(config, "TestDatabase");
         services.AddSingleton<IStoreCaProfiles, RelationalCaProfileStore>();
         return services.BuildServiceProvider(new ServiceProviderOptions
-            { ValidateScopes = true, ValidateOnBuild = true });
+        { ValidateScopes = true, ValidateOnBuild = true });
     }
 
     private async Task Reload()

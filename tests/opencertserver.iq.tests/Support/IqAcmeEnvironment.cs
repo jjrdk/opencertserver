@@ -412,7 +412,7 @@ internal sealed class IqAcmeEnvironment : IAsyncDisposable
 
     private async Task CreateNetwork(CancellationToken cancellationToken)
     {
-        for (var attempt = 0;; attempt++)
+        for (var attempt = 0; ; attempt++)
         {
             _prefix = $"198.{18 + Random.Shared.Next(2)}.{Random.Shared.Next(256)}";
             var network = new NetworkBuilder()

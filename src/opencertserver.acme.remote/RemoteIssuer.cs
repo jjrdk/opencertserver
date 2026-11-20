@@ -59,10 +59,10 @@ public sealed class RemoteIssuer : IIssueCertificates
                 return (Encoding.UTF8.GetBytes(success.Certificate.ToPemChain(success.Issuers)), null);
             case SignCertificateResponse.Error error:
                 return (null, new AcmeError
-            {
-                Type = "multiple",
-                Detail = string.Join(", ", error.Errors)
-            });
+                {
+                    Type = "multiple",
+                    Detail = string.Join(", ", error.Errors)
+                });
             default:
                 throw new ArgumentException("Invalid response");
         }

@@ -84,15 +84,15 @@ public sealed class ApplianceDockerBuildTask : FrostingTask<BuildContext>
 
     internal static DotNetPublishSettings PublishSettings(
         RoleSpec role, FrameworkSpec framework, string configuration, bool mssql) => new()
-    {
-        PublishTrimmed = false,
-        Runtime = "linux-x64",
-        SelfContained = true,
-        Framework = framework.TargetFramework,
-        Configuration = configuration,
-        OutputDirectory = $"./artifacts/publish/{framework.TargetFramework}/{role.Name}/{(mssql ? "mssql/" : "")}linux-x64/",
-        MSBuildSettings = new DotNetMSBuildSettings().WithProperty("InvariantGlobalization", mssql ? "false" : "true")
-    };
+        {
+            PublishTrimmed = false,
+            Runtime = "linux-x64",
+            SelfContained = true,
+            Framework = framework.TargetFramework,
+            Configuration = configuration,
+            OutputDirectory = $"./artifacts/publish/{framework.TargetFramework}/{role.Name}/{(mssql ? "mssql/" : "")}linux-x64/",
+            MSBuildSettings = new DotNetMSBuildSettings().WithProperty("InvariantGlobalization", mssql ? "false" : "true")
+        };
 
     // Builds a single appliance image with framework-qualified latest and version tags.
     //

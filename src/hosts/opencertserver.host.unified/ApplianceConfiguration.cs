@@ -77,10 +77,10 @@ internal static class ApplianceConfiguration
         var source = ReadDocument(path);
         using var controls = new ConfigurationManager();
         controls.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Migration:AutoApply"] = source["Migration"]?["AutoApply"]?.GetValue<bool>().ToString()
+        {
+            ["Migration:AutoApply"] = source["Migration"]?["AutoApply"]?.GetValue<bool>().ToString()
                  ?? configuration["Migration:AutoApply"]
-            })
+        })
             .AddEnvironmentVariables()
             .AddCommandLine(args);
         var document = MigrationRunner.Upgrade(source, controls.GetValue<bool>("Migration:AutoApply"));

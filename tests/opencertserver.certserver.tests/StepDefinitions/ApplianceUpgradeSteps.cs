@@ -58,13 +58,13 @@ public sealed partial class ApplianceUpgradeSteps : IDisposable
             ["version"] = 2,
             ["Appliance"] = new JsonObject { ["Hardened"] = true, ["Role"] = "Ca", ["DataDirectory"] = _directory },
             ["Jwt"] = new JsonObject
-                { ["Authority"] = "https://identity.example.test", ["Audiences"] = new JsonArray("appliance") },
+            { ["Authority"] = "https://identity.example.test", ["Audiences"] = new JsonArray("appliance") },
             ["port"] = _port,
             ["AllowedHosts"] = "localhost",
             ["rsa"] = new JsonObject
-                { ["Pem"] = Path.Combine(_directory, "rsa.pem"), ["KeyPem"] = Path.Combine(_directory, "rsa.key") },
+            { ["Pem"] = Path.Combine(_directory, "rsa.pem"), ["KeyPem"] = Path.Combine(_directory, "rsa.key") },
             ["ecdsa"] = new JsonObject
-                { ["Pem"] = Path.Combine(_directory, "ecdsa.pem"), ["KeyPem"] = Path.Combine(_directory, "ecdsa.key") },
+            { ["Pem"] = Path.Combine(_directory, "ecdsa.pem"), ["KeyPem"] = Path.Combine(_directory, "ecdsa.key") },
             ["Kestrel"] = new JsonObject
             {
                 ["Certificates"] = new JsonObject

@@ -5,14 +5,14 @@ namespace OpenCertServer.Ca.Utils.Ca;
 /// </summary>
 public enum ValidationOutcome
 {
-	/// <summary>The request passed this validator.</summary>
-	Passed = 0,
+    /// <summary>The request passed this validator.</summary>
+    Passed = 0,
 
-	/// <summary>The request is rejected and should not be issued.</summary>
-	Rejected = 1,
+    /// <summary>The request is rejected and should not be issued.</summary>
+    Rejected = 1,
 
-	/// <summary>The request is not invalid but cannot be issued unconditionally — it needs human approval (T04).</summary>
-	NeedsApproval = 2,
+    /// <summary>The request is not invalid but cannot be issued unconditionally — it needs human approval (T04).</summary>
+    NeedsApproval = 2,
 }
 
 /// <summary>
@@ -28,42 +28,42 @@ public enum ValidationOutcome
 /// does not short-circuit — the approval gate is wired by T04.
 /// </summary>
 public readonly record struct ValidationResult(
-	ValidationOutcome Outcome,
-	string? Reason,
-	string? Annotation,
-	bool ShortCircuit)
+    ValidationOutcome Outcome,
+    string? Reason,
+    string? Annotation,
+    bool ShortCircuit)
 {
-	/// <summary>A passing result (no objection).</summary>
-	public static readonly ValidationResult Passed = new(ValidationOutcome.Passed, null, null, false);
+    /// <summary>A passing result (no objection).</summary>
+    public static readonly ValidationResult Passed = new(ValidationOutcome.Passed, null, null, false);
 
-	/// <summary>The well-known annotation used when a validator requests human approval.</summary>
-	public const string NeedsApprovalAnnotation = "needs-approval";
+    /// <summary>The well-known annotation used when a validator requests human approval.</summary>
+    public const string NeedsApprovalAnnotation = "needs-approval";
 
-	/// <summary>Create a rejection. By default a rejection short-circuits the pipeline.</summary>
-	/// <param name="reason">Human-readable reason.</param>
-	/// <param name="shortCircuit">
-	/// When <c>true</c> (the default), later phases stop running. When <c>false</c>, the rejection is recorded and
-	/// the pipeline continues (aggregate mode).
-	/// </param>
-	public static ValidationResult Reject(string reason, bool shortCircuit = true) =>
-		new(ValidationOutcome.Rejected, reason, null, shortCircuit);
+    /// <summary>Create a rejection. By default a rejection short-circuits the pipeline.</summary>
+    /// <param name="reason">Human-readable reason.</param>
+    /// <param name="shortCircuit">
+    /// When <c>true</c> (the default), later phases stop running. When <c>false</c>, the rejection is recorded and
+    /// the pipeline continues (aggregate mode).
+    /// </param>
+    public static ValidationResult Reject(string reason, bool shortCircuit = true) =>
+        new(ValidationOutcome.Rejected, reason, null, shortCircuit);
 
-	/// <summary>Create a rejection that is <b>recorded but does not short-circuit</b> (aggregate mode).</summary>
-	public static ValidationResult Error(string reason) =>
-		new(ValidationOutcome.Rejected, reason, null, ShortCircuit: false);
+    /// <summary>Create a rejection that is <b>recorded but does not short-circuit</b> (aggregate mode).</summary>
+    public static ValidationResult Error(string reason) =>
+        new(ValidationOutcome.Rejected, reason, null, ShortCircuit: false);
 
-	/// <summary>Create a "needs approval" result (records an annotation, does not short-circuit).</summary>
-	/// <param name="reason">Human-readable reason the request needs approval.</param>
-	/// <param name="annotation">The annotation to record (defaults to <see cref="NeedsApprovalAnnotation"/>).</param>
-	public static ValidationResult NeedsApproval(string reason, string? annotation = null) =>
-		new(ValidationOutcome.NeedsApproval, reason, annotation, ShortCircuit: false);
+    /// <summary>Create a "needs approval" result (records an annotation, does not short-circuit).</summary>
+    /// <param name="reason">Human-readable reason the request needs approval.</param>
+    /// <param name="annotation">The annotation to record (defaults to <see cref="NeedsApprovalAnnotation"/>).</param>
+    public static ValidationResult NeedsApproval(string reason, string? annotation = null) =>
+        new(ValidationOutcome.NeedsApproval, reason, annotation, ShortCircuit: false);
 
-	/// <summary>True when the validator objected to the request.</summary>
-	public bool IsError => Outcome is ValidationOutcome.Rejected;
+    /// <summary>True when the validator objected to the request.</summary>
+    public bool IsError => Outcome is ValidationOutcome.Rejected;
 
-	/// <summary>True when the validator passed.</summary>
-	public bool IsPassed => Outcome == ValidationOutcome.Passed;
+    /// <summary>True when the validator passed.</summary>
+    public bool IsPassed => Outcome == ValidationOutcome.Passed;
 
-	/// <summary>True when the validator requested human approval.</summary>
-	public bool RequiresApproval => Outcome == ValidationOutcome.NeedsApproval;
+    /// <summary>True when the validator requested human approval.</summary>
+    public bool RequiresApproval => Outcome == ValidationOutcome.NeedsApproval;
 }

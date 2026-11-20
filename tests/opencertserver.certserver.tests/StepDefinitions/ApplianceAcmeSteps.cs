@@ -33,7 +33,8 @@ public sealed partial class ApplianceUpgradeSteps
         var parameters = key.ExportParameters(false);
         var jwk = new JsonObject
         {
-            ["kty"] = "RSA", ["n"] = Base64UrlEncoder.Encode(parameters.Modulus!),
+            ["kty"] = "RSA",
+            ["n"] = Base64UrlEncoder.Encode(parameters.Modulus!),
             ["e"] = Base64UrlEncoder.Encode(parameters.Exponent!)
         };
         var accountEndpoint = $"https://localhost:{_port}/new-account";
@@ -44,11 +45,12 @@ public sealed partial class ApplianceUpgradeSteps
             .EndsWith(":malformed", StringComparison.Ordinal), rejected.Body);
         Assert.Contains("externalAccountBinding", rejected.Body);
         var bindingHeader = Encode(new JsonObject
-            { ["alg"] = "HS256", ["kid"] = "native-test", ["url"] = accountEndpoint }.ToJsonString());
+        { ["alg"] = "HS256", ["kid"] = "native-test", ["url"] = accountEndpoint }.ToJsonString());
         var bindingPayload = Encode(jwk.ToJsonString());
         payload["externalAccountBinding"] = new JsonObject
         {
-            ["protected"] = bindingHeader, ["payload"] = bindingPayload,
+            ["protected"] = bindingHeader,
+            ["payload"] = bindingPayload,
             ["signature"] = Base64UrlEncoder.Encode(HMACSHA256.HashData(_externalAccountKey!,
                 Encoding.ASCII.GetBytes(bindingHeader + "." + bindingPayload)))
         };
@@ -91,7 +93,9 @@ public sealed partial class ApplianceUpgradeSteps
         Assert.True(nonce.ExitCode == 0, nonce.Error);
         var header = new JsonObject
         {
-            ["alg"] = "RS256", ["nonce"] = ReadHeader(headers, "Replay-Nonce"), ["url"] = url
+            ["alg"] = "RS256",
+            ["nonce"] = ReadHeader(headers, "Replay-Nonce"),
+            ["url"] = url
         };
         if (accountUrl is null)
         {
@@ -108,7 +112,8 @@ public sealed partial class ApplianceUpgradeSteps
             HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         await File.WriteAllTextAsync(request, new JsonObject
         {
-            ["protected"] = protectedHeader, ["payload"] = encodedPayload,
+            ["protected"] = protectedHeader,
+            ["payload"] = encodedPayload,
             ["signature"] = Base64UrlEncoder.Encode(signature)
         }.ToJsonString());
         var result = await Execute("curl",
@@ -137,7 +142,7 @@ public sealed partial class ApplianceUpgradeSteps
         using var key = RSA.Create(2048);
         var account = new Model.Account(JsonWebKeyConverter.ConvertFromRSASecurityKey(new RsaSecurityKey(key)),
                 ["mailto:operator@example.test"], DateTimeOffset.UtcNow, "external-account")
-            { AccountUri = "https://ca.example.test/acme/account/test" };
+        { AccountUri = "https://ca.example.test/acme/account/test" };
         await accounts.SaveAccount(account, CancellationToken.None);
         var loadedAccount = await new AccountStore(options).LoadAccount(account.AccountId, CancellationToken.None);
         Assert.NotNull(loadedAccount);

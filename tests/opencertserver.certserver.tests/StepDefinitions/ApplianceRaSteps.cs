@@ -51,7 +51,8 @@ public sealed partial class ApplianceUpgradeSteps
             ["AcceptRa"] = true,
             ["RaBindings"] = new JsonArray(new JsonObject
             {
-                ["RaId"] = "ra-tenant-a", ["Scopes"] = new JsonArray("tenant.example.test"),
+                ["RaId"] = "ra-tenant-a",
+                ["Scopes"] = new JsonArray("tenant.example.test"),
                 ["Profiles"] = new JsonArray("rsa"),
                 ["CertificateSha256Thumbprints"] = new JsonArray(
                     identity.GetCertHashString(HashAlgorithmName.SHA256))
@@ -69,25 +70,31 @@ public sealed partial class ApplianceUpgradeSteps
         {
             ["keys"] = new JsonArray(new JsonObject
             {
-                ["kty"] = "RSA", ["use"] = "sig", ["kid"] = "operator", ["alg"] = "RS256",
+                ["kty"] = "RSA",
+                ["use"] = "sig",
+                ["kid"] = "operator",
+                ["alg"] = "RS256",
                 ["n"] = Base64UrlEncoder.Encode(parameters.Modulus!),
                 ["e"] = Base64UrlEncoder.Encode(parameters.Exponent!)
             })
         }.ToJsonString();
         var metadata = new JsonObject
         {
-            ["issuer"] = issuer, ["jwks_uri"] = issuer + "/keys",
+            ["issuer"] = issuer,
+            ["jwks_uri"] = issuer + "/keys",
             ["id_token_signing_alg_values_supported"] = new JsonArray("RS256")
         }.ToJsonString();
         _operatorToken = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
-            Issuer = issuer, Audience = "appliance", Expires = DateTime.UtcNow.AddMinutes(10),
+            Issuer = issuer,
+            Audience = "appliance",
+            Expires = DateTime.UtcNow.AddMinutes(10),
             Claims = new Dictionary<string, object> { ["sub"] = "operator", ["role"] = "ra_operator" },
             SigningCredentials = new SigningCredentials(
                 new RsaSecurityKey(operatorKey) { KeyId = "operator" }, SecurityAlgorithms.RsaSha256)
         });
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-            { EnvironmentName = "Testing", ContentRootPath = _directory });
+        { EnvironmentName = "Testing", ContentRootPath = _directory });
         _issuerTls = X509Certificate2.CreateFromPemFile(
             Path.Combine(_directory, "tls.pem"), Path.Combine(_directory, "tls.key"));
         builder.WebHost.ConfigureKestrel(options =>
@@ -112,7 +119,9 @@ public sealed partial class ApplianceUpgradeSteps
         config.Remove("Ca");
         config["Ra"] = new JsonObject
         {
-            ["PeerUrl"] = "https://ca:5001/", ["Scope"] = "tenant.example.test", ["Profile"] = "rsa",
+            ["PeerUrl"] = "https://ca:5001/",
+            ["Scope"] = "tenant.example.test",
+            ["Profile"] = "rsa",
             ["ClientCertificatePath"] = Path.Combine(_directory, "ra.pem"),
             ["ClientPrivateKeyPath"] = Path.Combine(_directory, "ra.key"),
             ["CaTrustRoots"] = new JsonArray(Path.Combine(_directory, "tls.pem"))

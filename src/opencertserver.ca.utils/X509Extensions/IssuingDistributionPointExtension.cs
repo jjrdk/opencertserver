@@ -23,17 +23,17 @@ public class IssuingDistributionPointExtension : X509Extension
     {
         var writer = new AsnWriter(AsnEncodingRules.DER);
         using (writer.PushSequence())
-            using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
-                using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
-                {
-                    foreach (var uri in uris)
-                    {
-                        writer.WriteCharacterString(
-                            UniversalTagNumber.IA5String,
-                            uri,
-                            new Asn1Tag(TagClass.ContextSpecific, 6));
-                    }
-                }
+        using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+        using (writer.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true)))
+        {
+            foreach (var uri in uris)
+            {
+                writer.WriteCharacterString(
+                    UniversalTagNumber.IA5String,
+                    uri,
+                    new Asn1Tag(TagClass.ContextSpecific, 6));
+            }
+        }
         return writer.Encode();
     }
 }

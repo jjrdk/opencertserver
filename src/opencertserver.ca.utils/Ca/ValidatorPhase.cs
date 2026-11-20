@@ -9,23 +9,23 @@ namespace OpenCertServer.Ca.Utils.Ca;
 /// </summary>
 public enum ValidatorPhase
 {
-	/// <summary>Identity / authorization / "who is the requestor" — the earliest gate.</summary>
-	Approval = 0,
+    /// <summary>Identity / authorization / "who is the requestor" — the earliest gate.</summary>
+    Approval = 0,
 
-	/// <summary>Request data / policy — profile, distinguished-name, extension rules.</summary>
-	Data = 1,
+    /// <summary>Request data / policy — profile, distinguished-name, extension rules.</summary>
+    Data = 1,
 
-	/// <summary>Issuance decision — may-issue / revocation / key material checks.</summary>
-	Issuance = 2,
+    /// <summary>Issuance decision — may-issue / revocation / key material checks.</summary>
+    Issuance = 2,
 
-	/// <summary>Pre-sign — last pre-sign gate (e.g. final sanity before the signature is applied).</summary>
-	PreSign = 3,
+    /// <summary>Pre-sign — last pre-sign gate (e.g. final sanity before the signature is applied).</summary>
+    PreSign = 3,
 
-	/// <summary>Post-issue — runs after signing, on the issued certificate (hook point: PostIssue).</summary>
-	Post = 4,
+    /// <summary>Post-issue — runs after signing, on the issued certificate (hook point: PostIssue).</summary>
+    Post = 4,
 
-	/// <summary>
-	/// Revocation — runs during revocation, on the revoked certificate (hook point: PreRevoke).
-	/// </summary>
-	Revocation = 5
+    /// <summary>
+    /// Revocation — runs during revocation, on the revoked certificate (hook point: PreRevoke).
+    /// </summary>
+    Revocation = 5
 }

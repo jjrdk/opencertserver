@@ -179,15 +179,15 @@ public static class Extensions
             var rsaProfile = CertificateAuthority.CreateSelfSignedRsa(
                     "default", distinguishedName, validity, BigInteger.Zero, freshness)
                 with
-                {
-                    AllowPublicEnrollment = allowPublicEnrollment
-                };
+            {
+                AllowPublicEnrollment = allowPublicEnrollment
+            };
             var ecdsaProfile = CertificateAuthority.CreateSelfSignedEcdsa(
                     "ecdsa", distinguishedName, validity, BigInteger.Zero, freshness)
                 with
-                {
-                    AllowPublicEnrollment = allowPublicEnrollment
-                };
+            {
+                AllowPublicEnrollment = allowPublicEnrollment
+            };
             var config = new CaConfiguration(
                 new CaProfileSet(
                     "default",

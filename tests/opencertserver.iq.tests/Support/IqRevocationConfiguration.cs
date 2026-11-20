@@ -85,11 +85,11 @@ internal sealed class IqRevocationConfiguration
             .WithResourceMapping(Encoding.ASCII.GetBytes(tls.RootPem),
                 FilePath.Of("/oidc/root.crt"), fileMode: Unix.FileMode644)
             .WithResourceMapping(JsonSerializer.SerializeToUtf8Bytes(new
-                {
-                    issuer = IssuerUrl,
-                    jwks_uri = $"{IssuerUrl}/jwks.json",
-                    id_token_signing_alg_values_supported = new[] { "RS256" }
-                }),
+            {
+                issuer = IssuerUrl,
+                jwks_uri = $"{IssuerUrl}/jwks.json",
+                id_token_signing_alg_values_supported = new[] { "RS256" }
+            }),
                 FilePath.Of("/oidc/.well-known/openid-configuration"), fileMode: Unix.FileMode644)
             .WithResourceMapping(_jwks, FilePath.Of("/oidc/jwks.json"), fileMode: Unix.FileMode644)
             .WithCommand("python", "-u", "-c", """

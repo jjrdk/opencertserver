@@ -248,7 +248,7 @@ public sealed partial class IntuneRevocationSync
         CancellationToken cancellationToken)
     {
         const int pageSize = 100;
-        for (var page = 0;; page++)
+        for (var page = 0; ; page++)
         {
             var count = 0;
             await foreach (var item in _store.GetInventory(page, pageSize, cancellationToken).ConfigureAwait(false))

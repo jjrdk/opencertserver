@@ -484,7 +484,7 @@ internal static class Program
         }
 
         app.UseCertificateAuthorityServer();
-// WP9: the SCEP surface (and the Intune revocation sync that rides on it) maps only when
+        // WP9: the SCEP surface (and the Intune revocation sync that rides on it) maps only when
         // the host enables SCEP. The monolith enables it by default, so a fresh monolith maps /scep
         // exactly as before; a CA-only host sets Scep:Enabled=false to run /ca/* with no /scep.
         if (IsScepEnabled(args, builder.Configuration))

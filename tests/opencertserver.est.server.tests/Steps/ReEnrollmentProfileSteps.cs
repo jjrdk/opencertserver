@@ -95,18 +95,18 @@ public sealed class ReEnrollmentProfileSteps
         switch (records)
         {
             case "expired" or "not yet valid":
-            {
-                using var issuedCertificate = _original;
-                var profile = await _profiles.GetProfile(source);
-                var now = DateTimeOffset.UtcNow;
-                var notBefore = records == "expired" ? now.AddDays(-2) : now.AddDays(1);
-                var notAfter = records == "expired" ? now.AddDays(-1) : now.AddDays(2);
-                _original = Request().Create(profile.CertificateChain[0].SubjectName,
-                    X509SignatureGenerator.CreateForRSA((RSA)profile.PrivateKey, RSASignaturePadding.Pkcs1),
-                    notBefore, notAfter, RandomNumberGenerator.GetBytes(16));
-                await _store.AddCertificate(_original, profile.Name);
-                break;
-            }
+                {
+                    using var issuedCertificate = _original;
+                    var profile = await _profiles.GetProfile(source);
+                    var now = DateTimeOffset.UtcNow;
+                    var notBefore = records == "expired" ? now.AddDays(-2) : now.AddDays(1);
+                    var notAfter = records == "expired" ? now.AddDays(-1) : now.AddDays(2);
+                    _original = Request().Create(profile.CertificateChain[0].SubjectName,
+                        X509SignatureGenerator.CreateForRSA((RSA)profile.PrivateKey, RSASignaturePadding.Pkcs1),
+                        notBefore, notAfter, RandomNumberGenerator.GetBytes(16));
+                    await _store.AddCertificate(_original, profile.Name);
+                    break;
+                }
             case "imported":
                 await _store.AddCertificate(_original, issuingProfile: null,
                     TestContext.Current.CancellationToken);
@@ -117,15 +117,15 @@ public sealed class ReEnrollmentProfileSteps
                         TestContext.Current.CancellationToken)).Item2);
                 break;
             case "collision":
-            {
-                using var recorded = _original;
-                var profile = await _profiles.GetProfile(source);
-                _original = Request().Create(profile.CertificateChain[0].SubjectName,
-                    X509SignatureGenerator.CreateForRSA((RSA)profile.PrivateKey, RSASignaturePadding.Pkcs1),
-                    recorded.NotBefore, recorded.NotAfter, recorded.GetSerialNumber().Reverse().ToArray());
-                Assert.NotEqual(recorded.Thumbprint, _original.Thumbprint);
-                break;
-            }
+                {
+                    using var recorded = _original;
+                    var profile = await _profiles.GetProfile(source);
+                    _original = Request().Create(profile.CertificateChain[0].SubjectName,
+                        X509SignatureGenerator.CreateForRSA((RSA)profile.PrivateKey, RSASignaturePadding.Pkcs1),
+                        recorded.NotBefore, recorded.NotAfter, recorded.GetSerialNumber().Reverse().ToArray());
+                    Assert.NotEqual(recorded.Thumbprint, _original.Thumbprint);
+                    break;
+                }
             case "revoked":
                 Assert.True(await authority.RevokeCertificate(_original.SerialNumber,
                     source == "default" ? "vpn-server" : source,
