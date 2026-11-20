@@ -15,7 +15,7 @@ harness the conformance and correctness suites use.
 |---|---|---|
 | `opencertserver.certserver.tests`, `opencertserver.<proto>.tests` | in-process `WebApplicationFactory`/`TestServer` | .NET `EstClient`, `AcmeContext`, direct handler calls |
 | `opencertserver.mcp.tests` | in-process MCP host | .NET tool invocations |
-| **`opencertserver.iq.tests` (this project)** | **a running OpenCertServer container over HTTP/TLS** | **a Linux container running `estclient`, `sscep`, `openssl`, `curl`, `acme.sh`, `certbot`, `jq`, and the `opencert` CLI** |
+| **`opencertserver.iq.tests` (this project)** | **a running OpenCertServer container over HTTP/TLS** | **a Linux container running `estclient`, `sscep`, `iq-scep`, `openssl`, `curl`, `acme.sh`, `certbot`, `jq`, and the `opencert` CLI** |
 | **MCP IQ feature** | **the published standalone MCP executable, launched in Linux** | **JSON-RPC over subprocess stdin/stdout, with independent OpenSSL checks** |
 
 The goal is **complementarity, not duplication**: the RFC-conformance and
@@ -43,7 +43,7 @@ Two TestContainers images are orchestrated by the step definitions:
    built from the Ubuntu package sources, the ACME client
    `acme.sh` (fetched over curl, the canonical ACME client), EFF `certbot` (from `apt`)
    and the project's own `opencert` CLI. Every scenario's Given/When/Then is something
-   this image can execute: `estclient`, `sscep`, `curl`, `openssl`, `acme.sh`, `certbot`, `jq`, `opencert`.
+   this image can execute: `estclient`, `sscep`, `iq-scep`, `curl`, `openssl`, `acme.sh`, `certbot`, `jq`, `opencert`.
 
 A [`docker-compose.yml`](./docker-compose.yml) provides a manual equivalent of the
 same two-container topology for hands-on runs; TestContainers performs the same
@@ -518,42 +518,19 @@ client images need no rebuild to pick up helper changes. Prebuilt images must in
 
 ### SCEP-enrollment scenarios
 
-Run all seven SCEP scenarios (requires Docker):
+Run the SCEP interoperability and client-platform scenarios (requires Docker):
 
 ```sh
 dotnet test --project tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj \
-  --filter-class "OpenCertServer.Iq.Tests.Features.RFC8894SCEPEnrollmentWorksForALinuxDeviceClientFeature"
+  --filter-class "*SCEP*"
 ```
 
-The client is [`sscep`](https://github.com/certnanny/sscep) 0.10.0 (BSD-style licence by Jarkko
-Turkulainen, with parts under the OpenSSL License - see its `COPYING`), an independent SCEP
-implementation in C. No Debian or Ubuntu release packages it, so the client image builds the pinned
-release from source and checks its SHA-256. sscep speaks plain HTTP only: a `socat` bridge in the
-client carries it to the server over TLS and verifies the server certificate against the system
-bundle, which holds the disposable TLS root - TLS verification stays enabled. The server of this
-feature is started with a shared challenge (`Scep__Challenge`); without one it issues nothing. Each
-scenario has its own directory for the key, the CSR and the certificate.
-
-- `curl ?operation=GetCACaps` must list `POSTPKIOperation`, `SHA-256`, `AES` and `Renewal`.
-- `curl ?operation=GetCACert` is decoded with `openssl pkcs7`; the bundle must hold an RA certificate
-  for key encipherment and a `CA:TRUE` certificate, each checked on its own.
-- `sscep getca`, then `sscep enroll -E aes -S sha256` with a CSR that carries the challenge as
-  `challengePassword`, encrypted to the RA certificate from `GetCACert`. The certificate must name
-  the requested common name and verify with `openssl verify` against the `CA:TRUE` certificates of
-  `GetCACert` - not the RA.
-- A wrong challenge must end in a SCEP `FAILURE` with `failInfo=badRequest` (sscep exits 72), not a
-  transport error, and leave no certificate.
-- The same enrollment through `/scep/pkiclient.exe`, the path Windows uses.
-- The same enrollment with `-E 3des` must end in a `FAILURE` with `failInfo=badAlg` (sscep exits 70):
-  the capabilities offer AES only, and anything else is refused, not decrypted.
-- sscep then enrolls again with a new key, signing the request with the certificate it holds
-  (`-K`/`-O`). sscep has no `RenewalReq` - it sends a `PKCSReq` with the challenge - so `RenewalReq`
-  is covered in-process ([ScepServer.feature](../opencertserver.scep.server.tests/Features/ScepServer.feature)).
-  The new certificate must have a new serial and verify.
-
-Until 05.11.2026 the client was micromdm's `scepclient` v2.3.0. It sends `RenewalReq`, but always
-encrypts with single DES (the default of `smallstep/pkcs7`, which it never changes), and the server
-accepts AES only.
+The clients are `sscep` 0.10.0 and the pinned MicroMDM/smallstep SDK driver `iq-scep`.
+Both run inside the client container on macOS, Linux and Windows hosts; no native
+host installation of Go, sscep, OpenSSL, socat or Bash is required. The container
+build targets Docker's architecture, not the host operating system or CPU.
+Windows uses Docker Desktop in Linux-container mode.
+See [coverage and host-portability details](#scep-interoperability-and-host-portability).
 
 ### Profile-controlled issuance scenarios
 
@@ -736,6 +713,81 @@ the status line for the exact enrolled certificate, requiring `good` or `revoked
 responses must also carry `keyCompromise` and a revocation time. These scenarios qualify
 issuer-signed OCSP responses, not a separately configured delegated responder.
 
+## SCEP interoperability and host portability
+
+[`ScepEnrollment.feature`](./Features/ScepEnrollment.feature) has 25 black-box cases:
+the original seven `sscep` cases plus 18 MicroMDM/smallstep SDK cases. The hardened
+server requires the configured challenge and publishes a separate RSA RA certificate
+alongside the default and named RSA/ECDSA issuing profiles.
+
+| Implemented operation | External-client evidence |
+|---|---|
+| `GetCACaps` | sscep feature discovery check and SDK capability checks before every enrollment |
+| `GetCACert` | RA key-encipherment/CA bundle checks; SDK parsing; OpenSSL extraction and chain verification |
+| `PKIOperation` / `PKCSReq` | Challenge enrollment; GET and POST at all six default, named-profile and Windows paths |
+| `PKIOperation` / `RenewalReq` | Real renewal signed with the issued certificate, a new CSR key and no challenge; new serial/key and matching private key |
+| Hardened refusal behavior | Wrong/missing challenge, changed renewal subject, exact enrollment replay and triple DES; SCEP failure codes rather than transport failures |
+
+The SDK constructs requests, verifies CertRep signatures against the discovered RA,
+matches transaction IDs and recipient nonces, and decrypts replies. Both initially
+issued and renewed certificates must match the CSR subject/public key and chain to
+CA certificates from `GetCACert`; RA certificates cannot anchor that chain.
+OpenSSL independently verifies the final certificate and key rotation.
+The final issuer must also match the configured profile, so named routes cannot
+silently fall back to the default issuer.
+The six paths are `/scep`, `/scep/pkiclient.exe`, `/scep/rsa`,
+`/scep/rsa/pkiclient.exe`, `/scep/ecdsa` and `/scep/ecdsa/pkiclient.exe`.
+
+`iq-scep` is a small driver using MicroMDM's HTTP client endpoints and CSR helpers,
+plus smallstep's SCEP/CMS implementation; it does not implement OpenCertServer's
+protocol. Dependencies and checksums are pinned in [`client/scep/go.mod`](./client/scep/go.mod)
+and `go.sum`: MicroMDM commit `9902c1a35498`, smallstep/scep commit `a37a330173bc`
+and smallstep/pkcs7 `v0.1.1`. `client/Dockerfile` builds the static executable
+with Go 1.26 and includes the upstream license notices.
+The SDK defaults to DES encryption, so the driver explicitly selects AES-128-CBC
+through the SDK's public API. Its CMS signing digest remains the SDK's SHA-1 default;
+the retained `sscep -S sha256` cases independently exercise SHA-256 CMS requests.
+The SDK connects directly over verified HTTPS. sscep uses the existing TLS-verifying
+socat bridge because it only speaks HTTP.
+
+The IQ runner supports these host environments:
+
+| Test host | Container runtime | Client target |
+|---|---|---|
+| macOS, Intel or Apple Silicon | Docker Desktop with Linux containers | Docker daemon's `linux/amd64` or `linux/arm64` |
+| Linux, x64 or ARM64 | Docker Engine | Docker daemon's `linux/amd64` or `linux/arm64` |
+| Windows, x64 or ARM64 | Docker Desktop with Linux containers (WSL2 backend) | Docker daemon's `linux/amd64` or `linux/arm64` |
+
+Only the repository's .NET SDK/runtime and a working Linux Docker daemon are
+required on the test host. `IqImages` queries the same Docker endpoint/authentication
+that Testcontainers uses, including remote daemons, and supplies its platform to
+every client Dockerfile build stage and the server/CLI/MCP publish RIDs.
+`IQ_DOCKER_ARCH=x64` or `arm64` explicitly overrides the target; cross-architecture
+execution then requires Docker emulation. Windows-container daemons and unsupported
+architectures fail with an explicit diagnostic rather than running incompatible clients.
+Prebuilt `IQ_CLIENT_IMAGE` images must contain both `sscep` and `iq-scep` and match
+the selected Linux architecture.
+
+[`ScepClientPlatform.feature`](./Features/ScepClientPlatform.feature) adds ten
+BDD harness cases for AMD64/ARM64 names, overrides and actionable refusal of
+unsupported platforms. These test platform selection without Docker; the 25
+interoperability cases actually build and execute the selected clients.
+The Go driver also cross-compiles for native `darwin`, `linux` and `windows`
+on AMD64/ARM64, but the IQ scenarios deliberately execute it in the Linux
+container, using that container's TLS trust bundle.
+
+This covers every implemented SCEP operation, not every optional RFC operation.
+`GetNextCACert`, `CertPoll`, `GetCert` and `GetCRL` are unsupported.
+Further malformed-message, renewal authorization and replay-capacity edge cases
+remain in [`ScepServer.feature`](../opencertserver.scep.server.tests/Features/ScepServer.feature).
+
+Run just this feature from the repository root (Docker and the target .NET runtime required):
+
+```sh
+dotnet run --project tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj -- \
+  -class 'OpenCertServer.Iq.Tests.Features.RFC8894SCEPEnrollmentWorksForALinuxDeviceClientFeature'
+```
+
 ## Client tool inventory (`client/Dockerfile`)
 
 | Tool | Origin | Used by |
@@ -747,6 +799,8 @@ issuer-signed OCSP responses, not a separately configured delegated responder.
 | `socat` | `apt` | `acme.sh --standalone` answers http-01 on port 80 |
 | `acme.sh` 3.1.1 | pinned GitHub release tarball | RFC 8555 ACME issuance, revocation, EAB |
 | `certbot` | `apt` (Ubuntu) | second RFC 8555 client: registration, EAB, `certonly --standalone` (http-01), `--manual` (dns-01), `renew`, `revoke` |
+| `sscep` 0.10.0 | pinned upstream release, built in `client/Dockerfile` | SCEP enrollment with SHA-256/AES, wrong challenge and triple-DES refusals |
+| `iq-scep` | [`client/scep`](./client/scep), pinned MicroMDM/smallstep Go SDKs | SCEP discovery, enrollment, actual RenewalReq, GET/POST, named profiles and signed refusals over verified HTTPS |
 | `acme-raw.sh`, `dns_iq.sh`, `certbot-dns-iq.sh` | [`client/scripts`](./client/scripts) (mounted by the harness) | raw RFC 8555 requests (TOS re-agreement, missing nonce); acme.sh and certbot dns-01 hooks for the test DNS server |
 | `jq` | `apt` | JSON response shaping (`/directory`, problem+json) |
 | `python3`, `mcp-stdio.py` | `apt` / mounted [`client/scripts`](./client/scripts) helper | real MCP subprocess lifecycle, stdio JSON-RPC handshake and requests |
@@ -761,6 +815,8 @@ Linux-client black-box pass and tagged `@iq`:
 |---|---|
 | [`LinuxServerDeployment.feature`](./Features/LinuxServerDeployment.feature) | Deployment + hardening: health, TLS pinning, no `Server` header, HTTP→HTTPS |
 | [`EstEnrollment.feature`](./Features/EstEnrollment.feature) | RFC 7030 EST + RFC 9908 template retrieval + Basic auth, driven by `estclient` with independent `openssl` checks |
+| [`ScepEnrollment.feature`](./Features/ScepEnrollment.feature) | RFC 8894 SCEP discovery, enrollment and renewal, driven by `sscep` and MicroMDM/smallstep with independent OpenSSL checks |
+| [`ScepClientPlatform.feature`](./Features/ScepClientPlatform.feature) | Harness checks: client targets follow Docker architecture independently of macOS/Linux/Windows test hosts |
 | [`AcmeIssuance.feature`](./Features/AcmeIssuance.feature) | RFC 8555 ACME end-to-end, driven by `acme.sh` and `certbot` |
 | [`AuthorityInformation.feature`](./Features/AuthorityInformation.feature) | CDP, AIA OCSP/caIssuers, EST/ACME consistency, and profile-fixed EKUs/policies, inspected by `openssl` |
 | [`CaaEnforcement.feature`](./Features/CaaEnforcement.feature) | RFC 8659/8657 CAA, observed through the ACME path (fail-closed) |

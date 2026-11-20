@@ -249,11 +249,15 @@ remembered, a full replay store, a malformed signed attribute, no validator, the
 algorithm, and the `senderNonce` length. The test client builds real SCEP messages with `SignedCms` and
 `EnvelopedCms`, so the server is exercised over HTTP the way a device would.
 * [IQ ScepEnrollment.feature](../tests/opencertserver.iq.tests/Features/ScepEnrollment.feature) —
-`sscep` (AES) against the deployed, hardened container: capabilities, the RA and CA bundle,
-enrollment with the challenge, a wrong challenge refused, the `/pkiclient.exe` path, triple DES
-refused with `badAlg`, and a new enrollment signed with the certificate the client holds;
-`openssl` verifies what it receives. `RenewalReq` is covered in-process, since sscep does not send
-one. See the [IQ README](../tests/opencertserver.iq.tests/README.md#scep-enrollment-scenarios).
+`sscep` and the pinned MicroMDM/smallstep SDK against the deployed, hardened container:
+`GetCACaps`, `GetCACert`, `PKIOperation` enrollment and actual `RenewalReq` with key rotation,
+without reusing the enrollment challenge. The SDK covers GET and POST at all six default,
+RSA/ECDSA-profile and `/pkiclient.exe` paths. It verifies the reply signature, transaction ID,
+recipient nonce, CSR subject/public key and certificate chain; `openssl` independently checks
+the final certificate, chain and key rotation. Missing/wrong challenges, changed renewal subjects,
+enrollment replay and triple DES are refused with signed failure responses. This qualifies the
+implemented operations, not `GetNextCACert`, `CertPoll`, `GetCert` or `GetCRL`, which are unsupported.
+See the [IQ README](../tests/opencertserver.iq.tests/README.md#scep-enrollment-scenarios).
 * [ScepRemoteCa.feature](../tests/opencertserver.scep.server.tests/Features/ScepRemoteCa.feature) —
 the **standalone host against a backing CA**: a device enrolls in scope and the backing CA issues
 the chain, a `RenewalReq` supersedes the previous certificate at the CA (proving the

@@ -5,7 +5,7 @@ using OpenCertServer.Iq.Tests.Support;
 using Reqnroll;
 using Xunit;
 
-/// <summary>Qualifies SCEP using sscep and independent openssl checks on Linux.</summary>
+/// <summary>Qualifies SCEP using sscep, MicroMDM/smallstep and independent openssl checks on Linux.</summary>
 [Binding]
 [Scope(Feature = FeatureTitle)]
 public sealed class ScepEnrollmentSteps
@@ -19,6 +19,7 @@ public sealed class ScepEnrollmentSteps
     private readonly AcmeScenarioState _state;
     private ExecResult? _operation;
     private string _device = "";
+    private string _path = "/scep";
     private string? _previousSerial;
 
     public ScepEnrollmentSteps(ScenarioContext scenario, AcmeScenarioState state)
@@ -154,9 +155,74 @@ public sealed class ScepEnrollmentSteps
         await VerifyChain().ConfigureAwait(false);
     }
 
+    [When("^the MicroMDM client enrolls and renews \"([^\"]+)\" over \"(GET|POST)\" at \"([^\"]+)\"$")]
+    public Task MicroMdmRenew(string device, string method, string path) =>
+        MicroMdm(device, method, path, "renew", Challenge, "success");
+
+    [When("^the MicroMDM client enrolls without a challenge over \"(GET|POST)\"$")]
+    public Task MicroMdmMissingChallenge(string method) =>
+        MicroMdm("micromdm-no-challenge", method, "/scep", "enroll", "", "badRequest");
+
+    [When("^the MicroMDM client renews with a changed subject over \"(GET|POST)\"$")]
+    public Task MicroMdmChangedSubject(string method) =>
+        MicroMdm("micromdm-subject", method, "/scep", "changed-subject", Challenge, "badRequest");
+
+    [When("^the MicroMDM client replays an accepted enrollment over \"(GET|POST)\"$")]
+    public Task MicroMdmReplay(string method) =>
+        MicroMdm("micromdm-replay", method, "/scep", "replay", Challenge, "badRequest");
+
+    [Then("^the MicroMDM client verifies successful PKCSReq and RenewalReq replies$")]
+    public void AssertMicroMdmSuccess()
+    {
+        AssertSuccess();
+        Assert.Contains("request=PKCSReq status=SUCCESS", _operation!.Value.Stdout, StringComparison.Ordinal);
+        Assert.Contains("request=RenewalReq status=SUCCESS", _operation.Value.Stdout, StringComparison.Ordinal);
+    }
+
+    [Then("^the MicroMDM client verifies a signed (PKCSReq|RenewalReq) badRequest refusal$")]
+    public void AssertMicroMdmRefusal(string messageType)
+    {
+        AssertSuccess();
+        Assert.Contains($"request={messageType} status=FAILURE failInfo=badRequest (2)",
+            _operation!.Value.Stdout, StringComparison.Ordinal);
+    }
+
+    [Then("^the renewed certificate has a different key and serial from the original certificate$")]
+    public async Task AssertMicroMdmRenewed()
+    {
+        await Run($$"""
+            cd '{{Device}}'
+            test "$(openssl x509 -in cert.pem -noout -serial)" != "$(openssl x509 -in previous.pem -noout -serial)"
+            test "$(openssl x509 -in cert.pem -noout -pubkey)" != "$(openssl x509 -in previous.pem -noout -pubkey)"
+            test "$(openssl x509 -in cert.pem -noout -pubkey)" = "$(openssl pkey -in key.pem -pubout)"
+            """).ConfigureAwait(false);
+    }
+
+    [Then("^the certificate uses the issuing profile selected by the SCEP path$")]
+    public async Task AssertMicroMdmProfile()
+    {
+        var issuer = await Run($"openssl x509 -in '{Device}/cert.pem' -noout -issuer -nameopt RFC2253")
+            .ConfigureAwait(false);
+        var name = _path.StartsWith("/scep/ecdsa", StringComparison.Ordinal) ? "IQ ECDSA Issuer" : "IQ RSA Issuer";
+        Assert.Equal($"issuer=CN={name}", issuer.Stdout.Trim());
+    }
+
+    private async Task MicroMdm(string device, string method, string path, string mode, string challenge, string expected)
+    {
+        _device = device;
+        _path = path;
+        _operation = await _environment.ExecClientAsync($$"""
+            set -euo pipefail; mkdir -p '{{Device}}'; cd '{{Device}}'
+            timeout 90 iq-scep -url '{{Server}}{{path}}' -method '{{method}}' -mode '{{mode}}' \
+                -challenge '{{challenge}}' -subject '{{device}}' -expect '{{expected}}'
+            """).ConfigureAwait(false);
+        _state.LastExec = _operation.Value;
+    }
+
     private async Task Enroll(string device, string challenge, string path, string encryption = "aes")
     {
         _device = device;
+        _path = path;
         _operation = await Sscep(path, challenge, encryption).ConfigureAwait(false);
     }
 
@@ -202,7 +268,7 @@ public sealed class ScepEnrollmentSteps
 
     private async Task FetchBundle()
     {
-        await Run($"curl -fsS -o bundle.der '{Server}/scep?operation=GetCACert'"
+        await Run($"curl -fsS -o bundle.der '{Server}{_path}?operation=GetCACert'"
             + " && openssl pkcs7 -inform DER -in bundle.der -print_certs -out bundle.pem").ConfigureAwait(false);
     }
 

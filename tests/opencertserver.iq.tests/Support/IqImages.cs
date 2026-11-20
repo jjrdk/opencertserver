@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Images;
 
 /// <summary>
@@ -24,6 +25,7 @@ internal static class IqImages
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static IImage? _server;
     private static IImage? _client;
+    private static IqDockerPlatform? _platform;
 
     public static string TargetFramework
     {
@@ -241,10 +243,19 @@ internal static class IqImages
     }
 
 
-    private static string Arch =>
-        Environment.GetEnvironmentVariable("IQ_DOCKER_ARCH")
-     ?? (RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64");
+    private static async Task<IqDockerPlatform> GetPlatformAsync(CancellationToken cancellationToken)
+    {
+        if (_platform is not null)
+     {
+            return _platform;
+        }
 
+        using var client = TestcontainersSettings.OS.DockerEndpointAuthConfig
+            .GetDockerClientBuilder(Guid.NewGuid()).Build();
+        var info = await client.System.GetSystemInfoAsync(cancellationToken).ConfigureAwait(false);
+        return _platform = IqDockerPlatform.Resolve(info.OSType, info.Architecture,
+            Environment.GetEnvironmentVariable("IQ_DOCKER_ARCH"));
+    }
     private static void CopyRecursively(string source, string destination)
     {
         var sourceDir = new DirectoryInfo(Path.GetFullPath(source));
@@ -276,12 +287,13 @@ internal static class IqImages
 
     private static async Task<IImage> BuildServerImage(CancellationToken cancellationToken)
     {
+        var platform = await GetPlatformAsync(cancellationToken).ConfigureAwait(false);
         if (GetImageOverride("IQ_SERVER_IMAGE") is { Length: > 0 } prebuilt)
         {
             return new DockerImage(prebuilt);
         }
 
-        var rid = $"linux-musl-{Arch}";
+        var rid = $"linux-musl-{platform.Architecture}";
         var context = Path.Combine(RepositoryPaths.IqArtifacts, $"server-context-{TargetFramework}");
         var publishDir = Path.Combine(context, "artifacts", "publish", TargetFramework, "server", rid);
         await DotNetPublish(
@@ -297,7 +309,7 @@ internal static class IqImages
             .WithDockerfileDirectory(context)
             .WithDockerfile("Dockerfile")
             .WithName(ImageName("server"))
-            .WithBuildArgument("PLATFORM", Platform)
+            .WithBuildArgument("PLATFORM", platform.Platform)
             .WithBuildArgument("RID", rid)
             .WithBuildArgument("TFM", TargetFramework)
             .WithBuildArgument("DOTNET_VERSION", DotNetRuntimeVersion)
@@ -310,6 +322,7 @@ internal static class IqImages
 
     private static async Task<IImage> BuildClientImage(CancellationToken cancellationToken)
     {
+        var platform = await GetPlatformAsync(cancellationToken).ConfigureAwait(false);
         if (GetImageOverride("IQ_CLIENT_IMAGE") is { Length: > 0 } prebuilt)
         {
             return new DockerImage(prebuilt);
@@ -319,7 +332,7 @@ internal static class IqImages
         var publishDir = Path.Combine(RepositoryPaths.IqArtifacts, "cli", TargetFramework);
         await DotNetPublish(
                 Path.Combine(RepositoryPaths.Root, "src", "opencertserver.cli", "opencertserver.cli.csproj"),
-                $"linux-{Arch}",
+                $"linux-{platform.Architecture}",
                 publishDir,
                 cancellationToken,
                 "-p:PublishSingleFile=true")
@@ -330,11 +343,18 @@ internal static class IqImages
             true);
         File.Copy(Path.Combine(RepositoryPaths.IqProject, "client", "libest-compat.patch"),
             Path.Combine(context, "libest-compat.patch"), true);
+        Directory.CreateDirectory(Path.Combine(context, "scep"));
+        foreach (var file in new[] { "go.mod", "go.sum", "main.go" })
+        {
+            File.Copy(Path.Combine(RepositoryPaths.IqProject, "client", "scep", file),
+                Path.Combine(context, "scep", file), true);
+        }
 
         var image = new ImageFromDockerfileBuilder()
             .WithDockerfileDirectory(context)
             .WithDockerfile("Dockerfile")
             .WithName(ImageName("client"))
+            .WithBuildArgument("PLATFORM", platform.Platform)
             .WithImageBuildPolicy(PullPolicy.Always)
             .WithCleanUp(true)
             .Build();
