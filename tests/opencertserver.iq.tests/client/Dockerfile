@@ -10,6 +10,7 @@
 # step definitions start it with TestContainers (see Support/IqAcmeEnvironment.cs)
 # and run each tool inside it via docker exec.
 # ---------------------------------------------------------------------------
+ARG PLATFORM=linux/amd64
 FROM mcr.microsoft.com/dotnet/runtime-deps:11.0-resolute AS client-base
 
 # The runtime-deps image includes CA certificates, so apt can use HTTPS before

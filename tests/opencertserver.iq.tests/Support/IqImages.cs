@@ -3,7 +3,6 @@ namespace OpenCertServer.Iq.Tests.Support;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
@@ -85,9 +84,10 @@ internal static class IqImages
         await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            var platform = await GetPlatformAsync(cancellationToken).ConfigureAwait(false);
             await DotNetPublish(
                 Path.Combine(RepositoryPaths.Root, "src", "opencertserver.mcp", "opencertserver.mcp.csproj"),
-                $"linux-{Arch}",
+                $"linux-{platform.Architecture}",
                 output,
                 cancellationToken,
                 "-p:PublishTrimmed=false").ConfigureAwait(false);
@@ -162,7 +162,8 @@ internal static class IqImages
         string engine,
         CancellationToken cancellationToken)
     {
-        var rid = $"linux-{Arch}";
+        var platform = await GetPlatformAsync(cancellationToken).ConfigureAwait(false);
+        var rid = $"linux-{platform.Architecture}";
         // A blank engine keeps the original per-role Dockerfile (no relational backend baked in); a
         // concrete engine selects the matching variant that bakes Appliance__Engine plus the relational
         // persistence selectors.
@@ -230,7 +231,7 @@ internal static class IqImages
             .WithDockerfileDirectory(context)
             .WithDockerfile("Dockerfile")
             .WithName(imageName)
-            .WithBuildArgument("PLATFORM", Platform)
+            .WithBuildArgument("PLATFORM", platform.Platform)
             .WithBuildArgument("RID", rid)
             .WithBuildArgument("TFM", TargetFramework)
             .WithBuildArgument("DOTNET_VERSION", DotNetRuntimeVersion)
@@ -246,7 +247,7 @@ internal static class IqImages
     private static async Task<IqDockerPlatform> GetPlatformAsync(CancellationToken cancellationToken)
     {
         if (_platform is not null)
-     {
+        {
             return _platform;
         }
 
@@ -278,8 +279,6 @@ internal static class IqImages
             file.CopyTo(target, true);
         }
     }
-
-    private static string Platform => Arch == "arm64" ? "linux/arm64" : "linux/amd64";
 
     private static string? GetImageOverride(string name) =>
         Environment.GetEnvironmentVariable($"{name}_{TargetFramework.Replace('.', '_').ToUpperInvariant()}")
