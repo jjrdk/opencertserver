@@ -3,7 +3,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using OpenCertServer.Acme.Abstractions.Exceptions;
-
 using System.Text;
 using System.Text.RegularExpressions;
 using Abstractions.Model;
@@ -43,7 +42,7 @@ public partial class StoreBase
         fileStream.Seek(0, SeekOrigin.Begin);
 
         var utf8Bytes = new byte[fileStream.Length];
-        _ = await fileStream.ReadAsync(utf8Bytes, cancellationToken).ConfigureAwait(false);
+        await fileStream.ReadExactlyAsync(utf8Bytes, cancellationToken).ConfigureAwait(false);
         var result =
             JsonSerializer.Deserialize<T>(utf8Bytes.AsSpan(),
                 (JsonTypeInfo<T>)AcmeSerializerContext.Default.GetTypeInfo(typeof(T))!);

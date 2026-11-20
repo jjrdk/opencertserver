@@ -38,7 +38,8 @@ Two TestContainers images are orchestrated by the step definitions:
    auth configured, and a profile that fixes some `certificatePolicies` /
    `keyUsage` / `extendedKeyUsage`. It is reached on an ephemeral HTTPS port.
 2. **Client image** — [`client/Dockerfile`](./client/Dockerfile): an Ubuntu
-   26.04 image that installs the standard tools via `apt` plus Cisco libest's EST client,
+   26.04-based .NET runtime-deps image with CA certificates for HTTPS Ubuntu package
+   mirrors. It installs the standard tools via `apt` plus Cisco libest's EST client,
    built from the Ubuntu package sources, the ACME client
    `acme.sh` (fetched over curl, the canonical ACME client), EFF `certbot` (from `apt`)
    and the project's own `opencert` CLI. Every scenario's Given/When/Then is something
@@ -50,6 +51,38 @@ bring-up programmatically.
 
 MCP is the stdio exception to the network topology: it reuses the client image and
 publish infrastructure, but needs no HTTP server, DNS container or private network.
+Each IQ run uses its own `artifacts/iq/<run-id>` directory, including the MSBuild
+intermediates selected by `dotnet publish --artifacts-path`. Generated server,
+client and appliance images use tags such as
+`opencertserver-iq-server:net10.0-<run-id>` and
+`opencertserver-iq-appliance-unified:net11.0-<run-id>`. Both frameworks (and separate
+runners of the same framework) can build and run concurrently without sharing
+image tags, build contexts or publish artifacts. Within one run, image preparation
+and MCP publishing still share a semaphore to protect shared dependency intermediates
+and the image cache; scenario execution remains parallel, with at most two collections.
+Run artifacts are deleted after test-run teardown, and generated images are registered
+with Testcontainers' resource reaper. Prebuilt image overrides are not deleted.
+
+Certificate-server, data, SCEP and TPM test runs share an exclusive
+per-user container-test lease across processes, target frameworks and runners.
+The lease is held until test-run cleanup finishes, and each of these assemblies
+uses at most two parallel test collections. IQ does not acquire this lease.
+A run waiting for another run logs
+the lease path; this deliberately limits Docker memory pressure when Rider and
+terminal tests overlap. The operating system releases the lease if a process
+terminates unexpectedly.
+
+The raw HTTP perimeter probe reads the server's rejection response even if an
+oversized request triggers a broken pipe during the send. A broken pipe alone is
+not a passing result: the header-limit scenario still requires HTTP 400 or 431.
+
+HTTP readiness attempts for the IQ server, issuer, DNS API and telemetry collector
+are limited to five seconds each. Probe timeouts and unwrapped socket errors are
+logged and reported as retryable HTTP failures because Testcontainers 4.16 only
+retries `HttpRequestException`, not timeout cancellations or `SocketException`.
+HTTP status checks, TLS trust validation and caller cancellation are preserved.
+`Features/Readiness.feature` covers timeout and socket-error recovery,
+cancellation and unchanged HTTP status codes without Docker.
 
 > **Status.** The ACME feature ([`AcmeIssuance.feature`](./Features/AcmeIssuance.feature))
 > is implemented: [`Support/IqAcmeEnvironment.cs`](./Support/IqAcmeEnvironment.cs) builds the
@@ -105,13 +138,20 @@ publish infrastructure, but needs no HTTP server, DNS container or private netwo
 >
 > Run the ACME feature (requires Docker; the first run publishes and builds both images):
 >
+> The IQ suite runs for both `net10.0` and `net11.0`. Each target publishes into its own
+> artifact directory and builds a matching runtime image, so both framework-specific deployments
+> are qualified without sharing generated binaries or Docker image tags. The test assembly determines
+> the target framework, independently of the test host used by Rider or the CLI.
+>
 > ```sh
 > dotnet test --project tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj \
 >   --filter-class "OpenCertServer.Iq.Tests.Features.RFC8555ACMEIssuanceWorksForALinuxWeb_ApplicationClientFeature"
 > ```
 >
-> `IQ_SERVER_IMAGE` / `IQ_CLIENT_IMAGE` select prebuilt images; `IQ_DOCKER_ARCH` (`x64`/`arm64`)
-> overrides the detected Docker architecture.
+> `IQ_SERVER_IMAGE` / `IQ_CLIENT_IMAGE` select prebuilt images; append `_NET10_0` or `_NET11_0`
+> to select a different image per target framework. `IQ_DOCKER_ARCH` (`x64`/`arm64`) overrides
+> the detected Docker architecture. Appliance overrides use the same suffix, for example
+> `IQ_APPLIANCE_UNIFIED_IMAGE_NET11_0`.
 
 ### Certificate-server penetration scenarios
 

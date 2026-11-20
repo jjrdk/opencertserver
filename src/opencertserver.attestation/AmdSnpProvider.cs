@@ -87,7 +87,7 @@ public sealed class AmdSnpProvider : IAttestationProvider
 
     public unsafe Task<byte[]> GenerateAndSignQuoteAsync(X509Certificate2 cert, byte[] nonce)
     {
-        _logger.LogInformation("Generating AMD SNP attestation report.");
+        _logger.LogInformation("Generating AMD SNP attestation report");
         uint reportSize = 0;
         int result = _native.GenerateReport(IntPtr.Zero, ref reportSize, nonce.AsSpan());
 

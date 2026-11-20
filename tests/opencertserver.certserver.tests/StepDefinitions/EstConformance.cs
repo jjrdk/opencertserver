@@ -1,7 +1,10 @@
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Formats.Asn1;
+using System.Security.Authentication;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.WebUtilities;
+using OpenCertServer.Ca;
 using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Est.Server.Response;
 
@@ -15,6 +18,7 @@ using Ca.Utils;
 using Ca.Utils.Pkcs7;
 using Ca.Utils.X509;
 using Ca.Utils.X509.Templates;
+using OpenCertServer.Data.Stores;
 using Est.Client;
 using Reqnroll;
 using Xunit;
@@ -275,12 +279,11 @@ public partial class CertificateServerFeatures
     }
 
     [When("the active EST CA profile is rolled over to a new key and certificate")]
-    public void WhenTheActiveEstCaProfileIsRolledOverToANewKeyAndCertificate()
+    public async Task WhenTheActiveEstCaProfileIsRolledOverToANewKeyAndCertificate()
     {
-        var profile = _server.Services.GetRequiredService<IStoreCaProfiles>()
-            .GetProfile(GetCurrentProfileName(), CancellationToken.None)
-            .GetAwaiter()
-            .GetResult();
+        var profiles = _server.Services.GetRequiredService<IStoreCaProfiles>();
+        var configuredProfiles = _server.Services.GetRequiredService<CaConfiguration>().Profiles;
+        var profile = await configuredProfiles.GetProfile(GetCurrentProfileName(), CancellationToken.None).ConfigureAwait(false);
         var currentRoot = profile.CertificateChain[0];
         var (privateKey, certificate) = CreateReplacementCaMaterial(currentRoot, profile.CertificateValidity);
 
@@ -296,6 +299,13 @@ public partial class CertificateServerFeatures
         }
 
         certificate.Dispose();
+        if (profiles is RelationalCaProfileStore relationalProfiles)
+        {
+            using var defaultProfile = await profiles.GetProfile(null, CancellationToken.None).ConfigureAwait(false);
+            await relationalProfiles.SaveProfileAsync(profile, profile.Name == defaultProfile.Name, CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+
         ConformanceState.PostRollOverRootThumbprint = profile.CertificateChain[0].Thumbprint;
     }
 
@@ -422,7 +432,8 @@ public partial class CertificateServerFeatures
     [When("the client POSTs an invalid Full PKI Request to \"(.+)\"")]
     public async Task WhenTheClientPostsAnInvalidFullPkiRequestTo(string path)
     {
-        var content = new StringContent("invalid-full-cmc", Encoding.ASCII, "application/pkcs7-mime");
+        var invalidCmcDer = Convert.ToBase64String(new byte[] { 0x30, 0x00 });
+        var content = new StringContent(invalidCmcDer, Encoding.ASCII, "application/pkcs7-mime");
         await SendRequestAsync(HttpMethod.Post, path, content,
             authHeader: new AuthenticationHeaderValue("Bearer", "valid-jwt")).ConfigureAwait(false);
     }
@@ -708,9 +719,12 @@ public partial class CertificateServerFeatures
     [Then(@"TLS 1\.1 or a later version MUST be used for EST communication")]
     public void ThenTls11OrALaterVersionMustBeUsedForEstCommunication()
     {
-        var source = string.Concat(ConformanceState.CheckedFiles);
-        Assert.Contains("SslProtocols", source, StringComparison.Ordinal);
-        Assert.Contains("Tls12", source, StringComparison.OrdinalIgnoreCase);
+        using var configuration = new ConfigurationManager();
+        Assert.Equal(SslProtocols.Tls12 | SslProtocols.Tls13, ApplianceOptions.Read(configuration).Protocols);
+        configuration["Appliance:Hardened"] = "true";
+        configuration["Appliance:Role"] = "Ra";
+        configuration["AllowedHosts"] = "localhost";
+        Assert.Equal(SslProtocols.Tls13, ApplianceOptions.Read(configuration).Protocols);
     }
 
     [Then("TLS server authentication with certificates MUST be supported")]
@@ -1086,7 +1100,19 @@ public partial class CertificateServerFeatures
             RSASignaturePadding.Pss);
     }
 
-    [Then("the request content type MUST be \"(.+)\"")]
+    [Then("the request body MUST be RFC 4648 base64-encoded DER as updated by RFC 8951")]
+    public async Task ThenTheRequestBodyMustBeRfc4648Base64EncodedDerAsUpdatedByRfc8951()
+    {
+        var body = await ConformanceState.CapturedRequest!.Content!.ReadAsStringAsync().ConfigureAwait(false);
+        Assert.True(IsAsciiBase64(body), "The request body was not RFC 4648 base64 text.");
+
+        var reader = new AsnReader(Convert.FromBase64String(body), AsnEncodingRules.DER);
+        var sequence = reader.ReadSequence();
+        sequence.ThrowIfNotEmpty();
+        reader.ThrowIfNotEmpty();
+    }
+
+    [Then("^the request content type MUST be \"([^\"]+)\"$")]
     public void ThenTheRequestContentTypeMustBe(string contentType)
     {
         Assert.Equal(contentType, ConformanceState.CapturedRequest?.Content?.Headers.ContentType?.MediaType);
@@ -1261,10 +1287,10 @@ public partial class CertificateServerFeatures
             "Expected a certs-only or CMC-response payload.");
     }
 
-    [Then("the response MUST include a CMC error body with the content type \"application/pkcs7-mime\"")]
-    public void ThenTheResponseMustIncludeACmcErrorBodyWithTheContentTypeApplicationPkcs7Mime()
+    [Then("the response MUST include a CMC error body with the content type {string}")]
+    public void ThenTheResponseMustIncludeACmcErrorBodyWithTheContentType(string contentType)
     {
-        Assert.Equal("application/pkcs7-mime", ConformanceState.Response?.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(contentType, ConformanceState.Response?.Content.Headers.ContentType?.MediaType);
     }
 
     [Then("cipher suites with NULL confidentiality MUST NOT be used")]

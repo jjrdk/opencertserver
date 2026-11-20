@@ -61,6 +61,7 @@ internal static partial class Program
         };
         cmd.SetAction(FetchServerCertificates);
         rootCommand.Add(cmd);
+        return;
 
         async Task FetchServerCertificates(ParseResult parse)
         {

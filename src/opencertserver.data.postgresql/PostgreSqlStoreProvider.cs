@@ -48,12 +48,13 @@ public sealed class PostgreSqlStoreProvider : IRelationalStoreProvider
     public async Task<bool> RevokeCertificateAsync(
         CaDbContext context,
         string serialNumber,
+        string? issuingProfile,
         X509RevocationReason reason,
         CancellationToken cancellationToken)
     {
         using var telemetry = PostgreSqlInstruments.Start("revoke_certificate");
         var revoked = await context.Database.ExecuteSqlInterpolatedAsync(
-            $"""UPDATE "Certificates" SET "RevocationReason" = {(int)reason}, "RevocationDate" = {DateTimeOffset.UtcNow} WHERE "SerialNumber" = {serialNumber}""",
+            $"""UPDATE "Certificates" SET "RevocationReason" = {(int)reason}, "RevocationDate" = {DateTimeOffset.UtcNow} WHERE "SerialNumber" = {serialNumber} AND "ProfileName" IS NOT DISTINCT FROM {issuingProfile}""",
             cancellationToken) == 1;
         telemetry.Complete();
         return revoked;

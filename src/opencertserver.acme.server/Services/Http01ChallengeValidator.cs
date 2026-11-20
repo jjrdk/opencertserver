@@ -9,11 +9,14 @@ using System.Threading.Tasks;
 using Abstractions.Model;
 using Abstractions.Services;
 using CertesSlim.Acme;
+using ChallengeTypes = CertesSlim.Acme.Resource.ChallengeTypes;
 using DnsClientX;
 using Microsoft.IdentityModel.Tokens;
 
-public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidateHttp01Challenges
+public sealed class ValidateHttp01Challenges : TokenChallengeValidator
 {
+    public override string AppliesTo => ChallengeTypes.Http01;
+
     private readonly HttpClient _httpClient;
     private readonly ICaaValidator _caaValidator;
     private readonly IDnsResolver _dnsResolver;
@@ -85,21 +88,15 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
                 });
         }
 
-        foreach (var ip in resolvedIps)
+        if (resolvedIps.Any(ip => SsrfBlockingSocketsHandler.ProhibitedRanges.Any(range => range.Contains(ip))))
         {
-            foreach (var range in SsrfBlockingSocketsHandler.ProhibitedRanges)
-            {
-                if (range.Contains(ip))
-                {
-                    return (null,
-                        new AcmeError
-                        {
-                            Type = "rejectedIdentifier",
-                            Detail = "Challenge target resolves to prohibited address range.",
-                            Identifier = challenge.Authorization.Identifier
-                        });
-                }
-            }
+            return (null,
+                    new AcmeError
+                    {
+                        Type = "rejectedIdentifier",
+                        Detail = "Challenge target resolves to prohibited address range.",
+                        Identifier = challenge.Authorization.Identifier
+                    });
         }
 
         var challengeUrl =
@@ -142,4 +139,3 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator, IValidat
         }
     }
 }
-

@@ -15,10 +15,10 @@ internal sealed class IqMcpEnvironment : IAsyncDisposable
     public IqMcpEnvironment(IImage clientImage, string publishDirectory)
     {
         _client = new ContainerBuilder(clientImage)
-            .WithResourceMapping(new DirectoryInfo(publishDirectory), "/opt/iq-mcp", fileMode: Unix.FileMode755)
+            .WithResourceMapping(new DirectoryInfo(publishDirectory), new DirectoryInfo("/opt/iq-mcp"), fileMode: Unix.FileMode755)
             .WithResourceMapping(
                 File.ReadAllBytes(Path.Combine(RepositoryPaths.IqProject, "client", "scripts", "mcp-stdio.py")),
-                "/usr/local/bin/mcp-stdio.py",
+                FilePath.Of("/usr/local/bin/mcp-stdio.py"),
                 fileMode: Unix.FileMode644)
             .WithEntrypoint("python3", "/usr/local/bin/mcp-stdio.py", "serve")
             .WithWaitStrategy(Wait.ForUnixContainer().UntilCommandIsCompleted(

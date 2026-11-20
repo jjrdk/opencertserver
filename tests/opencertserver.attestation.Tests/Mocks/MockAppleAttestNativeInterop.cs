@@ -1,3 +1,6 @@
+using System;
+using System.Threading.Tasks;
+
 namespace OpenCertServer.Attestation.Tests.Mocks;
 
 using OpenCertServer.Attestation.Native;
@@ -27,7 +30,7 @@ public sealed class MockAppleAttestNativeInterop : IAppleAttestNativeInterop
     {
         if (ShouldThrowOnAttestKey)
         {
-            throw ExceptionToThrow ?? new AttestationException("Mock: key attestation failed", -1);
+            throw ExceptionToThrow ?? new AttestationException("Mock: key attestation failed");
         }
 
         return Task.FromResult(AttestationObjectToReturn);

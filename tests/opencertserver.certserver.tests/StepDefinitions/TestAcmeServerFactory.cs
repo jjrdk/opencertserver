@@ -28,7 +28,7 @@ internal static class TestAcmeServerFactory
 {
     [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Test runtime")]
     [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Test runtime")]
-    public static TestServer Create(IValidateDeviceAttestChallenges? deviceAttestValidator = null)
+    public static TestServer Create(IValidateChallenges? deviceAttestValidator = null)
     {
         deviceAttestValidator ??= new AlwaysValidDeviceAttestValidator();
 
@@ -53,7 +53,7 @@ internal static class TestAcmeServerFactory
     private static void ConfigureServices(
         WebHostBuilderContext ctx,
         IServiceCollection services,
-        IValidateDeviceAttestChallenges deviceAttestValidator)
+        IValidateChallenges deviceAttestValidator)
     {
         services
             .AddAcmeServer(ctx.Configuration, acmeServerOptions: new AcmeServerOptions
@@ -73,29 +73,46 @@ internal static class TestAcmeServerFactory
         services.AddSingleton<ICsrValidator, StubCsrValidator>();
         services.AddSingleton<IIssueCertificates, StubCertificateIssuer>();
 
-        services.Replace(ServiceDescriptor.Scoped<IValidateHttp01Challenges, AlwaysValidHttp01Validator>());
-        services.Replace(ServiceDescriptor.Scoped<IValidateDns01Challenges, AlwaysValidDns01Validator>());
-        services.Replace(ServiceDescriptor.Scoped<IValidateDeviceAttestChallenges>(_ => deviceAttestValidator));
+        // The factory resolves IValidateChallenges as a collection and routes by AppliesTo,
+        // so remove the production validator registrations and add the test doubles instead
+        // (one per challenge type).
+        for (var i = services.Count - 1; i >= 0; i--)
+        {
+            if (services[i].ServiceType == typeof(IValidateChallenges))
+            {
+                services.RemoveAt(i);
+            }
+        }
+
+        services.Add(ServiceDescriptor.Scoped<IValidateChallenges, AlwaysValidHttp01Validator>());
+        services.Add(ServiceDescriptor.Scoped<IValidateChallenges, AlwaysValidDns01Validator>());
+        services.Add(ServiceDescriptor.Scoped<IValidateChallenges>(_ => deviceAttestValidator));
     }
 
     // ─── Test doubles ────────────────────────────────────────────────────────
 
-    internal sealed class AlwaysValidDeviceAttestValidator : IValidateDeviceAttestChallenges
+    internal sealed class AlwaysValidDeviceAttestValidator : IValidateChallenges
     {
+        public string AppliesTo => ChallengeTypes.DeviceAttest01;
+
         public Task<(bool IsValid, AcmeError? error)> ValidateChallenge(
             AcmeChallenge challenge, AcmeAccount account, CancellationToken cancellationToken)
             => Task.FromResult<(bool, AcmeError?)>((true, null));
     }
 
-    private sealed class AlwaysValidHttp01Validator : IValidateHttp01Challenges
+    private sealed class AlwaysValidHttp01Validator : IValidateChallenges
     {
+        public string AppliesTo => ChallengeTypes.Http01;
+
         public Task<(bool IsValid, AcmeError? error)> ValidateChallenge(
             AcmeChallenge challenge, AcmeAccount account, CancellationToken cancellationToken)
             => Task.FromResult<(bool, AcmeError?)>((true, null));
     }
 
-    private sealed class AlwaysValidDns01Validator : IValidateDns01Challenges
+    private sealed class AlwaysValidDns01Validator : IValidateChallenges
     {
+        public string AppliesTo => ChallengeTypes.Dns01;
+
         public Task<(bool IsValid, AcmeError? error)> ValidateChallenge(
             AcmeChallenge challenge, AcmeAccount account, CancellationToken cancellationToken)
             => Task.FromResult<(bool, AcmeError?)>((true, null));

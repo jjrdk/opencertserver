@@ -50,7 +50,7 @@ public sealed class ProviderBoundarySteps
         Assert.True(await nonces.TryRemoveNonceAsync(nonce, TestContext.Current.CancellationToken));
         Assert.False(await nonces.TryRemoveNonceAsync(nonce, TestContext.Current.CancellationToken));
         var certificates = provider.GetRequiredService<IStoreCertificates>();
-        Assert.True(await certificates.RemoveCertificate("01", X509RevocationReason.KeyCompromise,
+        Assert.True(await certificates.RemoveCertificate("01", null, X509RevocationReason.KeyCompromise,
             TestContext.Current.CancellationToken));
         Assert.Equal("01", Assert.Single(await certificates.GetInventory(2, 3,
             TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken)).SerialNumber);
@@ -90,6 +90,7 @@ public sealed class ProviderBoundarySteps
         public Task<bool> RevokeCertificateAsync(
             CaDbContext context,
             string serialNumber,
+            string? issuingProfile,
             X509RevocationReason reason,
             CancellationToken cancellationToken)
         {
@@ -110,7 +111,9 @@ public sealed class ProviderBoundarySteps
             await Task.CompletedTask;
             yield return new CertificateItemInfo
             {
-                SerialNumber = "01", DistinguishedName = "CN=probe", Thumbprint = "probe"
+                SerialNumber = "01",
+                DistinguishedName = "CN=probe",
+                Thumbprint = "probe"
             };
         }
     }

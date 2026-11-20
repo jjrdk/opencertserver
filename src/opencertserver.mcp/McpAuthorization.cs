@@ -218,11 +218,10 @@ public static class McpServerConfiguration
             : options.RevocationRole;
 
         var identity = new ClaimsIdentity(
-            new[]
-            {
+            [
                 new Claim(ClaimTypes.Name, name),
                 new Claim(ClaimTypes.Role, role)
-            },
+            ],
             authenticationType: "McpSharedSecret");
 
         return new ClaimsPrincipal(identity);

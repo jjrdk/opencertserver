@@ -100,12 +100,12 @@ public partial class CertificateServerFeatures
             }, cancellationToken);
             var content = new StreamContent(context.Response.Body);
             var response = new HttpResponseMessage((System.Net.HttpStatusCode)context.Response.StatusCode)
-                { Content = content, RequestMessage = request };
+            { Content = content, RequestMessage = request };
             foreach (var header in context.Response.Headers)
             {
-                if (!response.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()))
+                if (!response.Headers.TryAddWithoutValidation(header.Key, [.. header.Value]))
                 {
-                    content.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
+                    content.Headers.TryAddWithoutValidation(header.Key, [.. header.Value]);
                 }
             }
 

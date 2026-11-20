@@ -64,6 +64,10 @@ internal sealed class DefaultCsrValidator : ICsrValidator
         {
             return Task.FromResult(Invalid($"The CSR could not be parsed: {ex.Message}"));
         }
+        catch (FormatException ex)
+        {
+            return Task.FromResult(Invalid($"The CSR could not be parsed: {ex.Message}"));
+        }
 
         static (bool isValid, AcmeError? error) Invalid(string detail)
             => (false, new AcmeError { Type = "badCSR", Detail = detail });

@@ -57,6 +57,7 @@ internal static partial class Program
         cmd.SetAction(GenerateKeys);
 
         rootCommand.Add(cmd);
+        return;
 
         async Task GenerateKeys(ParseResult parse)
         {

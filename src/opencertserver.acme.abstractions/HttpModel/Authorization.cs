@@ -19,15 +19,9 @@ public sealed class Authorization
     /// <param name="challenges">The list of challenges for this authorization.</param>
     public Authorization(Model.Authorization model, IEnumerable<Challenge> challenges)
     {
-        if (model is null)
-        {
-            throw new ArgumentNullException(nameof(model));
-        }
+        ArgumentNullException.ThrowIfNull(model);
 
-        if (challenges is null)
-        {
-            throw new ArgumentNullException(nameof(challenges));
-        }
+        ArgumentNullException.ThrowIfNull(challenges);
 
         Status = model.Status.ToString().ToLowerInvariant();
 

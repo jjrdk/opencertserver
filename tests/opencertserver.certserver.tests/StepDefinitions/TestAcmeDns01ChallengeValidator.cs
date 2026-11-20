@@ -5,9 +5,12 @@ namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 using Acme.Abstractions.Model;
 using Acme.Abstractions.Services;
 using Acme.Server.Services;
+using ChallengeTypes = CertesSlim.Acme.Resource.ChallengeTypes;
 
-internal sealed class TestAcmeDns01ChallengeValidator : TokenChallengeValidator, IValidateDns01Challenges
+internal sealed class TestAcmeDns01ChallengeValidator : TokenChallengeValidator
 {
+    public override string AppliesTo => ChallengeTypes.Dns01;
+
     private readonly TestAcmeChallengeValidationState _state;
 
     public TestAcmeDns01ChallengeValidator(TestAcmeChallengeValidationState state)

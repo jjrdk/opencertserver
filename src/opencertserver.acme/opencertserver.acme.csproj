@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Acme</RootNamespace>
+        <AssemblyName>opencertserver.acme</AssemblyName>
+        <OutputType>Exe</OutputType>
+        <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
+        <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <Description>A standalone ACME (RFC 8555) server that issues through a backing certificate
+        authority over a trusted HTTPS connection. It hosts the ACME protocol and stores, but no CA
+        core: issuance and revocation are delegated to opencertserver.ca.client. The backing CA stays
+        authoritative for scope and identity. This project references opencertserver.acme.remote, which
+        in turn references opencertserver.acme.server and opencertserver.ca.client, but never
+        opencertserver.ca.</Description>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <NoWarn>1701;1702;IL2026</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+        <NoWarn>1701;1702;IL2026</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\opencertserver.acme.remote\opencertserver.acme.remote.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate"/>
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer"/>
+        <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens"/>
+        <PackageReference Include="Microsoft.IdentityModel.Protocols"/>
+        <PackageReference Include="OpenTelemetry"/>
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting"/>
+    </ItemGroup>
+
+</Project>

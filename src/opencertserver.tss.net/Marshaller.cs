@@ -76,7 +76,7 @@ public class Marshaller
     /// </summary>
     /// <param name="x"></param>
     /// <returns></returns>
-    static public byte[] Tpm2BToBuffer(byte[] x)
+    public static byte[] Tpm2BToBuffer(byte[] x)
     {
         var m = new Marshaller(x);
         var len = m.Get<ushort>();

@@ -24,6 +24,7 @@ public interface IRelationalStoreProvider
     Task<bool> RevokeCertificateAsync(
         CaDbContext context,
         string serialNumber,
+        string? issuingProfile,
         X509RevocationReason reason,
         CancellationToken cancellationToken);
 

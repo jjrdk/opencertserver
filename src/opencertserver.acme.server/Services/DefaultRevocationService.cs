@@ -16,15 +16,18 @@ public sealed class DefaultRevocationService : IRevocationService
     private readonly IAccountService _accountService;
     private readonly IStoreOrders _orderStore;
     private readonly ICertificateAuthority _certificateAuthority;
+    private readonly IStoreCertificates _certificateStore;
 
     public DefaultRevocationService(
         IAccountService accountService,
         IStoreOrders orderStore,
-        ICertificateAuthority certificateAuthority)
+        ICertificateAuthority certificateAuthority,
+        IStoreCertificates certificateStore)
     {
         _accountService = accountService;
         _orderStore = orderStore;
         _certificateAuthority = certificateAuthority;
+        _certificateStore = certificateStore;
     }
 
     public async Task RevokeCertificate(
@@ -35,7 +38,7 @@ public sealed class DefaultRevocationService : IRevocationService
         ArgumentNullException.ThrowIfNull(header);
         ArgumentNullException.ThrowIfNull(request);
 
-        var certificate = LoadCertificate(request.Certificate);
+        using var certificate = LoadCertificate(request.Certificate);
 
         if (header.Kid != null)
         {
@@ -57,8 +60,18 @@ public sealed class DefaultRevocationService : IRevocationService
         }
 
         var reason = request.Reason ?? RevocationReason.Unspecified;
+        using var storedCertificate = await _certificateStore
+            .GetCertificatesByThumbprint([certificate.Thumbprint.AsMemory()], cancellationToken)
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        if (storedCertificate is null)
+        {
+            throw new NotFoundException();
+        }
+
+        var issuingProfile = await _certificateStore.GetIssuingProfile(certificate.Thumbprint, cancellationToken)
+            .ConfigureAwait(false);
         var revoked = await _certificateAuthority
-            .RevokeCertificate(certificate.SerialNumber, (X509RevocationReason)(int)reason, cancellationToken)
+            .RevokeCertificate(certificate.SerialNumber, issuingProfile, (X509RevocationReason)(int)reason, cancellationToken)
             .ConfigureAwait(false);
 
         if (!revoked)

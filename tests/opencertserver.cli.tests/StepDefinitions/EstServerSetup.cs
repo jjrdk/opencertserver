@@ -66,12 +66,12 @@ public partial class OpenCertServerCliStepDefinitions
             }, cancellationToken);
             var content = new StreamContent(context.Response.Body);
             var response = new HttpResponseMessage((System.Net.HttpStatusCode)context.Response.StatusCode)
-                { Content = content, RequestMessage = request };
+            { Content = content, RequestMessage = request };
             foreach (var header in context.Response.Headers)
             {
-                if (!response.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()))
+                if (!response.Headers.TryAddWithoutValidation(header.Key, [.. header.Value]))
                 {
-                    content.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
+                    content.Headers.TryAddWithoutValidation(header.Key, [.. header.Value]);
                 }
             }
 
@@ -114,7 +114,7 @@ public partial class OpenCertServerCliStepDefinitions
     private static void ConfigureEstServices(IServiceCollection services)
     {
         services
-            .AddSingleton<IResponderId>(new ResponderIdByKey("cli-est"u8.ToArray()))
+            .AddSingleton<IResponderId>(new ResponderIdByKey([.. "cli-est"u8]))
             .AddInMemoryCertificateStore()
             .AddSelfSignedCertificateAuthority(new X500DistinguishedName("CN=OpenCertServer CLI EST"),
                 ocspUrls: ["test"])

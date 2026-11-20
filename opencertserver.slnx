@@ -3,10 +3,17 @@
         <Project Path="src/opencertserver.ca.server/opencertserver.ca.server.csproj" />
         <Project Path="src/opencertserver.mcp/opencertserver.mcp.csproj" />
         <Project Path="src\opencertserver.acme.server\opencertserver.acme.server.csproj" />
+        <Project Path="src\opencertserver.ra.server\opencertserver.ra.server.csproj" />
         <Project Path="src\opencertserver.certserver\opencertserver.certserver.csproj" />
         <Project Path="src\opencertserver.est.server\opencertserver.est.server.csproj" />
-        <Project Path="src/opencertserver.scep.server/opencertserver.scep.server.csproj"/>
-        <Project Path="src/opencertserver.contrib.intune/opencertserver.contrib.intune.csproj"/>
+        <Project Path="src/opencertserver.scep.server/opencertserver.scep.server.csproj" />
+        <Project Path="src/opencertserver.scep/opencertserver.scep.csproj" />
+    </Folder>
+    <Folder Name="/hosts/">
+        <Project Path="src\opencertserver.acme\opencertserver.acme.csproj" />
+        <Project Path="src/hosts/opencertserver.host.ca/opencertserver.host.ca.csproj" />
+        <Project Path="src/hosts/opencertserver.host.ra/opencertserver.host.ra.csproj" />
+        <Project Path="src/hosts/opencertserver.host.unified/opencertserver.host.unified.csproj" />
     </Folder>
     <Folder Name="/Solution Items/">
         <File Path="build.ps1" />
@@ -15,7 +22,6 @@
         <File Path="docs\opencertserver_cp.md" />
         <File Path="docs\opencertserver_cps.md" />
         <File Path="README.md" />
-        <File Path="Docker.md" />
     </Folder>
     <Folder Name="/tests/">
         <Project Path="tests/opencertserver.data.tests/opencertserver.data.tests.csproj" />
@@ -29,17 +35,22 @@
         <Project Path="tests\opencertserver.ca.tests\opencertserver.ca.tests.csproj" />
         <Project Path="tests\opencertserver.certserver.tests\opencertserver.certserver.tests.csproj" />
         <Project Path="tests\opencertserver.est.server.tests\opencertserver.est.server.tests.csproj" />
-        <Project Path="tests/opencertserver.scep.server.tests/opencertserver.scep.server.tests.csproj"/>
-        <Project Path="tests/opencertserver.contrib.intune.tests/opencertserver.contrib.intune.tests.csproj"/>
+        <Project Path="tests/opencertserver.scep.server.tests/opencertserver.scep.server.tests.csproj" />
+        <Project Path="tests/opencertserver.contrib.intune.tests/opencertserver.contrib.intune.tests.csproj" />
         <Project Path="tests\opencertserver.tpm.tests\opencertserver.tpm.tests.csproj" />
         <Project Path="tests/opencertserver.iq.tests/opencertserver.iq.tests.csproj" />
     </Folder>
+    <Project Path="src/opencertserver.ca.client/opencertserver.ca.client.csproj" />
+    <Project Path="src\opencertserver.acme.remote\opencertserver.acme.remote.csproj" />
+    <Project Path="src/opencertserver.contrib.intune/opencertserver.contrib.intune.csproj" />
     <Project Path="src/opencertserver.data/opencertserver.data.csproj" />
     <Project Path="src/opencertserver.data.postgresql/opencertserver.data.postgresql.csproj" />
     <Project Path="src/opencertserver.data.mssql/opencertserver.data.mssql.csproj" />
     <Project Path="build\opencertserver.build\opencertserver.build.csproj" />
     <Project Path="src\opencertserver.cli\opencertserver.cli.csproj" />
     <Project Path="src/opencertserver.attestation/opencertserver.attestation.csproj" />
+    <Project Path="src/opencertserver.ca.protocol/opencertserver.ca.protocol.csproj" />
+    <Project Path="src/opencertserver.ra/opencertserver.ra.csproj" />
     <Project Path="src/OpenCertServer.Sgx.Native/OpenCertServer.Sgx.Native.csproj" />
     <Project Path="src/opencertserver.acme.yarp/opencertserver.acme.yarp.csproj" />
     <Project Path="src/OpenCertServer.Amd.Native/OpenCertServer.Amd.Native.csproj" />

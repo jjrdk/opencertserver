@@ -1,15 +1,19 @@
 namespace OpenCertServer.Iq.Tests.Support;
 
 using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Runtime.Versioning;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Images;
 
 /// <summary>
-/// Builds the two images the IQ scenarios run: the OpenCertServer server image (the repository root
+/// Builds the images the IQ scenarios run: the OpenCertServer server image (the repository root
 /// <c>Dockerfile</c> over a freshly published, self-contained server) and the Ubuntu client image
 /// (<c>client/Dockerfile</c> over a freshly published <c>opencert</c> CLI). Both are built once per
-/// test run for the Docker host's architecture, so the server runs natively instead of under emulation.
+/// target framework and test run for the Docker host's architecture, so each image uses the matching
+/// self-contained publish and runs natively instead of under emulation.
 /// </summary>
 /// <remarks>
 /// Set <c>IQ_SERVER_IMAGE</c> / <c>IQ_CLIENT_IMAGE</c> to use prebuilt images instead (e.g. in CI), and
@@ -21,6 +25,45 @@ internal static class IqImages
     private static IImage? _server;
     private static IImage? _client;
     private static IqDockerPlatform? _platform;
+
+    public static string TargetFramework
+    {
+        get
+        {
+            const string frameworkPrefix = ".NETCoreApp,Version=v";
+            var frameworkName = typeof(IqImages).Assembly.GetCustomAttribute<TargetFrameworkAttribute>()?.FrameworkName;
+            if (frameworkName is null
+             || !frameworkName.StartsWith(frameworkPrefix, StringComparison.Ordinal)
+             || !Version.TryParse(frameworkName[frameworkPrefix.Length..], out var version))
+            {
+                throw new InvalidOperationException(
+                    $"Unable to determine the IQ test target framework from '{frameworkName}'.");
+            }
+
+            return $"net{version.Major}.{version.Minor}";
+        }
+    }
+
+    private static string DotNetRuntimeVersion => TargetFramework["net".Length..];
+    public static string ImageTag => $"{TargetFramework}-{RepositoryPaths.RunId}";
+    public static string ImageName(string name) => $"opencertserver-iq-{name}:{ImageTag}";
+
+    private static string UbuntuCodename => TargetFramework switch
+    {
+        "net10.0" => "noble",
+        "net11.0" => "resolute",
+        _ => throw new InvalidOperationException($"Unsupported IQ target framework '{TargetFramework}'.")
+    };
+
+    private readonly record struct ApplianceRole(string Role, string Dockerfile, string Project);
+
+    private static readonly Dictionary<string, ApplianceRole> ApplianceRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Unified"] = new("Unified", "Dockerfile.unified",
+            "src/hosts/opencertserver.host.unified/opencertserver.host.unified.csproj"),
+        ["Ca"] = new("Ca", "Dockerfile.ca", "src/hosts/opencertserver.host.ca/opencertserver.host.ca.csproj"),
+        ["Ra"] = new("Ra", "Dockerfile.ra", "src/hosts/opencertserver.host.ra/opencertserver.host.ra.csproj")
+    };
 
     public static async Task<IImage> GetClientAsync(CancellationToken cancellationToken = default)
     {
@@ -37,13 +80,22 @@ internal static class IqImages
 
     public static async Task PublishMcpAsync(string output, CancellationToken cancellationToken = default)
     {
-        var platform = await GetPlatformAsync(cancellationToken).ConfigureAwait(false);
-        await DotNetPublish(
-            Path.Combine(RepositoryPaths.Root, "src", "opencertserver.mcp", "opencertserver.mcp.csproj"),
-            $"linux-{platform.Architecture}",
-            output,
-            cancellationToken,
-            "-p:PublishTrimmed=false").ConfigureAwait(false);
+        // Publishes within this run share intermediates; other runs use their own artifacts path.
+        await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var platform = await GetPlatformAsync(cancellationToken).ConfigureAwait(false);
+            await DotNetPublish(
+                Path.Combine(RepositoryPaths.Root, "src", "opencertserver.mcp", "opencertserver.mcp.csproj"),
+                $"linux-{platform.Architecture}",
+                output,
+                cancellationToken,
+                "-p:PublishTrimmed=false").ConfigureAwait(false);
+        }
+        finally
+        {
+            Gate.Release();
+        }
     }
 
     public static async Task<(IImage Server, IImage Client)> GetAsync(CancellationToken cancellationToken = default)
@@ -61,6 +113,137 @@ internal static class IqImages
         }
     }
 
+    private static readonly Dictionary<string, IImage> ApplianceImages = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, string> ApplianceImageNames = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Builds one chiseled Ubuntu 24.04 appliance image (<c>Dockerfile.unified</c> / <c>Dockerfile.ca</c> /
+    /// <c>Dockerfile.ra</c>) over a freshly published, self-contained server for the Docker host's
+    /// architecture. The chiseled <c>runtime-deps</c> image carries the glibc native dependencies but no .NET
+    /// runtime (and no chiseled ASP.NET Core image exists), so the server is published self-contained with the
+    /// glibc RID (<c>linux-x64</c> / <c>linux-arm64</c>) and <c>InvariantGlobalization</c> — the framework and
+    /// coreclr are bundled on top of the glibc deps. The same self-contained output is reused for all three
+    /// roles; each role's Dockerfile only differs in the baked <c>Appliance__Role</c> default and exposed ports.
+    /// </summary>
+    public static async Task<(IImage Image, string Name)> GetApplianceImageAsync(
+        string role,
+        CancellationToken cancellationToken = default,
+        string engine = "")
+    {
+        if (!ApplianceRoles.TryGetValue(role, out var applianceRole))
+        {
+            throw new ArgumentOutOfRangeException(nameof(role), role,
+                "An appliance IQ role must be one of Unified, Ca, or Ra.");
+        }
+
+        await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var key = string.IsNullOrEmpty(engine) ? role : $"{role}:{engine}";
+            if (ApplianceImages.TryGetValue(key, out var image)
+             && ApplianceImageNames.TryGetValue(key, out var name))
+            {
+                return (image, name);
+            }
+
+            var built = await BuildApplianceImage(applianceRole, engine, cancellationToken).ConfigureAwait(false);
+            ApplianceImages[key] = built.Image;
+            ApplianceImageNames[key] = built.Name;
+            return built;
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
+    private static async Task<(IImage Image, string Name)> BuildApplianceImage(
+        ApplianceRole applianceRole,
+        string engine,
+        CancellationToken cancellationToken)
+    {
+        var platform = await GetPlatformAsync(cancellationToken).ConfigureAwait(false);
+        var rid = $"linux-{platform.Architecture}";
+        // A blank engine keeps the original per-role Dockerfile (no relational backend baked in); a
+        // concrete engine selects the matching variant that bakes Appliance__Engine plus the relational
+        // persistence selectors.
+        var engineTag = string.IsNullOrWhiteSpace(engine)
+            ? ""
+            : engine.Trim().ToLowerInvariant() switch
+            {
+                "mssql" or "sqlserver" => "mssql",
+                _ => "postgres"
+            };
+        var dockerfile = engineTag.Length == 0
+            ? applianceRole.Dockerfile
+            : $"Dockerfile.{applianceRole.Role.ToLowerInvariant()}.{engineTag}";
+        var imageSuffix = engineTag.Length == 0 ? "" : $"-{engineTag}";
+        var imageName = ImageName($"appliance-{applianceRole.Role.ToLowerInvariant()}{imageSuffix}");
+        imageSuffix += $"-{TargetFramework}";
+
+        if (GetImageOverride($"IQ_APPLIANCE_{applianceRole.Role.ToUpperInvariant()}_IMAGE")
+            is { Length: > 0 } prebuilt)
+        {
+            imageName = prebuilt;
+            return (new DockerImage(prebuilt), imageName);
+        }
+
+        var context = Path.Combine(RepositoryPaths.IqArtifacts,
+            $"appliance-context-{applianceRole.Role.ToLowerInvariant()}{imageSuffix}");
+        Directory.CreateDirectory(context);
+        File.Copy(Path.Combine(RepositoryPaths.Root, dockerfile),
+            Path.Combine(context, "Dockerfile"), true);
+
+        // Each role publishes its own host binary (opencertserver.host.<role>); the mssql variant
+        // needs ICU — the SQL Server EF Core provider (Microsoft.Data.SqlClient) does not support
+        // invariant globalization — so it is published WITHOUT InvariantGlobalization and staged under
+        // a separate mssql sub-path that its Dockerfiles COPY from. The chiseled postgres/base
+        // variants stay on the ICU-less invariant publish.
+        var mssql = engineTag == "mssql";
+        var ridDir = mssql ? Path.Combine("mssql", rid) : rid;
+        var publishDir = Path.Combine(RepositoryPaths.IqArtifacts, "appliance-publish", TargetFramework,
+            applianceRole.Role.ToLowerInvariant(), ridDir);
+        var hostBinary = $"opencertserver.host.{applianceRole.Role.ToLowerInvariant()}";
+        if (!File.Exists(Path.Combine(publishDir, hostBinary)))
+        {
+            await DotNetPublish(
+                    Path.Combine(RepositoryPaths.Root, applianceRole.Project),
+                    rid,
+                    publishDir,
+                    cancellationToken,
+                    $"-p:InvariantGlobalization={(mssql ? "false" : "true")}")
+                .ConfigureAwait(false);
+        }
+
+        // The appliance Dockerfiles COPY their variant's publish dir (…/<role>/${RID} for the
+        // chiseled variants, …/<role>/mssql/${RID} for mssql); stage the publish there.
+        var stageDir = Path.Combine(context, "artifacts", "publish", TargetFramework,
+            applianceRole.Role.ToLowerInvariant(), ridDir);
+        if (Directory.Exists(stageDir))
+        {
+            Directory.Delete(stageDir, true);
+        }
+
+        Directory.CreateDirectory(stageDir);
+        CopyRecursively(publishDir, stageDir);
+
+        var image = new ImageFromDockerfileBuilder()
+            .WithDockerfileDirectory(context)
+            .WithDockerfile("Dockerfile")
+            .WithName(imageName)
+            .WithBuildArgument("PLATFORM", platform.Platform)
+            .WithBuildArgument("RID", rid)
+            .WithBuildArgument("TFM", TargetFramework)
+            .WithBuildArgument("DOTNET_VERSION", DotNetRuntimeVersion)
+            .WithBuildArgument("UBUNTU_CODENAME", UbuntuCodename)
+            .WithImageBuildPolicy(PullPolicy.Always)
+            .WithCleanUp(true)
+            .Build();
+        await image.CreateAsync(cancellationToken).ConfigureAwait(false);
+        return (image, imageName);
+    }
+
+
     private static async Task<IqDockerPlatform> GetPlatformAsync(CancellationToken cancellationToken)
     {
         if (_platform is not null)
@@ -74,20 +257,47 @@ internal static class IqImages
         return _platform = IqDockerPlatform.Resolve(info.OSType, info.Architecture,
             Environment.GetEnvironmentVariable("IQ_DOCKER_ARCH"));
     }
+    private static void CopyRecursively(string source, string destination)
+    {
+        var sourceDir = new DirectoryInfo(Path.GetFullPath(source));
+        var destinationDir = new DirectoryInfo(Path.GetFullPath(destination));
+        if (!destinationDir.Exists)
+        {
+            destinationDir.Create();
+        }
+
+        foreach (var file in sourceDir.EnumerateFiles("*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(sourceDir.FullName, file.FullName);
+            var target = Path.Combine(destinationDir.FullName, relative);
+            var targetDirectory = Path.GetDirectoryName(target);
+            if (!string.IsNullOrEmpty(targetDirectory))
+            {
+                Directory.CreateDirectory(targetDirectory);
+            }
+
+            file.CopyTo(target, true);
+        }
+    }
+
+    private static string? GetImageOverride(string name) =>
+        Environment.GetEnvironmentVariable($"{name}_{TargetFramework.Replace('.', '_').ToUpperInvariant()}")
+     ?? Environment.GetEnvironmentVariable(name);
 
     private static async Task<IImage> BuildServerImage(CancellationToken cancellationToken)
     {
         var platform = await GetPlatformAsync(cancellationToken).ConfigureAwait(false);
-        if (Environment.GetEnvironmentVariable("IQ_SERVER_IMAGE") is { Length: > 0 } prebuilt)
+        if (GetImageOverride("IQ_SERVER_IMAGE") is { Length: > 0 } prebuilt)
         {
             return new DockerImage(prebuilt);
         }
 
         var rid = $"linux-musl-{platform.Architecture}";
-        var context = Path.Combine(RepositoryPaths.IqArtifacts, "server-context");
-        var publishDir = Path.Combine(context, "artifacts", "publish", "server", rid);
+        var context = Path.Combine(RepositoryPaths.IqArtifacts, $"server-context-{TargetFramework}");
+        var publishDir = Path.Combine(context, "artifacts", "publish", TargetFramework, "server", rid);
         await DotNetPublish(
-                Path.Combine(RepositoryPaths.Root, "src", "opencertserver.certserver", "opencertserver.certserver.csproj"),
+                Path.Combine(RepositoryPaths.Root, "src", "opencertserver.certserver",
+                    "opencertserver.certserver.csproj"),
                 rid,
                 publishDir,
                 cancellationToken)
@@ -97,11 +307,13 @@ internal static class IqImages
         var image = new ImageFromDockerfileBuilder()
             .WithDockerfileDirectory(context)
             .WithDockerfile("Dockerfile")
-            .WithName("opencertserver-iq-server:local")
+            .WithName(ImageName("server"))
             .WithBuildArgument("PLATFORM", platform.Platform)
             .WithBuildArgument("RID", rid)
+            .WithBuildArgument("TFM", TargetFramework)
+            .WithBuildArgument("DOTNET_VERSION", DotNetRuntimeVersion)
             .WithImageBuildPolicy(PullPolicy.Always)
-            .WithCleanUp(false)
+            .WithCleanUp(true)
             .Build();
         await image.CreateAsync(cancellationToken).ConfigureAwait(false);
         return image;
@@ -110,13 +322,13 @@ internal static class IqImages
     private static async Task<IImage> BuildClientImage(CancellationToken cancellationToken)
     {
         var platform = await GetPlatformAsync(cancellationToken).ConfigureAwait(false);
-        if (Environment.GetEnvironmentVariable("IQ_CLIENT_IMAGE") is { Length: > 0 } prebuilt)
+        if (GetImageOverride("IQ_CLIENT_IMAGE") is { Length: > 0 } prebuilt)
         {
             return new DockerImage(prebuilt);
         }
 
-        var context = Path.Combine(RepositoryPaths.IqArtifacts, "client-context");
-        var publishDir = Path.Combine(RepositoryPaths.IqArtifacts, "cli");
+        var context = Path.Combine(RepositoryPaths.IqArtifacts, $"client-context-{TargetFramework}");
+        var publishDir = Path.Combine(RepositoryPaths.IqArtifacts, "cli", TargetFramework);
         await DotNetPublish(
                 Path.Combine(RepositoryPaths.Root, "src", "opencertserver.cli", "opencertserver.cli.csproj"),
                 $"linux-{platform.Architecture}",
@@ -126,7 +338,8 @@ internal static class IqImages
             .ConfigureAwait(false);
         Directory.CreateDirectory(context);
         File.Copy(Path.Combine(publishDir, "opencert"), Path.Combine(context, "opencert"), true);
-        File.Copy(Path.Combine(RepositoryPaths.IqProject, "client", "Dockerfile"), Path.Combine(context, "Dockerfile"), true);
+        File.Copy(Path.Combine(RepositoryPaths.IqProject, "client", "Dockerfile"), Path.Combine(context, "Dockerfile"),
+            true);
         File.Copy(Path.Combine(RepositoryPaths.IqProject, "client", "libest-compat.patch"),
             Path.Combine(context, "libest-compat.patch"), true);
         Directory.CreateDirectory(Path.Combine(context, "scep"));
@@ -139,10 +352,10 @@ internal static class IqImages
         var image = new ImageFromDockerfileBuilder()
             .WithDockerfileDirectory(context)
             .WithDockerfile("Dockerfile")
-            .WithName("opencertserver-iq-client:local")
+            .WithName(ImageName("client"))
             .WithBuildArgument("PLATFORM", platform.Platform)
             .WithImageBuildPolicy(PullPolicy.Always)
-            .WithCleanUp(false)
+            .WithCleanUp(true)
             .Build();
         await image.CreateAsync(cancellationToken).ConfigureAwait(false);
         return image;
@@ -162,15 +375,17 @@ internal static class IqImages
             WorkingDirectory = RepositoryPaths.Root
         };
         foreach (var arg in (string[])
-                 [
-                     "publish", project, "-c", "Release", "-r", rid, "--self-contained", "-o", output, "-nologo",
-                     "-v", "q", .. extra
-                 ])
+            [
+                "publish", project, "-c", "Release", "-f", TargetFramework, "-r", rid, "--self-contained", "-o",
+                output, "--artifacts-path", Path.Combine(RepositoryPaths.IqArtifacts, "build"), "-nologo",
+                "-v", "q", .. extra
+            ])
         {
             info.ArgumentList.Add(arg);
         }
 
-        using var process = Process.Start(info) ?? throw new InvalidOperationException("Could not start dotnet publish.");
+        using var process = Process.Start(info) ??
+            throw new InvalidOperationException("Could not start dotnet publish.");
         var stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var stderr = process.StandardError.ReadToEndAsync(cancellationToken);
         await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);

@@ -61,7 +61,7 @@ public abstract class TimedHostedService : IHostedService, IDisposable
             {
                 _interlock.Release();
             }
-            catch(ObjectDisposedException)
+            catch (ObjectDisposedException)
             {
                 // ignore, service is stopping
             }

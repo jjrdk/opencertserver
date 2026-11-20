@@ -5,32 +5,32 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using DnsClientX;
+using Dnsx = DnsClientX;
 
 /// <summary>
-/// Resolves DNS records through <see cref="ClientX"/>.
+/// Resolves DNS records through <see cref="Dnsx.ClientX"/>.
 /// </summary>
 public sealed class DnsClientXResolver : IDnsResolver
 {
-    private readonly ClientX _client;
+    private readonly Dnsx.ClientX _client;
 
-    public DnsClientXResolver(ClientX client)
+    public DnsClientXResolver(Dnsx.ClientX client)
     {
         _client = client;
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<CaaRecord>> ResolveCaaRecordsAsync(
+    public Task<IReadOnlyList<Dnsx.CaaRecord>> ResolveCaaRecordsAsync(
         string name,
         CancellationToken cancellationToken)
-        => ResolveTypedAsync<CaaRecord>(name, DnsRecordType.CAA, cancellationToken);
+        => ResolveTypedAsync<Dnsx.CaaRecord>(name, Dnsx.DnsRecordType.CAA, cancellationToken);
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<string>> ResolveTxtRecordsAsync(
         string name,
         CancellationToken cancellationToken)
     {
-        var records = await ResolveTypedAsync<TxtRecord>(name, DnsRecordType.TXT, cancellationToken)
+        var records = await ResolveTypedAsync<Dnsx.TxtRecord>(name, Dnsx.DnsRecordType.TXT, cancellationToken)
             .ConfigureAwait(false);
         return records.Select(record => record.Text).ToList();
     }
@@ -40,8 +40,8 @@ public sealed class DnsClientXResolver : IDnsResolver
         string name,
         CancellationToken cancellationToken)
     {
-        var aTask = ResolveTypedAsync<ARecord>(name, DnsRecordType.A, cancellationToken);
-        var aaaaTask = ResolveTypedAsync<AAAARecord>(name, DnsRecordType.AAAA, cancellationToken);
+        var aTask = ResolveTypedAsync<Dnsx.ARecord>(name, Dnsx.DnsRecordType.A, cancellationToken);
+        var aaaaTask = ResolveTypedAsync<Dnsx.AAAARecord>(name, Dnsx.DnsRecordType.AAAA, cancellationToken);
         await Task.WhenAll(aTask, aaaaTask).ConfigureAwait(false);
 
         return [.. aTask.Result.Select(r => r.Address), .. aaaaTask.Result.Select(r => r.Address)];
@@ -49,7 +49,7 @@ public sealed class DnsClientXResolver : IDnsResolver
 
     private async Task<IReadOnlyList<T>> ResolveTypedAsync<T>(
         string name,
-        DnsRecordType type,
+        Dnsx.DnsRecordType type,
         CancellationToken cancellationToken)
         where T : class
     {
@@ -68,16 +68,16 @@ public sealed class DnsClientXResolver : IDnsResolver
         return response.TypedAnswers?.OfType<T>().ToList() ?? [];
     }
 
-    private static void EnsureSuccessful(DnsResponse response)
+    private static void EnsureSuccessful(Dnsx.DnsResponse response)
     {
-        if (response.Status is DnsResponseCode.NoError or DnsResponseCode.NXDomain
+        if (response.Status is Dnsx.DnsResponseCode.NoError or Dnsx.DnsResponseCode.NXDomain
             && string.IsNullOrEmpty(response.Error))
         {
             return;
         }
 
-        throw new DnsClientException(
-            response.Error ?? $"DNS query failed with status {response.Status}.",
+        throw new Dnsx.DnsClientException(
+            response.Error,
             response);
     }
 }

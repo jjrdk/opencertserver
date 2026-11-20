@@ -14,3 +14,10 @@ Docker must be available. MSSQL uses SQL Server 2022 Developer with `ACCEPT_EULA
 it requires x86-64 execution or working AMD64 emulation and sufficient memory.
 Credentials are generated per container, not checked into configuration.
 Unknown database names fail explicitly rather than selecting a default or skipping scenarios.
+
+For PostgreSQL, after container-local readiness, the fixture also waits for an
+authenticated connection through Docker's mapped host port before applying migrations.
+Only transient connection failures are retried, within a one-minute startup deadline;
+migration errors still fail
+immediately. This avoids starting migrations before host-side connectivity is ready when
+multiple test assemblies start containers together.

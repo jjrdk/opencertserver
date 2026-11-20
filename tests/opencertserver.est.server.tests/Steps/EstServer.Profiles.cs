@@ -52,13 +52,13 @@ public partial class EstServer
     [Then("the issued certificate carries no certificatePolicies extension")]
     public void ThenTheIssuedCertificateCarriesNoCertificatePoliciesExtension()
     {
-        Assert.DoesNotContain(Issued().Extensions.Cast<X509Extension>(), e => e.Oid?.Value == Oids.CertPolicies);
+        Assert.DoesNotContain(Issued().Extensions, e => e.Oid?.Value == Oids.CertPolicies);
     }
 
     [Then("""^the issued certificate carries exactly the certificate policies "([^"]+)"$""")]
     public void ThenTheIssuedCertificateCarriesExactlyTheCertificatePolicies(string policies)
     {
-        var extension = Assert.Single(Issued().Extensions.Cast<X509Extension>(), e => e.Oid?.Value == Oids.CertPolicies);
+        var extension = Assert.Single(Issued().Extensions, e => e.Oid?.Value == Oids.CertPolicies);
         var read = new X509CertificatePoliciesExtension(extension, extension.Critical);
         Assert.Equal(Split(policies), read.PolicyIdentifiers);
     }
@@ -75,7 +75,7 @@ public partial class EstServer
     public void ThenTheIssuedCertificatesExtendedKeyUsagesAreExactly(string ekus)
     {
         var extension = Assert.Single(Issued().Extensions.OfType<X509EnhancedKeyUsageExtension>());
-        Assert.Equal(Split(ekus), extension.EnhancedKeyUsages.Cast<Oid>().Select(o => o.Value).OfType<string>().ToArray());
+        Assert.Equal(Split(ekus), [.. extension.EnhancedKeyUsages.Cast<Oid>().Select(o => o.Value).OfType<string>()]);
     }
 
     [Then("the issued certificate is a CA certificate")]

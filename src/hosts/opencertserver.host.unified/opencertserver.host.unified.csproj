@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <RootNamespace>OpenCertServer.Host.Unified</RootNamespace>
+        <OutputType>Exe</OutputType>
+        <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
+        <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+        <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
+        <EFScaffoldModelStage>none</EFScaffoldModelStage>
+        <EFPrecompileQueriesStage>none</EFPrecompileQueriesStage>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <NoWarn>1701;1702;IL2026</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+        <NoWarn>1701;1702;IL2026</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\opencertserver.data.postgresql\opencertserver.data.postgresql.csproj"/>
+        <ProjectReference Include="..\..\opencertserver.data.mssql\opencertserver.data.mssql.csproj"/>
+        <ProjectReference Include="..\..\opencertserver.acme.remote\opencertserver.acme.remote.csproj"/>
+        <ProjectReference Include="..\..\opencertserver.acme.server\opencertserver.acme.server.csproj"/>
+        <ProjectReference Include="..\..\opencertserver.ca.server\opencertserver.ca.server.csproj"/>
+        <ProjectReference Include="..\..\opencertserver.est.server\opencertserver.est.server.csproj"/>
+        <ProjectReference Include="..\..\opencertserver.scep.server\opencertserver.scep.server.csproj"/>
+        <ProjectReference Include="..\..\opencertserver.contrib.intune\opencertserver.contrib.intune.csproj"/>
+        <ProjectReference Include="..\..\opencertserver.ra\opencertserver.ra.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tasks" PrivateAssets="All"/>
+        <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens"/>
+        <PackageReference Include="Microsoft.IdentityModel.Protocols"/>
+        <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect"/>
+        <PackageReference Include="OpenTelemetry"/>
+        <PackageReference Include="OpenTelemetry.Api.ProviderBuilderExtensions"/>
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol"/>
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting"/>
+    </ItemGroup>
+</Project>

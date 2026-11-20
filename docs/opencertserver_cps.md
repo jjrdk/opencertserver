@@ -17,7 +17,7 @@ operate as a legal entity and does not provide any warranties or guarantees rega
 
 ## 3. Certificate Application and Issuance
 
-Certificate requests may be submitted via the EST or ACME protocols, or through a web interface. Applicants must provide
+Certificate requests may be submitted via the EST or ACME protocols. Applicants must provide
 accurate information and demonstrate control over the identifiers for which certificates are requested. For ACME, domain
 validation is performed as specified in RFC 8555. For EST, identity validation may include email, account, or device
 verification. The CA may approve or reject requests at its discretion.

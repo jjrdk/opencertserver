@@ -49,10 +49,8 @@ public partial class CertificateServerFeatures
         var request = new CertificateRequest("CN=test", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         var pem = new string(PemEncoding.Write("CERTIFICATE REQUEST", request.CreateSigningRequest()));
         using var client = _server.CreateClient();
-        using var message = new HttpRequestMessage(HttpMethod.Post, path)
-        {
-            Content = new StringContent(pem, Encoding.UTF8, "application/x-pem-file")
-        };
+        using var message = new HttpRequestMessage(HttpMethod.Post, path);
+        message.Content = new StringContent(pem, Encoding.UTF8, "application/x-pem-file");
         message.Headers.Add("Authorization", "Bearer valid-jwt");
         var response = await client.SendAsync(message).ConfigureAwait(false);
         _scenarioContext["csrStatus"] = response.StatusCode;
@@ -88,7 +86,7 @@ public partial class CertificateServerFeatures
             RSASignaturePadding.Pss);
         var request = new HttpRequestMessage(
             HttpMethod.Delete,
-            $"ca/revoke?sn={serialNumberString}&reason={compromise}&signature={Convert.ToBase64String(signature)}");
+            $"ca/revoke?profile=default&sn={serialNumberString}&reason={compromise}&signature={Convert.ToBase64String(signature)}");
         request.Headers.Add("X-Client-Cert", Convert.ToBase64String(_certCollection[0].Export(X509ContentType.Cert)));
         request.Headers.Add("Authorization", "Bearer valid-jwt");
         var response = await client.SendAsync(request).ConfigureAwait(false);
@@ -125,7 +123,7 @@ public partial class CertificateServerFeatures
 
         var request = new HttpRequestMessage(
             HttpMethod.Delete,
-            $"ca/revoke?sn={serialNumberHex}&reason={compromise}&signature={Convert.ToBase64String(signature)}");
+            $"ca/revoke?profile=default&sn={serialNumberHex}&reason={compromise}&signature={Convert.ToBase64String(signature)}");
         request.Headers.Add("X-Client-Cert", Convert.ToBase64String(craftedCert.Export(X509ContentType.Cert)));
         request.Headers.Add("Authorization", "Bearer non-admin");
         _scenarioContext["revocationResponse"] = await client.SendAsync(request).ConfigureAwait(false);
@@ -187,7 +185,7 @@ public partial class CertificateServerFeatures
 
         var request = new HttpRequestMessage(
             HttpMethod.Delete,
-            $"ca/revoke?sn={serialNumberString}&reason={compromise}&signature={Convert.ToBase64String(signature)}");
+            $"ca/revoke?profile=default&sn={serialNumberString}&reason={compromise}&signature={Convert.ToBase64String(signature)}");
         request.Headers.Add("X-Client-Cert",
             Convert.ToBase64String(attackerCert.Export(X509ContentType.Cert)));
         request.Headers.Add("Authorization", authorizationHeader);

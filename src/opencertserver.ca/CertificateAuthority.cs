@@ -1,4 +1,5 @@
-﻿using OpenCertServer.Ca.Utils.X509;
+﻿using OpenCertServer.Ca.Protocol;
+using OpenCertServer.Ca.Utils.X509;
 
 namespace OpenCertServer.Ca;
 
@@ -34,7 +35,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     private readonly IStoreCertificates _certificateStore;
     private readonly IValidateX509Chains _x509ChainValidation;
     private readonly IGenerateCertificateId _certificateIdGenerator;
-    private readonly IValidateCertificateRequests[] _validators;
+    private readonly IValidatorPipeline _pipeline;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CertificateAuthority"/> class.
@@ -44,7 +45,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     /// <param name="x509ChainValidation">The X509 chain validation.</param>
     /// <param name="certificateIdGenerator">The certificate ID generator.</param>
     /// <param name="logger">The logger.</param>
-    /// <param name="validators">The validators.</param>
+    /// <param name="validators">The request validators to run through the pipeline, or the built-in set when empty.</param>
     /// <exception cref="ArgumentException"></exception>
     public CertificateAuthority(
         CaConfiguration config,
@@ -59,7 +60,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         _certificateStore = certificateStore;
         _x509ChainValidation = x509ChainValidation;
         _certificateIdGenerator = certificateIdGenerator;
-        _validators = validators.Length > 0
+        IValidateCertificateRequests[] requestValidators = validators.Length > 0
             ? [.. validators]
             :
             [
@@ -70,6 +71,34 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
                 new KeyCrlSignatureValidation(_config.Profiles, NullLogger<KeyCrlSignatureValidation>.Instance),
                 new AuthenticatedSubjectValidation(NullLogger<AuthenticatedSubjectValidation>.Instance),
             ];
+        _pipeline = ValidatorPipeline.FromCertificateRequestValidators(requestValidators);
+    }
+
+    /// <summary>
+    /// Initializes a certificate authority using a unified pipeline for pre-sign request validation
+    /// and post-sign certificate validation.
+    /// </summary>
+    /// <param name="config">The CA configuration.</param>
+    /// <param name="certificateStore">The certificate store.</param>
+    /// <param name="x509ChainValidation">The X509 chain validation.</param>
+    /// <param name="certificateIdGenerator">The certificate ID generator.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="pipeline">The configured validator pipeline.</param>
+    public CertificateAuthority(
+        CaConfiguration config,
+        IStoreCertificates certificateStore,
+        IValidateX509Chains x509ChainValidation,
+        IGenerateCertificateId certificateIdGenerator,
+        ILogger<CertificateAuthority> logger,
+        IValidatorPipeline pipeline)
+    {
+        ArgumentNullException.ThrowIfNull(pipeline);
+        _config = config;
+        _logger = logger;
+        _certificateStore = certificateStore;
+        _x509ChainValidation = x509ChainValidation;
+        _certificateIdGenerator = certificateIdGenerator;
+        _pipeline = pipeline;
     }
 
     public static CaProfile CreateSelfSignedRsa(
@@ -161,14 +190,15 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     {
         var profile = await _config.Profiles.GetProfile(profileName, cancellationToken).ConfigureAwait(false);
         await _config.ValidateCrlUrlsAsync(cancellationToken).ConfigureAwait(false);
-        var results = await Task.WhenAll(_validators.Select(v =>
-            // ReSharper disable once AccessToModifiedClosure
-            v.Validate(request, profileName, requestor, reenrollingFrom, cancellationToken))).ConfigureAwait(false);
-        var validationResult = results.Where(r => r != null).ToArray();
-        if (validationResult.Length > 0)
+        var context = PreIssuingContext.Create(
+            request, profileName, requestor, reenrollingFrom, cancellationToken: cancellationToken);
+        var validationResult = await _pipeline.RunPre(context, cancellationToken).ConfigureAwait(false);
+        if (!validationResult.IsApproved)
         {
             LogCouldNotValidateRequest();
-            return new SignCertificateResponse.Error(string.Join("\n", validationResult));
+            return new SignCertificateResponse.Error(true, validationResult.RequiresApproval
+                ? "Certificate request requires approval."
+                : string.Join("\n", validationResult.Reasons));
         }
 
         LogCreatingCertificateForSubjectName(request.SubjectName.Name);
@@ -187,7 +217,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         var effectiveNotAfter = notAfter?.ToUniversalTime() ?? effectiveNotBefore.Add(profile.CertificateValidity);
         if (effectiveNotAfter <= effectiveNotBefore)
         {
-            return new SignCertificateResponse.Error("Requested certificate validity window is invalid.");
+            return new SignCertificateResponse.Error(false, "Requested certificate validity window is invalid.");
         }
 
         var cert = request.Create(
@@ -196,6 +226,19 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             effectiveNotBefore,
             effectiveNotAfter,
             _certificateIdGenerator.GenerateId());
+
+        var postResult = await _pipeline
+            .RunPost(
+                PostIssuingContext.Create(cert, context.Profile, context.Requestor, context.RequestId,
+                    context.CancellationToken), cancellationToken).ConfigureAwait(false);
+        if (!postResult.IsApproved)
+        {
+            LogCouldNotValidateRequest();
+            cert.Dispose();
+            return new SignCertificateResponse.Error(true, postResult.RequiresApproval
+                ? "Issued certificate requires approval."
+                : string.Join("\n", postResult.Reasons));
+        }
 
         using var chain = new X509Chain();
         chain.ChainPolicy = new X509ChainPolicy
@@ -215,7 +258,8 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             await _certificateStore.AddCertificate(cert, profile.Name, cancellationToken).ConfigureAwait(false);
             if (reenrollingFrom != null)
             {
-                await _certificateStore.RemoveCertificate(reenrollingFrom.SerialNumber, X509RevocationReason.Superseded,
+                await _certificateStore.RemoveCertificate(reenrollingFrom.SerialNumber, profile.Name,
+                    X509RevocationReason.Superseded,
                     cancellationToken).ConfigureAwait(false);
             }
 
@@ -229,7 +273,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
             .ToArray();
         LogErrors(string.Join(";", errors));
 
-        return new SignCertificateResponse.Error(errors);
+        return new SignCertificateResponse.Error(false, errors);
     }
 
     private CertificateRequest CleanCsrExtensions(CertificateRequest request, CaProfile profile)
@@ -360,7 +404,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
         else
         {
             var r = request.AsSpan(fields.Base64Data);
-            csr = Convert.FromBase64CharArray(r.ToArray(), 0, r.Length);
+            csr = Convert.FromBase64CharArray([.. r], 0, r.Length);
         }
 
         var response = await SignCertificateRequest(csr, profileName, requestor, reenrollingFrom, notBefore, notAfter,
@@ -415,21 +459,26 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     }
 
     /// <inheritdoc/>
-    public Task<bool> RevokeCertificate(
+    public async Task<IReadOnlyList<string>> GetSupportedProfiles(CancellationToken cancellationToken = default)
+    {
+        var names = new List<string>();
+        await foreach (var profile in _config.Profiles.GetProfiles(cancellationToken).ConfigureAwait(false))
+        {
+            names.Add(profile.Name);
+        }
+
+        return names;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> RevokeCertificate(
         string serialNumber,
+        string? profileName,
         X509RevocationReason reason,
         CancellationToken cancellationToken = default)
     {
-        return RevokeCertificateCore(serialNumber, reason, cancellationToken);
-    }
-
-    private async Task<bool> RevokeCertificateCore(
-        string serialNumber,
-        X509RevocationReason reason,
-        CancellationToken cancellationToken)
-    {
         using var telemetry = CaCoreInstruments.Start("revoke_certificate");
-        var revoked = await _certificateStore.RemoveCertificate(serialNumber, reason, cancellationToken)
+        var revoked = await _certificateStore.RemoveCertificate(serialNumber, profileName, reason, cancellationToken)
             .ConfigureAwait(false);
         telemetry.Complete(revoked);
         return revoked;
@@ -680,7 +729,7 @@ public sealed partial class CertificateAuthority : ICertificateAuthority
     partial void LogErrors(string errors);
 }
 
-public sealed partial class KeyCrlSignatureValidation : IValidateCertificateRequests
+public sealed partial class KeyCrlSignatureValidation : IValidateCertificateRequests<PreIssuingContext>
 {
     private readonly IStoreCaProfiles _caProfiles;
     private readonly ILogger _logger;
@@ -691,54 +740,54 @@ public sealed partial class KeyCrlSignatureValidation : IValidateCertificateRequ
         _logger = logger;
     }
 
-    public async Task<string?> Validate(
-        CertificateRequest request,
-        string? profile = null,
-        ClaimsIdentity? requestor = null,
-        X509Certificate2? reenrollingFrom = null,
+    public async Task<ValidationResult> Validate(
+        PreIssuingContext context,
         CancellationToken cancellationToken = default)
     {
-        var keyUsage = request.CertificateExtensions.OfType<X509KeyUsageExtension>().FirstOrDefault();
+        var keyUsage = context.Request.CertificateExtensions.OfType<X509KeyUsageExtension>().FirstOrDefault();
         if (keyUsage == null)
         {
-            return null;
+            return ValidationResult.Passed;
         }
 
         // keyCertSign and cRLSign are only permitted when the profile explicitly opts into CA issuance
         // by listing 2.5.29.19 (basicConstraints) in AllowedCsrExtensions.
-        var caProfile = await _caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
+        var caProfile = await _caProfiles.GetProfile(context.Profile, cancellationToken).ConfigureAwait(false);
         if (caProfile.AllowedCsrExtensions.Contains(Oids.BasicConstraints2))
         {
             // RFC 5280 §4.2.1.3: keyCertSign MUST only appear when the cA bit is also asserted.
             // cRLSign without keyCertSign is legitimate (indirect CRL issuers).
-            if (keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.KeyCertSign))
+            if (!keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.KeyCertSign))
             {
-                var basicConstraints = request.CertificateExtensions
-                    .OfType<X509BasicConstraintsExtension>().FirstOrDefault();
-                if (basicConstraints?.CertificateAuthority != true)
-                {
-                    LogCsrRequestsKeyCertSignWithoutCaTrue();
-                    return
-                        "CSR requests keyCertSign but does not assert CA:TRUE in basicConstraints (RFC 5280 §4.2.1.3)";
-                }
+                return ValidationResult.Passed;
             }
 
-            return null;
+            var basicConstraints = context.Request.CertificateExtensions
+                .OfType<X509BasicConstraintsExtension>().FirstOrDefault();
+            if (basicConstraints?.CertificateAuthority == true)
+            {
+                return ValidationResult.Passed;
+            }
+
+            LogCsrRequestsKeyCertSignWithoutCaTrue();
+            return ValidationResult.Reject(
+                "CSR requests keyCertSign but does not assert CA:TRUE in basicConstraints (RFC 5280 §4.2.1.3)");
         }
 
+        // This is a non-CA profile; keyCertSign and cRLSign are never allowed.
         if (keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.CrlSign))
         {
             LogCsrRequestsCrlSignInKeyUsage();
-            return "CSR must not request CRL Sign in keyUsage";
+            return ValidationResult.Reject("CSR must not request CRL Sign in keyUsage");
         }
 
         if (keyUsage.KeyUsages.HasFlag(X509KeyUsageFlags.KeyCertSign))
         {
             LogCsrRequestsKeyCertSignInKeyUsage();
-            return "CSR must not request Key Cert Sign in keyUsage";
+            return ValidationResult.Reject("CSR must not request Key Cert Sign in keyUsage");
         }
 
-        return null;
+        return ValidationResult.Passed;
     }
 
     [LoggerMessage(LogLevel.Error, "CSR requests Key Cert Sign in keyUsage")]
@@ -751,7 +800,7 @@ public sealed partial class KeyCrlSignatureValidation : IValidateCertificateRequ
     partial void LogCsrRequestsKeyCertSignWithoutCaTrue();
 }
 
-public sealed partial class CaExtensionValidation : IValidateCertificateRequests
+public sealed partial class CaExtensionValidation : IValidateCertificateRequests<PreIssuingContext>
 {
     private readonly IStoreCaProfiles _caProfiles;
     private readonly ILogger _logger;
@@ -762,32 +811,29 @@ public sealed partial class CaExtensionValidation : IValidateCertificateRequests
         _logger = logger;
     }
 
-    public async Task<string?> Validate(
-        CertificateRequest request,
-        string? profile = null,
-        ClaimsIdentity? requestor = null,
-        X509Certificate2? reenrollingFrom = null,
+    public async Task<ValidationResult> Validate(
+        PreIssuingContext context,
         CancellationToken cancellationToken = default)
     {
-        var caProfile = await _caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
+        var caProfile = await _caProfiles.GetProfile(context.Profile, cancellationToken).ConfigureAwait(false);
         var allowedOids = caProfile.AllowedCsrExtensions;
 
-        var basicConstraints = request.CertificateExtensions.OfType<X509BasicConstraintsExtension>()
+        var basicConstraints = context.Request.CertificateExtensions.OfType<X509BasicConstraintsExtension>()
             .FirstOrDefault();
         if (basicConstraints?.CertificateAuthority == true && !allowedOids.Contains(Oids.BasicConstraints2))
         {
             LogCsrRequestsCaCertificate();
-            return "CSR must not request CA:TRUE in basicConstraints";
+            return ValidationResult.Reject("CSR must not request CA:TRUE in basicConstraints");
         }
 
-        return null;
+        return ValidationResult.Passed;
     }
 
     [LoggerMessage(LogLevel.Error, "CSR requests CA:TRUE in basicConstraints")]
     partial void LogCsrRequestsCaCertificate();
 }
 
-public sealed partial class DistinguishedNameValidation : IValidateCertificateRequests
+public sealed partial class DistinguishedNameValidation : IValidateCertificateRequests<PreIssuingContext>
 {
     private readonly ILogger _logger;
 
@@ -796,30 +842,27 @@ public sealed partial class DistinguishedNameValidation : IValidateCertificateRe
         _logger = logger;
     }
 
-    public Task<string?> Validate(
-        CertificateRequest request,
-        string? profile,
-        ClaimsIdentity? requestor,
-        X509Certificate2? reenrollingFrom = null,
+    public Task<ValidationResult> Validate(
+        PreIssuingContext context,
         CancellationToken cancellationToken = default)
     {
-        if (request.SubjectName.Format(true)
+        if (context.Request.SubjectName.Format(true)
             .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
             .Any(x => x.StartsWith("CN=")))
         {
-            return Task.FromResult<string?>(null);
+            return Task.FromResult(ValidationResult.Passed);
         }
 
         // RFC 5280 §4.1.2.6: the subject MAY be empty when the identity is carried in subjectAltName
         // (ACME clients such as certbot send SAN-only CSRs).
-        if (!request.SubjectName.EnumerateRelativeDistinguishedNames().Any()
-         && request.CertificateExtensions.Any(ext => ext.Oid?.Value == Oids.SubjectAltName))
+        if (!context.Request.SubjectName.EnumerateRelativeDistinguishedNames().Any()
+         && context.Request.CertificateExtensions.Any(ext => ext.Oid?.Value == Oids.SubjectAltName))
         {
-            return Task.FromResult<string?>(null);
+            return Task.FromResult(ValidationResult.Passed);
         }
 
-        LogDistinguishedNameNameDoesNotContainACommonNameCnAttribute(request.SubjectName.Format(false));
-        return Task.FromResult<string?>("Subject name must contain a Common Name (CN) attribute");
+        LogDistinguishedNameNameDoesNotContainACommonNameCnAttribute(context.Request.SubjectName.Format(false));
+        return Task.FromResult(ValidationResult.Reject("Subject name must contain a Common Name (CN) attribute"));
     }
 
     [LoggerMessage(LogLevel.Error, "{DistinguishedName} name does not contain a Common Name (CN) attribute")]
@@ -831,7 +874,7 @@ public sealed partial class DistinguishedNameValidation : IValidateCertificateRe
 /// A client that is authenticated but has no name claim (e.g. a JWT with only role claims) is allowed through;
 /// subject binding only applies when the identity carries a name claim.
 /// </summary>
-public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertificateRequestValueConverter
+public sealed class AuthenticatedSubjectRequestValueConverter : ICertificateRequestValueConverter
 {
     public IReadOnlyCollection<string> GetValues(
         CertificateRequest request,
@@ -866,14 +909,14 @@ public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertifi
                 var sanValue = name switch
                 {
                     {
-                            Type: GeneralName.GeneralNameType.Rfc822Name or GeneralName.GeneralNameType.DnsName,
-                            Value: AsnString asnString
-                        }
+                        Type: GeneralName.GeneralNameType.Rfc822Name or GeneralName.GeneralNameType.DnsName,
+                        Value: AsnString asnString
+                    }
                         => asnString.Value,
                     {
-                            Type: GeneralName.GeneralNameType.OtherName,
-                            Value: OtherName { TypeId: Oids.UserPrincipalName } otherName
-                        }
+                        Type: GeneralName.GeneralNameType.OtherName,
+                        Value: OtherName { TypeId: Oids.UserPrincipalName } otherName
+                    }
                         => otherName.StringValue,
                     _ => null
                 };
@@ -888,7 +931,7 @@ public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertifi
     }
 }
 
-public sealed partial class AuthenticatedSubjectValidation : IValidateCertificateRequests
+public sealed partial class AuthenticatedSubjectValidation : IValidateCertificateRequests<PreIssuingContext>
 {
     private readonly ILogger _logger;
     private readonly ICertificateRequestValueConverter _requestValueConverter;
@@ -901,33 +944,36 @@ public sealed partial class AuthenticatedSubjectValidation : IValidateCertificat
         _requestValueConverter = requestValueConverter ?? new AuthenticatedSubjectRequestValueConverter();
     }
 
-    public Task<string?> Validate(
-        CertificateRequest request,
-        string? profile,
-        ClaimsIdentity? requestor,
-        X509Certificate2? reenrollingFrom = null,
+    public Task<ValidationResult> Validate(
+        PreIssuingContext context,
         CancellationToken cancellationToken = default)
     {
-        if (requestor == null)
+        if (context.Requestor == null)
         {
             // Anonymous enrollment is controlled by the authorization policy; nothing to bind here.
-            return Task.FromResult<string?>(null);
+            return Task.FromResult(ValidationResult.Passed);
         }
 
-        var identityNames = requestor.Claims
+        if (context.Requestor.FindFirst(RaClaimTypes.RaId) is not null)
+        {
+            // RA identity is bound to the configured delegation scope by RaScopeValidator instead.
+            return Task.FromResult(ValidationResult.Passed);
+        }
+
+        var identityNames = context.Requestor.Claims
             .Where(c => IdentityClaimTypes.Contains(c.Type) && !string.IsNullOrWhiteSpace(c.Value))
             .Select(c => c.Value.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (identityNames.Count == 0)
         {
             // No name claim (e.g., a JWT with only role claims) — cannot enforce subject binding.
-            return Task.FromResult<string?>(null);
+            return Task.FromResult(ValidationResult.Passed);
         }
 
-        var csrValues = _requestValueConverter.GetValues(request, profile, requestor);
+        var csrValues = _requestValueConverter.GetValues(context.Request, context.Profile, context.Requestor);
         if (csrValues.Count == 0)
         {
-            return Task.FromResult<string?>(null);
+            return Task.FromResult(ValidationResult.Passed);
         }
 
         // Every name the request asserts must be one of the identity's names: a request that carries the
@@ -938,14 +984,14 @@ public sealed partial class AuthenticatedSubjectValidation : IValidateCertificat
             .ToArray();
         if (foreign.Length == 0)
         {
-            return Task.FromResult<string?>(null);
+            return Task.FromResult(ValidationResult.Passed);
         }
 
         var csrValue = string.Join(", ", foreign);
         var identity = string.Join(", ", identityNames.OrderBy(v => v, StringComparer.OrdinalIgnoreCase));
         LogSubjectMismatch(csrValue, identity);
-        return Task.FromResult<string?>(
-            $"CSR values '{csrValue}' do not match authenticated identity '{identity}'");
+        return Task.FromResult(ValidationResult.Reject(
+            $"CSR values '{csrValue}' do not match authenticated identity '{identity}'"));
     }
 
     /// <summary>

@@ -16,10 +16,10 @@ public sealed class MsSqlModelCustomizer(ModelCustomizerDependencies dependencie
         {
             property.SetCollation("Latin1_General_100_BIN2");
         }
-//        // SQL Server datetime2 does not retain DateTime.Kind.
-//        modelBuilder.Entity<CertificateEntity>().Property(c => c.NotBefore)
-//            .HasConversion<UtcDateTimeConverter>();
-//        modelBuilder.Entity<CertificateEntity>().Property(c => c.NotAfter)
-//            .HasConversion<UtcDateTimeConverter>();
+        //        // SQL Server datetime2 does not retain DateTime.Kind.
+        //        modelBuilder.Entity<CertificateEntity>().Property(c => c.NotBefore)
+        //            .HasConversion<UtcDateTimeConverter>();
+        //        modelBuilder.Entity<CertificateEntity>().Property(c => c.NotAfter)
+        //            .HasConversion<UtcDateTimeConverter>();
     }
 }

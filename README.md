@@ -74,7 +74,6 @@ walkthrough with the tests that prove each behaviour.
 | `opencertserver.attestation` | Hardware attestation layer (AMD SEV-SNP, Intel SGX, Apple Secure Element) for device-attest. |
 | `opencertserver.tpm` / `opencertserver.tss.net` | TPM key provisioning so CA private keys can stay inside a TPM. |
 | `opencertserver.cli` | The `opencert` command-line tool (keys, CSRs, EST enroll/reenroll). |
-| `web` | Angular UI for certificate management. |
 
 Components are also published as NuGet packages, so you can embed the EST, ACME, or CA server in your
 own ASP.NET Core host. See [Getting started → Embedding the server](docs/getting-started.md#6-embedding-the-server-in-your-own-app).
@@ -97,7 +96,7 @@ Pick the page that matches what you want to do:
 | Issue certificates to Intune-managed devices over SCEP | [Getting started → SCEP and Intune](docs/getting-started.md#10-scep-and-intune) |
 | Read the endpoint reference (CA / EST / ACME / SCEP / OCSP / CRL) | [Documentation index](docs/documentation.md) |
 | Read the trust model / operational policy | [Certificate Policy](docs/opencertserver_cp.md) · [Certification Practice Statement](docs/opencertserver_cps.md) |
-| Run in Docker / Kubernetes | [Docker](Docker.md) |
+| Run in Docker / Kubernetes | [Docker](docs/docker.md) |
 | See the telemetry (metrics/traces) exposed | [OpenTelemetry metrics & traces](OpenTelemetryMetricsTraces.md) |
 | Report a vulnerability | [Security policy](SECURITY.md) |
 

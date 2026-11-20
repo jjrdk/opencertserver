@@ -12,6 +12,14 @@ using Model;
 public interface IValidateChallenges
 {
     /// <summary>
+    /// The ACME challenge type this validator handles (e.g. <c>dns-01</c>, <c>http-01</c>,
+    /// <c>device-attest-01</c> — see <c>CertesSlim.Acme.Resource.ChallengeTypes</c>). The challenge
+    /// validator factory routes a <see cref="Challenge"/> to the validator whose <see cref="AppliesTo"/>
+    /// matches <see cref="Challenge.Type"/>, which replaces the per-type marker interfaces.
+    /// </summary>
+    string AppliesTo { get; }
+
+    /// <summary>
     /// Validates the specified challenge for the given account.
     /// </summary>
     /// <param name="challenge">The challenge to validate.</param>

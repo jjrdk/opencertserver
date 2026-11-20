@@ -1,3 +1,5 @@
+using OpenCertServer.Ca.Protocol;
+
 namespace OpenCertServer.Ca.Server.Handlers;
 
 using System.Diagnostics;
@@ -8,13 +10,16 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
 using Utils;
 using OpenCertServer.Ca.Utils.Ca;
 
 public static class RevocationHandler
 {
-    public static async Task Handle(HttpContext context)
+    public static async Task Handle(
+        HttpContext context,
+        IStoreCertificates certificateStore,
+        ICertificateAuthority ca,
+        IValidatorPipeline validatorPipeline)
     {
         CaInstruments.RevocationRequests.Add(1);
         var sw = Stopwatch.GetTimestamp();
@@ -32,13 +37,17 @@ public static class RevocationHandler
                 return;
             }
 
-            var signature = context.Request.Query["signature"].ToString().Base64DecodeBytes();
-            var serialNumberHex = context.Request.Query["sn"].ToString();
-            var asymmetricAlgorithm = clientCert.GetRSAPublicKey() ?? (AsymmetricAlgorithm?)clientCert.GetECDsaPublicKey();
-            var reasonString = context.Request.Query["reason"];
+            var signature = context.Request.Query[RaProtocol.QuerySignature].ToString().Base64DecodeBytes();
+            var serialNumberHex = context.Request.Query[RaProtocol.QuerySn].ToString();
+            var profileName = context.Request.Query.TryGetValue(RaProtocol.QueryProfile, out var profileNameValue)
+                ? profileNameValue.ToString()
+                : null;
+            var asymmetricAlgorithm =
+                clientCert.GetRSAPublicKey() ?? (AsymmetricAlgorithm?)clientCert.GetECDsaPublicKey();
+            var reasonString = context.Request.Query[RaProtocol.QueryReason].ToString();
             if (asymmetricAlgorithm == null
              || !asymmetricAlgorithm.VerifySignature(
-                    Encoding.UTF8.GetBytes(serialNumberHex + reasonString),
+                    Encoding.UTF8.GetBytes(RaProtocol.BuildRevocationMessage(serialNumberHex, reasonString)),
                     signature,
                     HashAlgorithmName.SHA256))
             {
@@ -50,16 +59,41 @@ public static class RevocationHandler
                 return;
             }
 
+            if (string.IsNullOrEmpty(serialNumberHex)
+             || !Enum.TryParse(reasonString, true, out X509RevocationReason reason))
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                await context.Response.CompleteAsync().ConfigureAwait(false);
+                CaInstruments.RevocationFailures.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Error, "Invalid parameters");
+                CaInstruments.RevocationDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+                return;
+            }
+
+            byte[] serialBytes;
+            try
+            {
+                serialBytes = Convert.FromHexString(serialNumberHex);
+            }
+            catch (FormatException)
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                await context.Response.CompleteAsync().ConfigureAwait(false);
+                CaInstruments.RevocationFailures.Add(1);
+                activity?.SetStatus(ActivityStatusCode.Error, "Invalid serial number");
+                CaInstruments.RevocationDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+                return;
+            }
+
             // Self-service: verify the presented client certificate is the CA-issued certificate with serial sn.
             // Serial-number equality alone is insufficient — an attacker could craft a certificate with the
             // same serial number. We confirm identity by comparing thumbprints against the CA's store.
             var isSelfService = false;
             if (string.Equals(clientCert.GetSerialNumberString(), serialNumberHex, StringComparison.OrdinalIgnoreCase))
             {
-                var store = context.RequestServices.GetRequiredService<IStoreCertificates>();
-                var serialBytes = Convert.FromHexString(serialNumberHex);
+                var store = certificateStore;
                 var storedCert = await store
-                    .GetCertificatesById(context.RequestAborted, [serialBytes.AsMemory()])
+                    .GetCertificatesById(profileName, context.RequestAborted, [serialBytes.AsMemory()])
                     .FirstOrDefaultAsync(context.RequestAborted)
                     .ConfigureAwait(false);
 
@@ -72,10 +106,42 @@ public static class RevocationHandler
             if (!isSelfService)
             {
                 var isAdmin = context.User.Claims.Any(c =>
-                    c.Value == RevocationAuthorizationConstants.CaAdminRole &&
-                    (c.Type == ClaimTypes.Role || c.Type == "role"));
+                    c is { Value: RevocationAuthorizationConstants.CaAdminRole, Type: ClaimTypes.Role or "role" });
 
-                if (!isAdmin)
+                var isRaAuthorized = false;
+                var identity = context.User.Identity as ClaimsIdentity;
+                if (!isAdmin && identity?.FindFirst(RaClaimTypes.RaId) != null &&
+                    context.Request.Headers.TryGetValue(RaClaimTypes.DelegatedSubjectHeader, out var scopes) &&
+                    scopes.Count == 1 && !string.IsNullOrWhiteSpace(scopes[0]))
+                {
+                    var targetCertificate = await certificateStore
+                        .GetCertificatesById(profileName, context.RequestAborted, serialBytes.AsMemory())
+                        .FirstOrDefaultAsync(context.RequestAborted)
+                        .ConfigureAwait(false);
+                    if (targetCertificate != null)
+                    {
+                        var requestor = new ClaimsIdentity(
+                            identity.Claims.Append(new Claim(RaClaimTypes.DelegatedSubject, scopes[0]!)),
+                            identity.AuthenticationType,
+                            identity.NameClaimType,
+                            identity.RoleClaimType);
+                        var validationResult = await validatorPipeline.RunRevoke(
+                            RevokeContext.Create(profileName, requestor, targetCertificate, null,
+                                context.RequestAborted)).ConfigureAwait(false);
+                        if (validationResult.IsApproved)
+                        {
+                            isRaAuthorized = true;
+                        }
+                        else
+                        {
+                            CaInstruments.RevocationFailures.Add(1);
+                            activity?.SetStatus(ActivityStatusCode.Error, string.Join("; ", validationResult.Reasons));
+                            CaInstruments.RevocationDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
+                        }
+                    }
+                }
+
+                if (!isAdmin && !isRaAuthorized)
                 {
                     context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
                     await context.Response.CompleteAsync().ConfigureAwait(false);
@@ -86,19 +152,7 @@ public static class RevocationHandler
                 }
             }
 
-            if (string.IsNullOrEmpty(serialNumberHex)
-             || !Enum.TryParse(reasonString.ToString(), true, out X509RevocationReason reason))
-            {
-                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                await context.Response.CompleteAsync().ConfigureAwait(false);
-                CaInstruments.RevocationFailures.Add(1);
-                activity?.SetStatus(ActivityStatusCode.Error, "Invalid parameters");
-                CaInstruments.RevocationDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
-                return;
-            }
-
-            var ca = context.RequestServices.GetRequiredService<ICertificateAuthority>();
-            var result = await ca.RevokeCertificate(serialNumberHex, reason).ConfigureAwait(false);
+            var result = await ca.RevokeCertificate(serialNumberHex, profileName, reason).ConfigureAwait(false);
             context.Response.StatusCode = result ? (int)HttpStatusCode.OK : (int)HttpStatusCode.NotFound;
             await context.Response.CompleteAsync().ConfigureAwait(false);
 

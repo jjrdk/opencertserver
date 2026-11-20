@@ -21,8 +21,24 @@ client libraries, so you can copy and adapt it directly.
 ./build.ps1
 ```
 
-This produces the `opencert` CLI, the `certserver` web app, and the NuGet packages under
+This produces the `opencert` CLI, the `certserver` HTTP server, and the NuGet packages under
 `artifacts/`.
+
+### Run the tests
+
+The tests target .NET 10 and require its runtime as well as an SDK. SDK roll-forward
+in `global.json` does not install the .NET 10 runtime or allow tests to run on a newer
+runtime automatically. Check `dotnet --list-runtimes` if test executables cannot start.
+Docker must also be running for the relational and IQ scenarios.
+
+```sh
+dotnet test
+```
+
+In Rider, use **Settings > Build, Execution, Deployment > Toolset and Build** to
+select an installed .NET CLI executable. After a Homebrew upgrade, a cached
+versioned `Cellar` path may no longer exist. For a `dotnet@10` installation, the
+stable path is `/opt/homebrew/opt/dotnet@10/libexec/dotnet` on Apple Silicon.
 
 ---
 
@@ -128,8 +144,10 @@ SQL Server containers require an x86-64 Docker runtime (or working AMD64 emulati
 Further providers and Redis are left for later sessions.
 See the [configuration reference](documentation.md#optional-postgresql-persistence).
 
-The `certserver` application is configured entirely through command-line arguments, with environment
-variables and `appsettings.json` as fall-through. There are **no required environment variables**.
+The `certserver` application accepts JSON configuration files, environment variables, and command-line
+arguments. For production, use the [hardened appliance](docker.md): mount a versioned configuration
+file read-only at `/config/appsettings.json`, keys separately, and persistent storage at
+`/var/lib/opencertserver`. No certificate command-line arguments are needed.
 
 ### Mode 1 — Self-signed CA (fastest way to try it)
 
@@ -139,6 +157,8 @@ startup:
 ```sh
 dotnet opencertserver.certserver.dll \
    --dn "CN=My Internal CA" \
+   --authority https://identity.example.com \
+   --audience opencertserver \
    --port 5001 \
    --ocsp http://localhost:5001/ca/ocsp \
    --ca-issuer http://localhost:5001/ca/certificate
@@ -162,6 +182,8 @@ dotnet opencertserver.certserver.dll \
    --rsa-key /path/to/rsa-ca-key.pem \
    --ec     /path/to/ec-ca.pem \
    --ec-key  /path/to/ec-ca-key.pem \
+   --authority https://identity.example.com \
+   --audience opencertserver \
    --port 5001 \
    --ocsp   http://pki.example.com/ocsp \
    --ca-issuer http://pki.example.com/ca/certificate
@@ -175,14 +197,63 @@ dotnet opencertserver.certserver.dll \
 | `--ec-key <path>` | Path to the ECDSA CA private key PEM file (optional if the key is embedded in the cert file). |
 
 At least one of `--dn` or `--rsa`/`--ec` must be supplied; the server throws on startup otherwise.
-The TLS listener is pinned to TLS 1.2/1.3 because EST (RFC 7030) requires TLS ≥ 1.1.
+The development listener accepts TLS 1.2/1.3. Appliance images enforce **TLS 1.3 only** for all
+roles and reject ephemeral `--dn` CAs; provision persistent CA certificates and keys instead.
 
-For a containerized or Kubernetes deployment, see [Docker](../Docker.md). The equivalent Docker
-smoke test is:
+For a containerized deployment, start with the [headless appliance operator guide](appliance.md).
+The equivalent Docker smoke test is:
 
 ```sh
-curl -k https://localhost:8084/.well-known/est/cacerts
+curl --cacert tls-root.pem https://pki.example.com:5001/.well-known/est/cacerts
 ```
+
+### Appliance roles and upgrades
+
+Build `Dockerfile.unified` for CA + EST + ACME, `Dockerfile.ca` for the existing CA endpoints
+and health check only, or `Dockerfile.ra` for the authenticated operator RA API backed by the
+outbound `RaPeerClient` library. The RA image exposes `/ra/enroll`, `/ra/renew`, `/ra/revoke`,
+and liveness `/health`; it does not expose EST, ACME, or CA endpoints and never loads an issuing
+CA private key. `Dockerfile.appliance` is an alias for the unified role. Start with the sample
+configuration for the selected role under [`deploy/appliance/`](../deploy/appliance/), then
+follow the [headless appliance operator guide](appliance.md) for role-specific trust, endpoint,
+backup, upgrade, and rollback details.
+
+For a relational backend instead of the in-container file store, build the matching engine variant
+— `Dockerfile.<role>.postgres` or `Dockerfile.<role>.mssql` — which bakes `Appliance:Engine` and the
+`relational` persistence choices and reads its connection string from
+`ConnectionStrings:OpenCertServer` at runtime. The postgres variant is chiseled; the mssql variant
+builds on the full `runtime-deps` base because the SQL Server EF Core provider requires ICU.
+Schema migrations are an out-of-band step. See the
+[operator guide's relational-storage section](appliance.md#relational-storage).
+
+On the host (without a container), the same file is accepted:
+
+```sh
+ASPNETCORE_ENVIRONMENT=Hardened \
+  dotnet run --project src/opencertserver.certserver -- --config /absolute/path/appsettings.json
+```
+
+Set `Appliance:DataDirectory` to an existing writable host location outside a container.
+Stop the server and back up configuration, CA keys, certificate inventory/revocations, and
+ACME account/order files before upgrading. Use the **new** image to migrate a copy:
+
+```sh
+docker run --rm --user "$(id -u):$(id -g)" \
+  --mount type=bind,src="$PWD/config",dst=/config \
+  opencertserver-unified:local configload /config/v1.json /config/v2.json
+docker run --rm --user "$(id -u):$(id -g)" \
+  --mount type=bind,src="$PWD/config",dst=/config \
+  opencertserver-unified:local configdump /config/v2.json /config/export.json
+```
+
+`configload` migrates version 1 (`authority`, comma-separated `audience`) to version 2
+(`Jwt:Authority`, `Jwt:Audiences`). `configdump` exports a current-version file; both preserve
+all other JSON settings, refuse existing destinations, and create owner-only files on Unix.
+These exports contain any secrets already in the source: store them securely. They do not export
+environment-variable secrets or certificate private keys. Startup rejects old/newer schemas unless
+`Migration:AutoApply=true` opts into supported older-version upgrades **in memory**, never rewriting
+a read-only mount. An unsupported future version is always rejected. See the operator guide for
+rollback and image digest pinning.
 
 ---
 
@@ -572,12 +643,61 @@ standalone host's opt-in settings.
 | ACME | `/order/{id}/finalize` | POST | JWS |
 | ACME | `/order/{id}/certificate` | POST | JWS |
 | CA | `/ca/csr`, `/ca/{profile}/csr` | POST | Yes |
+| CA | `/ca/profiles` | GET | Yes (lists supported profile names; RA/ACME discovery + refresh) |
 | CA | `/ca/revoke` | DELETE | Yes (mTLS + signature; self-service or `ca_admin` role) |
 | CA | `/ca/crl`, `/ca/{profile}/crl` | GET | No |
 | CA | `/ca/ocsp`, `/ca/ocsp/{requestEncoded}` | POST/GET | No |
 
 See the [Documentation index](documentation.md) for request/response detail and
 [Implemented standards](standards.md) for the behaviour each endpoint guarantees.
+
+### Adding a validator to the pipeline
+
+The CA issuance path runs a **phased validator pipeline** before (and, for `Post`, after) signing
+(see [Implemented standards → Validators framework](standards.md#validators-framework-phased-pipeline)).
+Add your own check by implementing `IValidateCertificateRequests` and registering it at a phase:
+
+```csharp
+public sealed class RequireCnValidator : IValidateCertificateRequests
+{
+    public Task<ValidationResult> Validate(ValidatorContext ctx, CancellationToken ct = default)
+    {
+        var hasCommonName = ctx.Request.SubjectName.EnumerateRelativeDistinguishedNames()
+            .Any(rdn => rdn.GetSingleElementType().Value == "2.5.4.3"
+                && !string.IsNullOrWhiteSpace(rdn.GetSingleElementValue()));
+        return Task.FromResult(hasCommonName
+            ? ValidationResult.Passed
+            : ValidationResult.Reject("Common name is required"));
+    }
+}
+
+// in your Add*Server wiring, before AddValidatorPipeline():
+services.AddSingleton<RequireCnValidator>();
+services.AddValidator<RequireCnValidator>(ValidatorPhase.Data, order: 10);
+services.AddValidatorPipeline();   // assembles IValidatorPipeline from all registrations
+```
+
+Registering is additive: the five existing request validators run in the `Issuance` phase in aggregate
+mode. The interface's default pipeline overload maps their existing error-string result to
+`ValidationResult`, so adding a validator does not change their behaviour. A
+`ValidationResult.Reject` stops the pipeline (short-circuit); `ValidationResult.Error` records the
+rejection and continues; `ValidationResult.NeedsApproval` tags the request for human approval.
+Until an approval workflow is installed, the CA refuses issuance when approval is required.
+`Post` validators receive the signed certificate before it is stored or replaces a prior certificate;
+their rejection or approval requirement also prevents successful issuance.
+
+Existing validators that implement the `Task<string?> Validate(CertificateRequest, ...)` overload
+can still be registered with `services.AddSingleton<IValidateCertificateRequests, MyValidator>()`.
+`AddValidatorPipeline()` includes these registrations automatically in `Issuance`, including
+`RaScopeValidator` and the opt-in `PublicRaValidation`. Both contracts receive the same profile,
+caller, re-enrollment certificate, and cancellation token. Do not register the same validator through
+both helpers unless you intend it to run twice.
+
+`AddCertificateAuthority` / `AddSelfSignedCertificateAuthority` and the TPM CA wiring already
+assemble the pipeline. For a manually constructed CA, pass an `IValidatorPipeline` to its constructor,
+or pass request validators to the existing constructor to adapt them into the same framework.
+See [ValidatorPipeline.feature](../tests/opencertserver.ca.tests/Features/ValidatorPipeline.feature)
+and [CertificateRequestPipeline.feature](../tests/opencertserver.ca.tests/Features/CertificateRequestPipeline.feature).
 
 ---
 
@@ -660,9 +780,77 @@ unknown tool name returns a failed result with error code
 * **TPM-backed CA keys.** `opencertserver.tpm` / `opencertserver.tss.net` can provision the CA
   private key *inside* a TPM so it never leaves the hardware. See [Implemented standards → TPM](standards.md#tpm-backed-ca-keys).
 * **Lambda / serverless.** `opencertserver.lambda2` is the AWS Lambda entry point.
-* **Web UI.** The `web` Angular project is the management frontend; see `web/README.md`.
 
 ---
+
+## Registration authorities
+
+The central CA accepts a peer RA only when the RA is explicitly bound to profiles and DNS scopes.
+For example, configure the CA with:
+
+```text
+Ca__AcceptRa=true
+Ca__RaBindings__0__RaId=ra-tenant-a
+Ca__RaBindings__0__Scopes__0=tenant-a.example.com
+Ca__RaBindings__0__Profiles__0=default
+Ca__RaBindings__0__CertificateSha256Thumbprints__0=<64-hex SHA-256 fingerprint of the RA client certificate>
+```
+
+The fingerprint is required for mTLS RA identity; a matching certificate CN alone is not sufficient.
+JWT-based RAs do not need this fingerprint.
+
+The RA process initiates every connection; no inbound listener or CA-to-RA route is needed. Its
+configuration uses `Ra:PeerUrl` (HTTPS only), `Ra:Scope`, optional `Ra:Profile`, and optionally
+`Ra:BearerToken`. Keep tokens in a secret provider, not source-controlled settings. For mTLS, load
+the RA's CA-issued client certificate from a secure store and configure the outbound handler:
+
+```csharp
+using System.Security.Cryptography.X509Certificates;
+using OpenCertServer.Ra;
+
+var builder = WebApplication.CreateBuilder(args);
+var raCertificate = X509CertificateLoader.LoadPkcs12FromFile(
+    certificatePathFromSecretStore,
+    certificatePasswordFromSecretStore);
+builder.Services.AddRaPeerClient(builder.Configuration, handler =>
+{
+    handler.ClientCertificateOptions = ClientCertificateOption.Manual;
+    handler.ClientCertificates.Add(raCertificate);
+});
+```
+
+The CA maps an mTLS certificate's CN to a configured `RaId`; a JWT peer instead supplies the `ra`
+claim. The CA must trust the mTLS certificate under its client-certificate policy. In either case,
+the request's delegated DNS suffix and selected profile are checked against the CA binding.
+`RaPeerClient.EnrollAsync(csrPem)` and `RenewAsync(replacementCsrPem)` submit PKCS#10 requests;
+`RevokeAsync(raIdentityCertificate, serialNumberHex, reason)` sends a signed revocation request.
+Renewal is a new CSR submission, so the central CA's configured protocol and profile policy are
+reapplied.
+
+This client library is distinct from the `Dockerfile.ra` appliance role. The RA appliance hosts
+the JWT-protected operator API and uses `RaPeerClient` to make outbound requests to the CA; its
+routes, credentials, and deployment configuration are documented in the
+[headless appliance operator guide](appliance.md#endpoints).
+
+### Public self-service RA
+
+Public enrollment is disabled in the base configuration. To enable it, explicitly enable ACME for
+the selected profile as well as listing that profile in `PublicRa:Profiles`:
+
+```text
+PublicRa__Enabled=true
+PublicRa__RateLimit=60
+PublicRa__RequireEab=true
+PublicRa__Profiles__0=default
+default__AllowPublicEnrollment=true
+```
+
+ACME still requires account-based JWS requests and successful domain challenges; it is not an
+anonymous `/ca/csr` endpoint. Provision EAB keys through the existing ACME EAB configuration and
+store key material in a secret provider. Rate-limit rejections return HTTP 429. Human approval is
+not yet supported: setting `PublicRa:RequireApproval=true` intentionally fails startup until the T04
+approval workflow is implemented. See [Implemented standards → Registration authorities](standards.md#registration-authorities-scoped-peer-and-public-self-service)
+and the full [configuration reference](documentation.md#registration-authority-configuration).
 
 ## 10. SCEP and Intune
 
@@ -726,8 +914,96 @@ operator can do about it.
 
 ---
 
+## 11. Registration authorities
+
+The central CA accepts a peer RA only when the RA is explicitly bound to profiles and DNS scopes.
+For example, configure the CA with:
+
+```text
+Ca__AcceptRa=true
+Ca__RaBindings__0__RaId=ra-tenant-a
+Ca__RaBindings__0__Scopes__0=tenant-a.example.com
+Ca__RaBindings__0__Profiles__0=default
+Ca__RaBindings__0__CertificateSha256Thumbprints__0=<64-hex SHA-256 fingerprint of the RA client certificate>
+```
+
+The fingerprint is required for mTLS RA identity; a matching certificate CN alone is not sufficient.
+JWT-based RAs do not need this fingerprint.
+
+The RA process initiates every connection; no inbound listener or CA-to-RA route is needed. Its
+configuration uses `Ra:PeerUrl` (HTTPS only), `Ra:Scope`, optional `Ra:Profile`, optional
+`Ra:Profiles` (a comma-separated delegated profile set; empty means *all* profiles the CA supports),
+and optionally `Ra:BearerToken`. Keep tokens in a secret provider, not source-controlled settings. For
+mTLS, load the RA's CA-issued client certificate from a secure store and configure the outbound handler:
+
+```csharp
+using System.Security.Cryptography.X509Certificates;
+using OpenCertServer.Ra;
+
+var builder = WebApplication.CreateBuilder(args);
+var raCertificate = X509CertificateLoader.LoadPkcs12FromFile(
+    certificatePathFromSecretStore,
+    certificatePasswordFromSecretStore);
+builder.Services.AddRaPeerClient(builder.Configuration, handler =>
+{
+    handler.ClientCertificateOptions = ClientCertificateOption.Manual;
+    handler.ClientCertificates.Add(raCertificate);
+});
+```
+
+The CA maps an mTLS certificate's CN to a configured `RaId`; a JWT peer instead supplies the `ra`
+claim. The CA must trust the mTLS certificate under its client-certificate policy. In either case,
+the request's delegated DNS suffix and selected profile are checked against the CA binding.
+`RaPeerClient.EnrollAsync(csrPem, profile)` (the `profile` selects a CA profile and defaults to
+`Ra:Profile`) and `RenewAsync(replacementCsrPem)` submit PKCS#10 requests;
+`RevokeAsync(raIdentityCertificate, serialNumberHex, reason)` sends a signed revocation request;
+`GetSupportedProfiles()` asks the CA for its current profile set so the RA can offer, and refresh,
+the full set of profiles the CA supports.
+Renewal is a new CSR submission, so the central CA's configured protocol and profile policy are
+reapplied.
+
+### Public self-service RA
+
+Public enrollment is disabled in the base configuration. To enable it, explicitly enable ACME for
+the selected profile as well as listing that profile in `PublicRa:Profiles`:
+
+```text
+PublicRa__Enabled=true
+PublicRa__RateLimit=60
+PublicRa__RequireEab=true
+PublicRa__Profiles__0=default
+default__AllowPublicEnrollment=true
+```
+
+ACME still requires account-based JWS requests and successful domain challenges; it is not an
+anonymous `/ca/csr` endpoint. Provision EAB keys through the existing ACME EAB configuration and
+store key material in a secret provider. Rate-limit rejections return HTTP 429. Human approval is
+not yet supported: setting `PublicRa:RequireApproval=true` intentionally fails startup until the T04
+approval workflow is implemented. See [Implemented standards → Registration authorities](standards.md#registration-authorities-scoped-peer-and-public-self-service)
+and the full [configuration reference](documentation.md#registration-authority-configuration).
+
+## Separating RA / CA / ACME
+
+By default `opencertserver.certserver` runs everything in one process: the CA core,
+EST, ACME (with an in-process issuer), RA acceptance, and the public RA. The roles
+can be split across hosts that talk to each other over **trusted HTTPS connections**;
+the CA stays authoritative for scope and identity.
+
+- **CA that validates its own clients and acts as an ACME server** — the default
+  monolith (in-process `DefaultIssuer`).
+- **Separate ACME server → backing CA** — run the `opencertserver.acme` host, or set
+  `AcmeServer:Issuer=remote` in `certserver`. It issues through a `CaClient` to
+  `Ca:RemoteUrl` over HTTPS (bearer/mTLS). The ACME process never loads a CA key.
+- **RA → backing CA** — run the `opencertserver.ra.server` host. It forwards CSR to a
+  backing CA (`Ca:RemoteUrl`) and, when configured, RA peers (`Ra:PeerUrl`).
+
+See [Architecture: separating RA/CA/ACME](architecture-separation.md) for the full
+topology map, project boundaries, trusted-connection details, and the `Ca`/`Ra`/
+`AcmeServer` configuration keys.
+
 ## Next steps
 
+* [Separating RA/CA/ACME](architecture-separation.md) — deploy the roles as one process or split them over trusted HTTPS connections.
 * [Implemented standards](standards.md) — every RFC, what OpenCertServer does, and the tests that prove it.
 * [Documentation index](documentation.md) — the endpoint reference.
 * [Certification Practice Statement](opencertserver_cps.md) and

@@ -18,16 +18,17 @@ public class InMemoryCertificateStoreTests
     public async Task FindsCertificatesByThumbprintAndBySerialNumber()
     {
         var store = new InMemoryCertificateStore();
+        var profile = "test-profile";
         using var first = SelfSigned("CN=first");
         using var second = SelfSigned("CN=second");
-        await store.AddCertificate(first, TestContext.Current.CancellationToken);
-        await store.AddCertificate(second, TestContext.Current.CancellationToken);
+        await store.AddCertificate(first, profile, TestContext.Current.CancellationToken);
+        await store.AddCertificate(second, profile, TestContext.Current.CancellationToken);
 
         var byThumbprint = await store
             .GetCertificatesByThumbprint([second.Thumbprint.AsMemory()], TestContext.Current.CancellationToken)
             .ToListAsync(TestContext.Current.CancellationToken);
         var bySerial = await store
-            .GetCertificatesById(TestContext.Current.CancellationToken, first.SerialNumberBytes)
+            .GetCertificatesById(profile, TestContext.Current.CancellationToken, first.SerialNumberBytes)
             .ToListAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(second.Thumbprint, Assert.Single(byThumbprint).Thumbprint);
