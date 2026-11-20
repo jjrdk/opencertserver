@@ -90,7 +90,11 @@ public sealed partial class CaClient
 
         var requestUri = new Uri(_options.BaseUrl, path);
         using var request = new HttpRequestMessage(HttpMethod.Post, requestUri);
-        request.Content = new StringContent(csrPem, Encoding.UTF8, RaProtocol.CsrMimeType);
+        request.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(csrPem));
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue(RaProtocol.CsrMimeType)
+        {
+            CharSet = Encoding.UTF8.WebName
+        };
         // A remote SCEP/EST peer that cannot host the CA core carries the previous certificate over the
         // wire so the CA can supersede-revoke it on the new one; absence leaves first-enrollment unchanged.
         if (reenrollingFrom is not null)

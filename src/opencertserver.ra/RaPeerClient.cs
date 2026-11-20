@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using OpenCertServer.Ca.Protocol;
 
 namespace OpenCertServer.Ra;
@@ -112,7 +113,11 @@ public sealed class RaPeerClient
         CancellationToken cancellationToken)
     {
         using var request = CreateRequest(HttpMethod.Post, requestUri);
-        request.Content = new StringContent(csrPem, System.Text.Encoding.UTF8, "application/pkcs10");
+        request.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(csrPem));
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/pkcs10")
+        {
+            CharSet = Encoding.UTF8.WebName
+        };
         using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
