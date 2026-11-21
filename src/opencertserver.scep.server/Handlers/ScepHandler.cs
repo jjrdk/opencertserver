@@ -263,9 +263,25 @@ internal static partial class ScepHandler
 
         // For a renewal the CA supersedes the previous certificate once the new one is issued,
         // and refuses it when the previous certificate was issued under another profile (#140).
-        var response = await ca.SignCertificateRequest(
-                csr, profile, decision.Requestor, previous, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        SignCertificateResponse response;
+        try
+        {
+            response = await ca.SignCertificateRequest(
+                    csr, profile, decision.Requestor, previous, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            // A store or database behind the CA that fails throws instead of refusing. The
+            // validator has said yes and waits to hear the outcome (Intune does), and the client
+            // gets a CertRep like for any refusal, not an HTTP 500. The exception stays in the
+            // log; what the validator passes on is a fixed text.
+            logger.LogScepTransactionTransactionIdCaFailed(request.TransactionId, ex);
+            await validator.NotifyFailure(challenge, "The CA could not issue the certificate.", cancellationToken)
+                .ConfigureAwait(false);
+            return Failure(request, ScepFailInfo.BadRequest, options);
+        }
+
         if (response is not SignCertificateResponse.Success success)
         {
             var reason = response is SignCertificateResponse.Error error
@@ -404,4 +420,7 @@ internal static partial class ScepHandler
 
     [LoggerMessage(LogLevel.Warning, "SCEP transaction {TransactionId}: CA refused: {Reason}")]
     static partial void LogScepTransactionTransactionIdCaRefusedReason(this ILogger logger, string transactionId, string reason);
+
+    [LoggerMessage(LogLevel.Error, "SCEP transaction {TransactionId}: the CA failed while issuing")]
+    static partial void LogScepTransactionTransactionIdCaFailed(this ILogger logger, string transactionId, Exception exception);
 }
