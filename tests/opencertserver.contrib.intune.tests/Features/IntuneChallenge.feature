@@ -61,6 +61,17 @@ Feature: SCEP enrollment validated by Intune
         Then the server answers FAILURE with failInfo badRequest
         And Intune received the failure notification
 
+    # A store or database behind the CA that fails throws instead of refusing. Intune said
+    # yes and waits to hear the outcome; the device gets a SCEP FAILURE, not an HTTP 500,
+    # and the exception text stays in the server log.
+    Scenario: The CA fails after Intune allowed
+        Given a SCEP server that asks Intune about every request, with a CA that fails while issuing
+        When a device enrolls with the challenge Intune handed out
+        Then the server answers FAILURE with failInfo badRequest
+        And no certificate is returned
+        And Intune received the failure notification
+        And the failure notification does not carry the exception text
+
     Scenario: A request without a challenge password is not sent to Intune
         Given a SCEP server that asks Intune about every request
         When a device enrolls without a challenge password
