@@ -37,6 +37,8 @@ revocation. The Linux subprocess qualification scenarios in
 exercise the actual handshake, tool discovery, fail-closed startup and certificate issuance.
 CA-backed read operations such as `get_crl` need a configured CA; the standalone host
 currently creates one only with CA operations enabled and the explicit test-CA opt-in.
+An unreadable CSR submitted to `sign_certificate` returns a fixed parsing error rather
+than exposing parser exception text.
 
 ## Dependencies
 - `ModelContextProtocol` package for the MCP server runtime

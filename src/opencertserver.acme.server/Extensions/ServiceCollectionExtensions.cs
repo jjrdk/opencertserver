@@ -63,7 +63,8 @@ public static class ServiceCollectionExtensions
                             NullLogger<CaaValidator>.Instance,
                             dnsResolver,
                             sp.GetRequiredService<IOptions<AcmeServerOptions>>()),
-                        dnsResolver);
+                        dnsResolver,
+                        sp.GetRequiredService<ILogger<ValidateHttp01Challenges>>());
                 });
             }
 

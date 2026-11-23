@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Ca;
 using OpenCertServer.Ca.Server;
 using OpenCertServer.Ca.Utils.Ca;
@@ -113,6 +114,12 @@ public partial class EstServer
                     : null,
                 _context.TryGetValue("estChainCertificates", out var commonChain)
                     ? commonChain as X509Certificate2Collection
+                    : null,
+                testValidator: _context.TryGetValue("failureValidator", out var failureValidator)
+                    ? failureValidator as IValidateCertificateRequests
+                    : null,
+                testLogger: _context.TryGetValue("failureLogger", out var failureLogger)
+                    ? failureLogger as Microsoft.Extensions.Logging.ILoggerProvider
                     : null)
             .Build();
         await host.StartAsync().ConfigureAwait(false);
@@ -143,7 +150,9 @@ public partial class EstServer
         X509Certificate2Collection? profileChainCertificates = null,
         X509Certificate2Collection? estChainCertificates = null,
         bool realTls = false,
-        Action<HttpContext>? observeRequest = null)
+        Action<HttpContext>? observeRequest = null,
+        IValidateCertificateRequests? testValidator = null,
+        Microsoft.Extensions.Logging.ILoggerProvider? testLogger = null)
     {
         var caProfiles = new CaProfileSet(
             "rsa",
@@ -192,8 +201,16 @@ public partial class EstServer
             }
 
             builder.ConfigureAppConfiguration(b => { b.AddEnvironmentVariables(); });
+            if (testLogger != null)
+            {
+                builder.ConfigureLogging(logging => logging.AddProvider(testLogger));
+            }
             builder.ConfigureServices(sc =>
                 {
+                    if (testValidator != null)
+                    {
+                        sc.AddSingleton(testValidator);
+                    }
                     sc.AddCors(o => o.AddPolicy("AllowAll", b =>
                     {
                         b.AllowAnyOrigin()

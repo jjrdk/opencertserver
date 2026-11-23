@@ -43,12 +43,16 @@ internal static class SimpleReEnrollHandler
         {
             result = await Core().ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             EstInstruments.SimpleReEnrollFailures.Add(1);
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.SetStatus(ActivityStatusCode.Error);
             EstInstruments.SimpleReEnrollDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
             throw;
+        }
+        catch (Exception ex)
+        {
+            result = EstRequestBody.InternalError(context, ex);
         }
 
         var statusCode = (result as IStatusCodeHttpResult)?.StatusCode ?? 200;
@@ -84,19 +88,10 @@ internal static class SimpleReEnrollHandler
                     (int)HttpStatusCode.BadRequest);
             }
 
-            CertificateRequest request;
-            try
+            if (!EstRequestBody.TryLoadCsr(requestBody, context,
+                    CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions, out _, out var request))
             {
-                request = CertificateRequest.LoadSigningRequest(
-                    EstRequestBody.DecodeCsr(requestBody),
-                    HashAlgorithmName.SHA256,
-                    CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
-                    RSASignaturePadding.Pss);
-            }
-            catch (Exception ex)
-            {
-                return Results.Text($"The re-enrollment CSR could not be parsed: {ex.Message}",
-                    Constants.TextPlainMimeType, Encoding.UTF8, (int)HttpStatusCode.BadRequest);
+                return EstRequestBody.InvalidCsr();
             }
 
             if (!cert.SubjectName.RawData.AsSpan().SequenceEqual(request.SubjectName.RawData))

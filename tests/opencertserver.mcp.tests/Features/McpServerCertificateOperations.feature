@@ -40,6 +40,11 @@ Scenario: Signing an invalid CSR fails with certificate signing error
     And the error code MUST be McpErrorCode.CertificateSigningFailed
     And the error message MUST mention that the CSR could not be parsed
 
+Scenario: Signing an invalid-length base64 CSR does not expose a parser exception
+    When the MCP server invokes "sign_certificate" with CSR body "a"
+    Then the result MUST indicate failure
+    And the error message MUST mention that the CSR could not be parsed
+
 Scenario: Signing without a CSR fails
     When the MCP server invokes "sign_certificate" without providing a CSR string
     Then the result MUST indicate failure

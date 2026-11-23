@@ -380,6 +380,12 @@ returning no requirements. Embedded hosts can still supply their own `ICsrTempla
 - Authentication: a client certificate or a JWT.
 - Response: a `multipart/mixed` bundle containing the issued certificate **and** the generated
    private key in PEM.
+- As specified by RFC 7030 §4.4.1, the CSR signature is not verified for server-side key generation;
+   the server generates a new key rather than using the CSR public key.
+
+All three enrollment operations return HTTP 400 with a fixed message for an unreadable CSR.
+Unexpected issuance failures return HTTP 500 with a fixed message and are logged by the server;
+internal exception details are not included in the response.
 
 Per-profile variants of the above (`{profile}/cacerts`, `{profile}/csrattrs`, …) let one server act
 as multiple logical CAs. For runnable client code (including `ServerKeyGeneration`) see
@@ -485,12 +491,16 @@ secret (`opencertserver.contrib.intune`) and maps the revocation sync:
 was revoked and why, what could not be checked); 409 while a run is in progress. It requires the
 policy `scep_intune_sync`, which `certserver` grants to the `ca_admin` role over the same
 authentication schemes as the CA endpoints.
+When Graph cannot determine a certificate's status, the report gives a generic reason and
+the server log retains the diagnostic detail; the certificate is not revoked.
 
 ## ACME endpoints
 
 ACME endpoints are mounted by `UseAcmeServer()` and protected by RFC 8555 account-based JWS
 authentication. Requests are signed with compact JWS ([RFC 7515](https://www.rfc-editor.org/rfc/rfc7515));
 every error response is `application/problem+json` ([RFC 7807](https://www.rfc-editor.org/rfc/rfc7807)).
+DNS corroboration and HTTP challenge connection failures use generic problem details; resolver
+configuration and transport diagnostics are retained in server logs rather than sent to ACME clients.
 
 ### ACME DNS validation configuration
 
