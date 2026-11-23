@@ -110,6 +110,12 @@ internal static class EstRequestBody
     {
         context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("OpenCertServer.Est.Server")
             .LogError(exception, "An EST enrollment request failed");
+        if (exception is BadHttpRequestException badRequest)
+        {
+            return Results.Text("The request body could not be read.", Constants.TextPlainMimeType, Encoding.UTF8,
+                badRequest.StatusCode);
+        }
+
         return Results.Text("Internal error while issuing the certificate.", Constants.TextPlainMimeType, Encoding.UTF8,
             StatusCodes.Status500InternalServerError);
     }
