@@ -42,9 +42,10 @@ public sealed class AcmeProtocolResponseFilter : IEndpointFilter
         }
         catch (JsonException ex)
         {
+            _logger.LogWarning("Rejected malformed ACME JSON ({ExceptionType})", ex.GetType().Name);
             return await CreateProblemResultAsync(
                     context.HttpContext,
-                    new MalformedRequestException(ex.Message),
+                    new MalformedRequestException("The request JSON could not be read."),
                     StatusCodes.Status400BadRequest)
                 .ConfigureAwait(false);
         }

@@ -57,6 +57,13 @@ Feature: Revocation sync for Intune-issued certificates
         When the sync runs
         Then nothing was revoked
         And 3 certificates are reported as unknown
+        And unknown reasons do not expose Graph diagnostics
+
+    Scenario: The sync endpoint does not expose Graph diagnostics
+        Given Graph is unreachable
+        When the sync endpoint is called by the configured caller as a dry run
+        Then the endpoint answers HTTP 200 with a report
+        And the endpoint report does not expose Graph diagnostics
 
     # A 200 without the list Graph promises is not "the device is gone".
     Scenario: Graph answers the device lookup without a value list - nothing is revoked

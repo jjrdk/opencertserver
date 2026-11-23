@@ -118,7 +118,7 @@ public sealed partial class CaaValidator : ICaaValidator
             return new AcmeError
             {
                 Type = "dns",
-                Detail = $"Could not read CAA records from DNS: {ex.Message}",
+                Detail = "Could not read CAA records from DNS.",
                 Identifier = identifier
             };
         }
