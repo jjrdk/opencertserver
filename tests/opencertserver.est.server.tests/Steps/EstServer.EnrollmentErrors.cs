@@ -37,6 +37,10 @@ public partial class EstServer
         {
             request.CertificateExtensions.Add(new X509Extension("2.5.29.17", [0x04, 0x05, 0xde, 0xad, 0xbe, 0xef, 0x00], false));
         }
+        else if (kind == "malformed otherName")
+        {
+            request.CertificateExtensions.Add(new X509Extension("2.5.29.17", [0x30, 0x02, 0xa0, 0x00], false));
+        }
 
         var der = request.CreateSigningRequest();
         if (kind == "invalid signature")
