@@ -24,6 +24,7 @@ Feature: EST enrollment errors do not disclose internal details
           | simpleenroll   | malformed SAN     |
           | simplereenroll | malformed SAN     |
           | serverkeygen   | malformed SAN     |
+          | simpleenroll   | malformed otherName |
 
     Scenario: Server key generation deliberately ignores the CSR signature
         Given a certificate server that complies with EST (RFC 7030)

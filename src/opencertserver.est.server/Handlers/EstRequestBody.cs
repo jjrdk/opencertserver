@@ -74,6 +74,14 @@ internal static class EstRequestBody
                                 case 1 or 2 or 6:
                                     names.ReadCharacterString(UniversalTagNumber.IA5String, tag);
                                     break;
+                                case 0:
+                                    var otherName = names.ReadSequence(tag);
+                                    otherName.ReadObjectIdentifier();
+                                    var value = otherName.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+                                    value.ReadEncodedValue();
+                                    value.ThrowIfNotEmpty();
+                                    otherName.ThrowIfNotEmpty();
+                                    break;
                                 case 7:
                                     names.ReadOctetString(tag);
                                     break;
