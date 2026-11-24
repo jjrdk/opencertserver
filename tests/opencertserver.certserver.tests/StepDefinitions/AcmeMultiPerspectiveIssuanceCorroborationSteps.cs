@@ -82,7 +82,7 @@ public sealed class AcmeMultiPerspectiveIssuanceCorroborationSteps
     {
         var expected = ComputeDns01Content();
         AddPerspective(new StubDnsResolver(txtRecords: [expected]));
-        AddPerspective(new StubDnsResolver(error: new DnsClientException("perspective unavailable")));
+        AddPerspective(new StubDnsResolver(error: new DnsClientException("private-resolver.internal:5432")));
     }
 
     [Given("the http-01 perspectives return the same IP address {string}")]
@@ -107,6 +107,10 @@ public sealed class AcmeMultiPerspectiveIssuanceCorroborationSteps
         _httpHandler.SetResponse(HttpStatusCode.OK, $"{_challenge.Token}.{thumbprint}");
     }
 
+    [Given("the challenge server connection fails with an internal diagnostic")]
+    public void GivenChallengeServerConnectionFails() =>
+        _httpHandler.SetFailure(new HttpRequestException("private-resolver.internal:5432"));
+
     [Given("two perspectives return different CAA records")]
     public void GivenPerspectivesReturnDifferentCaaRecords()
     {
@@ -126,7 +130,7 @@ public sealed class AcmeMultiPerspectiveIssuanceCorroborationSteps
             txtRecords: [expected]));
         AddPerspective(new StubDnsResolver(
             txtRecords: [expected],
-            caaError: new DnsClientException("perspective unavailable")));
+            caaError: new DnsClientException("private-resolver.internal:5432")));
     }
 
     [Given("the challenge uses the real CAA validator")]
@@ -258,6 +262,14 @@ public sealed class AcmeMultiPerspectiveIssuanceCorroborationSteps
         Assert.Equal(expectedType, _result.Error.Type);
     }
 
+    [Then("the challenge error must not expose internal resolver details")]
+    public void ThenChallengeErrorDoesNotExposeDetails()
+    {
+        Assert.NotNull(_result.Error?.Detail);
+        Assert.DoesNotContain("perspective-", _result.Error.Detail, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("private-resolver.internal", _result.Error.Detail, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Then("the corroborated DNS lookup must fail with a perspective mismatch")]
     public void ThenLookupFailsWithMismatch()
         => Assert.IsType<DnsPerspectiveMismatchException>(_dnsException);
@@ -367,6 +379,9 @@ public sealed class AcmeMultiPerspectiveIssuanceCorroborationSteps
     {
         private HttpStatusCode _statusCode = HttpStatusCode.OK;
         private string? _body;
+        private Exception? _failure;
+
+        public void SetFailure(Exception failure) => _failure = failure;
 
         public void SetResponse(HttpStatusCode statusCode, string body)
         {
@@ -378,6 +393,11 @@ public sealed class AcmeMultiPerspectiveIssuanceCorroborationSteps
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+            if (_failure is not null)
+            {
+                return Task.FromException<HttpResponseMessage>(_failure);
+            }
+
             var response = new HttpResponseMessage(_statusCode);
             if (_body is not null)
             {

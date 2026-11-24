@@ -39,12 +39,14 @@ Feature: Multi-Perspective Issuance Corroboration
             And the dns-01 perspectives return different TXT records
             When the dns-01 challenge is validated with multi-perspective DNS
             Then the corroborated challenge must fail with error type "dns"
+            And the challenge error must not expose internal resolver details
 
         Scenario: an unavailable perspective invalidates the challenge
             Given an ACME account with a pending dns-01 challenge for "example.com"
             And one dns-01 perspective fails
             When the dns-01 challenge is validated with multi-perspective DNS
             Then the corroborated challenge must fail with error type "dns"
+            And the challenge error must not expose internal resolver details
 
     Rule: http-01 IP lookups are corroborated
 
@@ -60,6 +62,15 @@ Feature: Multi-Perspective Issuance Corroboration
             And the http-01 perspectives return different IP addresses
             When the http-01 challenge is validated with multi-perspective DNS
             Then the corroborated challenge must fail with error type "dns"
+            And the challenge error must not expose internal resolver details
+
+        Scenario: HTTP challenge connection errors do not disclose internal details
+            Given an ACME account with a pending http-01 challenge for "example.com"
+            And the http-01 perspectives return the same IP address "93.184.216.34"
+            And the challenge server connection fails with an internal diagnostic
+            When the http-01 challenge is validated with multi-perspective DNS
+            Then the corroborated challenge must fail with error type "connection"
+            And the challenge error must not expose internal resolver details
 
     Rule: CAA lookups are corroborated
 
@@ -76,6 +87,7 @@ Feature: Multi-Perspective Issuance Corroboration
             And the challenge uses the real CAA validator
             When the dns-01 challenge is validated with multi-perspective DNS
             Then the corroborated challenge must fail with error type "dns"
+            And the challenge error must not expose internal resolver details
 
         Scenario: an unavailable CAA perspective fails a challenge with a dns error
             Given an ACME account with a pending dns-01 challenge for "example.com"
@@ -83,3 +95,4 @@ Feature: Multi-Perspective Issuance Corroboration
             And the challenge uses the real CAA validator
             When the dns-01 challenge is validated with multi-perspective DNS
             Then the corroborated challenge must fail with error type "dns"
+            And the challenge error must not expose internal resolver details

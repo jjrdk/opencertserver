@@ -4,11 +4,13 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Net;
 using System.Net.Http;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Scep.Server;
 using OpenCertServer.Scep.Tests;
 using Reqnroll;
@@ -95,6 +97,13 @@ public sealed class IntuneChallenge : IDisposable
     public void GivenServerWithCertificate()
     {
         (_host, _, _ra) = TestHostBuilder.Build(_fake, withCertificate: true);
+    }
+
+    [Given("a SCEP server that asks Intune about every request, with a CA that fails while issuing")]
+    public void GivenServerWithFailingCa()
+    {
+        (_host, _, _ra) = TestHostBuilder.Build(_fake,
+            configureServices: s => s.AddSingleton<IValidateCertificateRequests, FailingStore>());
     }
 
     [Given("Intune refuses with {string}")]
@@ -278,6 +287,14 @@ public sealed class IntuneChallenge : IDisposable
         Assert.Empty(_fake.CallsTo("successNotification"));
     }
 
+    [Then("the failure notification does not carry the exception text")]
+    public void ThenNoExceptionText()
+    {
+        var call = Assert.Single(_fake.CallsTo("failureNotification"));
+        var description = call!["notification"]!["errorDescription"]!.GetValue<string>();
+        Assert.DoesNotContain(FailingStore.Message, description, StringComparison.Ordinal);
+    }
+
     [Then("Intune received no failure notification")]
     public void ThenNoFailureNotified()
     {
@@ -329,6 +346,15 @@ public sealed class IntuneChallenge : IDisposable
         Assert.Equal(HttpStatusCode.OK, _response!.StatusCode);
         var body = await _response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
         _certRep = ScepTestResponse.Read(body, _clientSigner!);
+    }
+
+    /// <summary>Stands for a certificate store or database that cannot be reached: it throws.</summary>
+    private sealed class FailingStore : IValidateCertificateRequests<PreIssuingContext>
+    {
+        public const string Message = "Failed to connect to 10.20.30.40:5432";
+
+        public Task<ValidationResult> Validate(PreIssuingContext context, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException(Message);
     }
 
     private static string NewTransactionId() => Convert.ToHexString(RandomNumberGenerator.GetBytes(8));

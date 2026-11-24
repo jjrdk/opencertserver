@@ -11,6 +11,9 @@ using Abstractions.Services;
 using CertesSlim.Acme;
 using ChallengeTypes = CertesSlim.Acme.Resource.ChallengeTypes;
 using DnsClientX;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 
 public sealed class ValidateHttp01Challenges : TokenChallengeValidator
@@ -20,12 +23,22 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator
     private readonly HttpClient _httpClient;
     private readonly ICaaValidator _caaValidator;
     private readonly IDnsResolver _dnsResolver;
+    private readonly ILogger<ValidateHttp01Challenges> _logger;
 
     public ValidateHttp01Challenges(HttpClient httpClient, ICaaValidator caaValidator, IDnsResolver dnsResolver)
+        : this(httpClient, caaValidator, dnsResolver, NullLogger<ValidateHttp01Challenges>.Instance)
+    {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public ValidateHttp01Challenges(
+        HttpClient httpClient, ICaaValidator caaValidator, IDnsResolver dnsResolver,
+        ILogger<ValidateHttp01Challenges> logger)
     {
         _httpClient = httpClient;
         _caaValidator = caaValidator;
         _dnsResolver = dnsResolver;
+        _logger = logger;
     }
 
     protected override string GetExpectedContent(Challenge challenge, Account account)
@@ -58,11 +71,12 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator
         }
         catch (DnsPerspectiveMismatchException ex)
         {
+            _logger.LogWarning(ex, "Challenge host DNS corroboration failed");
             return (null,
                 new AcmeError
                 {
                     Type = "dns",
-                    Detail = ex.Message,
+                    Detail = "Challenge host DNS responses could not be corroborated.",
                     Identifier = challenge.Authorization.Identifier
                 });
         }
@@ -129,11 +143,12 @@ public sealed class ValidateHttp01Challenges : TokenChallengeValidator
         }
         catch (HttpRequestException ex)
         {
+            _logger.LogWarning(ex, "HTTP challenge request failed");
             return (null,
                 new AcmeError
                 {
                     Type = "connection",
-                    Detail = ex.Message,
+                    Detail = "Could not retrieve the HTTP challenge response.",
                     Identifier = challenge.Authorization.Identifier
                 });
         }

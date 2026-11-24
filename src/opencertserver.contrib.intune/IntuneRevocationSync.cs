@@ -168,7 +168,8 @@ public sealed partial class IntuneRevocationSync
             catch (GraphUnavailableException ex)
             {
                 LogUnknown(_logger, item.SerialNumber, item.DistinguishedName, ex.Message);
-                unknown.Add(new SyncUnknown(item.SerialNumber, item.DistinguishedName, ex.Message));
+                unknown.Add(new SyncUnknown(item.SerialNumber, item.DistinguishedName,
+                    "Microsoft Graph could not determine the certificate's status."));
             }
         }
 

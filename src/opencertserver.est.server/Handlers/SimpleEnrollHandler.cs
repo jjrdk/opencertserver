@@ -48,12 +48,16 @@ internal static class SimpleEnrollHandler
         {
             result = await Core().ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             EstInstruments.SimpleEnrollFailures.Add(1);
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.SetStatus(ActivityStatusCode.Error);
             EstInstruments.SimpleEnrollDuration.Record(Stopwatch.GetElapsedTime(sw).TotalSeconds);
             throw;
+        }
+        catch (Exception ex)
+        {
+            result = EstRequestBody.InternalError(httpRequest.HttpContext, ex);
         }
 
         var statusCode = (result as IStatusCodeHttpResult)?.StatusCode ?? 200;
@@ -77,33 +81,18 @@ internal static class SimpleEnrollHandler
             var responseType = httpRequest.GetTypedHeaders().Accept;
             using var reader = new StreamReader(body, Encoding.UTF8);
             var requestContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-            try
+            if (!EstRequestBody.TryLoadCsr(requestContent, httpRequest.HttpContext,
+                    CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions, out var csrDer, out var csr))
             {
-                requestContent = Convert.ToBase64String(EstRequestBody.DecodeCsr(requestContent));
-            }
-            catch (FormatException f)
-            {
-                return Results.Text(f.Message, Constants.TextPlainMimeType, Encoding.UTF8,
-                    (int)HttpStatusCode.BadRequest);
-            }
-            catch (InvalidOperationException o)
-            {
-                return Results.Text(o.Message, Constants.TextPlainMimeType, Encoding.UTF8,
-                    (int)HttpStatusCode.BadRequest);
+                return EstRequestBody.InvalidCsr();
             }
 
+            requestContent = Convert.ToBase64String(csrDer);
             if (!requestContent.TryVerifyTlsUniqueValue(out var proofOfPossessionError))
             {
                 return Results.Text(proofOfPossessionError, Constants.TextPlainMimeType, Encoding.UTF8,
                     (int)HttpStatusCode.BadRequest);
             }
-
-            var csrDer = Convert.FromBase64String(requestContent);
-            var csr = CertificateRequest.LoadSigningRequest(
-                    csrDer,
-                    HashAlgorithmName.SHA256,
-                    CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
-                    signerSignaturePadding: RSASignaturePadding.Pss);
 
             if (manualAuthorizationStrategy.TryGetPendingAuthorization(
                 httpRequest,
@@ -115,21 +104,11 @@ internal static class SimpleEnrollHandler
                 return new RetryAfterResult(retryAfter, pendingMessage);
             }
 
-            SignCertificateResponse newCert;
-            try
-            {
-                newCert = await certificateAuthority.SignCertificateRequest(
-                    csr,
-                    profileName,
-                    user?.Identity as ClaimsIdentity,
-                    cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                return Results.Text($"The enrollment CSR could not be parsed: {ex.Message}", Constants.TextPlainMimeType,
-                    Encoding.UTF8,
-                    (int)HttpStatusCode.BadRequest);
-            }
+            var newCert = await certificateAuthority.SignCertificateRequest(
+                csr,
+                profileName,
+                user?.Identity as ClaimsIdentity,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
 
             if (newCert is SignCertificateResponse.Success success)
             {

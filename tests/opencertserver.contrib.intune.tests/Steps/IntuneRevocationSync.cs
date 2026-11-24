@@ -237,6 +237,23 @@ public sealed class IntuneRevocationSync : IDisposable
     [Then("{int} certificates are reported as unknown")]
     public void ThenUnknown(int count) => Assert.Equal(count, _report!.Unknown.Count);
 
+    [Then("unknown reasons do not expose Graph diagnostics")]
+    public void ThenUnknownReasonsAreSanitized()
+    {
+        Assert.NotEmpty(_report!.Unknown);
+        Assert.All(_report.Unknown, item =>
+            Assert.Equal("Microsoft Graph could not determine the certificate's status.", item.Reason));
+    }
+
+    [Then("the endpoint report does not expose Graph diagnostics")]
+    public void ThenEndpointReportIsSanitized()
+    {
+        Assert.NotNull(_report);
+        Assert.NotEmpty(_report.Unknown);
+        Assert.All(_report.Unknown, item =>
+            Assert.Equal("Microsoft Graph could not determine the certificate's status.", item.Reason));
+    }
+
     [Then("the report lists {string} as to be revoked")]
     public void ThenListed(string label)
     {
@@ -277,6 +294,7 @@ public sealed class IntuneRevocationSync : IDisposable
         Assert.Equal(HttpStatusCode.OK, _http!.StatusCode);
         var report = await _http.Content.ReadFromJsonAsync<SyncReport>().ConfigureAwait(false);
         Assert.NotNull(report);
+        _report = report;
         Assert.True(report.DryRun);
         Assert.Equal(3, report.Checked);
     }

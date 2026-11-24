@@ -267,10 +267,25 @@ internal static partial class ScepHandler
         // a DER-signed request, and the parsed CertificateRequest has no signing key, so a CA that
         // lives behind a wire (a backing CA) cannot re-serialize it. The signature was already
         // verified against the SCEP signer above, so the raw bytes are trusted here.
-        var response = await ca.SignCertificateRequestPem(
-                PemEncoding.WriteString("CERTIFICATE REQUEST", request.CsrDer),
-                profile, decision.Requestor, previous, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        SignCertificateResponse response;
+        try
+        {
+            response = await ca.SignCertificateRequestPem(
+                    PemEncoding.WriteString("CERTIFICATE REQUEST", request.CsrDer),
+                    profile, decision.Requestor, previous, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            // A store or database behind the CA that fails throws instead of refusing. The
+            // validator has said yes and waits to hear the outcome (Intune does), and the client
+            // gets a CertRep like for any refusal, not an HTTP 500. The exception stays in the
+            // log; what the validator passes on is a fixed text.
+            logger.LogScepTransactionTransactionIdCaFailed(request.TransactionId, ex);
+            await validator.NotifyFailure(challenge, "The CA could not issue the certificate.", cancellationToken)
+                .ConfigureAwait(false);
+            return Failure(request, ScepFailInfo.BadRequest, options);
+        }
         if (response is not SignCertificateResponse.Success success)
         {
             var reason = response is SignCertificateResponse.Error error
@@ -409,4 +424,7 @@ internal static partial class ScepHandler
 
     [LoggerMessage(LogLevel.Warning, "SCEP transaction {TransactionId}: CA refused: {Reason}")]
     static partial void LogScepTransactionTransactionIdCaRefusedReason(this ILogger logger, string transactionId, string reason);
+
+    [LoggerMessage(LogLevel.Error, "SCEP transaction {TransactionId}: the CA failed while issuing")]
+    static partial void LogScepTransactionTransactionIdCaFailed(this ILogger logger, string transactionId, Exception exception);
 }

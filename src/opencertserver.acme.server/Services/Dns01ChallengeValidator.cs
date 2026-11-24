@@ -73,11 +73,12 @@ public sealed partial class ValidateDns01Challenges : TokenChallengeValidator
         }
         catch (DnsPerspectiveMismatchException ex)
         {
+            _logger.LogWarning(ex, "DNS challenge corroboration failed");
             return (null,
                     new AcmeError
                     {
                         Type = "dns",
-                        Detail = ex.Message,
+                        Detail = "Challenge DNS responses could not be corroborated.",
                         Identifier = challenge.Authorization.Identifier
                     });
         }

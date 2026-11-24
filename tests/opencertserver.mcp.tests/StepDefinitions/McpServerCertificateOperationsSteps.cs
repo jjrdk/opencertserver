@@ -71,9 +71,12 @@ public sealed class McpServerCertificateOperationsSteps
     }
 
     [When("the MCP server invokes \"sign_certificate\" with an invalid CSR body")]
-    public async Task WhenSignCertificateInvalid()
+    public Task WhenSignCertificateInvalid() => WhenSignCertificateBody("not-a-valid-csr");
+
+    [When("the MCP server invokes \"sign_certificate\" with CSR body {string}")]
+    public async Task WhenSignCertificateBody(string csr)
     {
-        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr = "not-a-valid-csr" }).ConfigureAwait(false);
+        var result = await _fixture.InvokeMcpToolAsync("sign_certificate", new { csr }).ConfigureAwait(false);
         _context.ToolResult = result;
         _context.SignedCert = result.IsSuccess
             ? (McpCertificateItem)result.Content!
@@ -224,8 +227,7 @@ public sealed class McpServerCertificateOperationsSteps
     {
         Assert.NotNull(_context.ToolResult);
         var msg = _context.ToolResult!.ErrorMessage ?? "";
-        Assert.True(msg.Contains("CSR", StringComparison.OrdinalIgnoreCase) ||
-            msg.Contains("parse", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("CSR could not be parsed.", msg);
     }
 
     [Then("the issued certificate MUST appear in the certificate inventory")]

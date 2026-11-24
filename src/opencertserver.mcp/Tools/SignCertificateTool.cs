@@ -60,7 +60,14 @@ public class SignCertificateTool
             }
             else
             {
-                normalized = normalized.NormalizeBase64();
+                try
+                {
+                    normalized = normalized.NormalizeBase64();
+                }
+                catch (InvalidOperationException)
+                {
+                    throw new McpException("CSR could not be parsed.");
+                }
             }
 
             var csrDer = Convert.FromBase64String(normalized);
@@ -70,9 +77,9 @@ public class SignCertificateTool
                 CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions,
                 RSASignaturePadding.Pss);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is FormatException or CryptographicException or NotSupportedException or ArgumentException)
         {
-            throw new McpException($"CSR could not be parsed: {ex.Message}");
+            throw new McpException("CSR could not be parsed.");
         }
 
         var result = await ca.SignCertificateRequest(

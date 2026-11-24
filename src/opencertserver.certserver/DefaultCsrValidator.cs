@@ -6,12 +6,17 @@ using System.Globalization;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.Extensions.Logging;
 using Ca.Utils;
 using Acme.Abstractions.IssuanceServices;
 using Acme.Abstractions.Model;
 
 internal sealed class DefaultCsrValidator : ICsrValidator
 {
+    private readonly ILogger<DefaultCsrValidator> _logger;
+
+    public DefaultCsrValidator(ILogger<DefaultCsrValidator> logger) => _logger = logger;
+
     /// <inheritdoc />
     public Task<(bool isValid, AcmeError? error)> ValidateCsr(
         Order order,
@@ -20,11 +25,27 @@ internal sealed class DefaultCsrValidator : ICsrValidator
     {
         try
         {
-            var req = PemEncoding.TryFind(csr, out _)
-                ? CertificateRequest.LoadSigningRequestPem(csr, HashAlgorithmName.SHA256,
-                    CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions, RSASignaturePadding.Pss)
-                : CertificateRequest.LoadSigningRequest(csr.Base64DecodeBytes(), HashAlgorithmName.SHA256,
+            CertificateRequest req;
+            if (PemEncoding.TryFind(csr, out _))
+            {
+                req = CertificateRequest.LoadSigningRequestPem(csr, HashAlgorithmName.SHA256,
                     CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions, RSASignaturePadding.Pss);
+            }
+            else
+            {
+                byte[] csrDer;
+                try
+                {
+                    csrDer = csr.Base64DecodeBytes();
+                }
+                catch (InvalidOperationException)
+                {
+                    return Task.FromResult(Invalid("The CSR could not be parsed."));
+                }
+
+                req = CertificateRequest.LoadSigningRequest(csrDer, HashAlgorithmName.SHA256,
+                    CertificateRequestLoadOptions.UnsafeLoadCertificateExtensions, RSASignaturePadding.Pss);
+            }
 
             var csrNames = req.CertificateExtensions
                 .OfType<X509SubjectAlternativeNameExtension>()
@@ -56,13 +77,10 @@ internal sealed class DefaultCsrValidator : ICsrValidator
 
             return Task.FromResult((true, (AcmeError?)null));
         }
-        catch (CryptographicException ex)
+        catch (Exception ex) when (ex is CryptographicException or ArgumentException or FormatException or NotSupportedException)
         {
-            return Task.FromResult(Invalid($"The CSR could not be parsed: {ex.Message}"));
-        }
-        catch (ArgumentException ex)
-        {
-            return Task.FromResult(Invalid($"The CSR could not be parsed: {ex.Message}"));
+            _logger.LogWarning("Rejected an invalid ACME CSR ({ExceptionType})", ex.GetType().Name);
+            return Task.FromResult(Invalid("The CSR could not be parsed."));
         }
         catch (FormatException ex)
         {
