@@ -23,7 +23,8 @@ public sealed class PackTask : FrostingTask<BuildContext>
             NoRestore = true,
             OutputDirectory = "./artifacts/packages",
             IncludeSymbols = true,
-            MSBuildSettings = new DotNetMSBuildSettings().SetConfiguration(context.BuildConfiguration)
+            MSBuildSettings = new DotNetMSBuildSettings()
+                .SetConfiguration(context.BuildConfiguration)
                 .SetVersion(context.BuildVersion)
         };
         string[] projectNames =
@@ -31,9 +32,12 @@ public sealed class PackTask : FrostingTask<BuildContext>
             "CertesSlim",
             "opencertserver.acme.abstractions",
             "opencertserver.acme.aspnetclient",
+            "opencertserver.acme.remote",
             "opencertserver.acme.server",
             "opencertserver.acme.yarp",
             "opencertserver.ca",
+            "opencertserver.ca.client",
+            "opencertserver.ca.protocol",
             "opencertserver.ca.server",
             "opencertserver.ca.utils",
             "opencertserver.contrib.intune",
@@ -42,6 +46,7 @@ public sealed class PackTask : FrostingTask<BuildContext>
             "opencertserver.data.postgresql",
             "opencertserver.est.client",
             "opencertserver.est.server",
+            "opencertserver.ra",
             "opencertserver.scep.server",
             "opencertserver.tss.net",
             "opencertserver.tpm"
