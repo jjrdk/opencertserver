@@ -57,7 +57,7 @@ public sealed class VersionTask : FrostingTask<BuildContext>
 
         if (branch.StartsWith("beta/", StringComparison.Ordinal))
         {
-            return $"{branch["beta/".Length..]}-{distance}";
+            return $"{branch[(branch.IndexOf('/') + 1)..]}-{distance}";
         }
 
         return $"{version}-{branch[(branch.IndexOf('/') + 1)..]}.{distance}";

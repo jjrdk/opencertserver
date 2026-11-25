@@ -25,7 +25,7 @@ public sealed class PostgreSqlStoreProvider : IRelationalStoreProvider
     public async Task SaveNonceAsync(CaDbContext context, Nonce nonce, CancellationToken cancellationToken)
     {
         using var telemetry = PostgreSqlInstruments.Start("save_nonce");
-        await context.Database.ExecuteSqlInterpolatedAsync(
+        await context.Database.ExecuteSqlAsync(
             $"""INSERT INTO "Nonces" ("Token", "Created") VALUES ({nonce.Token}, {DateTimeOffset.UtcNow}) ON CONFLICT ("Token") DO NOTHING""",
             cancellationToken);
         telemetry.Complete();
@@ -38,7 +38,7 @@ public sealed class PostgreSqlStoreProvider : IRelationalStoreProvider
         CancellationToken cancellationToken)
     {
         using var telemetry = PostgreSqlInstruments.Start("consume_nonce");
-        var removed = await context.Database.ExecuteSqlInterpolatedAsync(
+        var removed = await context.Database.ExecuteSqlAsync(
             $"""DELETE FROM "Nonces" WHERE "Token" = {nonce.Token}""", cancellationToken) == 1;
         telemetry.Complete();
         return removed;
@@ -53,7 +53,7 @@ public sealed class PostgreSqlStoreProvider : IRelationalStoreProvider
         CancellationToken cancellationToken)
     {
         using var telemetry = PostgreSqlInstruments.Start("revoke_certificate");
-        var revoked = await context.Database.ExecuteSqlInterpolatedAsync(
+        var revoked = await context.Database.ExecuteSqlAsync(
             $"""UPDATE "Certificates" SET "RevocationReason" = {(int)reason}, "RevocationDate" = {DateTimeOffset.UtcNow} WHERE "SerialNumber" = {serialNumber} AND "ProfileName" IS NOT DISTINCT FROM {issuingProfile}""",
             cancellationToken) == 1;
         telemetry.Complete();
