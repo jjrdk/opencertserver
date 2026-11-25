@@ -158,8 +158,11 @@ production. See the [operator guide's relational-storage section](appliance.md#r
 
 The published image is built by the Cake `Linux-Docker-Build` task
 (`build/opencertserver.build/LinuxDockerBuildTask.cs`), which publishes
-`src/opencertserver.certserver` to `artifacts/publish/server/linux-musl-x64` and builds the root
-`Dockerfile` with tags `jjrdk/opencertserver:latest` and `jjrdk/opencertserver:<version>`.
+`src/opencertserver.certserver` for .NET 10 and 11 to
+`artifacts/publish/<tfm>/server/linux-musl-x64` and builds the root `Dockerfile` with matching
+runtime dependencies. Each image has framework-qualified tags, such as
+`jjrdk/opencertserver:latest-net11.0` and `jjrdk/opencertserver:<version>-net11.0`.
+The .NET 10 image also retains the unqualified `latest` and `<version>` tags.
 
 The appliance images are built by the Cake `Appliance-Docker-Build` task
 (`build/opencertserver.build/ApplianceDockerBuildTask.cs`), which publishes **each role's own host
