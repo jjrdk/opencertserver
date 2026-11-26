@@ -53,7 +53,9 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
                 await msSql.StartAsync(cancellationToken);
                 ConnectionString = new SqlConnectionStringBuilder(msSql.GetConnectionString())
                 {
-                    InitialCatalog = "store_tests", TrustServerCertificate = true, Pooling = false
+                    InitialCatalog = "store_tests",
+                    TrustServerCertificate = true,
+                    Pooling = false
                 }.ConnectionString;
                 break;
             default:
