@@ -866,14 +866,14 @@ public sealed partial class AuthenticatedSubjectRequestValueConverter : ICertifi
                 var sanValue = name switch
                 {
                     {
-                            Type: GeneralName.GeneralNameType.Rfc822Name or GeneralName.GeneralNameType.DnsName,
-                            Value: AsnString asnString
-                        }
+                        Type: GeneralName.GeneralNameType.Rfc822Name or GeneralName.GeneralNameType.DnsName,
+                        Value: AsnString asnString
+                    }
                         => asnString.Value,
                     {
-                            Type: GeneralName.GeneralNameType.OtherName,
-                            Value: OtherName { TypeId: Oids.UserPrincipalName } otherName
-                        }
+                        Type: GeneralName.GeneralNameType.OtherName,
+                        Value: OtherName { TypeId: Oids.UserPrincipalName } otherName
+                    }
                         => otherName.StringValue,
                     _ => null
                 };

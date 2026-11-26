@@ -110,7 +110,9 @@ public sealed class ProviderBoundarySteps
             await Task.CompletedTask;
             yield return new CertificateItemInfo
             {
-                SerialNumber = "01", DistinguishedName = "CN=probe", Thumbprint = "probe"
+                SerialNumber = "01",
+                DistinguishedName = "CN=probe",
+                Thumbprint = "probe"
             };
         }
     }
