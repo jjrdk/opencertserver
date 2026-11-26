@@ -29,7 +29,8 @@ public sealed class TestHostBuilder
 
     public static (IHost Host, X509Certificate2 RsaCa, X509Certificate2 Ra) Build(
         FakeIntune fake, int maxRevocations = 25, bool withCertificate = false, IReadOnlyList<string>? syncProfiles = null,
-        Action<IServiceCollection>? configureServices = null)
+        Action<IServiceCollection>? configureServices = null, IntuneOptions? intuneOptions = null,
+        Func<HttpMessageHandler>? intuneHandler = null)
     {
         using var rsaKey = RSA.Create(2048);
         var rsaReq = new CertificateRequest("CN=Intune Test RSA CA", rsaKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
@@ -114,7 +115,8 @@ public sealed class TestHostBuilder
                             [],
                             []));
                     services.AddScepServer(new ScepServerOptions { RaCertificate = ra, DefaultProfile = "rsa" });
-                    services.AddIntune(options, http => http.ConfigurePrimaryHttpMessageHandler(() => fake));
+                    services.AddIntune(intuneOptions ?? options,
+                        http => http.ConfigurePrimaryHttpMessageHandler(intuneHandler ?? (() => fake)));
                     configureServices?.Invoke(services);
                 })
                 .Configure(app => app
@@ -125,6 +127,7 @@ public sealed class TestHostBuilder
                     {
                         e.MapScepServer();
                         e.MapIntuneSync();
+                        e.MapIntuneDeviceReport();
                     })))
             .Build();
         host.Start();

@@ -38,6 +38,11 @@ person recognises. `IIntuneClient.GetManagedDeviceName` asks Graph for the
 same permission the sync already has - for an inventory page that lists
 certificates by device.
 
+**Additional authorization and reporting.** `AddIntuneDynamicChallenge` adds an
+HTTPS webhook decision after Intune approves the CSR; it never replaces the
+challenge Intune supplies. `MapIntuneDeviceReport` maps a protected certificate
+inventory report. See the [webhook contract and report limitations](../../docs/documentation.md#dynamic-scep-authorization).
+
 ## Telemetry
 
 When OpenTelemetry is enabled by the host, challenge validation, success/failure
@@ -86,3 +91,15 @@ Intune devices, disabled Entra devices, Graph throttled or down (nothing
 revoked), dry run, the revocation limit, a second run while one is running,
 and the endpoint's policy. What a fake cannot say about the real service is
 left to an end-to-end test against a real tenant.
+
+[SCEPwright IntuneSimulator](https://github.com/pdb0102/SCEPwright/blob/main/docs/intune-simulator.md)
+is an independent simulator of Intune, Entra and Graph suitable for additional
+interoperability checks. It is not Microsoft Intune and cannot establish real-tenant compatibility.
+Its validation endpoint accepts the CSR without verifying the challenge or expected
+subject/SAN, so a real Intune tenant remains necessary for those checks.
+Start the simulator on a loopback HTTP address with its advertised base URL set
+to that address, then set `OPENCERTSERVER_INTUNE_SIMULATOR_URL` to that URL when
+running `tests/opencertserver.contrib.intune.tests`; the dynamic authorization
+success scenario additionally runs a complete enrollment against the simulator.
+The test obtains the simulator's test credential and challenge through its local
+control API. Never point it at a real Intune tenant.

@@ -259,6 +259,7 @@ Intune.
 |---|---|
 | `IntuneChallengeValidator` | Sends each `PKCSReq` (transaction ID and CSR) to Intune's SCEP validation service (`validateRequest`, discovered through Microsoft Graph) and lets the CA issue only when Intune agrees. Refused, unreachable or throttled (429) all mean *deny*. After issuing it sends `successNotification`; when the CA refuses or fails after Intune agreed, `failureNotification`. A CA that throws (an unreachable store or database) is answered like a refusal: a signed `FAILURE` `CertRep` with `failInfo=badRequest`, the exception in the server log, and a fixed reason in the notification. A `RenewalReq` signed with the previous certificate passes without Intune. |
 | `IntuneRevocationSync` | Walks the certificates issued through the configured profiles (`SyncProfiles`, by the issuing profile the store recorded) and asks Graph about the user (UPN from the subjectAltName), the Intune managed device (`IntuneDeviceId://` URI) and the Entra device. What is gone or disabled is revoked (`cessationOfOperation`); certificates from other profiles are never judged. Graph unreachable, throttled or answering in an unexpected shape means *unknown*, and unknown is never revoked; a run that would revoke more than `MaxRevocationsPerSync` aborts. |
+| Dynamic SCEP authorization | Optional fail-closed webhook decision after Intune validation; Intune generates the per-device challenge. `GET /scep/intune/devices` reports identifiers from the certificate inventory, scoped to configured profiles. |
 | `POST /scep/intune/sync?dryRun=` | Runs the sync and returns the report; 409 while a run is in progress. Requires the authorization policy `scep_intune_sync`. It is an operation, not a scheduler - the caller decides how often. |
 | `IIntuneClient.GetManagedDeviceName` | The name of a managed device, for an inventory that lists certificates by device. |
 
@@ -277,8 +278,10 @@ throttled, unreachable or answering without a value list (nothing revoked), a ce
 another profile, no sync profiles, dry run, the revocation limit, a second run while one is in
 progress, and the endpoint's policy.
 * [IntuneDeviceName.feature](../tests/opencertserver.contrib.intune.tests/Features/IntuneDeviceName.feature).
+* [DynamicScep.feature](../tests/opencertserver.contrib.intune.tests/Features/DynamicScep.feature) —
+Intune and webhook authorization, webhook failure, device reporting, and report authorization.
 
-All three run against an in-process fake of Entra, Graph and the validation service. What a fake
+These run against an in-process fake of Entra, Graph and the validation service. What a fake
 cannot say about the real service was checked against a real tenant: Windows 11 devices enrolled
 and renewed through Intune, with `validateRequest` and `successNotification` accepted by Intune,
 and the sync running daily.

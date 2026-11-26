@@ -703,6 +703,11 @@ one.
 
    Every `PKCSReq` is now checked with Intune; if Intune refuses, cannot be reached or throttles,
    nothing is issued.
+   To require an additional policy decision, configure `Scep__DynamicChallenge__Enabled=true`,
+   `Scep__DynamicChallenge__Webhook` with the HTTPS webhook URL, and
+   `Scep__DynamicChallenge__Secret` with its bearer credential. See the
+   [webhook contract](documentation.md#dynamic-scep-authorization); Intune continues to
+   generate and validate the device challenge.
 3. **Trusted certificate profiles in Intune** for the CA chain - the root into the computer's root
    store, an issuing CA into the intermediate store. `GetCACert` publishes the root as well, and
    Windows compares it with the root of its Intune profile before it sends a request.
@@ -718,6 +723,7 @@ one.
    reasonable start. It judges only certificates issued through `Scep:Intune:SyncProfiles`,
    revokes those of disabled or deleted users and of retired devices, and never revokes when
    Graph is unreachable.
+   The same role can call `GET /scep/intune/devices` for certificate-backed device reporting.
 
 **Renewal on Windows.** Windows renews by enrolling again with a fresh Intune challenge, not with a
 `RenewalReq`. The previous certificate stays valid at the CA until it expires; see
