@@ -22,6 +22,7 @@ using Acme.Abstractions.Storage;
 public sealed class StaticExternalAccountKeyStore : IStoreExternalAccountKeys
 {
     private readonly IReadOnlyDictionary<string, ExternalAccountKey> _keys;
+    private readonly object _sync = new();
 
     /// <summary>Initializes a new instance of the <see cref="StaticExternalAccountKeyStore"/> class.</summary>
     /// <param name="keys">The external account keys, provisioned out-of-band.</param>
@@ -34,15 +35,18 @@ public sealed class StaticExternalAccountKeyStore : IStoreExternalAccountKeys
     /// <inheritdoc />
     public Task<ExternalAccountKey?> LoadKey(string keyId, CancellationToken cancellationToken)
     {
-        _ = cancellationToken;
-        _ = _keys.TryGetValue(keyId, out var key);
-        return Task.FromResult(key);
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_sync)
+        {
+            _ = _keys.TryGetValue(keyId, out var key);
+            return Task.FromResult(key);
+        }
     }
 
     /// <inheritdoc />
     public Task SaveKey(ExternalAccountKey key, CancellationToken cancellationToken)
     {
-        _ = cancellationToken;
+        cancellationToken.ThrowIfCancellationRequested();
         // Keys are provisioned out-of-band; a static store is not a place to bind new ones.
         return Task.CompletedTask;
     }
@@ -50,9 +54,27 @@ public sealed class StaticExternalAccountKeyStore : IStoreExternalAccountKeys
     /// <inheritdoc />
     public Task<ExternalAccountKey?> FindActiveKey(string keyId, CancellationToken cancellationToken)
     {
-        _ = cancellationToken;
-        _ = _keys.TryGetValue(keyId, out var key);
-        // EAB keys are single-use: report the key only while it is unbound.
-        return Task.FromResult(key is { IsUsed: not true } ? key : null);
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_sync)
+        {
+            _ = _keys.TryGetValue(keyId, out var key);
+            return Task.FromResult(key is { IsUsed: not true } ? key : null);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<bool> TryConsumeKey(string keyId, string? accountId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_sync)
+        {
+            if (!_keys.TryGetValue(keyId, out var key) || key.IsUsed)
+            {
+                return Task.FromResult(false);
+            }
+
+            key.MarkUsed(accountId);
+            return Task.FromResult(true);
+        }
     }
 }

@@ -103,7 +103,10 @@ these server stores with ASP.NET ACME client certificate/challenge persistence s
 
 Use persistent CA signing-key files/your existing key provider across replicas and restarts:
 the database contains public certificates, not CA private keys. Protect database connections,
-backups and EAB MAC keys using TLS, access controls and storage encryption. Tenant isolation
+backups and EAB MAC keys using TLS, access controls and storage encryption. Configure EAB with
+`AcmeServer__Eab__Accounts__<keyId>__MacKey` and optionally `__MacAlgorithm`; keep these values
+in a secret provider rather than source-controlled configuration. EAB keys are single-use.
+Tenant isolation
 is not implemented: use separate databases/deployments for separate trust domains. This task
 does not add cleanup/retention jobs, a distributed validation-worker lease, or cluster-wide
 CRL-number allocation. Retain certificate/revocation records according to your CA policy;

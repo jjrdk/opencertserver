@@ -269,21 +269,15 @@ public static class AccountEndpoints
             string? externalAccountId = null;
             if (HasExternalAccountBinding(payload))
             {
+                if (!options.Eab.Enabled)
+                {
+                    throw new MalformedRequestException("External account binding is disabled on this ACME server.");
+                }
+
                 var requestUrl = context.Request.GetDisplayUrl();
                 externalAccountId = await eabService
                     .ValidateAsync(payload.ExternalAccountBinding!.Value, header.Jwk, requestUrl, cancellationToken)
                     .ConfigureAwait(false);
-
-                // Consume the EAB key before creating the account so single-use keys
-                // cannot be raced and a failed key save does not leave an orphan account.
-                var eabStore = context.RequestServices
-                    .GetRequiredService<Abstractions.Storage.IStoreExternalAccountKeys>();
-                var eabKey = await eabStore.LoadKey(externalAccountId, cancellationToken).ConfigureAwait(false);
-                if (eabKey != null)
-                {
-                    eabKey.MarkUsed(null);
-                    await eabStore.SaveKey(eabKey, cancellationToken).ConfigureAwait(false);
-                }
             }
 
             var createdAccount = await accountService.CreateAccount(header.Jwk, payload.Contact,

@@ -442,6 +442,20 @@ They are intentionally written before adding step implementations so they can dr
               | mssql      |
 
         @acme-eab
+        Scenario Outline: An EAB-bound CertesSlim account can create an ACME order
+            Given the certificate server storage is "<Storage>"
+            And a certificate server
+            And the ACME server has a provisioned external account key "test-eab-client-key"
+            When the CertesSlim client creates an EAB-bound account and order using key "test-eab-client-key"
+            Then the order object status MUST initially be "pending"
+
+            Examples:
+              | Storage    |
+              | in-memory  |
+              | postgresql |
+              | mssql      |
+
+        @acme-eab
         Scenario Outline: RFC 8555 Section 7.3.4 requires the EAB HMAC signature to be valid
             Given the certificate server storage is "<Storage>"
             And a certificate server
@@ -1048,4 +1062,3 @@ They are intentionally written before adding step implementations so they can dr
               | in-memory  |
               | postgresql |
               | mssql      |
-

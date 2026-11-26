@@ -15,7 +15,7 @@ using OpenCertServer.Acme.Abstractions.Storage;
 public sealed class DefaultExternalAccountBindingService : IExternalAccountBindingService
 {
     private static readonly HashSet<string> SupportedMacAlgorithms =
-        new(StringComparer.OrdinalIgnoreCase) { "HS256", "HS384", "HS512" };
+        new(StringComparer.Ordinal) { "HS256", "HS384", "HS512" };
 
     private readonly IStoreExternalAccountKeys _store;
 
@@ -32,7 +32,8 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
         CancellationToken cancellationToken)
     {
         // 1. Parse the flattened JWS envelope
-        if (!eabJws.TryGetProperty("protected", out var protectedProperty) ||
+        if (eabJws.ValueKind != JsonValueKind.Object ||
+            !eabJws.TryGetProperty("protected", out var protectedProperty) ||
             !eabJws.TryGetProperty("payload", out var payloadProperty) ||
             !eabJws.TryGetProperty("signature", out var signatureProperty))
         {
@@ -40,12 +41,9 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
                 "The externalAccountBinding must be a flattened JWS object with 'protected', 'payload', and 'signature'.");
         }
 
-        var protectedEncoded = protectedProperty.GetString()
-            ?? throw new ExternalAccountBindingException("The externalAccountBinding 'protected' field is null.");
-        var payloadEncoded = payloadProperty.GetString()
-            ?? throw new ExternalAccountBindingException("The externalAccountBinding 'payload' field is null.");
-        var signatureEncoded = signatureProperty.GetString()
-            ?? throw new ExternalAccountBindingException("The externalAccountBinding 'signature' field is null.");
+        var protectedEncoded = GetRequiredString(protectedProperty, "protected");
+        var payloadEncoded = GetRequiredString(payloadProperty, "payload");
+        var signatureEncoded = GetRequiredString(signatureProperty, "signature");
 
         // 2. Decode and validate the protected header
         string protectedJson;
@@ -53,7 +51,7 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
         {
             protectedJson = Base64UrlEncoder.Decode(protectedEncoded);
         }
-        catch
+        catch (FormatException)
         {
             throw new ExternalAccountBindingException(
                 "The externalAccountBinding 'protected' field could not be base64url-decoded.");
@@ -75,6 +73,11 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
         using (protectedDoc)
         {
             var header = protectedDoc.RootElement;
+            if (header.ValueKind != JsonValueKind.Object)
+            {
+                throw new ExternalAccountBindingException(
+                    "The externalAccountBinding protected header must be a JSON object.");
+            }
 
             // 2a. alg must be an HMAC algorithm
             if (!header.TryGetProperty("alg", out var algProperty))
@@ -83,7 +86,7 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
                     "The externalAccountBinding protected header must contain an 'alg' claim.");
             }
 
-            alg = algProperty.GetString() ?? string.Empty;
+            alg = algProperty.ValueKind == JsonValueKind.String ? algProperty.GetString() ?? string.Empty : string.Empty;
             if (!SupportedMacAlgorithms.Contains(alg))
             {
                 throw new ExternalAccountBindingException(
@@ -97,7 +100,7 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
                     "The externalAccountBinding protected header must contain a 'kid' claim.");
             }
 
-            kid = kidProperty.GetString() ?? string.Empty;
+            kid = kidProperty.ValueKind == JsonValueKind.String ? kidProperty.GetString() ?? string.Empty : string.Empty;
             if (string.IsNullOrWhiteSpace(kid))
             {
                 throw new ExternalAccountBindingException(
@@ -111,7 +114,7 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
                     "The externalAccountBinding protected header must contain a 'url' claim.");
             }
 
-            var eabUrl = urlProperty.GetString();
+            var eabUrl = urlProperty.ValueKind == JsonValueKind.String ? urlProperty.GetString() : null;
             if (!string.Equals(eabUrl, requestUrl, StringComparison.Ordinal))
             {
                 throw new ExternalAccountBindingException(
@@ -133,13 +136,20 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
                 $"The external account key '{kid}' has already been used and cannot be reused.");
         }
 
+        if (!SupportedMacAlgorithms.Contains(eabKey.MacAlgorithm) ||
+            !string.Equals(alg, eabKey.MacAlgorithm, StringComparison.Ordinal))
+        {
+            throw new ExternalAccountBindingException(
+                $"The externalAccountBinding algorithm '{alg}' does not match the provisioned key algorithm.");
+        }
+
         // 4. Verify the HMAC signature
         byte[] macKeyBytes;
         try
         {
             macKeyBytes = Base64UrlEncoder.DecodeBytes(eabKey.MacKey);
         }
-        catch
+        catch (FormatException)
         {
             throw new ExternalAccountBindingException(
                 "The external account key MAC key could not be decoded.");
@@ -153,7 +163,7 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
         {
             actualSignature = Base64UrlEncoder.DecodeBytes(signatureEncoded);
         }
-        catch
+        catch (FormatException)
         {
             throw new ExternalAccountBindingException(
                 "The externalAccountBinding 'signature' could not be base64url-decoded.");
@@ -171,13 +181,19 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
         {
             payloadJson = Base64UrlEncoder.Decode(payloadEncoded);
         }
-        catch
+        catch (FormatException)
         {
             throw new ExternalAccountBindingException(
                 "The externalAccountBinding 'payload' field could not be base64url-decoded.");
         }
 
         VerifyPayloadIsAccountJwk(payloadJson, accountJwk);
+
+        if (!await _store.TryConsumeKey(kid, accountId: null, cancellationToken).ConfigureAwait(false))
+        {
+            throw new ExternalAccountBindingException(
+                $"The external account key '{kid}' has already been used and cannot be reused.");
+        }
 
         return kid;
     }
@@ -203,14 +219,25 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
         {
             throw;
         }
-        catch
+        catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException)
         {
             throw new ExternalAccountBindingException(
                 "The externalAccountBinding payload could not be parsed as a JSON Web Key.");
         }
 
-        var expectedThumbprint = Base64UrlEncoder.Encode(accountJwk.ComputeJwkThumbprint());
-        var actualThumbprint = Base64UrlEncoder.Encode(payloadJwk.ComputeJwkThumbprint());
+        string expectedThumbprint;
+        string actualThumbprint;
+        try
+        {
+            expectedThumbprint = Base64UrlEncoder.Encode(accountJwk.ComputeJwkThumbprint());
+            actualThumbprint = Base64UrlEncoder.Encode(payloadJwk.ComputeJwkThumbprint());
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or
+                                           CryptographicException or SecurityTokenException)
+        {
+            throw new ExternalAccountBindingException(
+                "The externalAccountBinding payload is not a valid JSON Web Key.");
+        }
 
         if (!string.Equals(expectedThumbprint, actualThumbprint, StringComparison.Ordinal))
         {
@@ -221,6 +248,12 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
 
     private static JsonWebKey ParseJwk(JsonElement element)
     {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            throw new ExternalAccountBindingException(
+                "The externalAccountBinding payload must be a JSON Web Key object.");
+        }
+
         // Build a JsonWebKey from the element's properties
         var jwk = new JsonWebKey();
         if (element.TryGetProperty("kty", out var kty))
@@ -255,6 +288,12 @@ public sealed class DefaultExternalAccountBindingService : IExternalAccountBindi
 
         return jwk;
     }
+
+    private static string GetRequiredString(JsonElement property, string name)
+        => property.ValueKind == JsonValueKind.String && property.GetString() is { } value
+            ? value
+            : throw new ExternalAccountBindingException(
+                $"The externalAccountBinding '{name}' field must be a string.");
 
     private static HMAC CreateHmac(string algorithm, byte[] key)
         => algorithm.ToUpperInvariant() switch

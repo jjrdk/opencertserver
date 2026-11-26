@@ -467,20 +467,31 @@ internal static class Program
     }
 
     /// <summary>
-    /// External account keys configured under <c>AcmeServer:ExternalAccountKey:{keyId}</c>, each with a
-    /// <c>MacKey</c> (a base64url HMAC key) and an optional <c>MacAlgorithm</c> (default HS256). When none
-    /// are configured nothing is registered and the empty in-memory store that <c>AddAcmeInMemoryStore</c>
-    /// registered is retained, so EAB simply cannot bind.
+    /// External account keys configured under <c>AcmeServer:Eab:Accounts:{keyId}</c> or the legacy
+    /// <c>AcmeServer:ExternalAccountKey:{keyId}</c> section. Each key has a base64url <c>MacKey</c>
+    /// and optional <c>MacAlgorithm</c> (default HS256).
     /// </summary>
     private static IServiceCollection RegisterExternalAccountKeys(IServiceCollection services, IConfiguration configuration)
     {
-        var keys = configuration
-            .GetSection("AcmeServer:ExternalAccountKey")
-            .GetChildren()
+        var sections = new[]
+        {
+            configuration.GetSection("AcmeServer:ExternalAccountKey"),
+            configuration.GetSection("AcmeServer:Eab:Accounts")
+        };
+        var configuredKeys = sections.SelectMany(section => section.GetChildren()).ToArray();
+        var duplicateKeyId = configuredKeys.GroupBy(child => child.Key, StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateKeyId is not null)
+        {
+            throw new InvalidOperationException(
+                $"External account key identifier '{duplicateKeyId.Key}' is configured more than once.");
+        }
+
+        var keys = configuredKeys
             .Select(child => new ExternalAccountKey(
                 child.Key,
                 child["MacKey"] ?? throw new InvalidOperationException(
-                    $"'AcmeServer:ExternalAccountKey:{child.Key}' is missing its 'MacKey'."),
+                    $"'{child.Path}' is missing its 'MacKey'."),
                 child["MacAlgorithm"] ?? "HS256"))
             .ToArray();
         if (keys.Length == 0)
