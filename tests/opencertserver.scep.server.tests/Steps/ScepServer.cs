@@ -99,7 +99,7 @@ public sealed class ScepServer : IDisposable
         _activityListener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == "opencertserver.scep",
-            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            Sample = static (ref _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activity =>
             {
                 lock (_telemetryActivities)

@@ -39,13 +39,19 @@ public sealed record SyncReport(
 /// </summary>
 public sealed partial class IntuneRevocationSync
 {
+    /// <summary>Shares the in-progress guard between transient sync instances in one host.</summary>
+    public sealed class ConcurrencyGate
+    {
+        internal readonly SemaphoreSlim Semaphore = new(1, 1);
+    }
+
     private readonly IIntuneClient _intune;
     private readonly IStoreCertificates _store;
     private readonly ICertificateAuthority _ca;
     private readonly IntuneOptions _options;
     private readonly ILogger<IntuneRevocationSync> _logger;
     private readonly TimeProvider _time;
-    private readonly SemaphoreSlim _running = new(1, 1);
+    private readonly SemaphoreSlim _running;
 
     public IntuneRevocationSync(
         IIntuneClient intune,
@@ -54,6 +60,19 @@ public sealed partial class IntuneRevocationSync
         IntuneOptions options,
         ILogger<IntuneRevocationSync> logger,
         TimeProvider? time = null)
+        : this(intune, store, ca, options, logger, time, new ConcurrencyGate())
+    {
+    }
+
+    /// <summary>Creates a sync using a gate shared by other instances in the host.</summary>
+    public IntuneRevocationSync(
+        IIntuneClient intune,
+        IStoreCertificates store,
+        ICertificateAuthority ca,
+        IntuneOptions options,
+        ILogger<IntuneRevocationSync> logger,
+        TimeProvider? time,
+        ConcurrencyGate concurrencyGate)
     {
         _intune = intune;
         _store = store;
@@ -61,6 +80,7 @@ public sealed partial class IntuneRevocationSync
         _options = options;
         _logger = logger;
         _time = time ?? TimeProvider.System;
+        _running = concurrencyGate.Semaphore;
     }
 
     /// <summary>True while a run is in progress.</summary>
@@ -285,17 +305,17 @@ public sealed partial class IntuneRevocationSync
     }
 
     [LoggerMessage(LogLevel.Warning, "Intune sync: Scep:Intune:SyncProfiles names no CA profile - nothing checked")]
-    private static partial void LogNoProfiles(ILogger logger);
+    static partial void LogNoProfiles(ILogger logger);
 
     [LoggerMessage(LogLevel.Warning, "Intune sync: {Serial} ({Subject}) could not be judged, stays valid: {Reason}")]
-    private static partial void LogUnknown(ILogger logger, string serial, string subject, string reason);
+    static partial void LogUnknown(ILogger logger, string serial, string subject, string reason);
 
     [LoggerMessage(LogLevel.Information, "Intune sync: revoked {Serial} ({Subject}): {Reason}")]
-    private static partial void LogRevoked(ILogger logger, string serial, string subject, string reason);
+    static partial void LogRevoked(ILogger logger, string serial, string subject, string reason);
 
     [LoggerMessage(LogLevel.Error, "Intune sync aborted: {Hits} certificates would be revoked, limit is {Limit} - nothing revoked")]
-    private static partial void LogAborted(ILogger logger, int hits, int limit);
+    static partial void LogAborted(ILogger logger, int hits, int limit);
 
     [LoggerMessage(LogLevel.Information, "Intune sync finished (dry run: {DryRun}): {CheckedCount} checked, {Revoked} revoked, {Unknown} unknown")]
-    private static partial void LogFinished(ILogger logger, bool dryRun, int checkedCount, int revoked, int unknown);
+    static partial void LogFinished(ILogger logger, bool dryRun, int checkedCount, int revoked, int unknown);
 }
