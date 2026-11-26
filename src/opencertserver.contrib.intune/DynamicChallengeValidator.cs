@@ -47,6 +47,20 @@ public sealed partial class DynamicChallengeValidator(
                 ? decision
                 : ScepChallengeResult.Deny("The enrollment authorization webhook denied the request.");
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            using var notificationTimeout = new CancellationTokenSource(options.Timeout);
+            try
+            {
+                await intune.NotifyFailure(context, "The enrollment request was canceled.", notificationTimeout.Token)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (notificationTimeout.IsCancellationRequested)
+            {
+                // NotifyFailure removes the pending context before sending the notification.
+            }
+            throw;
+        }
         catch (Exception ex) when (ex is HttpRequestException or JsonException or NotSupportedException
                                    || ex is OperationCanceledException && !cancellationToken.IsCancellationRequested)
         {
