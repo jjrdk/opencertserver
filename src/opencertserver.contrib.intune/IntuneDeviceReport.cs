@@ -26,40 +26,43 @@ internal static class IntuneDeviceReportHandler
 
         var profiles = options.SyncProfiles.ToHashSet(StringComparer.Ordinal);
         var certificates = new List<IntuneDeviceCertificate>();
-        var count = 0;
+        var inventory = new List<CertificateItemInfo>();
         await foreach (var item in store.GetInventory(index, size, cancellationToken).ConfigureAwait(false))
         {
-            count++;
-            var profile = await store.GetIssuingProfile(item.Thumbprint, cancellationToken).ConfigureAwait(false);
-            if (profile is null || !profiles.Contains(profile))
-            {
-                continue;
-            }
+            inventory.Add(item);
+        }
 
-            var serial = Convert.FromHexString(item.SerialNumber);
-            var found = false;
-            await foreach (var certificate in store.GetCertificatesById(cancellationToken, serial).ConfigureAwait(false))
+        var issuingProfiles = await store.GetIssuingProfiles(
+            inventory.Select(item => item.Thumbprint), cancellationToken).ConfigureAwait(false);
+        var selected = inventory.Where(item =>
+            issuingProfiles.TryGetValue(item.Thumbprint, out var profile)
+            && profile is not null && profiles.Contains(profile)).ToList();
+        var identities = new Dictionary<string, CertificateIdentity>(StringComparer.OrdinalIgnoreCase);
+        if (selected.Count > 0)
+        {
+            await foreach (var certificate in store.GetCertificatesByThumbprint(
+                selected.Select(item => item.Thumbprint.AsMemory()), cancellationToken).ConfigureAwait(false))
             {
                 using var ownedCertificate = certificate;
-                found = true;
-                var identity = CertificateIdentity.Read(certificate);
-                if (!identity.IsCheckable)
-                {
-                    continue;
-                }
-
-                certificates.Add(new IntuneDeviceCertificate(item.SerialNumber, item.Thumbprint,
-                    item.DistinguishedName, profile, identity.IntuneDeviceId, identity.EntraDeviceId,
-                    identity.UserPrincipalName, item.NotAfter, item.IsRevoked));
-            }
-
-            if (!found)
-            {
-                throw new InvalidOperationException("A certificate listed in the inventory could not be loaded.");
+                identities[certificate.Thumbprint] = CertificateIdentity.Read(certificate);
             }
         }
 
-        return Results.Json(new IntuneDeviceReport(index, size, count == size, certificates),
+        foreach (var item in selected)
+        {
+            if (!identities.TryGetValue(item.Thumbprint, out var identity))
+            {
+                throw new InvalidOperationException("A certificate listed in the inventory could not be loaded.");
+            }
+            if (identity.IsCheckable)
+            {
+                certificates.Add(new IntuneDeviceCertificate(item.SerialNumber, item.Thumbprint,
+                    item.DistinguishedName, issuingProfiles[item.Thumbprint]!, identity.IntuneDeviceId,
+                    identity.EntraDeviceId, identity.UserPrincipalName, item.NotAfter, item.IsRevoked));
+            }
+        }
+
+        return Results.Json(new IntuneDeviceReport(index, size, inventory.Count == size, certificates),
             IntuneJsonContext.Default.IntuneDeviceReport);
     }
 }

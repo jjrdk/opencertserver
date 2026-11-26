@@ -525,6 +525,12 @@ was issued through Intune. Configure dedicated profiles and a persistent certifi
 store for reliable reporting. This is not an S03 device catalog or a history of failed
 enrollments.
 
+Built-in certificate stores batch profile and certificate lookups per inventory page.
+Custom `IStoreCertificates` implementations should override `GetIssuingProfiles` for
+the same efficiency; its compatibility fallback calls `GetIssuingProfile` per thumbprint.
+The revocation sync uses a shared in-process gate across transient sync instances; it
+does not coordinate sync runs across separate server processes.
+
 ## ACME endpoints
 
 ACME endpoints are mounted by `UseAcmeServer()` and protected by RFC 8555 account-based JWS

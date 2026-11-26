@@ -31,6 +31,23 @@ public interface IStoreCertificates
     Task<string?> GetIssuingProfile(string thumbprint, CancellationToken cancellationToken = default) =>
         Task.FromResult<string?>(null);
 
+    /// <summary>
+    /// Returns trusted issuing profiles keyed by certificate thumbprint. Unknown certificates
+    /// and certificates without provenance may be omitted or mapped to null. Implementations
+    /// should override this compatibility fallback to retrieve a page in one operation.
+    /// </summary>
+    async Task<IReadOnlyDictionary<string, string?>> GetIssuingProfiles(
+        IEnumerable<string> thumbprints, CancellationToken cancellationToken = default)
+    {
+        var profiles = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var thumbprint in thumbprints)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            profiles[thumbprint] = await GetIssuingProfile(thumbprint, cancellationToken).ConfigureAwait(false);
+        }
+        return profiles;
+    }
+
     Task<bool> RemoveCertificate(
         string serialNumber,
         X509RevocationReason reason,

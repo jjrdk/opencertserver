@@ -1,3 +1,6 @@
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace OpenCertServer.Contrib.Intune;
 
 using Microsoft.AspNetCore.Http;

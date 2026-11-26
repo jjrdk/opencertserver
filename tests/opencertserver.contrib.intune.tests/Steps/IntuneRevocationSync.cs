@@ -165,15 +165,23 @@ public sealed class IntuneRevocationSync : IDisposable
     [When("the sync is started")]
     public async Task WhenSyncStarted()
     {
-        _running = Sync().Run(dryRun: false, CancellationToken.None);
+        var first = Sync();
+        var second = Sync();
+        Assert.NotSame(first, second);
+        Assert.NotSame(Host.Services.GetRequiredService<IIntuneClient>(), Host.Services.GetRequiredService<IIntuneClient>());
+        _running = first.Run(dryRun: false, CancellationToken.None);
         // Give the first run time to reach the gate.
         var waited = 0;
-        while (!Sync().IsRunning && waited++ < 100)
+        while (!second.IsRunning && waited++ < 100)
         {
             await Task.Delay(10).ConfigureAwait(false);
         }
 
-        Assert.True(Sync().IsRunning);
+        Assert.True(second.IsRunning);
+        var client = Host.GetTestClient();
+        client.DefaultRequestHeaders.Add("X-Test-Role", TestHostBuilder.SyncRole);
+        using var concurrentRequest = await client.PostAsync("/scep/intune/sync?dryRun=true", null);
+        Assert.Equal(HttpStatusCode.Conflict, concurrentRequest.StatusCode);
     }
 
     [When("the sync endpoint is called without authentication")]

@@ -38,13 +38,15 @@ public static class ContribIntuneExtensions
                 provider.GetRequiredService<ILogger<IntuneChallengeValidator>>()));
             services.AddSingleton<IScepChallengeValidator>(provider =>
                 provider.GetRequiredService<IntuneChallengeValidator>());
+            services.TryAddSingleton(_ => new IntuneRevocationSync.ConcurrencyGate());
             services.AddTransient(provider =>
                 new IntuneRevocationSync(provider.GetRequiredService<IIntuneClient>(),
                     provider.GetRequiredService<IStoreCertificates>(),
                     provider.GetRequiredService<ICertificateAuthority>(),
                     provider.GetRequiredService<IntuneOptions>(),
                     provider.GetRequiredService<ILogger<IntuneRevocationSync>>(),
-                    provider.GetRequiredService<TimeProvider>()));
+                    provider.GetRequiredService<TimeProvider>(),
+                    provider.GetRequiredService<IntuneRevocationSync.ConcurrencyGate>()));
             return services;
         }
 

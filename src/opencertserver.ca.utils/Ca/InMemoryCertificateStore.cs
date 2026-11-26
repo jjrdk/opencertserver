@@ -41,6 +41,18 @@ public class InMemoryCertificateStore : IStoreCertificates
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyDictionary<string, string?>> GetIssuingProfiles(
+        IEnumerable<string> thumbprints, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var keys = thumbprints.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        IReadOnlyDictionary<string, string?> profiles = _certificates.Values
+            .Where(item => keys.Contains(item.Thumbprint))
+            .ToDictionary(item => item.Thumbprint, item => item.IssuingProfile, StringComparer.OrdinalIgnoreCase);
+        return Task.FromResult(profiles);
+    }
+
+    /// <inheritdoc />
     public Task<bool> RemoveCertificate(
         string serialNumber,
         X509RevocationReason reason,
