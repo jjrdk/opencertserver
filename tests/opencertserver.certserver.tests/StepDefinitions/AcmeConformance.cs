@@ -1936,6 +1936,39 @@ public partial class CertificateServerFeatures
     }
 
     [When("""
+          the CertesSlim client creates an EAB-bound account and order using key "(.+)"
+          """)]
+    public async Task WhenTheCertesSlimClientCreatesAnEabBoundAccountAndOrderUsingKey(string keyId)
+    {
+        AcmeState.Key ??= KeyFactory.NewKey(SecurityAlgorithms.EcdsaSha256);
+        using var captureHandler = new AcmeCaptureHandler(_server.CreateHandler());
+        var client = CreateAcmeContext(captureHandler, AcmeState.Key);
+
+        var accountContext = await client.NewAccount(
+            ["mailto:eab-client@example.com"],
+            termsOfServiceAgreed: true,
+            eabKeyId: keyId,
+            eabKey: AcmeState.CurrentEabMacKey!,
+            eabKeyAlg: "HS256").ConfigureAwait(false);
+        var accountExchange = captureHandler.Exchanges.LastOrDefault(exchange =>
+            exchange.Method == HttpMethod.Post &&
+            string.Equals(exchange.RequestUri.AbsolutePath, "/new-account", StringComparison.Ordinal));
+        Assert.NotNull(accountExchange);
+        Assert.Equal(HttpStatusCode.Created, accountExchange!.Response.StatusCode);
+
+        var orderContext = await client.NewOrder(null, ["localhost"]).ConfigureAwait(false);
+        var orderExchange = captureHandler.Exchanges.LastOrDefault(exchange =>
+            exchange.Method == HttpMethod.Post &&
+            string.Equals(exchange.RequestUri.AbsolutePath, "/new-order", StringComparison.Ordinal));
+        Assert.NotNull(orderExchange);
+        StoreExchange(orderExchange!);
+
+        AcmeState.AccountUrl = accountContext.Location;
+        AcmeState.OrderUrl = orderContext.Location;
+        AcmeState.OrderResponse = DeserializeOrderResponse();
+    }
+
+    [When("""
           the client creates a new account with an invalid EAB HMAC signature for key "(.+)"
           """)]
     public async Task WhenTheClientCreatesANewAccountWithAnInvalidEabHmacSignatureForKey(string keyId)

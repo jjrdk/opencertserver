@@ -80,6 +80,7 @@ public static class ServiceCollectionExtensions
                 target.WebsiteUrl = source.WebsiteUrl;
                 target.UrlRetrievalTimeout = source.UrlRetrievalTimeout;
                 target.ExternalAccountRequired = source.ExternalAccountRequired;
+                target.Eab = source.Eab;
                 target.TOS = source.TOS;
                 target.CAAIdentities = source.CAAIdentities;
                 target.DohServers = source.DohServers;

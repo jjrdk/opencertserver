@@ -32,4 +32,13 @@ public interface IStoreExternalAccountKeys
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The active external account key, or null.</returns>
     Task<ExternalAccountKey?> FindActiveKey(string keyId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Atomically marks an unused external account key as consumed.
+    /// </summary>
+    /// <param name="keyId">The external account key identifier.</param>
+    /// <param name="accountId">The account identifier, when available.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns><c>true</c> if the key was consumed; otherwise, <c>false</c>.</returns>
+    Task<bool> TryConsumeKey(string keyId, string? accountId, CancellationToken cancellationToken);
 }

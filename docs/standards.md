@@ -300,8 +300,9 @@ in the loop. It's the protocol that backs Let's Encrypt. OpenCertServer is a ful
 * **Nonce protection** — `HEAD/GET /new-nonce`; every mutating request must carry a fresh nonce that
    is discarded after use.
 * **Accounts** (`POST /new-account`, key-change) — accounts are created and retrieved by public key;
-   external account binding (EAB, RFC 8555 §6.7) is validated via
-   `IExternalAccountBindingService`, which verifies the EAB JWS signature.
+   external account binding (EAB, RFC 8555 §6.7) validates the nested HMAC JWS, URL, algorithm,
+   and account JWK, then atomically consumes its single-use provisioned key via
+   `IExternalAccountBindingService`.
 * **Term-of-service changes** (§7.3.3) — when `TOS.LastUpdate` is configured and an account's stored
    agreement pre-dates it, `newOrder` is rejected with HTTP 403 `userActionRequired` and a
    `Link: <tos-url>; rel="terms-of-service"` header. A client sends an account update with
@@ -970,15 +971,16 @@ are enabled by shipping `ASPNETCORE_ENVIRONMENT=Hardened` (the profile in
 
 | Concern | Config surface | Effect when configured | Effect when absent |
 |---|---|---|---|
-| External account binding (RFC 8555 §7.3.4) | `AcmeServer:ExternalAccountKey:{keyId}` → `{MacKey,MacAlgorithm}` | The static `IStoreExternalAccountKeys` is populated and new-account requests may carry `externalAccountBinding`. | The ACME default in-memory store is empty: every new-account request carrying an EAB binding is rejected. |
+| External account binding (RFC 8555 §7.3.4) | `AcmeServer:Eab:Enabled` and `AcmeServer:Eab:Accounts:{keyId}` → `{MacKey,MacAlgorithm}`; legacy `AcmeServer:ExternalAccountKey:{keyId}` is supported | New-account requests may carry `externalAccountBinding`; each successful binding consumes its key exactly once. | EAB-bearing requests are rejected when disabled or when no matching active key exists. |
 | Device attestation (FIDO / `device-attest-01`) | `Attestation:TrustAnchors:[]` → list of PEM files | Roots are loaded into `IAttestationTrustProvider`; the device-attestation challenge succeeds for a chain that trusts one anchor. | No `IAttestationTrustProvider` is registered → `device-attest-01` fails closed. |
 | OpenTelemetry / OTLP | `Telemetry:Enabled=true`, `Telemetry:OtlpEndpoint=http://collector:4317` | Meters and activity sources for ACME, EST, SCEP, Intune and CA operations export over OTLP. SCEP/Intune telemetry excludes request-derived attributes and exception messages. | No metrics or tracing are exported. |
 | CDP / AIA / OCSP responder URLs (RFC 5280 / RFC 6960) | `CaServer:CrlDistributionPoints:[]`, `CaServer:OCSP:[]`, `CaServer:CaIssuers:[]` | Every issued certificate carries CRLDP, AIA OCSP + caIssuers extensions pointing at the configured responders. | Only the localhost loopback fallback is embedded on every issued certificate. |
 
 The attestation trust roots are intentionally **not baked in** — the default (absent) posture fails
 closed and offers no `device-attest-01` challenge; operators supply the roots per deployment via
-`Attestation__TrustAnchors__0=<PEM>` (and `__1`, `__2`, …). The `AcmeServer:ExternalAccountKey`
-`MacKey` shipped in the profile is an **example** and must be rotated before real use.
+`Attestation__TrustAnchors__0=<PEM>` (and `__1`, `__2`, …). The `AcmeServer:Eab:Accounts` key
+shipped in the profile is an **example** and must be replaced with a securely provisioned key
+before real use.
 
 ### OpenTelemetry metrics emitted
 

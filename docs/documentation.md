@@ -53,8 +53,13 @@ The old per-section relational connection keys and `OCS_RELATIONAL_CONN` fallbac
 ACME and CA can select persistence independently. If both select relational storage,
 their connections must match because they share one context/schema. Unsupported host selections
 and missing connections/providers fail at registration rather than silently reverting to memory.
-Existing `ExternalAccountBinding:Keys` configuration still installs the host's read-only
-static external-account-key store; omit it when provisioning keys in the relational store.
+ACME External Account Binding is enabled by default for backwards compatibility. Configure
+provisioned keys under `AcmeServer__Eab__Accounts__<keyId>__MacKey` and optionally
+`AcmeServer__Eab__Accounts__<keyId>__MacAlgorithm` (`HS256`, `HS384`, or `HS512`).
+`AcmeServer__Eab__Enabled=false` rejects EAB-bearing new-account requests. The legacy
+`AcmeServer__ExternalAccountKey__<keyId>__...` hierarchy remains supported. Configuration-seeded
+keys use a read-only host store and are single-use for the lifetime of that process; use file or
+relational persistence when consumption must survive restarts or be shared across replicas.
 Embedded hosts can instead reference `opencertserver.data.mssql` and register
 `AddMsSqlStore()` from `OpenCertServer.Data.MsSql` before the same shared-store registrations.
 It owns SQL Server configuration, atomic SQL and separate migrations. The standalone host
@@ -582,6 +587,8 @@ In the environment, use `AcmeServer__DohServers__0`, `AcmeServer__DohServers__1`
 ### POST /new-account
 
 - Description: Create (or fetch) an ACME account. Supports external account binding (EAB, §6.7).
+- EAB keys are provisioned out-of-band and are consumed atomically after the nested HMAC JWS,
+  request URL, algorithm, and account JWK have been validated. Each key can bind only one new account.
 - Response: the account object with a `Location` (its `kid`).
 
 ### POST /new-order
@@ -707,7 +714,8 @@ OpenCertServer authenticates differently per protocol:
    `CertificateAuthenticationDefaults`.
 - **ACME** — RFC 8555 account-based authentication: the first request presents the account key as a
    JWS `jwk`; subsequent requests reference it via `kid`. External account binding (EAB) is
-   supported via `IExternalAccountBindingService`, which verifies the EAB JWS signature.
+   supported via `IExternalAccountBindingService`, which verifies and atomically consumes a
+   provisioned EAB key on successful account binding.
 - **CA signing endpoints** (`POST /ca/csr` and `POST /ca/{profileName}/csr`) require only an
    authenticated user under the host's authentication configuration, subject to the CA request
    validators. They do not enforce EST enrollment policies or profile-specific enrollment
