@@ -28,8 +28,24 @@ public static class ContribIntuneExtensions
             // Replace, not TryAdd: AddScepServer(options) registers the "not configured"
             // validator with TryAdd, so this works in either order.
             services.RemoveAll<IScepChallengeValidator>();
-            services.AddSingleton<IScepChallengeValidator, IntuneChallengeValidator>();
+            services.AddSingleton<IntuneChallengeValidator>();
+            services.AddSingleton<IScepChallengeValidator>(sp => sp.GetRequiredService<IntuneChallengeValidator>());
             services.AddSingleton<IntuneRevocationSync>();
+            return services;
+        }
+
+        /// <summary>Adds a fail-closed webhook authorization step after Intune challenge validation.</summary>
+        public IServiceCollection AddIntuneDynamicChallenge(
+            DynamicChallengeOptions options, Action<IHttpClientBuilder>? configureHttp = null)
+        {
+            options.Validate();
+            services.AddSingleton(options);
+            var http = services.AddHttpClient<DynamicChallengeValidator>()
+                .ConfigureHttpClient(client => client.Timeout = options.Timeout)
+                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+            configureHttp?.Invoke(http);
+            services.RemoveAll<IScepChallengeValidator>();
+            services.AddSingleton<IScepChallengeValidator>(sp => sp.GetRequiredService<DynamicChallengeValidator>());
             return services;
         }
 
@@ -101,6 +117,13 @@ public static class ContribIntuneExtensions
         public IEndpointRouteBuilder MapIntuneSync(string path = "/scep/intune/sync")
         {
             endpoints.MapPost(path, SyncHandler.Handle).RequireAuthorization(SyncPolicyName);
+            return endpoints;
+        }
+
+        /// <summary>Maps the certificate-backed device report, protected by the sync policy.</summary>
+        public IEndpointRouteBuilder MapIntuneDeviceReport(string path = "/scep/intune/devices")
+        {
+            endpoints.MapGet(path, IntuneDeviceReportHandler.Handle).RequireAuthorization(SyncPolicyName);
             return endpoints;
         }
     }

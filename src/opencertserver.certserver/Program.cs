@@ -380,6 +380,7 @@ internal static class Program
         if (builder.Configuration.GetSection(IntuneOptions.SectionName).Exists())
         {
             app.MapIntuneSync();
+            app.MapIntuneDeviceReport();
         }
 
         await app.RunAsync().ConfigureAwait(false);
@@ -627,9 +628,26 @@ internal static class Program
         // sync is mapped (see opencertserver.contrib.intune).
         if (configuration.GetSection(IntuneOptions.SectionName).Exists())
         {
-            return services.AddIntune(configuration).AddScepServer(options);
+            services.AddIntune(configuration).AddScepServer(options);
+            if (configuration.GetValue<bool>("Scep:DynamicChallenge:Enabled"))
+            {
+                var webhook = configuration["Scep:DynamicChallenge:Webhook"];
+                var secret = configuration["Scep:DynamicChallenge:Secret"];
+                if (!Uri.TryCreate(webhook, UriKind.Absolute, out var address) || secret is null)
+                {
+                    throw new InvalidOperationException("Scep:DynamicChallenge requires Webhook and Secret.");
+                }
+
+                services.AddIntuneDynamicChallenge(new DynamicChallengeOptions { Webhook = address, Secret = secret });
+            }
+
+            return services;
         }
 
+        if (configuration.GetValue<bool>("Scep:DynamicChallenge:Enabled"))
+        {
+            throw new InvalidOperationException("Scep:DynamicChallenge requires Scep:Intune.");
+        }
         var challenge = configuration["Scep:Challenge"];
         return string.IsNullOrEmpty(challenge)
             ? services.AddScepServer(options)
