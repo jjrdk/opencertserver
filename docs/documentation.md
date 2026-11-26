@@ -60,6 +60,12 @@ provisioned keys under `AcmeServer__Eab__Accounts__<keyId>__MacKey` and optional
 `AcmeServer__ExternalAccountKey__<keyId>__...` hierarchy remains supported. Configuration-seeded
 keys use a read-only host store and are single-use for the lifetime of that process; use file or
 relational persistence when consumption must survive restarts or be shared across replicas.
+File-backed EAB operations coordinate per key within a process and retry file-sharing conflicts
+for approximately 500 ms across processes; contention that persists is reported as an error.
+On Unix, file sharing uses advisory locks, so every writer must respect .NET's file locks and
+the underlying filesystem must support them. Earlier versions could write EAB key files as
+`{}`; these files contain neither key material nor consumption history. Audit and re-provision
+affected keys out of band rather than assuming they were unused.
 Embedded hosts can instead reference `opencertserver.data.mssql` and register
 `AddMsSqlStore()` from `OpenCertServer.Data.MsSql` before the same shared-store registrations.
 It owns SQL Server configuration, atomic SQL and separate migrations. The standalone host
