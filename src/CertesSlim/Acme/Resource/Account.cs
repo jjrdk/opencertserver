@@ -38,13 +38,11 @@ public class Account
     public bool? TermsOfServiceAgreed { get; set; }
 
     /// <summary>
-    /// Gets or sets an external account binding
+    /// Gets or sets an external account binding.
     /// </summary>
-    /// <value>
-    ///
-    /// </value>
+    /// <value>The flattened JWS external account binding.</value>
     [JsonPropertyName("externalAccountBinding")]
-    public object? ExternalAccountBinding { get; set; }
+    public ExternalAccountBinding? ExternalAccountBinding { get; set; }
 
     /// <summary>
     /// Gets or sets the orders.

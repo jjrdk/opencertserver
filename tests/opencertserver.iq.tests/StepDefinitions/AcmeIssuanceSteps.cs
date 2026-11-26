@@ -186,7 +186,7 @@ public sealed partial class AcmeIssuanceSteps
                 ? $"cd / && {AcmeSh} --register-account --eab-kid '{IqAcmeEnvironment.EabKeyId}'"
                   + $" --eab-hmac-key '{_environment.EabHmacKey}' --debug 2"
                 : $"certbot register {CertbotNewAccountArgs} --eab-kid '{IqAcmeEnvironment.CertbotEabKeyId}'"
-                  + $" --eab-hmac-key '{_environment.CertbotEabHmacKey}' {CertbotArgs}")
+                  + $" --eab-hmac-key='{_environment.CertbotEabHmacKey}' {CertbotArgs}")
             .ConfigureAwait(false);
     }
 

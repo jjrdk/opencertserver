@@ -27,7 +27,8 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
     // request's context - the object the SCEP server hands to Validate and later to the
     // notification - not by transaction ID: two requests may carry the same one (a renewal
     // or a retry with the same key), and they must not take each other's state.
-    private readonly ConcurrentDictionary<ScepChallengeContext, byte> _allowed = new(ReferenceEqualityComparer.Instance);
+    private readonly ConcurrentDictionary<ScepChallengeContext, byte>
+        _allowed = new(ReferenceEqualityComparer.Instance);
 
     public IntuneChallengeValidator(IIntuneClient intune, ILogger<IntuneChallengeValidator> logger)
     {
@@ -68,7 +69,9 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
         }
     }
 
-    private async Task<ScepChallengeResult> ValidateCore(ScepChallengeContext context, CancellationToken cancellationToken)
+    private async Task<ScepChallengeResult> ValidateCore(
+        ScepChallengeContext context,
+        CancellationToken cancellationToken)
     {
         if (context.MessageType == ScepMessageType.RenewalReq && context.PreviousCertificate is not null)
         {
@@ -82,7 +85,8 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
 
         try
         {
-            await _intune.ValidateRequest(context.TransactionId, Convert.ToBase64String(context.RequestDer), cancellationToken)
+            await _intune.ValidateRequest(context.TransactionId, Convert.ToBase64String(context.RequestDer),
+                    cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (IntuneRefusedException ex)
@@ -102,7 +106,10 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
         return ScepChallengeResult.Allow() with { Requestor = requestor };
     }
 
-    public async Task NotifySuccess(ScepChallengeContext context, X509Certificate2 issued, CancellationToken cancellationToken)
+    public async Task NotifySuccess(
+        ScepChallengeContext context,
+        X509Certificate2 issued,
+        CancellationToken cancellationToken)
     {
         if (!_allowed.TryRemove(context, out _))
         {
@@ -117,7 +124,8 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
             await _intune.NotifySuccess(
                     context.TransactionId,
                     Convert.ToBase64String(context.RequestDer),
-                    new IntuneIssuedInfo(issued.Thumbprint, issued.SerialNumber, issued.NotAfter.ToUniversalTime(), issued.Issuer),
+                    new IntuneIssuedInfo(issued.Thumbprint, issued.SerialNumber, issued.NotAfter.ToUniversalTime(),
+                        issued.Issuer),
                     cancellationToken)
                 .ConfigureAwait(false);
             IntuneInstruments.SuccessNotificationSuccesses.Add(1);
@@ -183,12 +191,18 @@ public sealed partial class IntuneChallengeValidator : IScepChallengeValidator
         }
     }
 
-    [LoggerMessage(LogLevel.Information, "SCEP transaction {TransactionId}: Intune refused the challenge: {Code}: {Description}")]
-    private static partial void LogRefused(ILogger logger, string transactionId, string code, string description);
+    [LoggerMessage(LogLevel.Information,
+        "SCEP transaction {TransactionId}: Intune refused the challenge: {Code}: {Description}")]
+    static partial void LogRefused(ILogger logger, string transactionId, string code, string description);
 
-    [LoggerMessage(LogLevel.Warning, "SCEP transaction {TransactionId}: Intune could not be asked - the request is denied")]
-    private static partial void LogUnreachable(ILogger logger, Exception exception, string transactionId);
+    [LoggerMessage(LogLevel.Warning,
+        "SCEP transaction {TransactionId}: Intune could not be asked - the request is denied")]
+    static partial void LogUnreachable(ILogger logger, Exception exception, string transactionId);
 
     [LoggerMessage(LogLevel.Warning, "SCEP transaction {TransactionId}: the {Kind} notification did not reach Intune")]
-    private static partial void LogNotificationLost(ILogger logger, Exception exception, string kind, string transactionId);
+    static partial void LogNotificationLost(
+        ILogger logger,
+        Exception exception,
+        string kind,
+        string transactionId);
 }

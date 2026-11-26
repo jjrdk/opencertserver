@@ -80,7 +80,7 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
     /// <param name="body">The payload.</param>
     /// <param name="eabKeyId">Optional key identifier, if using external account binding.</param>
     /// <param name="eabKey">Optional EAB key, if using external account binding.</param>
-    /// <param name="eabKeyAlg">Optional EAB key algorithm, if using external account binding, defaults to HS256 if not specified</param>
+    /// <param name="eabKeyAlg">Optional EAB key algorithm, if using external account binding; defaults to HS256.</param>
     /// <returns>The ACME response.</returns>
     internal static async Task<AcmeHttpResponse<Account>> NewAccount(
         IAcmeContext context,
@@ -92,11 +92,28 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
         var endpoint = await context.GetResourceUri(d => d.NewAccount).ConfigureAwait(false);
         var jws = new JwsSigner(context.AccountKey);
 
+        if ((eabKeyId is null) != (eabKey is null))
+        {
+            throw new ArgumentException("Both the EAB key identifier and key must be provided together.");
+        }
+
         if (eabKeyId != null && eabKey != null)
         {
+            if (string.IsNullOrWhiteSpace(eabKeyId) || string.IsNullOrWhiteSpace(eabKey))
+            {
+                throw new ArgumentException("The EAB key identifier and key must not be empty.");
+            }
+
+            var algorithm = (eabKeyAlg ?? "HS256").ToUpperInvariant();
+            if (algorithm is not ("HS256" or "HS384" or "HS512"))
+            {
+                throw new ArgumentOutOfRangeException(nameof(eabKeyAlg), eabKeyAlg,
+                    "The EAB algorithm must be HS256, HS384, or HS512.");
+            }
+
             var header = new Header
             {
-                Alg = eabKeyAlg?.ToUpper() ?? "HS256",
+                Alg = algorithm,
                 Kid = eabKeyId,
                 Url = endpoint
             };
@@ -123,15 +140,17 @@ internal class AccountContext : EntityContext<Account>, IAccountContext
                     using (var hs384 = new HMACSHA384(eabKey.FromBase64String()))
                         signatureHash = hs384.ComputeHash(signingBytes);
                     break;
-                default:
+                case "HS256":
                     using (var hs256 = new HMACSHA256(eabKey.FromBase64String()))
                         signatureHash = hs256.ComputeHash(signingBytes);
                     break;
+                default:
+                    throw new InvalidOperationException("The EAB algorithm was not validated.");
             }
 
             var signatureBase64 = signatureHash.ToBase64String();
 
-            body.ExternalAccountBinding = new
+            body.ExternalAccountBinding = new ExternalAccountBinding
             {
                 Protected = protectedHeaderBase64,
                 Payload = accountKeyBase64,

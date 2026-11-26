@@ -12,6 +12,8 @@ public sealed class AcmeServerOptions
 
     public bool ExternalAccountRequired { get; set; }
 
+    public EabOptions Eab { get; set; } = new();
+
     public TOSOptions TOS { get; set; } = new();
 
     /// <summary>

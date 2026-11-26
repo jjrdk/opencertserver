@@ -78,6 +78,26 @@ public sealed class RelationalExternalAccountKeyStore : IStoreExternalAccountKey
         return key;
     }
 
+    /// <inheritdoc />
+    public async Task<bool> TryConsumeKey(string keyId, string? accountId, CancellationToken cancellationToken)
+    {
+        using var telemetry = DataInstruments.Start("external_account_key.consume");
+        using var scope = _scopeFactory.CreateScope();
+        await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
+        var now = DateTimeOffset.UtcNow;
+        var updated = await db.ExternalAccountKeys
+            .Where(e => e.KeyId == keyId && !e.IsUsed)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(e => e.IsUsed, true)
+                    .SetProperty(e => e.BoundAccountId, accountId)
+                    .SetProperty(e => e.BoundAt, now)
+                    .SetProperty(e => e.Version, e => e.Version + 1),
+                cancellationToken);
+        telemetry.Complete();
+        return updated == 1;
+    }
+
     private async Task<ExternalAccountKeyEntity?> LoadEntity(string keyId, CancellationToken cancellationToken)
     {
         var id = keyId;

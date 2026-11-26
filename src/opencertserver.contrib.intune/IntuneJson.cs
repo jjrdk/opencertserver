@@ -44,6 +44,10 @@ internal sealed record FailureBody(
 
 internal sealed record FailureEnvelope([property: JsonPropertyName("notification")] FailureBody Notification);
 
+internal sealed record DynamicChallengeRequest(string TransactionId, string? ProfileName, string MessageType, string CertificateRequest);
+
+internal sealed record DynamicChallengeResponse(bool? Allowed);
+
 internal sealed record AssertionHeader(
     [property: JsonPropertyName("alg")] string Alg,
     [property: JsonPropertyName("typ")] string Typ,
@@ -67,6 +71,9 @@ internal sealed record AssertionClaims(
 [JsonSerializable(typeof(SuccessEnvelope))]
 [JsonSerializable(typeof(FailureEnvelope))]
 [JsonSerializable(typeof(SyncReport))]
+[JsonSerializable(typeof(DynamicChallengeRequest))]
+[JsonSerializable(typeof(DynamicChallengeResponse))]
+[JsonSerializable(typeof(IntuneDeviceReport))]
 internal sealed partial class IntuneJsonContext : JsonSerializerContext
 {
 }

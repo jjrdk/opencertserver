@@ -514,5 +514,5 @@ public sealed partial class IntuneClient : IIntuneClient
     private static string Truncate(string text) => text.Length <= 400 ? text : text[..400];
 
     [LoggerMessage(LogLevel.Information, "Intune SCEP validation service discovered at {Endpoint}")]
-    private static partial void LogDiscovered(ILogger logger, Uri endpoint);
+    static partial void LogDiscovered(ILogger logger, Uri endpoint);
 }

@@ -68,6 +68,30 @@ public sealed class RelationalCertificateStore : IStoreCertificates
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, string?>> GetIssuingProfiles(
+        IEnumerable<string> thumbprints, CancellationToken cancellationToken = default)
+    {
+        using var telemetry = DataInstruments.Start("certificate.get_issuing_profiles");
+        var keys = thumbprints.Select(t => t.ToUpperInvariant()).Distinct(StringComparer.Ordinal).ToList();
+        cancellationToken.ThrowIfCancellationRequested();
+        if (keys.Count == 0)
+        {
+            telemetry.Complete();
+            return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        using var scope = _scopeFactory.CreateScope();
+        await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
+        var rows = await db.Certificates.AsNoTracking()
+            .Where(c => keys.Contains(c.Thumbprint))
+            .Select(c => new { c.Thumbprint, c.ProfileName })
+            .ToListAsync(cancellationToken);
+        var profiles = rows.ToDictionary(c => c.Thumbprint, c => c.ProfileName, StringComparer.OrdinalIgnoreCase);
+        telemetry.Complete();
+        return profiles;
+    }
+
+    /// <inheritdoc />
     public async Task<bool> RemoveCertificate(string serialNumber, string? issuingProfile, X509RevocationReason reason, CancellationToken cancellationToken = default)
     {
         using var telemetry = DataInstruments.Start("certificate.revoke");

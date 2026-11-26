@@ -281,6 +281,7 @@ Intune.
 |---|---|
 | `IntuneChallengeValidator` | Sends each `PKCSReq` (transaction ID and CSR) to Intune's SCEP validation service (`validateRequest`, discovered through Microsoft Graph) and lets the CA issue only when Intune agrees. Refused, unreachable or throttled (429) all mean *deny*. After issuing it sends `successNotification`; when the CA refuses or fails after Intune agreed, `failureNotification`. A CA that throws (an unreachable store or database) is answered like a refusal: a signed `FAILURE` `CertRep` with `failInfo=badRequest`, the exception in the server log, and a fixed reason in the notification. A `RenewalReq` signed with the previous certificate passes without Intune. |
 | `IntuneRevocationSync` | Walks the certificates issued through the configured profiles (`SyncProfiles`, by the issuing profile the store recorded) and asks Graph about the user (UPN from the subjectAltName), the Intune managed device (`IntuneDeviceId://` URI) and the Entra device. What is gone or disabled is revoked (`cessationOfOperation`); certificates from other profiles are never judged. Graph unreachable, throttled or answering in an unexpected shape means *unknown*, and unknown is never revoked; a run that would revoke more than `MaxRevocationsPerSync` aborts. |
+| Dynamic SCEP authorization | Optional fail-closed webhook decision after Intune validation; Intune generates the per-device challenge. `GET /scep/intune/devices` reports identifiers from the certificate inventory, scoped to configured profiles. |
 | `POST /scep/intune/sync?dryRun=` | Runs the sync and returns the report; 409 while a run is in progress. Requires the authorization policy `scep_intune_sync`. It is an operation, not a scheduler - the caller decides how often. |
 | `IIntuneClient.GetManagedDeviceName` | The name of a managed device, for an inventory that lists certificates by device. |
 
@@ -299,8 +300,10 @@ throttled, unreachable or answering without a value list (nothing revoked), a ce
 another profile, no sync profiles, dry run, the revocation limit, a second run while one is in
 progress, and the endpoint's policy.
 * [IntuneDeviceName.feature](../tests/opencertserver.contrib.intune.tests/Features/IntuneDeviceName.feature).
+* [DynamicScep.feature](../tests/opencertserver.contrib.intune.tests/Features/DynamicScep.feature) —
+Intune and webhook authorization, webhook failure, device reporting, and report authorization.
 
-All three run against an in-process fake of Entra, Graph and the validation service. What a fake
+These run against an in-process fake of Entra, Graph and the validation service. What a fake
 cannot say about the real service was checked against a real tenant: Windows 11 devices enrolled
 and renewed through Intune, with `validateRequest` and `successNotification` accepted by Intune,
 and the sync running daily.
@@ -319,8 +322,9 @@ in the loop. It's the protocol that backs Let's Encrypt. OpenCertServer is a ful
 * **Nonce protection** — `HEAD/GET /new-nonce`; every mutating request must carry a fresh nonce that
    is discarded after use.
 * **Accounts** (`POST /new-account`, key-change) — accounts are created and retrieved by public key;
-   external account binding (EAB, RFC 8555 §6.7) is validated via
-   `IExternalAccountBindingService`, which verifies the EAB JWS signature.
+   external account binding (EAB, RFC 8555 §6.7) validates the nested HMAC JWS, URL, algorithm,
+   and account JWK, then atomically consumes its single-use provisioned key via
+   `IExternalAccountBindingService`.
 * **Term-of-service changes** (§7.3.3) — when `TOS.LastUpdate` is configured and an account's stored
    agreement pre-dates it, `newOrder` is rejected with HTTP 403 `userActionRequired` and a
    `Link: <tos-url>; rel="terms-of-service"` header. A client sends an account update with
@@ -1077,7 +1081,7 @@ are enabled by shipping `ASPNETCORE_ENVIRONMENT=Hardened` (the profile in
 
 | Concern | Config surface | Effect when configured | Effect when absent |
 |---|---|---|---|
-| External account binding (RFC 8555 §7.3.4) | `AcmeServer:ExternalAccountKey:{keyId}` → `{MacKey,MacAlgorithm}` | The configured store keeps HMAC keys in memory and persists single-use consumption markers under the ACME data directory; new-account requests may carry `externalAccountBinding`. | The ACME default in-memory store is empty: every new-account request carrying an EAB binding is rejected. |
+| External account binding (RFC 8555 §7.3.4) | `AcmeServer:Eab:Enabled` and `AcmeServer:Eab:Accounts:{keyId}` → `{MacKey,MacAlgorithm}`; legacy `AcmeServer:ExternalAccountKey:{keyId}` is supported | New-account requests may carry `externalAccountBinding`; each successful binding consumes its key exactly once. | EAB-bearing requests are rejected when disabled or when no matching active key exists. |
 | Device attestation (FIDO / `device-attest-01`) | `Attestation:TrustAnchors:[]` → list of PEM files | Roots are loaded into `IAttestationTrustProvider`; the device-attestation challenge succeeds for a chain that trusts one anchor. | No `IAttestationTrustProvider` is registered → `device-attest-01` fails closed. |
 | OpenTelemetry / OTLP | `Telemetry:Enabled=true`, `Telemetry:OtlpEndpoint=http://collector:4317` | Meters and activity sources for ACME, EST, SCEP, Intune and CA operations export over OTLP. SCEP/Intune telemetry excludes request-derived attributes and exception messages. | No metrics or tracing are exported. |
 | CDP / AIA / OCSP responder URLs (RFC 5280 / RFC 6960) | `CaServer:CrlDistributionPoints:[]`, `CaServer:OCSP:[]`, `CaServer:CaIssuers:[]` | Every issued certificate carries CRLDP, AIA OCSP + caIssuers extensions pointing at the configured responders. | Only the localhost loopback fallback is embedded on every issued certificate. |

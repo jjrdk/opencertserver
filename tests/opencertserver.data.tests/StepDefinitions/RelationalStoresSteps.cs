@@ -472,6 +472,29 @@ public sealed class RelationalStoresSteps
         return certificate;
     }
 
+    [Then("batched certificate provenance matches stored profiles")]
+    public async Task BatchedCertificateProvenance()
+    {
+        var first = NewCertificate(101);
+        var second = NewCertificate(102);
+        var legacy = NewCertificate(103);
+        var ct = TestContext.Current.CancellationToken;
+        await Certificates.AddCertificate(first, "rsa", ct);
+        await Certificates.AddCertificate(second, "ecdsa", ct);
+        await Certificates.AddCertificate(legacy, ct);
+        var keys = new[] { first.Thumbprint.ToLowerInvariant(), second.Thumbprint, legacy.Thumbprint, "missing" };
+        var profiles = await Certificates.GetIssuingProfiles(keys, ct);
+        Assert.Equal("rsa", profiles[first.Thumbprint]);
+        Assert.Equal("ecdsa", profiles[second.Thumbprint]);
+        Assert.True(profiles.TryGetValue(legacy.Thumbprint, out var profile));
+        Assert.Null(profile);
+        Assert.False(profiles.ContainsKey("missing"));
+        Assert.Empty(await Certificates.GetIssuingProfiles([], ct));
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Certificates.GetIssuingProfiles(keys, cancelled.Token));
+    }
+
     [Then("certificate lookup and OCSP status survive reloads")]
     public async Task CertificateRoundTrip()
     {

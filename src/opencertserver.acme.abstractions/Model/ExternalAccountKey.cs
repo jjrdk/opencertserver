@@ -34,24 +34,30 @@ public sealed class ExternalAccountKey : IVersioned
     }
 
     /// <summary>Gets the key identifier issued by the CA for out-of-band provisioning.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public string KeyId { get; }
 
     /// <summary>Gets the base64url-encoded HMAC MAC key.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public string MacKey { get; }
 
     /// <summary>Gets the HMAC algorithm, e.g. "HS256", "HS384", or "HS512".</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public string MacAlgorithm { get; }
 
     /// <summary>
     /// Gets a value indicating whether this key has already been consumed by a successful account creation.
     /// EAB keys are single-use; once bound, they must not be accepted again.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public bool IsUsed { get; private set; }
 
     /// <summary>Gets the account ID that this key was bound to, or null if not yet bound.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public string? BoundAccountId { get; private set; }
 
     /// <summary>Gets the UTC timestamp at which the key was bound, or null if not yet bound.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public DateTimeOffset? BoundAt { get; private set; }
 
     /// <summary>
@@ -73,5 +79,6 @@ public sealed class ExternalAccountKey : IVersioned
     }
 
     /// <inheritdoc />
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public long Version { get; set; }
 }

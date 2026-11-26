@@ -20,6 +20,7 @@ using Directory = CertesSlim.Acme.Resource.Directory;
 [JsonSerializable(typeof(CertificateRevocation))]
 [JsonSerializable(typeof(Directory))]
 [JsonSerializable(typeof(EmptyObject))]
+[JsonSerializable(typeof(ExternalAccountBinding))]
 [JsonSerializable(typeof(ErrorDetails))]
 [JsonSerializable(typeof(Header))]
 [JsonSerializable(typeof(JsonWebKey))]

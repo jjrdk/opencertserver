@@ -9,10 +9,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    </ItemGroup>
-
-    <ItemGroup>
         <ProjectReference Include="..\opencertserver.ca.utils\opencertserver.ca.utils.csproj" />
         <ProjectReference Include="..\opencertserver.scep.server\opencertserver.scep.server.csproj" />
     </ItemGroup>

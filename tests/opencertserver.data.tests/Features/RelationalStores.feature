@@ -57,6 +57,14 @@ Feature: Relational ACME and CA stores
       | PostgreSQL |
       | MSSQL      |
 
+  Scenario Outline: Certificate provenance is retrieved in batches
+    Given the relational database is "<Database>"
+    Then batched certificate provenance matches stored profiles
+    Examples:
+      | Database   |
+      | PostgreSQL |
+      | MSSQL      |
+
   Scenario Outline: Migrations can be reapplied without losing data
     Given the relational database is "<Database>"
     Then applying the migrations again preserves stored accounts

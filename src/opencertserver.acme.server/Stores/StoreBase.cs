@@ -60,6 +60,7 @@ public partial class StoreBase
             fileStream.SetLength(0);
         }
 
+        fileStream.Seek(0, SeekOrigin.Begin);
         var utf8Bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(content,
             (JsonTypeInfo<T>)AcmeSerializerContext.Default.GetTypeInfo(typeof(T))!));
         await fileStream.WriteAsync(utf8Bytes, cancellationToken).ConfigureAwait(false);
