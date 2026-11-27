@@ -5,9 +5,10 @@ using Cake.Common.Tools.DotNet.MSBuild;
 using Cake.Common.Tools.DotNet.Pack;
 using Cake.Core.Diagnostics;
 using Cake.Frosting;
+using System.IO;
 
 [TaskName("Pack")]
-[IsDependentOn(typeof(TestsTask))]
+[IsDependentOn(typeof(BuildTask))]
 public sealed class PackTask : FrostingTask<BuildContext>
 {
     /// <inheritdoc />
@@ -56,7 +57,36 @@ public sealed class PackTask : FrostingTask<BuildContext>
         ];
         foreach (var projectName in projectNames)
         {
-            context.DotNetPack($"./src/{projectName}/{projectName}.csproj", packSettings);
+            var projectDirectory = Path.Combine("src", projectName);
+            var (pack, symbols) = GetPackOptions(projectName, projectDirectory);
+            if (!pack)
+            {
+                context.Log.Warning(
+                    "Skipping {0}: no native runtime assets are staged in {1}. Existing packages in the output directory are not removed.",
+                    projectName, projectDirectory);
+                continue;
+            }
+
+            packSettings.IncludeSymbols = symbols;
+            context.DotNetPack(Path.Combine(projectDirectory, $"{projectName}.csproj"), packSettings);
         }
+    }
+
+    internal static (bool Pack, bool Symbols) GetPackOptions(string projectName, string projectDirectory)
+    {
+        var nativeLibrary = projectName switch
+        {
+            "OpenCertServer.Amd.Native" => "amd_snp_driver.so",
+            "OpenCertServer.Sgx.Native" => "libsgx_dcap_ql.so",
+            _ => null
+        };
+        if (nativeLibrary is null)
+        {
+            return (true, true);
+        }
+
+        var hasNativeAsset = File.Exists(Path.Combine(projectDirectory, "runtimes", "linux-x64", "native", nativeLibrary))
+            || File.Exists(Path.Combine(projectDirectory, "runtimes", "linux-arm64", "native", nativeLibrary));
+        return (hasNativeAsset, false);
     }
 }

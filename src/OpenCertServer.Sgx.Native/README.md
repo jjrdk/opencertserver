@@ -1,46 +1,37 @@
 # OpenCertServer.Sgx.Native
 
-A RID-based NuGet asset that ships the **Intel SGX DCAP** native library
-(`libsgx_dcap_ql.so`) so that
-[`opencertserver.attestation`](../opencertserver.attestation/README.md) can load it on Linux
-without managed code in between. This project contains **no managed assembly** — it is a
-packaging project whose only job is to deliver the correct `runtimes/{rid}/native/` binary
-to consumers automatically.
-
-## What it ships
+This packaging project can include an ABI-compatible SGX native library under
+the .NET runtime asset paths:
 
 ```
 runtimes/linux-x64/native/libsgx_dcap_ql.so
 runtimes/linux-arm64/native/libsgx_dcap_ql.so
 ```
 
-The binaries are owned by Intel and are **not committed** to source control; only
-`.gitkeep` placeholders live in the `runtimes/` tree. The project builds cleanly on
-macOS/Windows developer machines because the `None`/`Content` items are guarded with
-`Condition="Exists(...)"` — the files are packed or copied only when present.
+No native binaries are committed. The Cake pack task skips this package with a
+warning if neither asset is staged; it does not remove older packages from its
+output directory. It does not create a symbol package because this project has
+no managed assembly or managed symbols.
 
-## How the binaries get populated
+## Staging and compatibility
 
-The Intel DCAP `.so` is obtained from the distro package or Intel's
-[DCAP](https://github.com/intel/SGXDataCenterAttestationPrimitives) source. The
-`fetch-native-sgx.sh` script in this directory copies it into the RID layout from the common
-Ubuntu/Debian/Fedora install locations:
+The managed bindings in
+[`IntelSgxNative`](../opencertserver.attestation/Native/IntelSgxNative.cs)
+require `sgx_get_pck_id` and `sgx_create_quote`. Intel's published
+[DCAP API](https://github.com/intel/SGXDataCenterAttestationPrimitives)
+uses different quote-generation entry points, so a stock DCAP library is not
+established as compatible with these bindings. A matching filename alone does
+not establish ABI compatibility.
 
-```sh
-cd src/OpenCertServer.Sgx.Native
-./fetch-native-sgx.sh          # populates runtimes/linux-{x64,arm64}/native/
-dotnet pack -c Release         # then pack with the native asset included
-```
+`fetch-native-sgx.sh` searches common Linux x64 library locations and copies a
+candidate into `runtimes/linux-x64/native/`; it does not verify its ABI.
+Stage an arm64 asset manually if available. After verifying compatibility, run
+the repository pack task or `dotnet pack -c Release` without `--include-symbols`.
 
-## How it is consumed
+The managed interop currently supports Linux only. Although Intel publishes
+Windows DCAP builds, Windows support requires an adapter for the actual API,
+platform-specific integration, and validation on supported hardware.
 
-[`opencertserver.attestation`](../opencertserver.attestation/README.md) references this
-project with `ReferenceOutputAssembly="false"` (there is no managed assembly to reference),
-which makes MSBuild propagate the `runtimes/{rid}/native/*.so` into the consumer's output on
-publish so the .NET runtime discovers it at load time.
-
-## Dependencies
-
-None managed. It relies on Intel DCAP binaries placed under
-`runtimes/.../native/` and targets `.NET 10` as a packaging/deployment support project, not
-an application entry point.
+The published `opencertserver.attestation` package does not declare a
+dependency on this native package. Consumers requiring it must reference a
+populated native package separately.
