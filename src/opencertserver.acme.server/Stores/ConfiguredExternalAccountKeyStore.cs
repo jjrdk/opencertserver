@@ -3,6 +3,7 @@ namespace OpenCertServer.Acme.Server.Stores;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Collections.Concurrent;
 using OpenCertServer.Acme.Abstractions.Model;
 using OpenCertServer.Acme.Abstractions.Storage;
 
@@ -11,6 +12,9 @@ using OpenCertServer.Acme.Abstractions.Storage;
 /// </summary>
 public sealed class ConfiguredExternalAccountKeyStore : IStoreExternalAccountKeys
 {
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> KeyLocks =
+        new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
     private readonly IReadOnlyDictionary<string, ExternalAccountKey> _keys;
     private readonly string _consumedKeyPath;
 
@@ -62,13 +66,89 @@ public sealed class ConfiguredExternalAccountKeyStore : IStoreExternalAccountKey
         }
 
         var markerPath = GetMarkerPath(key.KeyId);
+        var gate = KeyLocks.GetOrAdd(markerPath, static _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await SaveConsumedMetadata(
+                    key.KeyId,
+                    key.BoundAccountId,
+                    key.BoundAt!.Value,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<ExternalAccountKey?> FindActiveKey(string keyId, CancellationToken cancellationToken)
+    {
+        var key = await LoadKey(keyId, cancellationToken).ConfigureAwait(false);
+        return key is { IsUsed: false } ? key : null;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> TryConsumeKey(string keyId, string? accountId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!_keys.TryGetValue(keyId, out var key))
+        {
+            return false;
+        }
+
+        var markerPath = GetMarkerPath(keyId);
+        var gate = KeyLocks.GetOrAdd(markerPath, static _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (LoadConsumedMetadata(keyId) is { } existingMetadata)
+            {
+                key.MarkUsed(existingMetadata.BoundAccountId, existingMetadata.BoundAt);
+                return false;
+            }
+
+            if (key.IsUsed)
+            {
+                return false;
+            }
+
+            var boundAt = DateTimeOffset.UtcNow;
+            if (!await SaveConsumedMetadata(keyId, accountId, boundAt, cancellationToken).ConfigureAwait(false))
+            {
+                if (LoadConsumedMetadata(keyId) is { } consumedMetadata)
+                {
+                    key.MarkUsed(consumedMetadata.BoundAccountId, consumedMetadata.BoundAt);
+                }
+
+                return false;
+            }
+
+            key.MarkUsed(accountId, boundAt);
+            return true;
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private async Task<bool> SaveConsumedMetadata(
+        string keyId,
+        string? accountId,
+        DateTimeOffset boundAt,
+        CancellationToken cancellationToken)
+    {
+        var markerPath = GetMarkerPath(keyId);
         var temporaryPath = $"{markerPath}.tmp-{Guid.NewGuid():N}";
         try
         {
             await using (var marker = new FileStream(
                              temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
-                var metadata = new ConsumedKeyMetadata(key.BoundAccountId, key.BoundAt!.Value);
+                var metadata = new ConsumedKeyMetadata(accountId, boundAt);
                 using (var writer = new Utf8JsonWriter(marker))
                 {
                     writer.WriteStartObject();
@@ -84,23 +164,17 @@ public sealed class ConfiguredExternalAccountKeyStore : IStoreExternalAccountKey
             try
             {
                 File.Move(temporaryPath, markerPath);
+                return true;
             }
-            catch (IOException) when (LoadConsumedMetadata(key.KeyId) is not null)
+            catch (IOException) when (LoadConsumedMetadata(keyId) is not null)
             {
-                // A prior save (or a concurrent save) already recorded this single-use key.
+                return false;
             }
         }
         finally
         {
             File.Delete(temporaryPath);
         }
-    }
-
-    /// <inheritdoc />
-    public async Task<ExternalAccountKey?> FindActiveKey(string keyId, CancellationToken cancellationToken)
-    {
-        var key = await LoadKey(keyId, cancellationToken).ConfigureAwait(false);
-        return key is { IsUsed: false } ? key : null;
     }
 
     private ConsumedKeyMetadata? LoadConsumedMetadata(string keyId)

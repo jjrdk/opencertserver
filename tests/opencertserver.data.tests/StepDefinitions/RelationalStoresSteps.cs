@@ -481,7 +481,7 @@ public sealed class RelationalStoresSteps
         var ct = TestContext.Current.CancellationToken;
         await Certificates.AddCertificate(first, "rsa", ct);
         await Certificates.AddCertificate(second, "ecdsa", ct);
-        await Certificates.AddCertificate(legacy, ct);
+        await Certificates.AddCertificate(legacy, null, ct);
         var keys = new[] { first.Thumbprint.ToLowerInvariant(), second.Thumbprint, legacy.Thumbprint, "missing" };
         var profiles = await Certificates.GetIssuingProfiles(keys, ct);
         Assert.Equal("rsa", profiles[first.Thumbprint]);

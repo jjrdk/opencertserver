@@ -211,5 +211,25 @@ public sealed partial class ApplianceUpgradeSteps
 
         var marker = Assert.Single(System.IO.Directory.GetFiles(consumedPath));
         Assert.DoesNotContain(key.MacKey, await File.ReadAllTextAsync(marker));
+
+        var atomicKey = new Model.ExternalAccountKey("configured-atomic-test", key.MacKey);
+        var atomicStore = new ConfiguredExternalAccountKeyStore([atomicKey], consumedPath);
+        var competingStore = new ConfiguredExternalAccountKeyStore(
+            [new Model.ExternalAccountKey(atomicKey.KeyId, atomicKey.MacKey)],
+            consumedPath);
+        var consumptionResults = await Task.WhenAll(
+            atomicStore.TryConsumeKey(atomicKey.KeyId, "first-account", CancellationToken.None),
+            competingStore.TryConsumeKey(atomicKey.KeyId, "second-account", CancellationToken.None));
+        Assert.Single(consumptionResults, consumed => consumed);
+
+        var atomicReloadedStore = new ConfiguredExternalAccountKeyStore(
+            [new Model.ExternalAccountKey(atomicKey.KeyId, atomicKey.MacKey)],
+            consumedPath);
+        var atomicReloadedKey = await atomicReloadedStore.LoadKey(atomicKey.KeyId, CancellationToken.None);
+        Assert.NotNull(atomicReloadedKey);
+        Assert.True(atomicReloadedKey!.IsUsed);
+        Assert.Equal(
+            consumptionResults[0] ? "first-account" : "second-account",
+            atomicReloadedKey.BoundAccountId);
     }
 }

@@ -93,8 +93,8 @@ public sealed class IntuneDeviceReportBatch : IDisposable
         public int SerialReads { get; private set; }
         public int CertificateReads { get; private set; }
         public Task AddCertificate(X509Certificate2 certificate, CancellationToken cancellationToken = default) =>
-            _inner.AddCertificate(certificate, cancellationToken);
-        public Task AddCertificate(X509Certificate2 certificate, string issuingProfile, CancellationToken cancellationToken = default) =>
+            _inner.AddCertificate(certificate, null, cancellationToken);
+        public Task AddCertificate(X509Certificate2 certificate, string? issuingProfile, CancellationToken cancellationToken = default) =>
             _inner.AddCertificate(certificate, issuingProfile, cancellationToken);
         public Task<string?> GetIssuingProfile(string thumbprint, CancellationToken cancellationToken = default)
         {
@@ -108,7 +108,13 @@ public sealed class IntuneDeviceReportBatch : IDisposable
             return _inner.GetIssuingProfiles(thumbprints, cancellationToken);
         }
         public Task<bool> RemoveCertificate(string serialNumber, X509RevocationReason reason, CancellationToken cancellationToken = default) =>
-            _inner.RemoveCertificate(serialNumber, reason, cancellationToken);
+            _inner.RemoveCertificate(serialNumber, null, reason, cancellationToken);
+        public Task<bool> RemoveCertificate(
+            string serialNumber,
+            string? issuingProfile,
+            X509RevocationReason reason,
+            CancellationToken cancellationToken = default) =>
+            _inner.RemoveCertificate(serialNumber, issuingProfile, reason, cancellationToken);
         public IAsyncEnumerable<CertificateItemInfo> GetRevocationList(string? issuingProfile, int page = 0, int pageSize = 100, CancellationToken cancellationToken = default) =>
             _inner.GetRevocationList(issuingProfile, page, pageSize, cancellationToken);
         public Task<(CertId, CertificateStatus, RevokedInfo?)> GetCertificateStatus(CertId certId, CancellationToken cancellationToken = default) =>
@@ -118,7 +124,15 @@ public sealed class IntuneDeviceReportBatch : IDisposable
         public IAsyncEnumerable<X509Certificate2> GetCertificatesById(CancellationToken cancellationToken, params IEnumerable<ReadOnlyMemory<byte>> ids)
         {
             SerialReads++;
-            return _inner.GetCertificatesById(cancellationToken, ids);
+            return _inner.GetCertificatesById(null, cancellationToken, ids);
+        }
+        public IAsyncEnumerable<X509Certificate2> GetCertificatesById(
+            string? issuingProfile,
+            CancellationToken cancellationToken,
+            params IEnumerable<ReadOnlyMemory<byte>> ids)
+        {
+            SerialReads++;
+            return _inner.GetCertificatesById(issuingProfile, cancellationToken, ids);
         }
         public IAsyncEnumerable<X509Certificate2> GetCertificatesByThumbprint(IEnumerable<ReadOnlyMemory<char>> thumbprint, CancellationToken cancellationToken = default)
         {

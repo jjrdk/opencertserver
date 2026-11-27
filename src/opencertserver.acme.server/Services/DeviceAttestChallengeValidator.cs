@@ -195,8 +195,8 @@ public sealed class DeviceAttestChallengeValidator : IValidateChallenges, IDispo
             chain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
             chain.ChainPolicy.VerificationFlags =
                 X509VerificationFlags.IgnoreEndRevocationUnknown
-                | X509VerificationFlags.IgnoreCertificateAuthorityRevocationUnknown
-                | X509VerificationFlags.IgnoreRootRevocationUnknown;
+              | X509VerificationFlags.IgnoreCertificateAuthorityRevocationUnknown
+              | X509VerificationFlags.IgnoreRootRevocationUnknown;
 
             // Use custom trust mode so only injected roots are authoritative.
             chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
