@@ -15,12 +15,10 @@ This is a library, not an application: a host registers the attestation services
   `VendorName`, `GetDeviceIdAsync()`,
   `RetrieveDeviceCertificateAsync(deviceId)` and
   `GenerateAndSignQuoteAsync(cert, nonce)`.
-- **`SgxProvider`** (`VendorName = "Intel"`) — Intel SGX DCAP quotes over the native
-  `libsgx_dcap_ql` library (supplied by
-  [`OpenCertServer.Sgx.Native`](../OpenCertServer.Sgx.Native/README.md)).
-- **`AmdSnpProvider`** (`VendorName = "AMD"`) — AMD SEV-SNP quotes over the native
-  `amd_snp_driver` library (supplied by
-  [`OpenCertServer.Amd.Native`](../OpenCertServer.Amd.Native/README.md)).
+- **`SgxProvider`** (`VendorName = "Intel"`) — SGX native interop; see the
+  [`OpenCertServer.Sgx.Native`](../OpenCertServer.Sgx.Native/README.md) ABI limitations.
+- **`AmdSnpProvider`** (`VendorName = "AMD"`) — SEV-SNP native interop; see the
+  [`OpenCertServer.Amd.Native`](../OpenCertServer.Amd.Native/README.md) ABI limitations.
 - **`AppleSeProvider`** (`VendorName = "Apple"`) — Apple App Attest. When
   `AppleSE:UseDeviceAttestation` is `true` (the device case, macOS 11+ / iOS 14+) it drives
   the native `DCAppAttestService` to generate an attestation object on-device; when it is
@@ -79,11 +77,13 @@ var quote = await provider.GenerateAndSignQuoteAsync(deviceCert, nonce);
 ## Dependencies
 
 - `opencertserver.ca.utils` — shared PKI / crypto helpers.
-- `OpenCertServer.Sgx.Native` / `OpenCertServer.Amd.Native` — the RID-based native binary
-  packages (referenced with `ReferenceOutputAssembly="false"`; the `.so` files are populated
-  on a Linux CI agent by the packages' `fetch-native-*.sh` scripts and are not committed).
+- `OpenCertServer.Sgx.Native` / `OpenCertServer.Amd.Native` — native asset packaging
+  projects referenced with `ReferenceOutputAssembly="false"`. Binaries are not committed;
+  their staging scripts do not verify ABI compatibility. The published attestation package
+  does not declare dependencies on these native packages.
 - `Microsoft.Extensions.Configuration(.Json)`, `Microsoft.Extensions.DependencyInjection(.Abstractions)`,
   `Microsoft.Extensions.Http`, `Microsoft.Extensions.Logging.Abstractions`.
 
 The project uses `AllowUnsafeBlocks` for the native P/Invoke shims. It is a supporting
 library for attestation-aware certificate and key workflows, not an application.
+The AMD and Intel interop implementations currently require Linux; Windows is not supported.

@@ -1,46 +1,36 @@
 # OpenCertServer.Amd.Native
 
-A RID-based NuGet asset that ships the **AMD SEV-SNP** user-space driver
-(`amd_snp_driver.so`) so that
-[`opencertserver.attestation`](../opencertserver.attestation/README.md) can load it on Linux
-without managed code in between. This project contains **no managed assembly** — it is a
-packaging project whose only job is to deliver the correct `runtimes/{rid}/native/` binary
-to consumers automatically.
-
-## What it ships
+This packaging project can include an ABI-compatible AMD SEV-SNP native library
+under the .NET runtime asset paths:
 
 ```
 runtimes/linux-x64/native/amd_snp_driver.so
 runtimes/linux-arm64/native/amd_snp_driver.so
 ```
 
-The binaries are owned by AMD and are **not committed** to source control; only
-`.gitkeep` placeholders live in the `runtimes/` tree. The project builds cleanly on
-macOS/Windows developer machines because the `None`/`Content` items are guarded with
-`Condition="Exists(...)"` — the files are packed or copied only when present.
+No native binaries are committed. The Cake pack task skips this package with a
+warning if neither asset is staged; it does not remove older packages from its
+output directory. It does not create a symbol package because this project has
+no managed assembly or managed symbols.
 
-## How the binaries get populated
+## Staging and compatibility
 
-The AMD SEV-SNP driver is built from
-[AMDESE/AMDSEV](https://github.com/AMDESE/AMDSEV) or taken from a distro package. The
-`fetch-native-amd.sh` script in this directory copies it into the RID layout from the common
-install locations:
+Supply a library implementing `snp_get_vcek_chipid` and `snp_generate_report`
+with the signatures expected by
+[`AmdSnpNative`](../opencertserver.attestation/Native/AmdSnpNative.cs).
+The [AMD SEV repository](https://github.com/AMDESE/AMDSEV) does not establish
+that it provides this custom ABI. A library with a matching filename is not
+necessarily compatible.
 
-```sh
-cd src/OpenCertServer.Amd.Native
-./fetch-native-amd.sh          # populates runtimes/linux-{x64,arm64}/native/
-dotnet pack -c Release         # then pack with the native asset included
-```
+`fetch-native-amd.sh` searches common Linux x64 library locations and copies a
+candidate into `runtimes/linux-x64/native/`; it does not verify its ABI.
+Stage an arm64 asset manually if available. After verifying compatibility, run
+the repository pack task or `dotnet pack -c Release` without `--include-symbols`.
 
-## How it is consumed
+The managed interop currently supports Linux only. Windows would require an
+ABI-compatible implementation, platform-specific integration, and validation
+on supported hardware; simply supplying a DLL is insufficient.
 
-[`opencertserver.attestation`](../opencertserver.attestation/README.md) references this
-project with `ReferenceOutputAssembly="false"` (there is no managed assembly to reference),
-which makes MSBuild propagate the `runtimes/{rid}/native/*.so` into the consumer's output on
-publish so the .NET runtime discovers it at load time.
-
-## Dependencies
-
-None managed. It relies on native binaries supplied by AMD and placed under
-`runtimes/{rid}/native/`, and targets `.NET 10` as a packaging project rather than an
-application entry point.
+The published `opencertserver.attestation` package does not declare a
+dependency on this native package. Consumers requiring it must reference a
+populated native package separately.
