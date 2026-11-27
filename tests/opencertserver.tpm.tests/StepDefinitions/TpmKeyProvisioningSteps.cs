@@ -218,7 +218,7 @@ public sealed class TpmKeyProvisioningSteps : IDisposable
     {
         Assert.NotNull(_profile);
         var activePrint = _profile!.CertificateChain[0].Thumbprint;
-        Assert.Contains(_profile.PublishedCertificateChain.Cast<X509Certificate2>(),
+        Assert.Contains(_profile.PublishedCertificateChain,
             c => string.Equals(c.Thumbprint, activePrint, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -228,7 +228,6 @@ public sealed class TpmKeyProvisioningSteps : IDisposable
         Assert.NotNull(_profile);
         // After rollover there must be at least 2 distinct subjects in the published chain.
         var subjects = _profile!.PublishedCertificateChain
-            .Cast<X509Certificate2>()
             .Select(c => c.Subject)
             .Distinct()
             .ToList();

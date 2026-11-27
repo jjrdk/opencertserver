@@ -62,6 +62,8 @@ public static class TpmCaExtensions
         services.AddSingleton<IValidateCertificateRequests, KeyCrlSignatureValidation>();
         services.AddSingleton<IValidateCertificateRequests, AuthenticatedSubjectValidation>();
         services.AddSingleton<ICertificateRequestValueConverter, AuthenticatedSubjectRequestValueConverter>();
+        // Assemble the phased validator pipeline (T09) from the registered request validators.
+        services.AddValidatorPipeline();
         services.AddSingleton<ICertificateAuthority>(sp =>
             new CertificateAuthority(
                 sp.GetRequiredService<CaConfiguration>(),
@@ -69,7 +71,7 @@ public static class TpmCaExtensions
                 chainValidation ?? new AcceptAllX509Chains(),
                 certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
                 sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                sp.GetServices<IValidateCertificateRequests>().ToArray()));
+                sp.GetRequiredService<IValidatorPipeline>()));
 
         return services;
     }

@@ -125,7 +125,8 @@ public sealed class DeviceAttestServerSteps : IDisposable
         });
 
         using var scope = _server.Services.CreateScope();
-        var validator = scope.ServiceProvider.GetRequiredService<IValidateDeviceAttestChallenges>();
+        var validator = scope.ServiceProvider.GetServices<IValidateChallenges>()
+            .First(v => v.AppliesTo == ChallengeTypes.DeviceAttest01);
         (_challengeIsValid, _challengeError) = await validator.ValidateChallenge(
             _challenge, _account, CancellationToken.None).ConfigureAwait(false);
     }

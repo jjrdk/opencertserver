@@ -72,7 +72,7 @@ public partial class CertificateServerFeatures
         AsnDecoder.ReadSequence(crlDer, AsnEncodingRules.DER, out var contentOffset, out var contentLength, out _);
         var content = crlDer.AsSpan(contentOffset, contentLength);
         AsnDecoder.ReadSequence(content, AsnEncodingRules.DER, out var tbsOffset, out var tbsLength, out _);
-        return content[..(tbsOffset + tbsLength)].ToArray();
+        return [.. content[..(tbsOffset + tbsLength)]];
     }
 
     private async Task<X509Certificate2> GetCaIssuerCertAsync()

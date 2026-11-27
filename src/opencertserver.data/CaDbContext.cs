@@ -38,6 +38,9 @@ public class CaDbContext : DbContext
     /// <summary>Issued-certificate inventory records.</summary>
     public DbSet<CertificateEntity> Certificates => Set<CertificateEntity>();
 
+    /// <summary>Persisted CA profiles; <see cref="CaProfileEntity.Name"/> is the primary key.</summary>
+    public DbSet<CaProfileEntity> CaProfiles => Set<CaProfileEntity>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -73,6 +76,12 @@ public class CaDbContext : DbContext
             e.HasKey(x => x.SerialNumber);
             e.HasIndex(x => x.Thumbprint);
             e.HasIndex(x => x.RevocationReason);
+        });
+
+        modelBuilder.Entity<CaProfileEntity>(e =>
+        {
+            e.HasKey(x => x.Name);
+            e.HasIndex(x => x.IsDefault);
         });
     }
 }

@@ -1,9 +1,12 @@
+using OpenCertServer.Ca.Protocol;
+
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using CertesSlim.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -23,6 +26,8 @@ using Acme.Server.Configuration;
 using Acme.Server.Extensions;
 using Ca.Server;
 using OpenCertServer.Ca.Utils.Ca;
+using OpenCertServer.Ca.Server.PublicRa;
+using OpenCertServer.Ca.Server.RegistrationAuthority;
 using Ca.Utils.Ocsp;
 using Est.Server;
 using Reqnroll;
@@ -37,6 +42,10 @@ public partial class CertificateServerFeatures
     private bool _strictOcspHttpBinding;
     private TimeSpan _ocspFreshnessWindow = TimeSpan.FromHours(1);
     private string[] _crlUrls = [];
+    private bool _enablePublicRa;
+    private int _publicRaRateLimit = 60;
+    private bool _publicRaRequireEab;
+    private MutableTestRaStore _raStore = null!;
 
     [UnconditionalSuppressMessage("Trimming", "IL2111",
         Justification = "The test host registers known concrete services in the regular test runtime and is not trimmed.")]
@@ -51,10 +60,25 @@ public partial class CertificateServerFeatures
             builder
                 .UseTestServer()
                 .UseUrls("http://localhost")
-                .ConfigureAppConfiguration(c => c.AddEnvironmentVariables())
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.AddEnvironmentVariables();
+                    if (_enablePublicRa)
+                    {
+                        c.AddInMemoryCollection(new Dictionary<string, string?>
+                        {
+                            ["PublicRa:Enabled"] = "true",
+                            ["PublicRa:RateLimit"] = _publicRaRateLimit.ToString(),
+                            ["PublicRa:RequireEab"] = _publicRaRequireEab.ToString(),
+                            ["PublicRa:Profiles:0"] = "default",
+                            ["PublicRa:Profiles:1"] = "ecdsa"
+                        });
+                    }
+                })
                 .ConfigureServices(ConfigureServices)
                 .Configure(ConfigureApp);
         }).Build();
+        await storage.SeedProfilesAsync(host.Services, TestContext.Current.CancellationToken);
         await host.StartAsync(TestContext.Current.CancellationToken);
         _host = host;
         _server = host.GetTestServer();
@@ -80,10 +104,28 @@ public partial class CertificateServerFeatures
             Justification = "These certserver tests do not target AOT publishing.")]
         void ConfigureServices(WebHostBuilderContext ctx, IServiceCollection services)
         {
+            var raBinding = new RaBinding(
+                "ra-tenant-a",
+                new HashSet<string>(["tenant-a.example.com"], StringComparer.OrdinalIgnoreCase),
+                new HashSet<string>(["default", "ecdsa"], StringComparer.OrdinalIgnoreCase));
+            _raStore = new MutableTestRaStore(raBinding);
             services
-                .AddSingleton<IResponderId>(new ResponderIdByKey("test"u8.ToArray()))
+                .AddSingleton<IResponderId>(new ResponderIdByKey([.. "test"u8]))
                 .AddInMemoryCertificateStore()
-                .AddSelfSignedCertificateAuthority(new X500DistinguishedName("CN=reimers.io"), ocspUrls: ["test"], crlUrls: _crlUrls, strictOcspHttpBinding: _strictOcspHttpBinding, ocspFreshnessWindow: _ocspFreshnessWindow)
+                .AddSingleton<IStoreRas>(_raStore)
+                .AddRa(new RaServerOptions
+                {
+                    AcceptRa = true,
+                    Bindings = [raBinding]
+                })
+                .AddPublicRa(PublicRaOptions.FromConfiguration(ctx.Configuration))
+                .AddSelfSignedCertificateAuthority(
+                    new X500DistinguishedName("CN=reimers.io"),
+                    ocspUrls: ["test"],
+                    crlUrls: _crlUrls,
+                    strictOcspHttpBinding: _strictOcspHttpBinding,
+                    ocspFreshnessWindow: _ocspFreshnessWindow,
+                    allowPublicEnrollment: _enablePublicRa)
                 .AddEstServer<TestCsrAttributesLoader>()
                 .AddSingleton<TestManualAuthorizationStrategy>()
                 .Replace(ServiceDescriptor.Singleton<Est.Server.Handlers.IManualAuthorizationStrategy>(sp =>
@@ -99,7 +141,19 @@ public partial class CertificateServerFeatures
                 .AddRouting()
                 .AddAuthorization()
                 .AddCertificateAuthorityAuthorization()
-                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddAuthentication(options =>
+                {
+                    options.DefaultScheme = "CaAuthentication";
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
+                .AddPolicyScheme("CaAuthentication", null, options =>
+                {
+                    options.ForwardDefaultSelector = context =>
+                        context.Request.Headers.Authorization.ToString()
+                            .StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                            ? JwtBearerDefaults.AuthenticationScheme
+                            : CertificateAuthenticationDefaults.AuthenticationScheme;
+                })
                 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
                 {
                     o.SaveToken = true;
@@ -115,14 +169,21 @@ public partial class CertificateServerFeatures
 
                             // Grant the CaAdmin role when the test token explicitly requests it.
                             var authHeader = c.Request.Headers.Authorization.ToString();
-                            var role = authHeader.Contains("admin-token", StringComparison.OrdinalIgnoreCase)
-                                ? RevocationAuthorizationConstants.CaAdminRole
-                                : "user";
+                            var claims = authHeader.Contains("ra-token", StringComparison.OrdinalIgnoreCase)
+                                ? new[]
+                                {
+                                    new Claim("ra", "ra-tenant-a"),
+                                    new Claim("role", "user")
+                                }
+                                : [
+                                    new Claim("role", authHeader.Contains("admin-token", StringComparison.OrdinalIgnoreCase)
+                                        ? RevocationAuthorizationConstants.CaAdminRole
+                                        : "user")
+                                ];
 
                             c.Principal =
                                 new ClaimsPrincipal(
-                                    new ClaimsIdentity([new Claim("role", role)],
-                                        JwtBearerDefaults.AuthenticationScheme));
+                                    new ClaimsIdentity(claims, JwtBearerDefaults.AuthenticationScheme));
                             c.Properties = new OAuthChallengeProperties
                             {
                                 AllowRefresh = false,
@@ -143,9 +204,20 @@ public partial class CertificateServerFeatures
             services.AddSingleton(sp => new DefaultIssuer(sp.GetRequiredService<ICertificateAuthority>()));
             services.AddSingleton(sp => new TestAcmeIssuer(sp.GetRequiredService<DefaultIssuer>()));
             services.AddSingleton<TestAcmeChallengeValidationState>();
-            services.AddSingleton<IValidateHttp01Challenges, TestAcmeHttp01ChallengeValidator>();
-            services.AddSingleton<IValidateDns01Challenges, TestAcmeDns01ChallengeValidator>();
-            services.AddSingleton<IValidateDeviceAttestChallenges, TestAcmeDeviceAttestChallengeValidator>();
+            // The factory resolves IValidateChallenges as a collection and routes by AppliesTo,
+            // so remove the production validator registrations and add the test doubles instead
+            // (one per challenge type) so the test controls validation via TestAcmeChallengeValidationState.
+            for (var i = services.Count - 1; i >= 0; i--)
+            {
+                if (services[i].ServiceType == typeof(IValidateChallenges))
+                {
+                    services.RemoveAt(i);
+                }
+            }
+
+            services.Add(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeHttp01ChallengeValidator>());
+            services.Add(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeDns01ChallengeValidator>());
+            services.Add(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeDeviceAttestChallengeValidator>());
             services.Replace(ServiceDescriptor.Singleton<IIssueCertificates>(sp => sp.GetRequiredService<TestAcmeIssuer>()));
             storage.Register(services);
         }
@@ -216,5 +288,22 @@ public partial class CertificateServerFeatures
     public void SetCustomOcspFreshnessWindow()
     {
         _ocspFreshnessWindow = TimeSpan.FromHours(2);
+    }
+
+    [Given(@"a certificate server with Public RA enabled and rate limit (\d+)")]
+    public async Task GivenACertificateServerWithPublicRaEnabledAndRateLimit(int rateLimit)
+    {
+        _enablePublicRa = true;
+        _publicRaRateLimit = rateLimit;
+        await GivenACertificateServer().ConfigureAwait(false);
+    }
+
+    [Given(@"a certificate server with Public RA enabled, EAB required, and rate limit (\d+)")]
+    public async Task GivenACertificateServerWithPublicRaEnabledEabRequiredAndRateLimit(int rateLimit)
+    {
+        _enablePublicRa = true;
+        _publicRaRequireEab = true;
+        _publicRaRateLimit = rateLimit;
+        await GivenACertificateServer().ConfigureAwait(false);
     }
 }

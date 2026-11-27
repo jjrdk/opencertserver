@@ -40,7 +40,14 @@ public static class AccountEndpoints
         return endpoints;
     }
 
-    private static async Task<IResult> AccounterOrdersHandler(HttpContext context, string accountId, JwsPayload payload, IOrderService orderService, IAccountService accountService, LinkGenerator links, CancellationToken cancellationToken)
+    private static async Task<IResult> AccounterOrdersHandler(
+        HttpContext context,
+        string accountId,
+        JwsPayload payload,
+        IOrderService orderService,
+        IAccountService accountService,
+        LinkGenerator links,
+        CancellationToken cancellationToken)
     {
         var account = await accountService.FromRequest(payload.ToAcmeHeader(), cancellationToken)
             .ConfigureAwait(false);
@@ -50,7 +57,7 @@ public static class AccountEndpoints
         var orders = orderIds.Select(orderId => new Uri(GetOrderUrl(context, links, orderId)))
             .ToList();
 
-        return Results.Ok(new Dictionary<string, string[]> { ["orders"] = orders.Select(uri => uri.OriginalString).ToArray() });
+        return Results.Ok(new Abstractions.HttpModel.AccountOrders(orders));
     }
 
     [AcmeLocation("Account")]

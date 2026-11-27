@@ -1,6 +1,7 @@
 using OpenCertServer.Acme.Server.Extensions;
 using OpenCertServer.Ca.Server;
 using OpenCertServer.Data;
+using OpenCertServer.Data.Stores;
 
 namespace OpenCertServer.CertServer.Tests.StepDefinitions;
 
@@ -49,9 +50,16 @@ public sealed class RelationalStoreSteps
         await _database.StartAsync(TestContext.Current.CancellationToken).ConfigureAwait(false);
         _configuration = CreateConfiguration(_database.ConnectionString);
         _caConfiguration = CreateCaConfiguration();
+        await _database.SeedProfilesAsync(_database.ConnectionString, _caConfiguration.Profiles,
+            TestContext.Current.CancellationToken).ConfigureAwait(false);
         _host = CreateServer();
         await _host.StartAsync().ConfigureAwait(false);
         _server = _host.GetTestServer();
+        var storedProfiles = _host.Services.GetRequiredService<IStoreCaProfiles>();
+        var configuredProfile = await _caConfiguration.Profiles.GetProfile(null);
+        using var storedProfile = await storedProfiles.GetProfile(null);
+        Assert.Equal(configuredProfile.Name, storedProfile.Name);
+        Assert.Equal(configuredProfile.CertificateChain[0].Thumbprint, storedProfile.CertificateChain[0].Thumbprint);
     }
 
     [When("an ACME client registers an account and places an order")]
@@ -122,8 +130,12 @@ public sealed class RelationalStoreSteps
     public async Task WhenCaServiceRevokesCertificate()
     {
         var certificateAuthority = _reloadedServices!.GetRequiredService<ICertificateAuthority>();
+        var store = _reloadedServices!.GetRequiredService<IStoreCertificates>();
+        var issuingProfile = await store.GetIssuingProfile(_issuedCertificate!.Thumbprint,
+            TestContext.Current.CancellationToken);
+        Assert.NotNull(issuingProfile);
         var revoked = await certificateAuthority.RevokeCertificate(
-            _issuedCertificate!.GetSerialNumberString(),
+            _issuedCertificate.GetSerialNumberString(), issuingProfile,
             X509RevocationReason.KeyCompromise).ConfigureAwait(false);
         Assert.True(revoked);
     }
@@ -196,10 +208,11 @@ public sealed class RelationalStoreSteps
             .AddCaRelationalStore(configuration, "OpenCertServer")
             .AddRouting();
 
+        services.AddSingleton<IStoreCaProfiles, RelationalCaProfileStore>();
         services.AddSingleton<TestAcmeChallengeValidationState>();
-        services.Replace(ServiceDescriptor.Singleton<IValidateHttp01Challenges, TestAcmeHttp01ChallengeValidator>());
-        services.Replace(ServiceDescriptor.Singleton<IValidateDns01Challenges, TestAcmeDns01ChallengeValidator>());
-        services.Replace(ServiceDescriptor.Singleton<IValidateDeviceAttestChallenges,
+        services.Replace(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeHttp01ChallengeValidator>());
+        services.Replace(ServiceDescriptor.Singleton<IValidateChallenges, TestAcmeDns01ChallengeValidator>());
+        services.Replace(ServiceDescriptor.Singleton<IValidateChallenges,
             TestAcmeDeviceAttestChallengeValidator>());
         services.AddSingleton<ICsrValidator, DefaultCsrValidator>();
         services.AddSingleton(sp => new DefaultIssuer(sp.GetRequiredService<ICertificateAuthority>()));
@@ -227,5 +240,4 @@ public sealed class RelationalStoreSteps
                 ["AcmeServer:DisableCaaChecks"] = "true"
             })
             .Build();
-
 }

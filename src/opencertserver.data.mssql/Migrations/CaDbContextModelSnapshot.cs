@@ -17,7 +17,7 @@ namespace OpenCertServer.Data.MsSql.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.14")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -59,6 +59,27 @@ namespace OpenCertServer.Data.MsSql.Migrations
                         .IsUnique();
 
                     b.ToTable("Accounts");
+                });
+
+            modelBuilder.Entity("OpenCertServer.Data.Entities.CaProfileEntity", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(450)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.HasKey("Name");
+
+                    b.HasIndex("IsDefault");
+
+                    b.ToTable("CaProfiles");
                 });
 
             modelBuilder.Entity("OpenCertServer.Data.Entities.CertificateEntity", b =>

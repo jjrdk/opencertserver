@@ -1,6 +1,15 @@
 Feature: Relational ACME and CA stores
   Each examples table selects PostgreSQL or MSSQL to exercise the same store contracts.
 
+  Scenario Outline: Certificate operations use recorded profiles rather than a null default
+    Given the certificate store is "<Storage>"
+    Then profile-scoped certificate operations preserve isolation
+    Examples:
+      | Storage    |
+      | in-memory  |
+      | PostgreSQL |
+      | MSSQL      |
+
   Scenario Outline: Accounts survive reloads and reject lost updates
     Given the relational database is "<Database>"
     Then accounts round trip and support contact updates and key rollover
@@ -59,6 +68,14 @@ Feature: Relational ACME and CA stores
   Scenario Outline: Migrations can be reapplied without losing data
     Given the relational database is "<Database>"
     Then applying the migrations again preserves stored accounts
+    Examples:
+      | Database   |
+      | PostgreSQL |
+      | MSSQL      |
+
+  Scenario Outline: CA profiles round trip and resolve the default
+    Given the relational database is "<Database>"
+    Then ca profiles persist and the default is resolved for null or unknown names
     Examples:
       | Database   |
       | PostgreSQL |

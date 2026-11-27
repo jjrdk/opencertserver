@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using OpenCertServer.Est.Server.TrustAnchor;
 using OpenCertServer.Data;
 using OpenCertServer.Data.PostgreSql;
+using OpenCertServer.Data.MsSql;
 
 [assembly: InternalsVisibleTo("opencertserver.certserver.tests")]
 
@@ -13,7 +14,6 @@ using OpenCertServer.Ca.Utils.Ca;
 using System.Linq;
 using System.Numerics;
 using System.Net.Security;
-using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using Acme.Abstractions.IssuanceServices;
 using Est.Server;
@@ -26,15 +26,17 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Acme.Server;
 using Acme.Server.Extensions;
+using OpenCertServer.Acme.Remote;
 using Acme.Server.Services;
+using OpenCertServer.Acme.Server.Stores;
 using Acme.Abstractions.Storage;
 using Acme.Abstractions.Model;
 using Acme.Abstractions.Services;
 using Ca;
 using Ca.Server;
-using CertServer.Stores;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -45,13 +47,24 @@ internal static class Program
 {
     public static async Task Main(string[] args)
     {
-        if (args.Length == 0)
+        if (ApplianceConfiguration.RunCommand(args))
         {
-            throw new Exception("No configuration values passed");
+            return;
         }
 
         var builder = WebApplication.CreateBuilder(args);
+        builder.Services.ConfigureHttpJsonOptions(options =>
+            options.SerializerOptions.TypeInfoResolverChain.Insert(0, ApplianceJsonContext.Default));
+        ApplianceConfiguration.AddMountedConfiguration(builder.Configuration, args);
         builder.Configuration.AddEnvironmentVariables().AddCommandLine(args);
+        var appliance = ApplianceOptions.Read(builder.Configuration);
+        if (appliance.Role == "Ra")
+        {
+            await RaApplianceHost.Run(builder, appliance).ConfigureAwait(false);
+            return;
+        }
+
+        var hasEnrollment = appliance.Role != "Ca";
         var services = builder.Services
             .AddCors(options =>
             {
@@ -69,8 +82,26 @@ internal static class Program
                         .AllowAnyHeader()
                         .AllowAnyMethod();
                 });
-            })
-            .AddInMemoryCertificateStore();
+            });
+        services = services
+            .AddRa(builder.Configuration)
+            .AddPublicRa(builder.Configuration);
+        // A persistent store wins. The appliance store is created below when a DataDirectory is
+        // mounted; the relational store is wired when Ca:Persistence is "relational". The in-memory
+        // store is only the fallback for both — registering it unconditionally would shadow a
+        // relational store and, next to the appliance store, hand out two IStoreCertificates whose
+        // FileShare.None lease collides on the certificate lock file.
+        var relationalCa =
+            builder.Configuration["Ca:Persistence"]?.ToLowerInvariant() == "relational";
+        if (!relationalCa && string.IsNullOrWhiteSpace(appliance.DataDirectory))
+        {
+            services = services.AddInMemoryCertificateStore();
+        }
+        if (!string.IsNullOrWhiteSpace(appliance.DataDirectory))
+        {
+            services.AddSingleton<IStoreCertificates>(_ => new ApplianceCertificateStore(appliance.DataDirectory));
+        }
+
         var port = int.TryParse(builder.Configuration.GetSection("port").Value, out var p)
             ? p
             : 5001; //portIndex >= 0 ? int.Parse(args[portIndex + 1]) : 5001;
@@ -176,24 +207,34 @@ internal static class Program
                         new CaProfileSet("rsa", rsaProfile, ecdsaProfile),
                         ocspUrls.ToArray(),
                         crlUrls.ToArray(),
-                        caIssuerUrls.ToArray()))
+                        caIssuerUrls.ToArray(),
+                        strictOcspHttpBinding: appliance.Hardened))
                 .AddEstServer<ConfiguredCsrTemplateLoader>();
         }
 
         services = services.AddEstTrustAnchors(options => ReadEstTrustAnchors(builder.Configuration, options));
-        services = await AddScep(services, args, builder.Configuration).ConfigureAwait(false);
+        // WP9: SCEP is a per-host surface. The monolith enables it by default (any SCEP
+        // configuration - a RA cert, a shared secret, or the Intune validation - turns it on),
+        // but a CA-only host sets Scep:Enabled=false to run /ca/*, /est, /acme with no /scep.
+        if (IsScepEnabled(args, builder.Configuration))
+        {
+            services = await AddScep(services, args, builder.Configuration).ConfigureAwait(false);
+        }
 
-        var a = Array.IndexOf(args, "--authority");
-        var authority = a >= 0
-            ? args[a + 1]
-            : throw new Exception("No authority specified. Use --authority <url> to specify the authority URL.");
+        var authority = builder.Configuration["Jwt:Authority"] ?? builder.Configuration["authority"]
+         ?? throw new InvalidOperationException("Set Jwt:Authority in configuration or use --authority.");
+        var audiences = ListConfigValues(builder.Configuration.GetSection("Jwt:Audiences"));
+        if (audiences.Count == 0)
+        {
+            audiences = ListConfigValues(builder.Configuration.GetSection("audience"));
+        }
 
-        var aud = Array.IndexOf(args, "--audience");
-        var audiences = aud >= 0
-            ? args[aud + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            : throw new Exception("No audience specified. Use --audience <url> to specify the audience URL.");
+        if (audiences.Count == 0)
+        {
+            throw new InvalidOperationException("Set Jwt:Audiences in configuration or use --audience.");
+        }
 
-        var forwardedHeadersOptions = CreateForwardedHeaderOptions();
+        var forwardedHeadersOptions = CreateForwardedHeaderOptions(appliance.Hardened);
         const string caAuthenticationScheme = "CaAuthentication";
 
         _ = services.AddAuthentication(options =>
@@ -204,7 +245,8 @@ internal static class Program
             .AddPolicyScheme(caAuthenticationScheme, null, options =>
             {
                 options.ForwardDefaultSelector = context =>
-                    context.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                    context.Request.Headers.Authorization.ToString()
+                        .StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
                         ? JwtBearerDefaults.AuthenticationScheme
                         : CertificateAuthenticationDefaults.AuthenticationScheme;
             })
@@ -216,11 +258,8 @@ internal static class Program
             // Est:BasicAuth:UsersFile is set. Hashes only - `opencert hash-password` makes them.
             .AddEstBasicAuthentication(options => ReadBasicAuthentication(builder.Configuration, options))
             .Services
-            .AddAcmeServer(builder.Configuration)
-            .AddAcmeInMemoryStore()
-            .AddSingleton(new JwtParameters { Authority = authority, Audiences = audiences })
+            .AddSingleton(new JwtParameters { Authority = authority, Audiences = audiences.ToArray() })
             .AddSingleton<ICsrValidator, DefaultCsrValidator>()
-            .AddSingleton<IIssueCertificates, DefaultIssuer>()
             .ConfigureOptions<ConfigureJwtBearerOptions>()
             .ConfigureOptions<ConfigureCertificateAuthenticationOptions>()
             .AddAuthorization(options => options.AddPolicy(
@@ -235,6 +274,34 @@ internal static class Program
                 JwtBearerDefaults.AuthenticationScheme,
                 CertificateAuthenticationDefaults.AuthenticationScheme))
             .AddHealthChecks();
+
+        // WP5 config gate: the ACME issuer is selectable. Default (empty or "inproc") preserves
+        // today's monolith behavior (the in-process CA issues ACME certificates). "remote" runs a
+        // remote ACME server that issues through a backing certificate authority over a trusted
+        // HTTPS connection (mTLS/bearer + PoP); it registers the remote issuer plus the CA client.
+        var acmeIssuer = builder.Configuration.GetSection("AcmeServer")["Issuer"];
+        if (string.Equals(acmeIssuer, "remote", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddAcmeRemoteCa(builder.Configuration);
+        }
+        else
+        {
+            services.AddSingleton<IIssueCertificates, DefaultIssuer>();
+        }
+
+        if (hasEnrollment)
+        {
+            services.AddAcmeServer(builder.Configuration);
+            if (!string.IsNullOrWhiteSpace(appliance.DataDirectory))
+            {
+                builder.Configuration["AcmeFileStore:BasePath"] = Path.Combine(appliance.DataDirectory, "acme");
+                services.AddAcmeFileStore(builder.Configuration);
+            }
+            else
+            {
+                services.AddAcmeInMemoryStore();
+            }
+        }
 
         services.AddHsts(options =>
         {
@@ -251,6 +318,12 @@ internal static class Program
 
         // --- Hardened-deployment registrations, each config-gated and fail-closed when unset ---
 
+        // The relational engine (postgres or mssql) is chosen by Appliance__Engine so the same image can
+        // target either backend; the connection is read from ConnectionStrings:OpenCertServer. Schema
+        // migrations are an out-of-band step (dotnet ef / the adapter's MigrateAsync) — never applied at
+        // startup.
+        var relationalEngine =
+            builder.Configuration["Appliance:Engine"]?.Trim()?.ToLowerInvariant();
         switch (builder.Configuration["AcmeServer:Persistence"]?.ToLowerInvariant())
         {
             case null:
@@ -260,7 +333,7 @@ internal static class Program
                 services.AddAcmeFileStore(builder.Configuration);
                 break;
             case "relational":
-                services.AddPostgreSqlStore()
+                AddRelationalEngine(services, relationalEngine)
                     .AddAcmeRelationalStore(builder.Configuration, "OpenCertServer");
                 break;
             default:
@@ -272,19 +345,20 @@ internal static class Program
             case "memory":
                 break;
             case "relational":
-                services.AddPostgreSqlStore()
+                AddRelationalEngine(services, relationalEngine)
                     .AddCaRelationalStore(builder.Configuration, "OpenCertServer");
                 break;
             default:
                 throw new InvalidOperationException("Unsupported Ca:Persistence.");
         }
         // Configured EAB keys override the selected empty or relational key store.
-        RegisterExternalAccountKeys(services, builder.Configuration);
+        if (hasEnrollment)
+        {
+            RegisterExternalAccountKeys(services, builder.Configuration);
 
-        // Attestation trust roots for the device-attest-01 challenge: when configured the static trust
-        // provider overrides the ACME server's empty default (which rejects every proof), enabling device
-        // identity without broadening the default.
-        RegisterAttestationTrustAnchors(services, builder.Configuration);
+            // Attestation remains fail-closed when no trust roots are configured.
+            RegisterAttestationTrustAnchors(services, builder.Configuration);
+        }
 
         // OpenTelemetry metrics and traces: exported over OTLP when enabled, so a deployment's
         // instrumentation (the opencertserver.acme / .est / .scep / .intune / .ca meters and activity sources)
@@ -297,7 +371,9 @@ internal static class Program
                 options.ConfigureHttpsDefaults(httpsOptions =>
                 {
                     // RFC 7030 requires TLS 1.1 or later for EST; prefer TLS 1.2+ in practice.
-                    httpsOptions.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                    httpsOptions.SslProtocols = appliance.Protocols;
+                    httpsOptions.OnAuthenticate = (_, authentication) =>
+                        authentication.EnabledSslProtocols = appliance.Protocols;
                     if (OperatingSystem.IsLinux())
                     {
                         var cipherPolicy = new CipherSuitesPolicy(
@@ -314,10 +390,11 @@ internal static class Program
                         ]);
                         httpsOptions.OnAuthenticate = (_, authentication) =>
                         {
-                            authentication.EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                            authentication.EnabledSslProtocols = appliance.Protocols;
                             authentication.CipherSuitesPolicy = cipherPolicy;
                         };
                     }
+
                     // Kestrel presents an X.509 server certificate that is expected to conform to RFC5280.
                     // Leave TLS session resumption enabled (the default) because RFC 7030 recommends session resumption support.
                     // Ask the client for a certificate: EST re-enrollment and self-service revocation
@@ -337,7 +414,18 @@ internal static class Program
 
         if (!OperatingSystem.IsLinux())
         {
-            app.Logger.LogWarning("The TLS cipher allow-list requires Linux/OpenSSL; this host uses the operating system cipher policy");
+            app.Logger.LogWarning(
+                "The TLS cipher allow-list requires Linux/OpenSSL; this host uses the operating system cipher policy");
+        }
+
+        if (appliance.Hardened)
+        {
+            app.Use(next => context =>
+            {
+                // This profile terminates mTLS itself; never accept an asserted certificate from a header.
+                context.Request.Headers.Remove("X-Client-Cert");
+                return next(context);
+            });
         }
 
         app.UseHsts()
@@ -368,21 +456,48 @@ internal static class Program
             .UseForwardedHeaders(forwardedHeadersOptions)
             .UseHealthChecks("/health")
             .UseRouting()
+            .Use(next => async context =>
+            {
+                if (!appliance.Hardened)
+                {
+                    await next(context);
+                    return;
+                }
+
+                context.Response.OnCompleted(() =>
+                {
+                    app.Logger.LogWarning("Appliance audit {TraceId} {StatusCode} {Authenticated}",
+                        context.TraceIdentifier,
+                        context.Response.StatusCode, context.User.Identity?.IsAuthenticated == true);
+                    return Task.CompletedTask;
+                });
+                await next(context);
+            })
             .UseAuthentication()
-            .UseAuthorization()
-            .UseAcmeServer()
-            .UseEstServer(
+            .UseAuthorization();
+        if (hasEnrollment)
+        {
+            app.UseAcmeServer().UseEstServer(
                 enrollPolicy: EstPolicy(),
                 reEnrollPolicy: EstPolicy(),
-                serverKeyGenPolicy: EstPolicy())
-            .UseCertificateAuthorityServer();
-        app.MapScepServer();
-        if (builder.Configuration.GetSection(IntuneOptions.SectionName).Exists())
-        {
-            app.MapIntuneSync();
-            app.MapIntuneDeviceReport();
+                serverKeyGenPolicy: EstPolicy());
         }
 
+        app.UseCertificateAuthorityServer();
+        // WP9: the SCEP surface (and the Intune revocation sync that rides on it) maps only when
+        // the host enables SCEP. The monolith enables it by default, so a fresh monolith maps /scep
+        // exactly as before; a CA-only host sets Scep:Enabled=false to run /ca/* with no /scep.
+        if (IsScepEnabled(args, builder.Configuration))
+        {
+            app.MapScepServer();
+            // Intune revocation sync maps only when the Intune validation is configured - the
+            // CA-side surface a device-management platform calls after enrollment.
+            if (builder.Configuration.GetSection(IntuneOptions.SectionName).Exists())
+            {
+                app.MapIntuneSync();
+                app.MapIntuneDeviceReport();
+            }
+        }
         await app.RunAsync().ConfigureAwait(false);
     }
 
@@ -467,11 +582,28 @@ internal static class Program
     }
 
     /// <summary>
+    /// Selects the relational store engine (PostgreSQL or MSSQL) that subsequent relational-store
+    /// registrations bind to. The engine is chosen by <c>Appliance:Engine</c> so a single image can target
+    /// either backend; PostgreSQL is the default when the key is absent. The connection string is read from
+    /// <c>ConnectionStrings:OpenCertServer</c>. Schema migrations are an out-of-band step, not applied here.
+    /// </summary>
+    private static IServiceCollection AddRelationalEngine(IServiceCollection services, string? engine)
+        => engine switch
+        {
+            null or "postgres" or "postgresql" => services.AddPostgreSqlStore(),
+            "mssql" or "sqlserver" => services.AddMsSqlStore(),
+            var other => throw new InvalidOperationException(
+                $"Unsupported Appliance:Engine '{other}'. Expected 'postgres' or 'mssql'.")
+        };
+
+    /// <summary>
     /// External account keys configured under <c>AcmeServer:Eab:Accounts:{keyId}</c> or the legacy
     /// <c>AcmeServer:ExternalAccountKey:{keyId}</c> section. Each key has a base64url <c>MacKey</c>
     /// and optional <c>MacAlgorithm</c> (default HS256).
     /// </summary>
-    private static IServiceCollection RegisterExternalAccountKeys(IServiceCollection services, IConfiguration configuration)
+    private static IServiceCollection RegisterExternalAccountKeys(
+        IServiceCollection services,
+        IConfiguration configuration)
     {
         var sections = new[]
         {
@@ -499,8 +631,13 @@ internal static class Program
             return services;
         }
 
-        // Registered after AddAcmeInMemoryStore so the static store wins resolution.
-        return services.AddSingleton<IStoreExternalAccountKeys>(new StaticExternalAccountKeyStore(keys));
+        // Keep configured HMAC secrets in memory; persist only whether each key was consumed.
+        var consumedKeyPath = Path.Combine(
+            configuration["AcmeFileStore:BasePath"] ?? "./",
+            "ExternalAccountKeyUsage");
+        services.RemoveAll<IStoreExternalAccountKeys>();
+        return services.AddSingleton<IStoreExternalAccountKeys>(
+            new ConfiguredExternalAccountKeyStore(keys, consumedKeyPath));
     }
 
     /// <summary>
@@ -508,7 +645,9 @@ internal static class Program
     /// When none are configured the ACME server's empty trust provider is retained, which rejects every
     /// device-attest-01 proof - the fail-closed default for a hardened deployment.
     /// </summary>
-    private static IServiceCollection RegisterAttestationTrustAnchors(IServiceCollection services, IConfiguration configuration)
+    private static IServiceCollection RegisterAttestationTrustAnchors(
+        IServiceCollection services,
+        IConfiguration configuration)
     {
         var paths = ListConfigValues(configuration.GetSection("Attestation:TrustAnchors"));
         if (paths.Count == 0)
@@ -521,6 +660,7 @@ internal static class Program
         {
             roots.ImportFromPem(File.ReadAllText(path));
         }
+
         if (roots.Count == 0)
         {
             throw new InvalidOperationException(
@@ -566,6 +706,7 @@ internal static class Program
                     .AddMeter("opencertserver.intune")
                     .AddMeter("opencertserver.ca")
                     .AddMeter("opencertserver.ca.core")
+                    .AddMeter("opencertserver.ca.client")
                     .AddMeter("opencertserver.data")
                     .AddMeter("opencertserver.data.postgresql")
                     .AddMeter("opencertserver.data.mssql")
@@ -580,6 +721,7 @@ internal static class Program
                     .AddSource("opencertserver.intune")
                     .AddSource("opencertserver.ca")
                     .AddSource("opencertserver.ca.core")
+                    .AddSource("opencertserver.ca.client")
                     .AddSource("opencertserver.data")
                     .AddSource("opencertserver.data.postgresql")
                     .AddSource("opencertserver.data.mssql")
@@ -602,10 +744,37 @@ internal static class Program
             .ToList();
         if (values.Count == 0 && section.Value is { } lone)
         {
-            values.AddRange(lone.Split([',', ';', ' ', '\t', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            values.AddRange(lone.Split([',', ';', ' ', '\t', '\n'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         }
 
         return values;
+    }
+
+    /// <summary>
+    /// Whether the host maps the SCEP surface. The monolith enables it by default, so a fresh
+    /// monolith behaves exactly as before: any SCEP configuration (a pinned RA certificate via
+    /// <c>--scep-ra</c>, a shared secret via <c>Scep:Challenge</c>, or the Intune validation via
+    /// <c>Scep:Intune</c>) turns SCEP on. A CA-only host sets <c>Scep:Enabled=false</c> to run
+    /// <c>/ca/*</c> with no <c>/scep</c>; <c>Scep:Enabled=true</c> forces it on regardless.
+    /// </summary>
+    internal static bool IsScepEnabled(string[] args, IConfiguration configuration)
+    {
+        var section = configuration.GetSection("Scep");
+        var explicitValue = section["Enabled"];
+        // The flag is opt-out: "Scep:Enabled=false" is the only way to turn SCEP off on the
+        // monolith (a CA-only host). "true" is explicit on; absent, SCEP stays on to preserve T1.
+        if (string.Equals(explicitValue, "false", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+        if (string.Equals(explicitValue, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+        // Default (T1): SCEP is on, exactly as before. A challenge / Intune config / --scep-ra
+        // simply reinforce that; their presence is not what turns SCEP on.
+        return true;
     }
 
     /// <summary>
@@ -622,7 +791,7 @@ internal static class Program
         // The RA decrypts requests and signs responses; SCEP defines the envelope for RSA
         // key transport only, so the RA is RSA even for an ECDSA CA.
         var raCertificate = GetArgumentValue(args, "--scep-ra") is not null
-            ? await CreateCert(args, "--scep-ra", "--scep-ra-key").ConfigureAwait(false)
+            ? await CreateCert(args, configuration, "Scep", "--scep-ra", "--scep-ra-key").ConfigureAwait(false)
             : CreateTransientRaCertificate();
         if (raCertificate.GetRSAPrivateKey() is null)
         {
@@ -711,7 +880,7 @@ internal static class Program
         return true;
     }
 
-    private static ForwardedHeadersOptions CreateForwardedHeaderOptions()
+    private static ForwardedHeadersOptions CreateForwardedHeaderOptions(bool hardened)
     {
         var forwardedHeadersOptions = new ForwardedHeadersOptions
         {
@@ -719,8 +888,11 @@ internal static class Program
             ForwardLimit = null,
             AllowedHosts = []
         };
-        forwardedHeadersOptions.KnownIPNetworks.Clear();
-        forwardedHeadersOptions.KnownProxies.Clear();
+        if (!hardened)
+        {
+            forwardedHeadersOptions.KnownIPNetworks.Clear();
+            forwardedHeadersOptions.KnownProxies.Clear();
+        }
 
         return forwardedHeadersOptions;
     }
@@ -734,7 +906,8 @@ internal static class Program
         string publishedArgument,
         Func<X509Certificate2, AsymmetricAlgorithm?> getPrivateKey)
     {
-        using var certificate = await CreateCert(args, certArgument, keyArgument).ConfigureAwait(false);
+        using var certificate = await CreateCert(args, configuration, profileName, certArgument, keyArgument)
+            .ConfigureAwait(false);
         var privateKey = getPrivateKey(certificate)
          ?? throw new InvalidOperationException(
                 $"The certificate configured for profile '{profileName}' does not expose a compatible private key.");
@@ -742,16 +915,25 @@ internal static class Program
         var publishedCertificatePath =
             GetArgumentValue(args, publishedArgument) ?? configuration[$"{profileName}:PublishedPem"];
 
+        // The active certificate's bundle path comes from the CLI cert argument when present, otherwise
+        // from the JSON '<profile>:Pem' path. Resolving it like CreateCert does means a purely JSON
+        // appliance configuration (no CLI args, as the container uses) no longer dereferences an
+        // absent array index.
+        var activeCertificatePath = GetArgumentValue(args, certArgument) ?? configuration[$"{profileName}:Pem"];
+
         return new CaProfile
         {
             Name = profileName,
             CertificateChain = await LoadCertificateBundle(
-                args[Array.IndexOf(args, certArgument) + 1], activeCertificate).ConfigureAwait(false),
+                activeCertificatePath, activeCertificate).ConfigureAwait(false),
             PublishedCertificateChain = await LoadCertificateBundle(publishedCertificatePath, activeCertificate)
                 .ConfigureAwait(false),
             CertificateValidity = TimeSpan.FromDays(90),
             CrlNumber = BigInteger.Zero,
             PrivateKey = privateKey,
+            AllowPublicEnrollment =
+                bool.TryParse(configuration[$"{profileName}:AllowPublicEnrollment"], out var allowPublicEnrollment)
+                && allowPublicEnrollment,
             CertificatePolicies = ReadList(configuration, $"{profileName}:CertificatePolicies") ?? [],
             KeyUsage = ReadKeyUsage(configuration[$"{profileName}:KeyUsage"]),
             ExtendedKeyUsages = ReadList(configuration, $"{profileName}:ExtendedKeyUsages"),
@@ -807,7 +989,8 @@ internal static class Program
         }
 
         return section.Value is { } value
-            ? value.Split([',', ';', ' ', '\t', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            ? value.Split([',', ';', ' ', '\t', '\n'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             : null;
     }
 
@@ -872,12 +1055,17 @@ internal static class Program
         collection.Add(certificate);
     }
 
-    private static async Task<X509Certificate2> CreateCert(string[] args, string cert, string certKey)
+    private static async Task<X509Certificate2> CreateCert(
+        string[] args,
+        IConfiguration configuration,
+        string profileName,
+        string cert,
+        string certKey)
     {
-        var certIndex = args[Array.IndexOf(args, cert) + 1];
-        var keyIndex = Array.IndexOf(args, certKey);
-        var key = keyIndex >= 0 ? args[keyIndex + 1] : null;
-        using var file = File.OpenText(certIndex);
+        var path = GetArgumentValue(args, cert) ?? configuration[$"{profileName}:Pem"]
+         ?? throw new InvalidOperationException($"Set {profileName}:Pem or {cert} to a CA certificate file.");
+        var key = GetArgumentValue(args, certKey) ?? configuration[$"{profileName}:KeyPem"];
+        using var file = File.OpenText(path);
         using var keyFile = key == null ? TextReader.Null : File.OpenText(key);
         var pem = await file.ReadToEndAsync().ConfigureAwait(false);
         var keyPem = await keyFile.ReadToEndAsync().ConfigureAwait(false);

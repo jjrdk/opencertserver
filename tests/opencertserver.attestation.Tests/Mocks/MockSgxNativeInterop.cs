@@ -1,3 +1,5 @@
+using System;
+
 namespace OpenCertServer.Attestation.Tests.Mocks;
 
 using OpenCertServer.Attestation.Native;

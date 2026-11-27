@@ -8,7 +8,9 @@ using DotNet.Testcontainers.Configurations;
 
 /// <summary>File-backed issuing profiles and an ephemeral EST identity for authority-information, CRL and EST IQ.</summary>
 internal sealed class IqAuthorityConfiguration(
-    string authority = "https://iq.test", bool publishCsrTemplate = false, bool qualifyProfileIssuance = false)
+    string authority = "https://iq.test",
+    bool publishCsrTemplate = false,
+    bool qualifyProfileIssuance = false)
 {
     public const string EstIdentity = "est.example.com";
     public const string OcspUrl = "http://localhost:6001/ocsp";
@@ -17,6 +19,7 @@ internal sealed class IqAuthorityConfiguration(
 
     /// <summary>The CDP of a certificate issued under the default <c>rsa</c> profile.</summary>
     public const string CrlUrl = "http://localhost:6001/ca/rsa/crl";
+
     public const string PolicyOid = "1.3.6.1.4.1.9999.1";
     public const string ExtendedKeyUsages = "TLS Web Server Authentication, TLS Web Client Authentication";
 
@@ -49,7 +52,7 @@ internal sealed class IqAuthorityConfiguration(
         builder = builder
             .WithEnvironment("Est__BasicAuth__UsersFile", "/certs/est-users")
             .WithResourceMapping(Encoding.ASCII.GetBytes($"{EstIdentity}:{passwordHash}\n"),
-                "/certs/est-users", fileMode: Unix.FileMode644)
+                FilePath.Of("/certs/est-users"), fileMode: Unix.FileMode644)
             .WithEnvironment("CaServer__OCSP__0", OcspUrl)
             .WithEnvironment("CaServer__CaIssuers__0", CaIssuersUrl)
             .WithEnvironment("CaServer__CrlDistributionPoints__0", CrlUrlTemplate);
@@ -77,12 +80,15 @@ internal sealed class IqAuthorityConfiguration(
         return publishCsrTemplate
             ? builder.WithEnvironment("Est__CsrAttributesFile", "/certs/csrattrs.der")
                 .WithResourceMapping(Convert.FromHexString("3010300E0201003009310730050603550403"),
-                    "/certs/csrattrs.der", fileMode: Unix.FileMode644)
+                    FilePath.Of("/certs/csrattrs.der"), fileMode: Unix.FileMode644)
             : builder;
     }
 
     private static ContainerBuilder AddIssuer(
-        ContainerBuilder builder, string name, CertificateRequest request, string keyPem)
+        ContainerBuilder builder,
+        string name,
+        CertificateRequest request,
+        string keyPem)
     {
         request.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
         request.CertificateExtensions.Add(new X509KeyUsageExtension(
@@ -92,8 +98,8 @@ internal sealed class IqAuthorityConfiguration(
             DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddDays(2));
         return builder
             .WithResourceMapping(Encoding.ASCII.GetBytes(certificate.ExportCertificatePem()),
-                $"/certs/{name}.crt", fileMode: Unix.FileMode644)
+                FilePath.Of($"/certs/{name}.crt"), fileMode: Unix.FileMode644)
             .WithResourceMapping(Encoding.ASCII.GetBytes(keyPem),
-                $"/certs/{name}.key", fileMode: Unix.FileMode644);
+                FilePath.Of($"/certs/{name}.key"), fileMode: Unix.FileMode644);
     }
 }

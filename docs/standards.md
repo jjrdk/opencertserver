@@ -214,6 +214,21 @@ the new one is issued.
   Seen on Windows 11 devices enrolled through Intune; `RenewalReq` is covered by the scenarios and
   by other SCEP clients.
 
+**Standalone host and backing-CA mode.**
+SCEP can run on its own host, [`opencertserver.scep`](../src/opencertserver.scep/README.md),
+that holds **no CA key** and forwards enrollment/renewal to a backing CA over a trusted HTTPS
+connection, like the ACME and RA hosts. The CA stays authoritative for scope, identity, and the
+published chain: the host forwards the CSR to `POST /ca/csr`, a `RenewalReq` supersedes the
+previous certificate **at the CA** (the previous cert is forwarded via the `X-Reenrolling-From`
+header, which the CA reads and passes to the issuance as `reenrollingFrom`), and `GetCACert`
+returns the full published chain from `GET /ca/published` instead of rebuilding it locally. What
+stays local to the host is the SCEP RA certificate (RSA, from `--scep-ra`/`--scep-ra-key`), the
+challenge validator (a shared secret `Scep:Challenge` or Intune `Scep__Intune`), and the replay
+store. See [architecture-separation.md](../docs/architecture-separation.md) §"Setting up a SCEP
+host against a backing CA". The `opencertserver.certserver` monolith enables SCEP unless
+`Scep:Enabled=false` (a CA-only host); the same `IsScepEnabled` decision gates
+`MapScepServer`/`MapIntuneSync` there, while the standalone host maps SCEP unconditionally.
+
 **Where it lives.**
 Endpoints are mapped by `MapScepServer()` in
 [`src/opencertserver.scep.server/ScepServerExtensions.cs`](../src/opencertserver.scep.server/ScepServerExtensions.cs);
@@ -223,8 +238,6 @@ CMS envelopes
 [`ScepMessageCodec.cs`](../src/opencertserver.scep.server/ScepMessageCodec.cs). Registration is
 `AddScepServer(ScepServerOptions, IScepChallengeValidator)`; the challenge contract is
 [`IScepChallengeValidator.cs`](../src/opencertserver.scep.server/IScepChallengeValidator.cs).
-
-**Tests that prove it.**
 * [ScepServer.feature](../tests/opencertserver.scep.server.tests/Features/ScepServer.feature) —
 capabilities, `GetCACert` with and without a root above the issuing CA, enrollment through POST and
 GET and through the `/pkiclient.exe` paths, wrong and missing challenge, a request encrypted to
@@ -245,6 +258,15 @@ the final certificate, chain and key rotation. Missing/wrong challenges, changed
 enrollment replay and triple DES are refused with signed failure responses. This qualifies the
 implemented operations, not `GetNextCACert`, `CertPoll`, `GetCert` or `GetCRL`, which are unsupported.
 See the [IQ README](../tests/opencertserver.iq.tests/README.md#scep-enrollment-scenarios).
+* [ScepRemoteCa.feature](../tests/opencertserver.scep.server.tests/Features/ScepRemoteCa.feature) —
+the **standalone host against a backing CA**: a device enrolls in scope and the backing CA issues
+the chain, a `RenewalReq` supersedes the previous certificate at the CA (proving the
+`X-Reenrolling-From` forwarding), an out-of-scope subject is refused, `GetCACert` returns the full
+published chain, a non-HTTPS backing CA is rejected at startup, and a replay is refused by the local
+replay store.
+* [ScepComposition.feature](../tests/opencertserver.certserver.tests/Features/ScepComposition.feature) —
+the **SCEP composition gate**: the monolith enables SCEP by default and on any `Scep` config, while a
+CA-only host (`Scep:Enabled=false`) disables it even when a challenge is present.
 
 ### Intune challenge validation and revocation sync (`opencertserver.contrib.intune`)
 
@@ -355,6 +377,40 @@ in the loop. It's the protocol that backs Let's Encrypt. OpenCertServer is a ful
    `tests/opencertserver.acme.aspnetclient.tests` (challenge middleware + renewal).
 * [AcmeIssuance.feature](../tests/opencertserver.iq.tests/Features/AcmeIssuance.feature) — black-box
    IQ run against a container, driven by `acme.sh` and `certbot` from a Linux client container.
+
+### Registration authorities (scoped peer and public self-service)
+
+OpenCertServer supports two opt-in RA modes. A peer RA delegates enrollment and renewal to a
+central CA over outbound HTTPS; a public self-service RA accepts ACME orders only after the ACME
+challenge proves control of each requested DNS name. Neither mode creates an anonymous direct CA
+signing path.
+
+**Scoped peer RA (T05).** `opencertserver.ra` is an outbound client; it does not host a listener.
+The CA must enable `Ca:AcceptRa` and configure each `Ca:RaBindings` entry with its authenticated
+RA ID, permitted DNS suffixes, and profiles. A JWT RA identity supplies the `ra` claim; for mTLS,
+the CA maps a certificate CN to an RA ID only when its SHA-256 fingerprint is explicitly listed in
+that binding. Every CSR must contain DNS SANs exclusively, and each name must equal or be below the
+selected delegated suffix. `X-Delegated-Subject` is only a selector and grants no scope by itself.
+JWT subject/name matching is deferred to this scope validator for bound RA identities.
+`EnrollAsync` and `RenewAsync` submit a replacement PKCS#10 CSR; the central CA applies its normal
+profile and enrollment policy on each request. Revocation additionally requires the RA client
+certificate on the outbound TLS connection and proof of possession.
+
+**Public self-service RA (T06).** `PublicRa:Enabled` defaults to `false`. When enabled, only names
+in `PublicRa:Profiles` that are also marked `AllowPublicEnrollment` on their CA profile can be
+issued, and only through the ACME challenge/order flow (including CSR key proof-of-possession).
+`PublicRa:RequireEab` can require external account binding, and `PublicRa:RateLimit` caps requests
+per client IP per minute; excess requests return `429 Too Many Requests`. Anonymous `/ca/csr`
+remains unauthorized. `PublicRa:RequireApproval=true` currently fails startup because the T04
+approval workflow is not implemented; do not enable it.
+
+**Where it lives and tests.** CA scope checks are in
+`src/opencertserver.ca.server/RegistrationAuthority/RaScopeValidator.cs`; public issuance checks are
+in `src/opencertserver.ca.server/PublicRa/PublicRaValidation.cs`; the outbound-only client is
+`src/opencertserver.ra/RaPeerClient.cs`. The [RegistrationAuthority.feature](../tests/opencertserver.certserver.tests/Features/RegistrationAuthority.feature)
+and [PublicRa.feature](../tests/opencertserver.certserver.tests/Features/PublicRa.feature) BDD
+features cover delegated-scope enforcement, outbound HTTPS, public issuance, direct-CA rejection,
+EAB, and throttling.
 
 ### RST 8659 — CAA
 
@@ -525,7 +581,8 @@ and Apple Secure Element so the ACME server can talk to any of them behind `IAtt
 * Model: `src/opencertserver.acme.abstractions/Model/DeviceAttestChallengeAnswer.cs`,
    `Challenge.cs` (challenge `type` field).
 * Interfaces: `src/opencertserver.acme.abstractions/Services/IAttestationTrustProvider.cs`,
-   `IValidateDeviceAttestChallenges.cs`.
+   `IValidateChallenges.cs` (unified validator; the `AppliesTo` discriminator replaces the
+   per-type marker interfaces).
 * Server-side validator: `src/opencertserver.acme.server/Services/DeviceAttestChallengeValidator.cs`,
    `StaticAttestationTrustProvider.cs`, `DefaultChallengeValidatorFactory.cs`,
    `DefaultAuthorizationFactory.cs`.
@@ -561,6 +618,59 @@ and Apple Secure Element so the ACME server can talk to any of them behind `IAtt
    JSON round-trip of `DeviceAttestChallengeAnswer`.
 * `tests/opencertserver.attestation.Tests` — platform-specific coverage (AMD SEV-SNP, Intel SGX,
    Apple SE, `GlobalServiceMapping`, `TrustStore`, `TrustStoreEdgeCases`, `Config`).
+
+### Validators framework (phased pipeline)
+
+**What it is.** A minimal, extensible, **phased** request-validation pipeline (T09) that the CA
+issuance path runs before and after signing. It generalises the historical
+`IValidateCertificateRequests` chain into an ordered, phase-aware pipeline so new validators
+(T10–T12) and CAs plug in without invasive changes. It is AOT-friendly (no runtime
+`Enum.GetValues`) and additive: the default CA behaviour is unchanged.
+
+* **Phases.** `ValidatorPhase` fixes the order `Approval → Data → Issuance → PreSign → Post`. The
+  pre-sign phases (`Approval`..`PreSign`) run before the request is signed; `Post` runs after signing,
+  on the issued certificate (`ValidatorContext.IssuedCertificate`). The default phase order is
+  `ValidatorPipeline.DefaultPhaseOrder`.
+* **Context / result.** Each validator receives a `ValidatorContext` (request, profile, requestor,
+  re-enrollment source, T03 request-id, and the running annotation list) and returns a
+  `ValidationResult`: `Passed` (no objection), `Reject(reason)` (default **short-circuit** — later
+  phases stop), `Error(reason)` (rejected but **aggregate** — recorded, pipeline continues), or
+  `NeedsApproval(reason)` (records `needs-approval`, wired by T04).
+* **Wiring the existing validators.** The five existing
+  `IValidateCertificateRequests` validators (`CaExtensionValidation`, `OwnCertificateValidation`,
+  `DistinguishedNameValidation`, `KeyCrlSignatureValidation`, `AuthenticatedSubjectValidation`) are
+  registered directly in `ValidatorPhase.Issuance`. The interface's default pipeline overload maps
+  their existing error-string result to a non-short-circuiting rejection, so every validator runs and
+  their errors are joined — preserving the pre-pipeline behaviour.
+  Additional `IValidateCertificateRequests` services, including `RaScopeValidator` and opt-in
+  `PublicRaValidation`, enter the same phase with the original profile, caller, re-enrollment
+  source, and cancellation token. Direct CA construction with request validators uses this same
+  adaptation; server and TPM registrations inject `IValidatorPipeline`.
+* **Short-circuit vs. aggregate.** A `ValidationResult.ShortCircuit` rejection stops the pipeline; a
+  non-short-circuiting rejection is recorded and the pipeline continues.
+* **Issuance gates.** Pre-sign rejection or required approval prevents signing. Post-sign rejection
+  or required approval prevents persistence and superseding an existing certificate. Approval
+  requests always retain the `needs-approval` marker, including when a validator supplies no
+  annotation or a custom annotation; until an approval workflow exists, the CA returns an error.
+* **Where it lives.** `src/opencertserver.ca.utils/Ca/` — `IValidateCertificateRequests`,
+  `IValidatorPipeline`, `ValidatorPipeline`, `ValidatorRegistration`, `ValidatorContext`,
+  `ValidationResult`/`ValidationOutcome`.
+  `ca.server/Extensions.cs` builds the pipeline; `ca/CertificateAuthority.cs` calls
+  `pipeline.Run(context)` (pre-sign) and `pipeline.RunPost(context)` (post-issue).
+* **DI + config.** `ValidatorPipelineExtensions` exposes `AddValidator<T>(phase, order)`,
+  `AddCertificateRequestValidator<T>(name, phase, order)`, and `AddValidatorPipeline(options)`. Both
+  registration helpers accept `IValidateCertificateRequests` implementations. The
+  `Validators` section binds `Validators__Phases` (phase order) and `Validators__<Name>__Enabled` /
+  `__Phase` / `__Order` per validator.
+
+**Proved by** [ValidatorPipeline.feature](../tests/opencertserver.ca.tests/Features/ValidatorPipeline.feature)
+(a Data-phase rejection prevents later-phase validators from running; a short-circuiting validator stops
+the pipeline),
+[CertificateRequestPipeline.feature](../tests/opencertserver.ca.tests/Features/CertificateRequestPipeline.feature)
+(both contracts run through the CA, context preservation, aggregate errors, phase gates, post-sign
+inspection, approval refusal, and cancellation), the `RaServer` / `RaProtocol` / `RaMultiProfile` /
+`PublicRa` suites, and the existing `DistinguishedName` / `CaExtension` / `AuthenticatedSubject` /
+`OwnCertificate` / `KeyCrlSignature` suites (no behavioural regression).
 
 ### Supporting encodings
 
@@ -978,9 +1088,59 @@ are enabled by shipping `ASPNETCORE_ENVIRONMENT=Hardened` (the profile in
 
 The attestation trust roots are intentionally **not baked in** — the default (absent) posture fails
 closed and offers no `device-attest-01` challenge; operators supply the roots per deployment via
-`Attestation__TrustAnchors__0=<PEM>` (and `__1`, `__2`, …). The `AcmeServer:Eab:Accounts` key
-shipped in the profile is an **example** and must be replaced with a securely provisioned key
-before real use.
+`Attestation__TrustAnchors__0=<PEM>` (and `__1`, `__2`, …). No EAB credential is shipped:
+operators provision `AcmeServer:ExternalAccountKey` from their secret source.
+
+### Hardened headless appliance (T18)
+
+`Dockerfile.appliance` / `Dockerfile.unified`, `Dockerfile.ca`, and `Dockerfile.ra` build chiseled
+Ubuntu 24.04 (Noble) images as the non-root `app` user (UID `1654`). Each publishes the
+application **self-contained** over the glibc `runtime-deps` base
+(`mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled`), which carries the glibc native
+dependencies (including OpenSSL 3, which .NET's `SslStream` loads) but no .NET runtime; the
+framework and coreclr therefore ship in the publish output. Appliance roles enforce **TLS 1.3
+only**, strict OCSP HTTP binding, and the existing request validators. Only the Unified role has
+ACME endpoints and therefore applies the hardened EAB, CAA, and challenge-validation worker
+settings. No attestation roots are implicitly trusted; no example EAB key is baked in. A local CA
+requires persistent keys and a persistent certificate/revocation store. The RA holds a transport
+identity only and delegates CA operations over mutually authenticated TLS.
+
+Because the chiseled image has no shell or `curl`, black-box assertions (TLS 1.3-only posture,
+endpoint surface, non-root user) are driven from a separate Ubuntu client container in
+`opencertserver.iq.tests`.
+
+Configuration is a read-only mounted JSON file with a version field. Version 1-to-2 migration
+groups legacy JWT settings; `configload` writes a new file, `configdump` round-trips it, and
+`Migration:AutoApply` permits in-memory migration without touching the mount. Unknown schema
+versions fail closed. This is configuration-store migration, not a certificate database migration.
+Operational request audit events go to container logs; tamper-evident auditing and a general timer
+framework remain separate roadmap work.
+
+**Tests that prove it.**
+[`ApplianceUpgrade.feature`](../tests/opencertserver.certserver.tests/Features/ApplianceUpgrade.feature)
+exercises mounted-file startup, configuration migration/round-trip and future-version rejection,
+CAA bypass rejection, persistent certificate/revocation state, and ACME aggregate/nonce persistence.
+Its image-backed scenarios prove TLS 1.3 succeeds and TLS 1.2 fails, Unified/CA/RA route isolation,
+native EAB-bound ACME account/order reloads, and real mTLS CA/RA enrollment, signature verification,
+scope rejection and revocation. Process-level TLS tests depend on the host TLS stack; use the
+documented image variables to run these checks on macOS. This is separate from hardware-attestation
+and dynamic TPM qualification.
+[`ApplianceContainers.feature`](../tests/opencertserver.iq.tests/Features/ApplianceContainers.feature)
+proves the chiseled images from a separate Ubuntu client container: the Unified, CA and RA images
+run as UID `1654`, complete a TLS 1.3 handshake, reject TLS 1.2, omit the `Server` header, report a
+healthy `/health`, and expose only their own endpoint surface; a hardened appliance refuses to start
+when a plain-HTTPS listener is absent.
+The same feature proves a **relational** appliance connects to and seeds its database: an engine
+variant image (`Dockerfile.<role>.postgres` / `Dockerfile.<role>.mssql`) bakes
+`Appliance:Engine` plus the `relational` persistence choices and reads its connection string from the
+`ConnectionStrings:OpenCertServer` environment variable at runtime. A Testcontainers-managed
+PostgreSQL or MSSQL container is migrated out of band, then a black-box `GET /new-nonce` forces the
+appliance to persist a nonce row, which the test queries back from the database.
+The **postgres** variant is chiseled and invariant; the **mssql** variant builds on the **full**
+`runtime-deps` base with a non-invariant self-contained publish, because the SQL Server EF Core
+provider (`Microsoft.Data.SqlClient`) hard-requires ICU — which the chiseled image does not ship.
+See [Getting started](getting-started.md#appliance-roles-and-upgrades) and the
+[headless appliance operator guide](appliance.md#relational-storage).
 
 ### OpenTelemetry metrics emitted
 

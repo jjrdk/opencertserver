@@ -1,3 +1,5 @@
+using OpenCertServer.Acme.AspNetClient.Certes;
+
 namespace OpenCertServer.Acme.Yarp.Tests;
 
 using System;

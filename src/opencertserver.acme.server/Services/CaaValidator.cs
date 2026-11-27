@@ -442,7 +442,7 @@ public sealed partial class CaaValidator : ICaaValidator
         public bool ValidationMethodsSpecified { get; set; }
     }
 
-    [LoggerMessage(LogLevel.Warning, "CAA checks are enforced but CAAIdentities is not configured. Rejecting issuance to prevent fail-open.")]
+    [LoggerMessage(LogLevel.Warning, "CAA checks are enforced but CAAIdentities is not configured. Rejecting issuance to prevent fail-open")]
     partial void LogCaaNotConfigured();
 
     [LoggerMessage(LogLevel.Debug, "Querying CAA records for {domain}")]

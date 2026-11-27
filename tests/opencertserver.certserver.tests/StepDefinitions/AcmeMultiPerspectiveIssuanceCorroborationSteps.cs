@@ -323,9 +323,10 @@ public sealed class AcmeMultiPerspectiveIssuanceCorroborationSteps
 
     private MultiPerspectiveDnsResolver CreateResolver()
         => new(
-            _perspectives
-                .Select((resolver, index) => new DnsPerspective($"perspective-{index}", resolver))
-                .ToArray(),
+            [
+                .. _perspectives
+                    .Select((resolver, index) => new DnsPerspective($"perspective-{index}", resolver))
+            ],
             NullLogger<MultiPerspectiveDnsResolver>.Instance);
 
     private sealed class StubDnsResolver : IDnsResolver

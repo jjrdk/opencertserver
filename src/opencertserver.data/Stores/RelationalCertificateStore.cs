@@ -27,13 +27,9 @@ public sealed class RelationalCertificateStore : IStoreCertificates
     }
 
     /// <inheritdoc />
-    public Task AddCertificate(X509Certificate2 certificate, CancellationToken cancellationToken = default) =>
-        AddCertificate(certificate, null!, cancellationToken);
-
-    /// <inheritdoc />
     public async Task AddCertificate(
         X509Certificate2 certificate,
-        string issuingProfile,
+        string? issuingProfile,
         CancellationToken cancellationToken = default)
     {
         using var telemetry = DataInstruments.Start("certificate.add");
@@ -96,13 +92,13 @@ public sealed class RelationalCertificateStore : IStoreCertificates
     }
 
     /// <inheritdoc />
-    public async Task<bool> RemoveCertificate(string serialNumber, X509RevocationReason reason, CancellationToken cancellationToken = default)
+    public async Task<bool> RemoveCertificate(string serialNumber, string? issuingProfile, X509RevocationReason reason, CancellationToken cancellationToken = default)
     {
         using var telemetry = DataInstruments.Start("certificate.revoke");
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
         var revoked = await scope.ServiceProvider.GetRequiredService<IRelationalStoreProvider>()
-            .RevokeCertificateAsync(db, serialNumber, reason, cancellationToken);
+            .RevokeCertificateAsync(db, serialNumber, issuingProfile, reason, cancellationToken);
         telemetry.Complete();
         return revoked;
     }
@@ -168,6 +164,7 @@ public sealed class RelationalCertificateStore : IStoreCertificates
 
     /// <inheritdoc />
     public async IAsyncEnumerable<X509Certificate2> GetCertificatesById(
+        string? issuingProfile,
         [EnumeratorCancellation] CancellationToken cancellationToken,
         params IEnumerable<ReadOnlyMemory<byte>> ids)
     {
@@ -176,6 +173,7 @@ public sealed class RelationalCertificateStore : IStoreCertificates
         using var scope = _scopeFactory.CreateScope();
         await using var db = scope.ServiceProvider.GetRequiredService<CaDbContext>();
         var entities = db.Certificates.AsNoTrackingWithIdentityResolution()
+            .Where(e => e.ProfileName == issuingProfile)
             .Where(e => keys.Contains(e.SerialNumber))
             .OrderBy(e => e.SerialNumber)
             .AsAsyncEnumerable();

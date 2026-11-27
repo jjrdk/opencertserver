@@ -111,7 +111,7 @@ public sealed partial class Tpm2 : IDisposable
     internal Tpm2Device Device;
 
     // ReSharper disable once InconsistentNaming
-    static public BehaviorMgr _TssBehavior = Behavior.Default;
+    public static BehaviorMgr _TssBehavior = Behavior.Default;
 
     /// <summary>
     /// Behavior of this Tpm2 object. This set of modes does not affect the

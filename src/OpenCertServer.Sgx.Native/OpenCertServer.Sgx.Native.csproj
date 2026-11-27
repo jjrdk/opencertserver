@@ -3,27 +3,18 @@
   <!--
     OpenCertServer.Sgx.Native
     ═══════════════════════════════════════════════════════════════════════════
-    NuGet package that ships libsgx_dcap_ql as a platform-native asset, using
-    the .NET RID convention so the runtime discovers it automatically:
+    NuGet packaging project for an ABI-compatible SGX native library:
 
       runtimes/linux-x64/native/libsgx_dcap_ql.so
       runtimes/linux-arm64/native/libsgx_dcap_ql.so
 
     HOW TO POPULATE THE NATIVE BINARIES
     ─────────────────────────────────────
-    The .so files are NOT committed to source control (they are owned by Intel).
-    Before packing, obtain them from Intel's DCAP package:
-
-      # Ubuntu/Debian
-      sudo apt-get install -y libsgx-dcap-ql-dev
-      cp /usr/lib/x86_64-linux-gnu/libsgx_dcap_ql.so \
-         runtimes/linux-x64/native/libsgx_dcap_ql.so
-
-    CI/CD: run fetch-native-sgx.sh (in this directory) before dotnet pack.
+    The .so files are not committed. Intel DCAP's published API does not match
+    the current managed imports; see README.md before staging a native library.
   -->
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <PackageId>OpenCertServer.Sgx.Native</PackageId>
     <Version>1.0.0</Version>

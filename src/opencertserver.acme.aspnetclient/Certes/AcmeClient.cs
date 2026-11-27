@@ -93,11 +93,11 @@ public sealed partial class AcmeClient : IAcmeClient
         // The collection handed to persistence: the leaf (with its private key) first, followed by
         // the public issuer certificates so chains/server.crt holds the real chain rather than a
         // duplicate of the leaf.
-        var chain = new X509Certificate2Collection { leafWithKey };
-        foreach (var issuer in certificateChain.Issuers)
-        {
-            chain.Add(issuer);
-        }
+        X509Certificate2Collection chain =
+        [
+            leafWithKey,
+            .. certificateChain.Issuers
+        ];
 
         return (leafWithKey, keyPair.ToPem(), chain);
     }

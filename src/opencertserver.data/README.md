@@ -29,6 +29,9 @@ Alternatively, call `AddAcmeRelationalStore(connection)` and/or `AddCaRelational
 after registering the adapter. Missing providers/connections fail explicitly.
 ACME and CA must use the same connection when both use relational storage.
 Memory/file registrations remain separate and need no adapter.
+`AddCaRelationalStore` replaces only certificate inventory storage; configured CA profiles remain
+authoritative for signing and validation and are not implicitly replaced with an empty relational
+profile table.
 
 ## OpenTelemetry
 

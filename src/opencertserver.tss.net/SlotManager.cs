@@ -904,10 +904,12 @@ public sealed class Tbs : IDisposable
 
     private TpmHandle[] GetAllLoadedEntities(Tpm2 tpm)
     {
-        var handles = new List<TpmHandle>();
-        handles.AddRange(GetLoadedEntities(tpm, Ht.Transient));
-        handles.AddRange(GetLoadedEntities(tpm, Ht.LoadedSession));
-        handles.AddRange(GetLoadedEntities(tpm, TpmHelpers.GetEnumerator<Ht>("ActiveSession", "SavedSession")));
+        List<TpmHandle> handles =
+        [
+            .. GetLoadedEntities(tpm, Ht.Transient),
+            .. GetLoadedEntities(tpm, Ht.LoadedSession),
+            .. GetLoadedEntities(tpm, TpmHelpers.GetEnumerator<Ht>("ActiveSession", "SavedSession"))
+        ];
         return [.. handles];
     }
 

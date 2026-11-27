@@ -1,3 +1,5 @@
+using System;
+
 namespace OpenCertServer.Attestation.Tests.StepDefinitions;
 
 using Microsoft.Extensions.DependencyInjection;

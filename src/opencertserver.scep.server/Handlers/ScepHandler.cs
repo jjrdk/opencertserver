@@ -263,11 +263,16 @@ internal static partial class ScepHandler
 
         // For a renewal the CA supersedes the previous certificate once the new one is issued,
         // and refuses it when the previous certificate was issued under another profile (#140).
+        // The CSR is forwarded to the CA as the raw PKCS#10 it arrived as: a SCEP PKIRequest carries
+        // a DER-signed request, and the parsed CertificateRequest has no signing key, so a CA that
+        // lives behind a wire (a backing CA) cannot re-serialize it. The signature was already
+        // verified against the SCEP signer above, so the raw bytes are trusted here.
         SignCertificateResponse response;
         try
         {
-            response = await ca.SignCertificateRequest(
-                    csr, profile, decision.Requestor, previous, cancellationToken: cancellationToken)
+            response = await ca.SignCertificateRequestPem(
+                    PemEncoding.WriteString("CERTIFICATE REQUEST", request.CsrDer),
+                    profile, decision.Requestor, previous, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
@@ -281,7 +286,6 @@ internal static partial class ScepHandler
                 .ConfigureAwait(false);
             return Failure(request, ScepFailInfo.BadRequest, options);
         }
-
         if (response is not SignCertificateResponse.Success success)
         {
             var reason = response is SignCertificateResponse.Error error

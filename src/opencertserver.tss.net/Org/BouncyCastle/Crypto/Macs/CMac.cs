@@ -18,10 +18,7 @@ public sealed class CMac
 
     public void Init(KeyParameter param)
     {
-        if (param == null)
-        {
-            throw new ArgumentNullException(nameof(param));
-        }
+        ArgumentNullException.ThrowIfNull(param);
 
         _key = param.GetKey();
         GenerateSubkeys();

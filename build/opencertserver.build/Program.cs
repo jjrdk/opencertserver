@@ -8,7 +8,7 @@ public static class Program
     public static int Main(string[] args)
     {
         return new CakeHost()
-            .InstallTool(new Uri("nuget:?package=GitVersion.Tool&version=6.6.0"))
+            .InstallTool(new Uri("dotnet:?package=GitVersion.Tool&version=7.0.1"))
             .UseContext<BuildContext>()
             .Run(args);
     }

@@ -1,3 +1,5 @@
+using OpenCertServer.Ca.Protocol;
+
 namespace OpenCertServer.Ca.Server;
 
 using System.Numerics;
@@ -8,14 +10,79 @@ using Utils.Ocsp;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Handlers;
+using OpenCertServer.Ca.Server.PublicRa;
+using OpenCertServer.Ca.Server.RegistrationAuthority;
 
 public static class Extensions
 {
     /// <param name="services">The service collection.</param>
     extension(IServiceCollection services)
     {
+        /// <summary>
+        /// Enables the opt-in public ACME self-service validator.
+        /// ACME remains responsible for challenge validation and CSR proof-of-possession.
+        /// </summary>
+        public IServiceCollection AddPublicRa(IConfiguration configuration)
+        {
+            return services.AddPublicRa(PublicRaOptions.FromConfiguration(configuration));
+        }
+
+        /// <summary>
+        /// Enables the opt-in public ACME self-service validator.
+        /// </summary>
+        public IServiceCollection AddPublicRa(PublicRaOptions options)
+        {
+            if (options.RateLimit < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(options), "PublicRa rate limit must be at least one.");
+            }
+
+            if (options is { Enabled: true, Profiles.Count: 0 })
+            {
+                throw new InvalidOperationException(
+                    "PublicRa:Profiles must list at least one profile when public enrollment is enabled.");
+            }
+
+            if (options is { Enabled: true, RequireApproval: true })
+            {
+                throw new InvalidOperationException(
+                    "PublicRa:RequireApproval is not supported until the certificate approval workflow is available.");
+            }
+
+            services.AddSingleton(options);
+            if (options.Enabled)
+            {
+                services.TryAddEnumerable(
+                    ServiceDescriptor.Singleton<IValidateCertificateRequests, PublicRaValidation>());
+            }
+
+            return services;
+        }
+
+        /// <summary>
+        /// Registers the CA-side RA bindings from configuration.
+        /// </summary>
+        public IServiceCollection AddRa(IConfiguration configuration)
+        {
+            return services.AddRa(RaServerOptions.FromConfiguration(configuration));
+        }
+
+        /// <summary>
+        /// Registers the CA-side RA bindings.
+        /// </summary>
+        public IServiceCollection AddRa(RaServerOptions options)
+        {
+            services.AddSingleton(options);
+            services.TryAddSingleton<IStoreRas>(_ => new InMemoryRaStore(options.Bindings));
+            services.TryAddSingleton<IValidateCertificateRequests, RaScopeValidator>();
+            services.TryAddSingleton<IValidateCertificateRequests, RaRevocationValidator>();
+            return services;
+        }
+
         /// <summary>
         /// Registers an in-memory certificate store to the service collection.
         ///
@@ -48,7 +115,7 @@ public static class Extensions
                     chainValidation ?? new ValidateAll(),
                     certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
                     sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                    [.. sp.GetServices<IValidateCertificateRequests>()]));
+                    sp.GetRequiredService<IValidatorPipeline>()));
         }
 
         /// <summary>
@@ -73,7 +140,7 @@ public static class Extensions
                     chainValidation ?? new ValidateAll(),
                     certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
                     sp.GetRequiredService<ILogger<CertificateAuthority>>(),
-                    [.. sp.GetServices<IValidateCertificateRequests>()]));
+                    sp.GetRequiredService<IValidatorPipeline>()));
         }
 
         /// <summary>
@@ -89,6 +156,7 @@ public static class Extensions
         /// <param name="certificateIdGenerator">The certificate ID generator.</param>
         /// <param name="strictOcspHttpBinding">Whether to enforce strict OCSP HTTP binding, including content-type validation for POST requests.</param>
         /// <param name="ocspFreshnessWindow">The OCSP freshness window for responses.</param>
+        /// <param name="allowPublicEnrollment">Whether to allow public enrollment.</param>
         /// <returns>A configured <see cref="IServiceCollection"/>.</returns>
         public IServiceCollection AddSelfSignedCertificateAuthority(
             X500DistinguishedName distinguishedName,
@@ -99,23 +167,32 @@ public static class Extensions
             IValidateX509Chains? chainValidation = null,
             IGenerateCertificateId? certificateIdGenerator = null,
             bool strictOcspHttpBinding = false,
-            TimeSpan ocspFreshnessWindow = default)
+            TimeSpan ocspFreshnessWindow = default,
+            bool allowPublicEnrollment = false)
         {
+            var validity = certificateValidity == TimeSpan.Zero
+                ? TimeSpan.FromDays(90)
+                : certificateValidity;
+            var freshness = ocspFreshnessWindow == TimeSpan.Zero
+                ? TimeSpan.FromHours(1)
+                : ocspFreshnessWindow;
+            var rsaProfile = CertificateAuthority.CreateSelfSignedRsa(
+                    "default", distinguishedName, validity, BigInteger.Zero, freshness)
+                with
+            {
+                AllowPublicEnrollment = allowPublicEnrollment
+            };
+            var ecdsaProfile = CertificateAuthority.CreateSelfSignedEcdsa(
+                    "ecdsa", distinguishedName, validity, BigInteger.Zero, freshness)
+                with
+            {
+                AllowPublicEnrollment = allowPublicEnrollment
+            };
             var config = new CaConfiguration(
                 new CaProfileSet(
                     "default",
-                    CertificateAuthority.CreateSelfSignedRsa(
-                        "default",
-                        distinguishedName,
-                        certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
-                        BigInteger.Zero,
-                        ocspFreshnessWindow == TimeSpan.Zero ? TimeSpan.FromHours(1) : ocspFreshnessWindow),
-                    CertificateAuthority.CreateSelfSignedEcdsa(
-                        "ecdsa",
-                        distinguishedName,
-                        certificateValidity == TimeSpan.Zero ? TimeSpan.FromDays(90) : certificateValidity,
-                        BigInteger.Zero,
-                        ocspFreshnessWindow == TimeSpan.Zero ? TimeSpan.FromHours(1) : ocspFreshnessWindow)
+                    rsaProfile,
+                    ecdsaProfile
                 ),
                 ocspUrls ?? [],
                 crlUrls ?? [],
@@ -133,7 +210,7 @@ public static class Extensions
                         chainValidation ?? new ValidateAll(),
                         certificateIdGenerator ?? new RandomNumberCertificateIdGenerator(),
                         logger,
-                        validators: [.. sp.GetServices<IValidateCertificateRequests>()]);
+                        sp.GetRequiredService<IValidatorPipeline>());
                     return certificateAuthority;
                 });
         }
@@ -147,6 +224,11 @@ public static class Extensions
             services.AddSingleton<IValidateCertificateRequests, KeyCrlSignatureValidation>();
             services.AddSingleton<IValidateCertificateRequests, AuthenticatedSubjectValidation>();
             services.AddSingleton<ICertificateRequestValueConverter, AuthenticatedSubjectRequestValueConverter>();
+
+            // Assemble the phased validator pipeline (T09) from the registered request validators. The five historical
+            // validators run in the Issuance phase in registration order, in aggregate (run-all, join-errors) mode, so
+            // behaviour is unchanged; operators can add more validators via AddValidator<T> or disable one via config.
+            services.AddValidatorPipeline();
             return services;
         }
 
@@ -200,6 +282,10 @@ public static class Extensions
         {
             policy.RequireAuthenticatedUser();
         });
+        groupBuilder.MapGet("/profiles", ProfilesHandler.Handle).RequireAuthorization(policy =>
+        {
+            policy.RequireAuthenticatedUser();
+        });
         groupBuilder
             .MapDelete("/revoke", RevocationHandler.Handle)
             .RequireAuthorization(RevocationAuthorizationConstants.RevocationPolicyName);
@@ -207,6 +293,10 @@ public static class Extensions
             .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
         groupBuilder.MapGet("/{profileName}/crl", CrlHandler.HandleProfile)
             .CacheOutput(cache => { cache.Expire(TimeSpan.FromHours(12)); }).AllowAnonymous();
+        groupBuilder.MapGet("/published", PublishedCertificatesHandler.Handle)
+            .RequireAuthorization(policy => { policy.RequireAuthenticatedUser(); });
+        groupBuilder.MapGet("/{profileName}/published", PublishedCertificatesHandler.HandleProfile)
+            .RequireAuthorization(policy => { policy.RequireAuthenticatedUser(); });
         groupBuilder.MapPost("/ocsp", OcspHandler.Handle).WithName("ocsp").AllowAnonymous();
         groupBuilder.MapGet("/ocsp/{**requestEncoded}", OcspHandler.HandleGet).WithName("ocspGet").AllowAnonymous();
 

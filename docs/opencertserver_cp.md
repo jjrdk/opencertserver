@@ -79,8 +79,8 @@ of a request.
 
 ### 3.1 Certificate Application
 
-Certificate applications are submitted via the EST protocol, the ACME protocol, or through a web interface provided by
-the CA. Applicants must provide all required information, including the subject DN, a valid public key, and the intended
+Certificate applications are submitted via the EST or ACME protocol. Applicants must provide all required
+information, including the subject DN, a valid public key, and the intended
 usage of the certificate. The CA may request additional information to support the validation process. All applications
 are subject to review and may be approved or rejected at the discretion of the CA or RA.
 

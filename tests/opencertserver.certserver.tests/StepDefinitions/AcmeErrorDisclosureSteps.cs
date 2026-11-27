@@ -33,7 +33,8 @@ public sealed class AcmeErrorDisclosureSteps
     public void ThenHttpValidatorCanBeResolved()
     {
         using var services = _services!;
-        Assert.IsType<ValidateHttp01Challenges>(services.GetRequiredService<IValidateHttp01Challenges>());
+        Assert.IsType<ValidateHttp01Challenges>(
+            Assert.Single(services.GetServices<IValidateChallenges>().OfType<ValidateHttp01Challenges>()));
     }
 
     [When("the ACME CSR validator receives {string}")]

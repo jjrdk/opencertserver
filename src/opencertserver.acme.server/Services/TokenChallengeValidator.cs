@@ -12,6 +12,12 @@ using Abstractions.Services;
 
 public abstract class TokenChallengeValidator : IValidateChallenges
 {
+    /// <summary>
+    /// The ACME challenge type this concrete token validator handles. Subclasses override it to declare
+    /// their type (e.g. <c>http-01</c>, <c>dns-01</c>) so the factory can route by <see cref="Challenge.Type"/>.
+    /// </summary>
+    public abstract string AppliesTo { get; }
+
     protected abstract Task<(List<string>? Contents, AcmeError? Error)> LoadChallengeResponse(
         Challenge challenge,
         string? accountUri,

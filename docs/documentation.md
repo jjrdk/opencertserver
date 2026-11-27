@@ -9,9 +9,10 @@ Start elsewhere:
 |---|---|
 | Understand what OpenCertServer is and where everything fits | [../README.md](../README.md) (project overview) |
 | Get a CA running and enroll a first certificate | [Getting started](getting-started.md) |
+| Operate the headless CA/RA appliance containers | [Appliance operator guide](appliance.md) |
 | See every standard implemented and the tests that prove it | [Implemented standards](standards.md) |
 | Read the operational rules | [Certification Practice Statement](opencertserver_cps.md) / [Certificate Policy](opencertserver_cp.md) |
-| Run it in Docker | [Docker.md](../Docker.md) |
+| Run it in Docker | [Docker](docker.md) |
 | Report a vulnerability | [SECURITY.md](../SECURITY.md) |
 | See the metrics/traces the server emits | [OpenTelemetry metrics & traces](../OpenTelemetryMetricsTraces.md) |
 | Integrate the CA into YARP | [opencertserver.acme.yarp/README.md](../src/opencertserver.acme.yarp/README.md) |
@@ -95,8 +96,8 @@ including health checks:
 
 | Policy | Behavior |
 |---|---|
-| TLS | TLS 1.2 and 1.3 only. On Linux/OpenSSL, an explicit allow-list permits TLS 1.3 AES-GCM/ChaCha20-Poly1305 and TLS 1.2 ECDHE-RSA/ECDHE-ECDSA AES-GCM/ChaCha20-Poly1305; CBC and static RSA key exchange are excluded. Other operating systems retain their cipher policy and emit a startup warning; the Linux container is the qualified deployment. |
-| HSTS | HTTPS responses publish `Strict-Transport-Security: max-age=15552000` (180 days), including localhost. Subdomains and preload are not enabled. HTTP requests redirect to HTTPS. |
+| TLS | Appliance images enforce TLS 1.3 for every role. Non-appliance development hosting permits TLS 1.2/1.3. On Linux/OpenSSL, an explicit AEAD allow-list excludes CBC and static RSA key exchange. |
+| HSTS | HTTPS responses publish `Strict-Transport-Security: max-age=15552000` (180 days), including localhost. Subdomains and preload are not enabled. Non-hardened hosts redirect HTTP to HTTPS; hardened appliance images do not expose plaintext HTTP listeners. |
 | Host filtering | Base and Hardened profiles default `AllowedHosts` to `localhost;127.0.0.1;[::1]`. Other hosts receive 400 before redirects or application endpoints. Configure the actual service names for deployment. |
 | Request framing | Conflicting Content-Length/Transfer-Encoding is rejected with 400 before redirects/authentication. The Kestrel normalization marker `X-Content-Length` is reserved and also rejected. HTTP/1.x connections close without processing an appended request. Duplicate conflicting Content-Length is rejected by Kestrel. |
 | Authentication | The default scheme selects JWT bearer when a Bearer header is present, otherwise certificate authentication. Default challenges use JWT bearer, so anonymous CA issuance receives 401 instead of an unconfigured-scheme 500. EST and revocation keep their explicit multi-scheme policies. |
@@ -117,6 +118,43 @@ contains execution instructions.
 ---
 
 ## Certificate Authority (CA) endpoints
+
+### Appliance configuration
+
+The headless images load `appsettings.json`, `appsettings.Hardened.json`, then the required mounted
+file selected by `OPENCERT_CONFIG` (default `/config/appsettings.json`) or `--config <path>`.
+Environment variables and command-line settings override the mount. Restart after configuration
+changes; keys, profiles and authentication are not hot-reloaded. A missing selected file is fatal.
+
+| Key | Default / behavior |
+|---|---|
+| `version` | Required in mounted files. Current configuration schema: `2`; unsupported versions fail startup. |
+| `Appliance:Hardened` | `true` in appliance images. Rejects plaintext listeners and ephemeral CA keys; enables request audit logging and strict OCSP HTTP binding. CAA bypass, ACME worker, CAA, and EAB enforcement apply only to Unified, where those ACME settings are relevant. |
+| `Appliance:Role` | `Unified`, `Ca`, or `Ra`. Each image selects its role; the mounted JSON does not change it. |
+| `Appliance:DataDirectory` | `/var/lib/opencertserver` in Hardened. Local CA certificate/revocation snapshot, ACME file storage, and EAB consumption markers; mount a persistent volume. One CA writer per directory. |
+| `Migration:AutoApply` | `false`. If true, supported old configuration schemas are upgraded in memory without modifying the source. |
+| `Jwt:Authority` | Required HTTPS identity-provider URL (legacy `authority` / `--authority` also accepted). |
+| `Jwt:Audiences` | Required audience array or comma-separated list (legacy `audience` / `--audience` also accepted). |
+| `rsa:Pem`, `rsa:KeyPem`, `ecdsa:Pem`, `ecdsa:KeyPem` | Persistent CA certificate/key files for local roles. Not required or loaded in RA mode. |
+| `Kestrel:Certificates:Default:Path`, `KeyPath` | TLS server certificate and key files, independent of issuing CA keys. |
+| `AcmeServer:ExternalAccountRequired` | Hardened default `true`; no EAB credential is shipped. Provision keys through an operator-managed secret source. |
+| `AcmeServer:DisableCaaChecks` | Must remain `false` in Hardened. Missing CAA identities deny issuance. |
+| `AcmeServer:HostedWorkers:EnableValidationService`, `EnableIssuanceService` | Both true in Hardened. The existing challenge-validation timer runs; issuance is handled by the order service. |
+
+`configdump <source> <new-destination>` exports current configuration;
+`configload <source> <new-destination>` upgrades and imports supported schemas. These commands do
+not start listeners or need CA keys. Configuration versioning is separate from the certificate
+snapshot schema (`Version: 1`); unknown snapshot schemas fail closed. No general relational database
+migration or full T25 YAML/approval engine is implied.
+
+Audit records are structured `Appliance audit` log events containing trace ID, method, path, status,
+and authentication outcome (not request bodies, tokens, or private keys). Collect container stdout
+in access-controlled durable storage. This is operational request auditing, not T03's future
+tamper-evident audit-chain implementation. Hardened forwarding trusts only loopback proxies by
+default; direct TLS termination is the supported appliance topology.
+
+See the [appliance operator guide](appliance.md) for role-specific peer trust, backup,
+upgrade, and rollback.
 
 The CA endpoints are mounted by the `ca.server` handlers under `/ca` in the `certserver` host. They
 are secured by TLS client-certificate authentication: Kestrel accepts a client certificate
@@ -182,6 +220,7 @@ as environment variables `rsa__…`):
 
 | Key | Meaning |
 |---|---|
+| `Pem` / `KeyPem` | Certificate/private-key file paths; equivalent to `--rsa`/`--rsa-key` or `--ec`/`--ec-key`. Both profiles are required for a local CA. |
 | `PublishedPem` | Optional additional PEM certificates to publish alongside the issuing chain, e.g. rollover certificates (also `--rsa-published` / `--ec-published`). |
 | `TrustAnchors` | PEM file path or array of paths containing explicit roots for EST client authentication against this profile only. Every certificate in these files is explicitly trusted. Default: none beyond the issuing chain's roots. |
 | `AdditionalChainCertificates` | PEM file path or array of paths containing untrusted CA intermediates for this profile's EST client authentication. Does not establish trust. Default: none. |
@@ -202,6 +241,98 @@ RSA key and the reverse. The issued certificate keeps the request's key and carr
 algorithm of the profile's CA key
 ([CertificateAuthority.feature](../tests/opencertserver.certserver.tests/Features/CertificateAuthority.feature),
 "A profile signs requests of either key algorithm").
+
+### Registration authority configuration
+
+The CA-side RA binding store is configuration-backed and in-memory by default. A deployment that
+needs durable or remotely managed bindings can register its own `IStoreRas` implementation. RA
+acceptance is disabled unless `Ca:AcceptRa` is true.
+
+| Key | Meaning |
+|---|---|
+| `Ca:AcceptRa` | Enables authenticated RA identities at the CA. Default: `false`. |
+| `Ca:RaBindings:<index>:RaId` | Stable identity bound to a JWT `ra` claim or, for mTLS, a certificate CN and explicitly provisioned certificate fingerprint. |
+| `Ca:RaBindings:<index>:Scopes:<index>` | DNS suffixes the RA may act for. CSR SANs must contain DNS names only and each must equal or be a subdomain of one selected suffix. |
+| `Ca:RaBindings:<index>:Profiles:<index>` | CA profile names the RA may select. |
+| `Ca:RaBindings:<index>:CertificateSha256Thumbprints:<index>` | SHA-256 certificate fingerprint allowed to authenticate this RA over mTLS. A CN match alone never grants the `ra` claim. |
+| `PublicRa:Enabled` | Enables public ACME self-service issuance. Default: `false`. |
+| `PublicRa:Profiles` | Profiles exposed to public enrollment; each must also set `AllowPublicEnrollment=true`. |
+| `PublicRa:RateLimit` | ACME requests allowed per client IP per minute. Default: `60`; values below 1 fail startup. |
+| `PublicRa:RequireEab` | Requires EAB for new ACME accounts when public RA is enabled. Default: `false`. |
+| `PublicRa:RequireApproval` | Reserved for the future T04 approval workflow. `true` fails startup while that workflow is unavailable. |
+| `<profile>:AllowPublicEnrollment` | Per-profile opt-in for public ACME issuance. Default: `false`. |
+
+Example:
+
+```json
+{
+  "Ca": {
+    "AcceptRa": true,
+    "RaBindings": [
+      {
+        "RaId": "ra-tenant-a",
+        "Scopes": [ "tenant-a.example.com" ],
+        "Profiles": [ "default" ],
+        "CertificateSha256Thumbprints": [ "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" ]
+      }
+    ]
+  },
+  "PublicRa": {
+    "Enabled": false,
+    "RateLimit": 60,
+    "RequireEab": false,
+    "RequireApproval": false,
+    "Profiles": []
+  }
+}
+```
+
+The outbound RA library reads `Ra:PeerUrl` (absolute HTTPS URL), `Ra:Scope`, optional
+`Ra:Profile`, optional `Ra:Profiles` (a comma-separated delegated profile set; empty means *all*
+profiles the CA supports), and optional `Ra:BearerToken`. The RA can refresh the CA's current profile
+set on demand via `RaPeerClient.GetSupportedProfiles` (which the RA host exposes as `GET /ra/profiles`).
+Use a secret provider for bearer tokens. For mTLS,
+register `AddRaPeerClient(configuration, configureHandler)` and add the RA client certificate to
+the supplied `HttpClientHandler.ClientCertificates`. The peer only makes outbound requests; it
+does not expose a customer-side CA listener. See [Getting started → Registration authorities](getting-started.md#registration-authorities)
+for the client setup sample.
+
+### GET /ca/profiles
+
+- Description: Lists the names of the profiles the CA supports, one per line.
+- Response: `text/plain` with newline-delimited profile names.
+- Authorization: requires an authenticated user (like `POST /ca/csr`).
+- Purpose: the discovery endpoint an RA (or a remote ACME issuer) uses to learn the profile set it
+  may offer and to **refresh** it when the CA adds or removes profiles. Only names are returned; the
+  profile material (keys, chains, validity) never crosses the wire. The RA host exposes this to its
+  own clients as `GET /ra/profiles`.
+
+### Validators framework configuration
+
+The CA issuance path runs a phased validator pipeline (see
+[Implemented standards → Validators framework](standards.md#validators-framework-phased-pipeline)).
+The `Validators` section binds the phase order and per-validator settings (environment variables use
+the `Validators__…` double-underscore hierarchy):
+
+| Key | Meaning | Default |
+|---|---|---|
+| `Validators__Phases` | The phase order the pipeline runs (`Approval`, `Data`, `Issuance`, `PreSign`, `Post`). | The canonical fixed order `Approval, Data, Issuance, PreSign, Post`. |
+| `Validators__<Name>__Enabled` | When `false`, the validator is skipped. | `true`. |
+| `Validators__<Name>__Phase` | Override the validator's phase. | The phase it was registered at. |
+| `Validators__<Name>__Order` | Override the validator's within-phase order (lower runs first). | The order it was registered at. |
+
+`<Name>` is the validator's registration name (the type name by default, or the `name` passed to
+`AddValidator<T>`). No secret values are read here.
+
+All `IValidateCertificateRequests` services participate in the same pipeline, including RA scope
+and public-enrollment policy validators; implementations using the original error-string overload
+are adapted to aggregate rejection results. The CA's direct request-validator constructor uses
+the same adapter, while its `IValidatorPipeline` constructor accepts a fully configured pipeline.
+
+Pre-sign validation must pass before signing. `Post` validation runs on the signed certificate
+before persistence and before an old certificate is superseded. Rejection in either hook returns
+a signing error. `NeedsApproval` also returns a signing error until an approval workflow can
+authorize issuance; annotations alone never grant approval.
 
 ### GET /ca/crl
 
@@ -236,7 +367,9 @@ algorithm of the profile's CA key
   the client certificate and proof-of-possession signature. JWT authority settings are applied
   before the framework initializes OIDC discovery and signing-key retrieval.
 - Response: `200` on success, `404` if the serial number is unknown, `401` if authentication
-  fails, `403` if authorization fails.
+  fails, `403` if authorization fails. Revocation uses the target certificate's stored issuing
+  profile, not the caller's profile or a null default. Administrative requests with a serial
+  shared by multiple stored certificates return `400` rather than selecting a profile arbitrarily.
 
 ### POST /ca/ocsp  and  GET /ca/ocsp/{requestEncoded}
 
@@ -638,6 +771,27 @@ In the environment, use `AcmeServer__DohServers__0`, `AcmeServer__DohServers__1`
 For challenge types, CAA enforcement, and the `device-attest-01` validator, see
 [Implemented standards → ACME / CAA / device attestation](standards.md#acme--rfc-8555).
 
+### Remote ACME issuer (`AcmeServer:Issuer`)
+
+The ACME issuer is selectable so a deployment can run a **remote ACME server** that issues
+through a backing certificate authority over a trusted HTTPS connection instead of an
+in-process CA.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `AcmeServer:Issuer` | (empty / `inproc`) | `remote` selects the `RemoteIssuer`, which delegates issuance to a `CaClient` (`AddAcmeRemoteCa`). Empty or `inproc` keeps the in-process `DefaultIssuer`. |
+| `Ca:RemoteUrl` (or `Ca:BaseUrl`) | — | Absolute HTTPS URL of the backing CA. Required when `Issuer=remote`. |
+| `Ca:Profile` | — | Issuance profile forwarded to the CA. |
+| `Ca:DelegatedScope` | — | Delegated scope; the CA's RA-scope validator re-checks it authoritatively. |
+| `Ca:BearerToken` | — | Shared secret / JWT bearer for the trusted connection. |
+| `Ca:Trust` | — | Path to a PEM bundle of CA trust anchors (PEM → `Ca:TrustCertPath`). |
+| `Ca:ClientCert` / `Ca:ClientCertPassword` | — | PFX for the client cert (revocation PoP + mTLS). |
+
+The `opencertserver.acme` host always uses the remote issuer (it contains no CA core); the
+`opencertserver.ra.server` host uses the same `Ca` keys to forward CSR to a backing CA. The
+default monolith (`opencertserver.certserver` with no `AcmeServer:Issuer`) is unchanged. See
+[Separating RA/CA/ACME](architecture-separation.md).
+
 ---
 
 ## Device attestation (device-attest-01) challenge
@@ -736,6 +890,9 @@ OpenCertServer authenticates differently per protocol:
    or the caller must hold the `ca_admin` role (administrative revocation). Register the default
    policy with `services.AddCertificateAuthorityAuthorization()`; the policy name constant is
    `RevocationAuthorizationConstants.RevocationPolicyName`.
+- **RA appliance endpoints** (`/ra/*`) — JWT bearer authentication with the `ra_operator` role.
+   The appliance separately uses its CA-issued client certificate and private key for outbound
+   mutual TLS to the CA peer.
 - **YARP-accelerated ACME** — the YARP extension validates `http-01` by answering the domain's
    `/.well-known/acme-challenge/{token}` and can issue one cert per route selected by SNI.
 
@@ -757,6 +914,13 @@ custom persistence:
 
 To bring your own store, implement the relevant `IStore*` interface and register it with
 `AddAcmeServer(...).WithCertificateService(...)` / the ACME registration instead of the defaults.
+
+Certificate stores must persist the resolved issuing profile supplied to
+`IStoreCertificates.AddCertificate(certificate, issuingProfile, cancellationToken)` and expose it
+through `GetIssuingProfile` for the exact certificate thumbprint. Profile-scoped serial lookup,
+removal and revocation-list queries match the stored profile ordinally. A null profile matches
+only certificates recorded without provenance; it does not select the configured default profile
+or all profiles. Such imported certificates cannot authorize re-enrollment.
 
 ---
 

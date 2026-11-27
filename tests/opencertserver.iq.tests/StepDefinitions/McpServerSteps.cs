@@ -19,7 +19,7 @@ public sealed class McpServerSteps(FeatureContext featureContext, ScenarioContex
     [BeforeFeature]
     public static async Task PublishHost(FeatureContext context)
     {
-        var directory = Path.Combine(RepositoryPaths.IqArtifacts, "mcp");
+        var directory = Path.Combine(RepositoryPaths.IqArtifacts, "mcp", IqImages.TargetFramework);
         await IqImages.PublishMcpAsync(directory).ConfigureAwait(false);
         context.Set(directory, "McpPublishDirectory");
         context.Set(await IqImages.GetClientAsync().ConfigureAwait(false));

@@ -86,13 +86,11 @@ public partial class EstServer
         Assert.DoesNotContain(InternalFailure, (string)_context["estErrorBody"]);
     }
 
-    private sealed class FailingValidator(string failure) : IValidateCertificateRequests
+    private sealed class FailingValidator(string failure) : IValidateCertificateRequests<PreIssuingContext>
     {
         public bool Enabled { get; set; }
 
-        public Task<string?> Validate(CertificateRequest request, string? profile = null,
-            ClaimsIdentity? requestor = null, X509Certificate2? reenrollingFrom = null,
-            CancellationToken cancellationToken = default)
+        public Task<ValidationResult> Validate(PreIssuingContext context, CancellationToken cancellationToken = default)
         {
             if (Enabled)
             {
@@ -101,7 +99,7 @@ public partial class EstServer
                     : new InvalidOperationException(InternalFailure);
             }
 
-            return Task.FromResult<string?>(null);
+            return Task.FromResult(ValidationResult.Passed);
         }
     }
 

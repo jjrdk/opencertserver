@@ -6,9 +6,20 @@ This project implements the core certificate authority (CA) logic for OpenCertSe
 - Core CA operations: certificate issuance, validation, and revocation
 - Integrates with utility functions for X.509 and PKI operations
 
+## Role in the RA/CA split
+
+The in-process CA core. The standalone ACME, RA and SCEP hosts
+(`opencertserver.acme`, `opencertserver.ra.server`, `opencertserver.scep`) and the
+monolith's remote issuer (`opencertserver.acme.remote`) delegate issuance, revocation and
+published-chain requests to this authority over a trusted HTTPS connection
+(`opencertserver.ca.client`); see `docs/architecture-separation.md`. When the CA core is
+not hosted in-process, a `RemoteCertificateAuthority` stands in for it, so this project
+is the authority the remote hosts call — never the other way around.
+
 ## Dependencies
-- Microsoft.Extensions.Logging.Abstractions (logging)
-- opencertserver.ca.utils (utility functions)
+- `opencertserver.ca.protocol` (shared RA/CA wire contract: bindings, claims and paths)
+- `opencertserver.ca.utils` (X.509/PKI helpers, `ICertificateAuthority`, `SignCertificateResponse`)
+- `Microsoft.Extensions.Logging.Abstractions` (logging)
 
 ## OpenTelemetry
 

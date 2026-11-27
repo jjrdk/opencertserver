@@ -131,6 +131,7 @@ public sealed class IntuneChallenge : IDisposable
         using var issued = new CertificateRequest(Subject, key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
             .CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddDays(1));
         await validator.NotifySuccess(second, issued, CancellationToken.None).ConfigureAwait(false);
+        return;
 
         ScepChallengeContext Context()
         {
@@ -348,12 +349,11 @@ public sealed class IntuneChallenge : IDisposable
     }
 
     /// <summary>Stands for a certificate store or database that cannot be reached: it throws.</summary>
-    private sealed class FailingStore : IValidateCertificateRequests
+    private sealed class FailingStore : IValidateCertificateRequests<PreIssuingContext>
     {
         public const string Message = "Failed to connect to 10.20.30.40:5432";
 
-        public Task<string?> Validate(CertificateRequest request, string? profile = null, ClaimsIdentity? requestor = null,
-            X509Certificate2? reenrollingFrom = null, CancellationToken cancellationToken = default) =>
+        public Task<ValidationResult> Validate(PreIssuingContext context, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException(Message);
     }
 

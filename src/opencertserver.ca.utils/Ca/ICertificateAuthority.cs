@@ -72,14 +72,25 @@ public interface ICertificateAuthority : IDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the names of the profiles the certificate authority supports, so an RA or ACME server can
+    /// discover and offer the full set the CA can issue. A remote client fetches this over the wire;
+    /// an in-process authority reads it from its profile store.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token to use for the operation.</param>
+    /// <returns>The supported profile names.</returns>
+    Task<IReadOnlyList<string>> GetSupportedProfiles(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Revokes a certificate by its serial number.
     /// </summary>
     /// <param name="serialNumber">The serial number of the certificate to revoke.</param>
+    /// <param name="issuingProfile">The name of the profile that issued the certificate.</param>
     /// <param name="reason">The reason for revoking the certificate.</param>
     /// <param name="cancellationToken">The cancellation token to use for the operation.</param>
     /// <returns>True if the certificate was successfully revoked, false otherwise.</returns>
     Task<bool> RevokeCertificate(
         string serialNumber,
+        string? issuingProfile,
         X509RevocationReason reason,
         CancellationToken cancellationToken = default);
 

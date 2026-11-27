@@ -38,7 +38,6 @@ public sealed class TpmCaCertificateStore
 
         return store.Certificates
             .Find(X509FindType.FindBySubjectName, SubjectTag(profileName), validOnly: false)
-            .Cast<X509Certificate2>()
             .OrderByDescending(c => c.NotAfter)
             .FirstOrDefault();
     }

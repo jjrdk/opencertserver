@@ -1,0 +1,48 @@
+# Chiseled Ubuntu 24.04 appliance — Unified (EST + ACME + SCEP + CA).
+#
+# Chisel base: chiseled Ubuntu 24.04 with only the glibc runtime dependencies (incl. OpenSSL 3, which
+# .NET's SslStream loads via /usr/lib/<triplet>/libssl.so.3). No shell, no package manager, no
+# ICU/zoneinfo — the app is published with InvariantGlobalization=true, so the glibc RID
+# (linux-x64 / linux-arm64) is used, not the musl RID. The chiseled base already runs as the
+# unprivileged "app" user (UID 1654).
+#
+# The runtime-deps chiseled image carries the native dependencies but NOT the .NET runtime (and no
+# chiseled ASP.NET Core image exists), so the app is published self-contained: the publish output
+# bundles coreclr + hostfxr + the ASP.NET Core framework, and runs on top of these glibc deps.
+# PLATFORM/RID default to amd64; the IQ harness overrides both to run natively on the Docker host.
+# The IQ harness stages the matching target framework's publish output under
+# artifacts/publish/${TFM}/unified/${RID}, then copies it.
+ARG PLATFORM=linux/amd64
+ARG DOTNET_VERSION=11.0
+ARG UBUNTU_CODENAME=resolute
+FROM --platform=${PLATFORM} mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_VERSION}-${UBUNTU_CODENAME}-chiseled
+
+ARG RID=linux-x64
+ARG TFM=net11.0
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV DOTNET_NOLOGO=true
+# Invariant globalization: the chiseled image ships no ICU, so the runtime must not call into it.
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+# The appliance is hardened by default; the Unified role serves EST, ACME, SCEP and the CA responder.
+ENV Appliance__Role=Unified
+ENV Appliance__Hardened=true
+ENV Telemetry__Enabled=false
+
+# ---- Relational backend (postgres) ----
+# This variant is built to target the postgres engine. The connection string is a deployment
+# secret supplied at runtime via ConnectionStrings__OpenCertServer (not baked into the image);
+# AcmeServer:Persistence=relational and Ca:Persistence=relational select the relational stores, and
+# Appliance:Engine picks the postgres IRelationalStoreProvider. Schema migrations are an out-of-band
+ENV Appliance__Engine=postgres
+ENV AcmeServer__Persistence=relational
+ENV Ca__Persistence=relational
+COPY artifacts/publish/${TFM}/unified/${RID}/ app/
+WORKDIR /app
+
+# Chiseled ships no user-creation tooling; the image already runs as "app" (UID 1654).
+USER 1654
+
+EXPOSE 6000 6001
+# No baked-in VOLUME: the appliance runs unprivileged (UID 1654), so a root-owned Docker volume
+# would not be writable. Mount an operator-owned data directory at /var/lib/opencertserver instead.
+ENTRYPOINT ["./opencertserver.host.unified"]

@@ -640,7 +640,10 @@ public partial class EstServer
     {
         var issued = ((X509Certificate2Collection)_context["enrolledCertificate"]!)[0];
         var ca = _server.Services.GetRequiredService<ICertificateAuthority>();
-        Assert.True(await ca.RevokeCertificate(issued.SerialNumber, X509RevocationReason.KeyCompromise)
+        var store = _server.Services.GetRequiredService<IStoreCertificates>();
+        var issuingProfile = await store.GetIssuingProfile(issued.Thumbprint, TestContext.Current.CancellationToken);
+        Assert.NotNull(issuingProfile);
+        Assert.True(await ca.RevokeCertificate(issued.SerialNumber, issuingProfile, X509RevocationReason.KeyCompromise)
             .ConfigureAwait(false));
     }
 

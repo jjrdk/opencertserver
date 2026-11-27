@@ -31,7 +31,7 @@ namespace OpenCertServer.Ca.Tests
             req.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, true));
 
             // EKU
-            var oids = new OidCollection { new Oid("1.3.6.1.5.5.7.3.1"), new Oid("1.3.6.1.5.5.7.3.2") };
+            var oids = new OidCollection { new Oid(Oids.ServerAuthenticationPurpose), new Oid(Oids.ClientAuthenticationPurpose) };
             req.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(oids, false));
 
             // Create self-signed cert
@@ -80,7 +80,7 @@ namespace OpenCertServer.Ca.Tests
         {
             using var key = RSA.Create(2048);
             var name = new X500DistinguishedName("CN=serial.example.com,O=SerialTest");
-            var request = new CertificateRequest(name, (RSA)key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            var request = new CertificateRequest(name, key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
             var notBefore = DateTimeOffset.UtcNow.AddMinutes(-5).DateTime;
             var notAfter = DateTimeOffset.UtcNow.AddYears(1).DateTime;
             using var cert = request.CreateSelfSigned(notBefore, notAfter);

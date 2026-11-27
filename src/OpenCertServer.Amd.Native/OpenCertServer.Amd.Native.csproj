@@ -3,29 +3,18 @@
   <!--
     OpenCertServer.Amd.Native
     ═══════════════════════════════════════════════════════════════════════════
-    NuGet package that ships the AMD SEV-SNP user-space driver as a platform-
-    native asset:
+    NuGet packaging project for an ABI-compatible AMD SEV-SNP native library:
 
       runtimes/linux-x64/native/amd_snp_driver.so
       runtimes/linux-arm64/native/amd_snp_driver.so
 
     HOW TO POPULATE THE NATIVE BINARIES
     ─────────────────────────────────────
-    The .so files are NOT committed to source control (they are owned by AMD).
-    Before packing, obtain the AMD SEV-SNP user-space library from:
-
-      https://github.com/AMDESE/AMDSEV (build from source)
-
-    Or install from your distro's AMD SEV-SNP packages, then:
-
-      cp /usr/lib/x86_64-linux-gnu/amd_snp_driver.so \
-         runtimes/linux-x64/native/amd_snp_driver.so
-
-    CI/CD: run fetch-native-amd.sh (in this directory) before dotnet pack.
+    The .so files are not committed. Stage a library implementing the managed
+    imports before packing; see README.md for ABI and platform limitations.
   -->
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <PackageId>OpenCertServer.Amd.Native</PackageId>
     <Version>1.0.0</Version>

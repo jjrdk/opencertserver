@@ -1,5 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 
 namespace OpenCertServer.Acme.Server.Extensions;
 
@@ -27,9 +30,36 @@ public static class ServiceCollectionExtensions
             AcmeServerOptions? acmeServerOptions = null,
             string sectionName = "AcmeServer")
         {
+            services.ConfigureHttpJsonOptions(options =>
+                options.SerializerOptions.TypeInfoResolverChain.Insert(0, AcmeHttpJsonContext.Default));
             var acmeServerConfig = configuration.GetSection(sectionName);
+            var publicRaConfig = configuration.GetSection("PublicRa");
             acmeServerOptions ??= new AcmeServerOptions();
             acmeServerConfig.Bind(acmeServerOptions);
+            var publicRaEnabled = bool.TryParse(publicRaConfig["Enabled"], out var enabled) && enabled;
+            var requirePublicEab = publicRaEnabled &&
+                                   bool.TryParse(publicRaConfig["RequireEab"], out var requireEab) && requireEab;
+            if (requirePublicEab)
+            {
+                acmeServerOptions.ExternalAccountRequired = true;
+            }
+
+            var configuredRateLimit = int.TryParse(publicRaConfig["RateLimit"], out var rate)
+                ? rate
+                : 60;
+            var rateLimit = publicRaEnabled ? configuredRateLimit : int.MaxValue;
+            if (rateLimit < 1)
+            {
+                throw new InvalidOperationException("PublicRa:RateLimit must be at least one request per minute.");
+            }
+
+            if (publicRaEnabled &&
+                bool.TryParse(publicRaConfig["RequireApproval"], out var requireApproval) &&
+                requireApproval)
+            {
+                throw new InvalidOperationException(
+                    "PublicRa:RequireApproval is not supported until the certificate approval workflow is available.");
+            }
 
             services.ConfigureHttpJsonOptions(options =>
                 options.SerializerOptions.TypeInfoResolverChain.Insert(0, AcmeHttpSerializerContext.Default));
@@ -47,13 +77,13 @@ public static class ServiceCollectionExtensions
 
             if (httpClient == null)
             {
-                services.AddHttpClient<IValidateHttp01Challenges, ValidateHttp01Challenges>()
+                services.AddHttpClient<IValidateChallenges, ValidateHttp01Challenges>()
                     .ConfigurePrimaryHttpMessageHandler(SsrfBlockingSocketsHandler.Create)
                     .ConfigureHttpClient(client => client.Timeout = acmeServerOptions.UrlRetrievalTimeout);
             }
             else
             {
-                services.AddTransient<IValidateHttp01Challenges>(sp =>
+                services.AddTransient<IValidateChallenges>(sp =>
                 {
                     var dnsResolver = sp.GetRequiredService<IDnsResolver>();
                     return new ValidateHttp01Challenges(
@@ -102,10 +132,10 @@ public static class ServiceCollectionExtensions
                     sp.GetRequiredService<ILogger<MultiPerspectiveDnsResolver>>());
             });
             services.AddScoped<ICaaValidator, CaaValidator>();
-            services.AddScoped<IValidateDns01Challenges, ValidateDns01Challenges>();
+            services.AddScoped<IValidateChallenges, ValidateDns01Challenges>();
             services.AddSingleton<IAttestationTrustProvider>(
                 new StaticAttestationTrustProvider([]));
-            services.AddScoped<IValidateDeviceAttestChallenges, DeviceAttestChallengeValidator>();
+            services.AddScoped<IValidateChallenges, DeviceAttestChallengeValidator>();
             services.AddScoped<IChallengeValidatorFactory, DefaultChallengeValidatorFactory>();
 
             services.AddHostedService<HostedValidationService>();
@@ -115,6 +145,25 @@ public static class ServiceCollectionExtensions
             // instance. This keeps programmatic settings (for example DohServers and
             // DnsQueryTimeout) visible to consumers of IOptions<AcmeServerOptions>.
             services.Configure<AcmeServerOptions>(options => Apply(acmeServerOptions, options));
+
+            services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.AddPolicy("PublicRa", context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = rateLimit,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueLimit = 0,
+                            AutoReplenishment = true
+                        }));
+            });
+            if (requirePublicEab)
+            {
+                services.Configure<AcmeServerOptions>(options => options.ExternalAccountRequired = true);
+            }
 
             return services;
         }

@@ -21,8 +21,10 @@ public sealed class DeviceAttestFactorySteps
     private IValidateChallenges? _returnedValidator;
     private Exception? _thrownException;
 
-    private sealed class StubHttp01 : IValidateHttp01Challenges
+    private sealed class StubHttp01 : IValidateChallenges
     {
+        public string AppliesTo => ChallengeTypes.Http01;
+
         public Task<(bool IsValid, AcmeError? error)> ValidateChallenge(
             AcmeChallenge challenge,
             AcmeAccount account,
@@ -30,8 +32,10 @@ public sealed class DeviceAttestFactorySteps
             => Task.FromResult<(bool, AcmeError?)>((true, null));
     }
 
-    private sealed class StubDns01 : IValidateDns01Challenges
+    private sealed class StubDns01 : IValidateChallenges
     {
+        public string AppliesTo => ChallengeTypes.Dns01;
+
         public Task<(bool IsValid, AcmeError? error)> ValidateChallenge(
             AcmeChallenge challenge,
             AcmeAccount account,
@@ -39,8 +43,10 @@ public sealed class DeviceAttestFactorySteps
             => Task.FromResult<(bool, AcmeError?)>((true, null));
     }
 
-    private sealed class StubDeviceAttest : IValidateDeviceAttestChallenges
+    private sealed class StubDeviceAttest : IValidateChallenges
     {
+        public string AppliesTo => ChallengeTypes.DeviceAttest01;
+
         public Task<(bool IsValid, AcmeError? error)> ValidateChallenge(
             AcmeChallenge challenge,
             AcmeAccount account,
@@ -77,7 +83,7 @@ public sealed class DeviceAttestFactorySteps
     [Given(@"the challenge validator factory is initialized with all three validators")]
     public void GivenTheFactoryIsInitialized()
     {
-        _factory = new DefaultChallengeValidatorFactory(new StubHttp01(), new StubDns01(), new StubDeviceAttest());
+        _factory = new DefaultChallengeValidatorFactory([new StubHttp01(), new StubDns01(), new StubDeviceAttest()]);
     }
 
     [When(@"I request the validator for a device-attest-01 challenge")]
@@ -115,25 +121,25 @@ public sealed class DeviceAttestFactorySteps
         }
     }
 
-    [Then(@"the returned validator implements IValidateDeviceAttestChallenges")]
-    public void ThenValidatorImplementsDeviceAttest()
+    [Then(@"the returned validator applies to device-attest-01")]
+    public void ThenValidatorAppliesToDeviceAttest()
     {
         Assert.NotNull(_returnedValidator);
-        Assert.IsType<IValidateDeviceAttestChallenges>(_returnedValidator, exactMatch: false);
+        Assert.Equal(ChallengeTypes.DeviceAttest01, _returnedValidator.AppliesTo);
     }
 
-    [Then(@"the returned validator implements IValidateHttp01Challenges")]
-    public void ThenValidatorImplementsHttp01()
+    [Then(@"the returned validator applies to http-01")]
+    public void ThenValidatorAppliesToHttp01()
     {
         Assert.NotNull(_returnedValidator);
-        Assert.IsType<IValidateHttp01Challenges>(_returnedValidator, exactMatch: false);
+        Assert.Equal(ChallengeTypes.Http01, _returnedValidator.AppliesTo);
     }
 
-    [Then(@"the returned validator implements IValidateDns01Challenges")]
-    public void ThenValidatorImplementsDns01()
+    [Then(@"the returned validator applies to dns-01")]
+    public void ThenValidatorAppliesToDns01()
     {
         Assert.NotNull(_returnedValidator);
-        Assert.IsType<IValidateDns01Challenges>(_returnedValidator, exactMatch: false);
+        Assert.Equal(ChallengeTypes.Dns01, _returnedValidator.AppliesTo);
     }
 
     [Then("""

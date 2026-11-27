@@ -40,6 +40,12 @@ currently creates one only with CA operations enabled and the explicit test-CA o
 An unreadable CSR submitted to `sign_certificate` returns a fixed parsing error rather
 than exposing parser exception text.
 
+`revoke_certificate` accepts `issuingProfile` alongside `serialNumber` and `reason`.
+When omitted, the profile is resolved from the unique stored certificate's issuance metadata,
+not from the configured default CA profile. Ambiguous serial numbers require an explicit
+`issuingProfile`; `get_certificate` also rejects ambiguous serials rather than returning an
+arbitrary certificate.
+
 ## Dependencies
 - `ModelContextProtocol` package for the MCP server runtime
 - `opencertserver.ca` for certificate authority logic

@@ -1,6 +1,7 @@
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication.Certificate;
 using Microsoft.Extensions.Options;
+using OpenCertServer.Ca.Protocol;
 using OpenCertServer.Est.Server.TrustAnchor;
 using OpenCertServer.Ca.Utils.Ca;
 
@@ -12,8 +13,9 @@ public class ConfigureTestCertificateAuthenticationOptions :
 {
     public ConfigureTestCertificateAuthenticationOptions(
         IStoreCaProfiles profiles,
-        IEstTrustAnchorProvider trustAnchorProvider)
-        : base(profiles, trustAnchorProvider)
+        IEstTrustAnchorProvider trustAnchorProvider,
+        IStoreRas? raStore = null)
+        : base(profiles, trustAnchorProvider, raStore)
     {
     }
 

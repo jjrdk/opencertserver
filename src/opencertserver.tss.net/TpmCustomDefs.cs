@@ -895,7 +895,7 @@ public partial class TpmHandle
         return new TpmHandle(reservedHandle);
     }
 
-    static public TpmHandle RhOwner
+    public static TpmHandle RhOwner
     {
         get { return new TpmHandle(TpmRh.Owner); }
     }
@@ -946,7 +946,7 @@ public partial class TpmHandle
         return range == Ht.HmacSession || range == Ht.PolicySession || handle == (uint)TpmRh.Pw;
     }
 
-    new public Ht GetType()
+    public new Ht GetType()
     {
         var rangeVal = (byte)(handle >> 24);
         return (Ht)rangeVal;

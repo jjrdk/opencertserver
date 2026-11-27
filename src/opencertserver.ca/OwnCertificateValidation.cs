@@ -1,5 +1,4 @@
 using System.Formats.Asn1;
-using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
@@ -9,7 +8,7 @@ using OpenCertServer.Ca.Utils.Ocsp;
 
 namespace OpenCertServer.Ca;
 
-public sealed partial class OwnCertificateValidation : IValidateCertificateRequests
+public sealed partial class OwnCertificateValidation : IValidateCertificateRequests<PreIssuingContext>
 {
     private readonly IStoreCaProfiles _caProfiles;
     private readonly IStoreCertificates _certificateStore;
@@ -25,16 +24,14 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
         _logger = logger;
     }
 
-    public async Task<string?> Validate(
-        CertificateRequest request,
-        string? profile = null,
-        ClaimsIdentity? requestor = null,
-        X509Certificate2? reenrollingFrom = null,
+    public async Task<ValidationResult> Validate(
+        PreIssuingContext context,
         CancellationToken cancellationToken = default)
     {
+        var reenrollingFrom = context.ReenrollingFrom;
         if (reenrollingFrom == null)
         {
-            return null;
+            return ValidationResult.Passed;
         }
 
         var now = DateTime.UtcNow;
@@ -42,14 +39,14 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
          || now > reenrollingFrom.NotAfter.ToUniversalTime())
         {
             LogReEnrollmentOutsideValidityPeriod(reenrollingFrom.Thumbprint);
-            return "Re-enrollment certificate is outside its validity period";
+            return ValidationResult.Reject("Re-enrollment certificate is outside its validity period");
         }
 
-        var caProfile = await _caProfiles.GetProfile(profile, cancellationToken).ConfigureAwait(false);
+        var caProfile = await _caProfiles.GetProfile(context.Profile, cancellationToken).ConfigureAwait(false);
         if (!IsIssuedBy(reenrollingFrom, caProfile.CertificateChain))
         {
             LogCouldNotValidateReEnrollmentFromReEnrollingFrom(reenrollingFrom.IssuerName.Name);
-            return "Re-enrollment certificate is not issued by this CA";
+            return ValidationResult.Reject("Re-enrollment certificate is not issued by this CA");
         }
 
         // The issuer signature proves CA ownership, not profile membership: profiles may share a key.
@@ -59,7 +56,7 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
          || !string.Equals(issuingProfile, caProfile.Name, StringComparison.Ordinal))
         {
             LogReEnrollmentProfileMismatch(reenrollingFrom.Thumbprint, issuingProfile, caProfile.Name);
-            return "Re-enrollment certificate issuing profile is unknown or does not match the requested profile";
+            return ValidationResult.Reject("Re-enrollment certificate issuing profile is unknown or does not match the requested profile");
         }
 
         var (_, status, _) = await _certificateStore
@@ -68,10 +65,10 @@ public sealed partial class OwnCertificateValidation : IValidateCertificateReque
         if (status == CertificateStatus.Revoked)
         {
             LogReEnrollmentFromRevokedCertificate(reenrollingFrom.GetSerialNumberString());
-            return "Re-enrollment certificate is revoked";
+            return ValidationResult.Reject("Re-enrollment certificate is revoked");
         }
 
-        return null;
+        return ValidationResult.Passed;
     }
 
     /// <summary>

@@ -1,7 +1,7 @@
 Feature: Device Attest Challenge Models
   As an ACME server developer
   I want DeviceAttestChallengeAnswer to serialize and deserialize correctly
-  And IValidateDeviceAttestChallenges to extend IValidateChallenges
+  And DeviceAttestChallengeValidator to implement IValidateChallenges with an AppliesTo discriminator
 
   Scenario: DeviceAttestChallengeAnswer serializes correctly
     Given a DeviceAttestChallengeAnswer with Nonce "abc" Proof "xyz" AikCertificate "certdata" DeviceId "serial123"
@@ -19,6 +19,7 @@ Feature: Device Attest Challenge Models
     And the AikCertificate property is "certdata"
     And the DeviceId property is "serial123"
 
-  Scenario: IValidateDeviceAttestChallenges extends IValidateChallenges
-    When I inspect the IValidateDeviceAttestChallenges type via reflection
+  Scenario: DeviceAttestChallengeValidator implements IValidateChallenges and declares AppliesTo
+    When I inspect the DeviceAttestChallengeValidator type via reflection
     Then it implements IValidateChallenges
+    And IValidateChallenges declares an AppliesTo discriminator property

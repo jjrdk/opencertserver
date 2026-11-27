@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using CertesSlim.Acme;
@@ -15,6 +16,7 @@ using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Ca.Utils.Ocsp;
 using OpenCertServer.Data;
 using OpenCertServer.Data.PostgreSql;
+using OpenCertServer.Data.Stores;
 using OpenCertServer.Testing;
 using opencertserver.data.tests.Support;
 using Reqnroll;
@@ -32,6 +34,7 @@ public sealed class RelationalStoresSteps
     private ServiceProvider _services = null!;
     private string _connection = null!;
     private readonly List<X509Certificate2> _certificates = [];
+    private readonly List<CaProfile> _profiles = [];
     private Account _account = null!;
     private Order _order = null!;
     private ExternalAccountKey _key = null!;
@@ -42,6 +45,62 @@ public sealed class RelationalStoresSteps
     private INonceStore Nonces => _services.GetRequiredService<INonceStore>();
     private IStoreExternalAccountKeys Keys => _services.GetRequiredService<IStoreExternalAccountKeys>();
     private IStoreCertificates Certificates => _services.GetRequiredService<IStoreCertificates>();
+    private IStoreCaProfiles Profiles => _services.GetRequiredService<IStoreCaProfiles>();
+
+    [Given("the certificate store is {string}")]
+    public async Task StartCertificateStore(string storage)
+    {
+        if (storage == "in-memory")
+        {
+            _services = new ServiceCollection()
+                .AddSingleton<IStoreCertificates, InMemoryCertificateStore>().BuildServiceProvider();
+            return;
+        }
+
+        await StartDatabase(storage);
+    }
+
+    [Then("profile-scoped certificate operations preserve isolation")]
+    public async Task CertificateProfileIsolation()
+    {
+        var certificate = NewCertificate(101);
+        var other = NewCertificate(102);
+        var imported = NewCertificate(103);
+        var ct = TestContext.Current.CancellationToken;
+        await Certificates.AddCertificate(certificate, "profile", ct);
+        await Certificates.AddCertificate(other, "other", ct);
+        await Certificates.AddCertificate(imported, issuingProfile: null, ct);
+
+        foreach (var item in new[] { certificate, other, imported })
+        {
+            Assert.Equal(CertificateStatus.Good,
+                (await Certificates.GetCertificateStatus(CertId.Create(item, HashAlgorithmName.SHA256), ct)).Item2);
+        }
+
+        Assert.Empty(await Certificates.GetCertificatesById("PROFILE", ct, certificate.SerialNumberBytes)
+            .ToListAsync(ct));
+        Assert.Empty(await Certificates.GetCertificatesById(null, ct, certificate.SerialNumberBytes)
+            .ToListAsync(ct));
+        Assert.False(await Certificates.RemoveCertificate(certificate.SerialNumber, "PROFILE",
+            X509RevocationReason.KeyCompromise, ct));
+        Assert.False(await Certificates.RemoveCertificate(certificate.SerialNumber, null,
+            X509RevocationReason.KeyCompromise, ct));
+        Assert.True(await Certificates.RemoveCertificate(certificate.SerialNumber, "profile",
+            X509RevocationReason.KeyCompromise, ct));
+        Assert.True(await Certificates.RemoveCertificate(imported.SerialNumber, null,
+            X509RevocationReason.CessationOfOperation, ct));
+        Assert.Equal(certificate.SerialNumber,
+            Assert.Single(await Certificates.GetRevocationList("profile", cancellationToken: ct)
+                .ToListAsync(ct)).SerialNumber);
+        Assert.Equal(imported.SerialNumber,
+            Assert.Single(await Certificates.GetRevocationList(null, cancellationToken: ct)
+                .ToListAsync(ct)).SerialNumber);
+        Assert.Empty(await Certificates.GetRevocationList("other", cancellationToken: ct).ToListAsync(ct));
+        Assert.Equal(CertificateStatus.Revoked,
+            (await Certificates.GetCertificateStatus(CertId.Create(certificate, HashAlgorithmName.SHA256), ct)).Item2);
+        Assert.Equal(CertificateStatus.Good,
+            (await Certificates.GetCertificateStatus(CertId.Create(other, HashAlgorithmName.SHA256), ct)).Item2);
+    }
 
     [Given("the relational database is {string}")]
     public async Task StartDatabase(string database)
@@ -64,7 +123,9 @@ public sealed class RelationalStoresSteps
         _database!.RegisterProvider(services)
             .AddAcmeRelationalStore(config, "TestDatabase")
             .AddCaRelationalStore(config, "TestDatabase");
-        return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        services.AddSingleton<IStoreCaProfiles, RelationalCaProfileStore>();
+        return services.BuildServiceProvider(new ServiceProviderOptions
+        { ValidateScopes = true, ValidateOnBuild = true });
     }
 
     private async Task Reload()
@@ -76,12 +137,20 @@ public sealed class RelationalStoresSteps
     [AfterScenario]
     public async Task Dispose()
     {
-        foreach (var certificate in _certificates) certificate.Dispose();
+        foreach (var certificate in _certificates)
+        {
+            certificate.Dispose();
+        }
+
+        foreach (var profile in _profiles)
+        {
+            profile.Dispose();
+        }
+
         if (_services is not null)
         {
             await _services.DisposeAsync();
         }
-
         if (_database is not null)
         {
             await _database.DisposeAsync();
@@ -97,10 +166,12 @@ public sealed class RelationalStoresSteps
         Assert.True(_account.Version > 0);
         var originalJwk = _account.Jwk;
         var duplicate = new Account(originalJwk, [], null);
-        await Assert.ThrowsAsync<ConcurrencyException>(() => Accounts.SaveAccount(duplicate, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ConcurrencyException>(() =>
+            Accounts.SaveAccount(duplicate, TestContext.Current.CancellationToken));
         Assert.Equal(0, duplicate.Version);
         await Reload();
-        var loaded = Assert.IsType<Account>(await Accounts.FindAccount(originalJwk, TestContext.Current.CancellationToken));
+        var loaded =
+            Assert.IsType<Account>(await Accounts.FindAccount(originalJwk, TestContext.Current.CancellationToken));
         Assert.Equal(_account.AccountId, loaded.AccountId);
         Assert.Equal(_account.ExternalAccountId, loaded.ExternalAccountId);
         Assert.Equal(_account.Contacts, loaded.Contacts);
@@ -111,7 +182,8 @@ public sealed class RelationalStoresSteps
         loaded.ReplaceKey(TestData.NewAccount().Jwk);
         await Accounts.SaveAccount(loaded, TestContext.Current.CancellationToken);
         Assert.Null(await Accounts.FindAccount(originalJwk, TestContext.Current.CancellationToken));
-        var updated = Assert.IsType<Account>(await Accounts.FindAccount(loaded.Jwk, TestContext.Current.CancellationToken));
+        var updated =
+            Assert.IsType<Account>(await Accounts.FindAccount(loaded.Jwk, TestContext.Current.CancellationToken));
         Assert.Equal(loaded.Contacts, updated.Contacts);
         Assert.Equal(loaded.Version, updated.Version);
         _account = updated;
@@ -120,11 +192,15 @@ public sealed class RelationalStoresSteps
     [Then("concurrent account updates reject stale versions")]
     public async Task AccountConcurrency()
     {
-        var stale = Assert.IsType<Account>(await Accounts.LoadAccount(_account.AccountId, TestContext.Current.CancellationToken));
+        var stale = Assert.IsType<Account>(await Accounts.LoadAccount(_account.AccountId,
+            TestContext.Current.CancellationToken));
         _account.Deactivate();
         await Accounts.SaveAccount(_account, TestContext.Current.CancellationToken);
-        await Assert.ThrowsAsync<ConcurrencyException>(() => Accounts.SaveAccount(stale, TestContext.Current.CancellationToken));
-        var stored = Assert.IsType<Account>(await Accounts.LoadAccount(_account.AccountId, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ConcurrencyException>(() =>
+            Accounts.SaveAccount(stale, TestContext.Current.CancellationToken));
+        var stored =
+            Assert.IsType<Account>(
+                await Accounts.LoadAccount(_account.AccountId, TestContext.Current.CancellationToken));
         Assert.Equal(AccountStatus.Deactivated, stored.Status);
         Assert.Equal(_account.Version, stored.Version);
     }
@@ -138,7 +214,8 @@ public sealed class RelationalStoresSteps
         _order = TestData.NewOrder(_account);
         await Orders.SaveOrder(_order, TestContext.Current.CancellationToken);
         await Reload();
-        var loaded = Assert.IsType<Order>(await Orders.LoadOrder(_order.OrderId, TestContext.Current.CancellationToken));
+        var loaded =
+            Assert.IsType<Order>(await Orders.LoadOrder(_order.OrderId, TestContext.Current.CancellationToken));
         Assert.Equal(_order.OrderId, loaded.OrderId);
         Assert.Equal(_order.AccountId, loaded.AccountId);
         Assert.Equal(_order.Profile, loaded.Profile);
@@ -153,7 +230,8 @@ public sealed class RelationalStoresSteps
         Assert.Equal("valid.example", authorization.Identifier.Value);
         Assert.Same(loaded, authorization.Order);
         Assert.Same(authorization, challenge.Authorization);
-        Assert.Contains(loaded.OrderId, await Orders.GetOrderIds(_account.AccountId, TestContext.Current.CancellationToken));
+        Assert.Contains(loaded.OrderId,
+            await Orders.GetOrderIds(_account.AccountId, TestContext.Current.CancellationToken));
         Assert.Empty(await Orders.GetOrderIds("unrelated", TestContext.Current.CancellationToken));
         _order = loaded;
     }
@@ -187,23 +265,28 @@ public sealed class RelationalStoresSteps
         _order.Error = new AcmeError { Type = "test", Detail = "stored error", Identifier = _order.Identifiers[0] };
         _order.SetStatus(OrderStatus.Valid);
         await Orders.SaveOrder(_order, TestContext.Current.CancellationToken);
-        await Assert.ThrowsAsync<ConcurrencyException>(() => Orders.SaveOrder(stale, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ConcurrencyException>(() =>
+            Orders.SaveOrder(stale, TestContext.Current.CancellationToken));
         await Reload();
-        var stored = Assert.IsType<Order>(await Orders.LoadOrder(_order.OrderId, TestContext.Current.CancellationToken));
+        var stored =
+            Assert.IsType<Order>(await Orders.LoadOrder(_order.OrderId, TestContext.Current.CancellationToken));
         Assert.Equal(OrderStatus.Valid, stored.Status);
         Assert.Equal(_order.Certificate, stored.Certificate);
         Assert.Equal(_order.CertificateSigningRequest, stored.CertificateSigningRequest);
         Assert.Equal(_order.Error.Detail, stored.Error?.Detail);
-        Assert.Equal(_order.Authorizations[0].Challenges[0].Validated, stored.Authorizations[0].Challenges[0].Validated);
+        Assert.Equal(_order.Authorizations[0].Challenges[0].Validated,
+            stored.Authorizations[0].Challenges[0].Validated);
     }
 
     [Then("concurrent nonce consumers have exactly one winner")]
     public async Task ConsumeNonce()
     {
         var nonce = new Nonce("AbC-single-use");
-        await Task.WhenAll(Enumerable.Range(0, 10).Select(_ => Nonces.SaveNonceAsync(nonce, TestContext.Current.CancellationToken)));
+        await Task.WhenAll(Enumerable.Range(0, 10)
+            .Select(_ => Nonces.SaveNonceAsync(nonce, TestContext.Current.CancellationToken)));
         await Reload();
-        var results = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => Nonces.TryRemoveNonceAsync(nonce, TestContext.Current.CancellationToken)));
+        var results = await Task.WhenAll(Enumerable.Range(0, 20)
+            .Select(_ => Nonces.TryRemoveNonceAsync(nonce, TestContext.Current.CancellationToken)));
         Assert.Equal(1, results.Count(r => r));
         Assert.False(await Nonces.TryRemoveNonceAsync(nonce, TestContext.Current.CancellationToken));
     }
@@ -212,23 +295,29 @@ public sealed class RelationalStoresSteps
     public async Task NonceCase()
     {
         await Nonces.SaveNonceAsync(new Nonce("CaseSensitive"), TestContext.Current.CancellationToken);
-        Assert.False(await Nonces.TryRemoveNonceAsync(new Nonce("casesensitive"), TestContext.Current.CancellationToken));
-        Assert.True(await Nonces.TryRemoveNonceAsync(new Nonce("CaseSensitive"), TestContext.Current.CancellationToken));
+        Assert.False(
+            await Nonces.TryRemoveNonceAsync(new Nonce("casesensitive"), TestContext.Current.CancellationToken));
+        Assert.True(await Nonces.TryRemoveNonceAsync(new Nonce("CaseSensitive"),
+            TestContext.Current.CancellationToken));
     }
 
     [Then("cancelled store operations propagate cancellation")]
     public async Task Cancellation()
     {
         using var cancelled = new CancellationTokenSource();
-        cancelled.Cancel();
+        await cancelled.CancelAsync();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Accounts.LoadAccount("missing", cancelled.Token));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Orders.LoadOrder("missing", cancelled.Token));
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Nonces.SaveNonceAsync(new Nonce("cancelled"), cancelled.Token));
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Nonces.TryRemoveNonceAsync(new Nonce("cancelled"), cancelled.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            Nonces.SaveNonceAsync(new Nonce("cancelled"), cancelled.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            Nonces.TryRemoveNonceAsync(new Nonce("cancelled"), cancelled.Token));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Keys.LoadKey("missing", cancelled.Token));
         var certificateId = CertId.Create(NewCertificate(42), HashAlgorithmName.SHA256);
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Certificates.GetCertificateStatus(certificateId, cancelled.Token));
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Certificates.GetInventory(cancellationToken: cancelled.Token)
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            Certificates.GetCertificateStatus(certificateId, cancelled.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Certificates
+            .GetInventory(cancellationToken: cancelled.Token)
             .ToListAsync(cancelled.Token).AsTask());
     }
 
@@ -238,12 +327,14 @@ public sealed class RelationalStoresSteps
         Assert.Null(await Keys.LoadKey("missing", TestContext.Current.CancellationToken));
         _key = new ExternalAccountKey("eab", Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)), "HS384");
         await Keys.SaveKey(_key, TestContext.Current.CancellationToken);
-        _staleKey = Assert.IsType<ExternalAccountKey>(await Keys.FindActiveKey(_key.KeyId, TestContext.Current.CancellationToken));
+        _staleKey = Assert.IsType<ExternalAccountKey>(await Keys.FindActiveKey(_key.KeyId,
+            TestContext.Current.CancellationToken));
         _key.MarkUsed("account");
         await Keys.SaveKey(_key, TestContext.Current.CancellationToken);
         await Reload();
         Assert.Null(await Keys.FindActiveKey(_key.KeyId, TestContext.Current.CancellationToken));
-        var stored = Assert.IsType<ExternalAccountKey>(await Keys.LoadKey(_key.KeyId, TestContext.Current.CancellationToken));
+        var stored =
+            Assert.IsType<ExternalAccountKey>(await Keys.LoadKey(_key.KeyId, TestContext.Current.CancellationToken));
         Assert.True(stored.IsUsed);
         var boundAt = Assert.IsType<DateTimeOffset>(_key.BoundAt);
         // Npgsql truncates sub-microsecond ticks; Linux clocks can expose them, unlike macOS clocks.
@@ -261,15 +352,118 @@ public sealed class RelationalStoresSteps
     public async Task ExternalKeyConcurrency()
     {
         _staleKey.MarkUsed("different-account");
-        await Assert.ThrowsAsync<ConcurrencyException>(() => Keys.SaveKey(_staleKey, TestContext.Current.CancellationToken));
-        Assert.Equal("account", (await Keys.LoadKey(_key.KeyId, TestContext.Current.CancellationToken))?.BoundAccountId);
+        await Assert.ThrowsAsync<ConcurrencyException>(() =>
+            Keys.SaveKey(_staleKey, TestContext.Current.CancellationToken));
+        Assert.Equal("account",
+            (await Keys.LoadKey(_key.KeyId, TestContext.Current.CancellationToken))?.BoundAccountId);
     }
+
+    [Then("ca profiles persist and the default is resolved for null or unknown names")]
+    public async Task CaProfileRoundTrip()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var store = Assert.IsType<RelationalCaProfileStore>(Profiles);
+
+        var defaultProfile = NewCaProfile("default", ecdsa: false);
+        var ecdsaProfile = NewCaProfile("ecdsa", ecdsa: true);
+        _profiles.Add(defaultProfile);
+        _profiles.Add(ecdsaProfile);
+
+        await store.SaveProfileAsync(defaultProfile, isDefault: true, ct);
+        await store.SaveProfileAsync(ecdsaProfile, isDefault: false, ct);
+
+        await Reload();
+        store = Assert.IsType<RelationalCaProfileStore>(Profiles);
+
+        var byName = await store.GetProfile("default", ct);
+        _profiles.Add(byName);
+        Assert.Equal(defaultProfile.Name, byName.Name);
+        Assert.True(byName.AllowPublicEnrollment);
+        Assert.Equal(defaultProfile.CertificateValidity, byName.CertificateValidity);
+        Assert.Equal(defaultProfile.CrlNumber, byName.CrlNumber);
+        Assert.Equal(defaultProfile.KeyUsage, byName.KeyUsage);
+        Assert.Equal(defaultProfile.ExtendedKeyUsages!.ToArray(), byName.ExtendedKeyUsages!.ToArray());
+        Assert.Equal(defaultProfile.CertificateChain.Select(certificate => certificate.Thumbprint).ToArray(),
+            byName.CertificateChain.Select(certificate => certificate.Thumbprint).ToArray());
+        Assert.Equal(SubjectPublicKeyInfo(defaultProfile.PrivateKey), SubjectPublicKeyInfo(byName.PrivateKey));
+        Assert.IsAssignableFrom<RSA>(byName.PrivateKey);
+
+        var byNull = await store.GetProfile(null, ct);
+        Assert.Equal("default", byNull.Name);
+        byNull.Dispose();
+
+        var byUnknown = await store.GetProfile("does-not-exist", ct);
+        Assert.Equal("default", byUnknown.Name);
+        byUnknown.Dispose();
+
+        var all = await store.GetProfiles(ct).ToListAsync(ct);
+        try
+        {
+            Assert.Equal(new[] { "default", "ecdsa" }, all.Select(profile => profile.Name).ToArray());
+            Assert.Contains(all, profile => profile.Name == "ecdsa");
+        }
+        finally
+        {
+            foreach (var profile in all)
+            {
+                profile.Dispose();
+            }
+        }
+
+        var ecdsaReloaded = await store.GetProfile("ecdsa", ct);
+        Assert.IsAssignableFrom<ECDsa>(ecdsaReloaded.PrivateKey);
+        ecdsaReloaded.Dispose();
+    }
+
+    private CaProfile NewCaProfile(string name, bool ecdsa)
+    {
+        var subject = new X500DistinguishedName($"CN={name}-ca.example.com");
+        var now = DateTimeOffset.UtcNow;
+        X509Certificate2 ca;
+        AsymmetricAlgorithm key;
+        if (ecdsa)
+        {
+            var ecdsaKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+            ca = new CertificateRequest(subject, ecdsaKey, HashAlgorithmName.SHA256)
+                .CreateSelfSigned(now.AddDays(-1), now.AddDays(365));
+            key = ecdsaKey;
+        }
+        else
+        {
+            var rsaKey = RSA.Create(2048);
+            ca = new CertificateRequest(subject, rsaKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
+                .CreateSelfSigned(now.AddDays(-1), now.AddDays(365));
+            key = rsaKey;
+        }
+        _certificates.Add(ca);
+        return new CaProfile
+        {
+            Name = name,
+            AllowPublicEnrollment = true,
+            PrivateKey = key,
+            CertificateChain = new X509Certificate2Collection { ca },
+            PublishedCertificateChain = new X509Certificate2Collection { ca },
+            CertificateValidity = TimeSpan.FromDays(90),
+            CrlNumber = new BigInteger(7),
+            KeyUsage = X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign,
+            ExtendedKeyUsages = ["1.3.6.1.5.5.7.3.1", "1.3.6.1.5.5.7.3.2"],
+            OcspFreshnessWindow = TimeSpan.FromHours(1),
+        };
+    }
+
+    private static byte[] SubjectPublicKeyInfo(AsymmetricAlgorithm key) => key switch
+    {
+        RSA rsa => rsa.ExportSubjectPublicKeyInfo(),
+        ECDsa ecdsa => ecdsa.ExportSubjectPublicKeyInfo(),
+        _ => throw new NotSupportedException($"Unsupported key type '{key.GetType().Name}'.")
+    };
 
     private X509Certificate2 NewCertificate(int serial)
     {
         using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         var request = new CertificateRequest($"CN=certificate-{serial}.example", key, HashAlgorithmName.SHA256);
-        using var issuer = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(30));
+        using var issuer =
+            request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(30));
         var certificate = request.Create(issuer.SubjectName,
             X509SignatureGenerator.CreateForECDsa(key),
             DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow.AddDays(2),
@@ -287,7 +481,7 @@ public sealed class RelationalStoresSteps
         var ct = TestContext.Current.CancellationToken;
         await Certificates.AddCertificate(first, "rsa", ct);
         await Certificates.AddCertificate(second, "ecdsa", ct);
-        await Certificates.AddCertificate(legacy, ct);
+        await Certificates.AddCertificate(legacy, null, ct);
         var keys = new[] { first.Thumbprint.ToLowerInvariant(), second.Thumbprint, legacy.Thumbprint, "missing" };
         var profiles = await Certificates.GetIssuingProfiles(keys, ct);
         Assert.Equal("rsa", profiles[first.Thumbprint]);
@@ -305,29 +499,51 @@ public sealed class RelationalStoresSteps
     public async Task CertificateRoundTrip()
     {
         var certificate = NewCertificate(0xABCD);
-        await Certificates.AddCertificate(certificate, TestContext.Current.CancellationToken);
+        const string issuingProfile = "default";
+        await Certificates.AddCertificate(certificate, issuingProfile, TestContext.Current.CancellationToken);
         await Reload();
+        Assert.Equal(issuingProfile,
+            await Certificates.GetIssuingProfile(certificate.Thumbprint, TestContext.Current.CancellationToken));
         var id = CertId.Create(certificate, HashAlgorithmName.SHA256);
-        Assert.Equal(CertificateStatus.Good, (await Certificates.GetCertificateStatus(id, TestContext.Current.CancellationToken)).Item2);
-        var byId = await Certificates.GetCertificatesById(TestContext.Current.CancellationToken, certificate.SerialNumberBytes).ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(CertificateStatus.Good,
+            (await Certificates.GetCertificateStatus(id, TestContext.Current.CancellationToken)).Item2);
+        var byId = await Certificates
+            .GetCertificatesById(issuingProfile, TestContext.Current.CancellationToken, certificate.SerialNumberBytes)
+            .ToListAsync(TestContext.Current.CancellationToken);
         using var foundById = Assert.Single(byId);
         Assert.Equal(certificate.RawData, foundById.RawData);
         Assert.False(foundById.HasPrivateKey);
-        var byThumbprint = await Certificates.GetCertificatesByThumbprint([certificate.Thumbprint.ToLowerInvariant().AsMemory()], TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Empty(await Certificates
+            .GetCertificatesById("other-profile", TestContext.Current.CancellationToken, certificate.SerialNumberBytes)
+            .ToListAsync(TestContext.Current.CancellationToken));
+        Assert.False(await Certificates.RemoveCertificate(certificate.SerialNumber, "other-profile",
+            X509RevocationReason.KeyCompromise, TestContext.Current.CancellationToken));
+        var byThumbprint = await Certificates
+            .GetCertificatesByThumbprint([certificate.Thumbprint.ToLowerInvariant().AsMemory()],
+                TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
         using var foundByThumbprint = Assert.Single(byThumbprint);
         Assert.Equal(certificate.RawData, foundByThumbprint.RawData);
-        var inventory = Assert.Single(await Certificates.GetInventory(cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken));
+        var inventory = Assert.Single(await Certificates
+            .GetInventory(cancellationToken: TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken));
         Assert.Equal(certificate.NotBefore.ToUniversalTime(), inventory.NotBefore.UtcDateTime);
         Assert.Equal(certificate.NotAfter.ToUniversalTime(), inventory.NotAfter.UtcDateTime);
         Assert.Equal(TimeSpan.Zero, inventory.NotBefore.Offset);
         Assert.Equal(TimeSpan.Zero, inventory.NotAfter.Offset);
-        Assert.True(await Certificates.RemoveCertificate(certificate.SerialNumber, X509RevocationReason.KeyCompromise, TestContext.Current.CancellationToken));
+        Assert.True(await Certificates.RemoveCertificate(certificate.SerialNumber, issuingProfile,
+            X509RevocationReason.KeyCompromise,
+            TestContext.Current.CancellationToken));
         await Reload();
+        Assert.Equal(issuingProfile,
+            await Certificates.GetIssuingProfile(certificate.Thumbprint, TestContext.Current.CancellationToken));
         var revoked = await Certificates.GetCertificateStatus(id, TestContext.Current.CancellationToken);
         Assert.Equal(CertificateStatus.Revoked, revoked.Item2);
         Assert.NotNull(revoked.Item3);
-        Assert.False(await Certificates.RemoveCertificate("missing", X509RevocationReason.Unspecified, TestContext.Current.CancellationToken));
-        Assert.Equal(CertificateStatus.Unknown, (await Certificates.GetCertificateStatus(CertId.Create(NewCertificate(999), HashAlgorithmName.SHA256), TestContext.Current.CancellationToken)).Item2);
+        Assert.False(await Certificates.RemoveCertificate("missing", issuingProfile, X509RevocationReason.Unspecified,
+            TestContext.Current.CancellationToken));
+        Assert.Equal(CertificateStatus.Unknown,
+            (await Certificates.GetCertificateStatus(CertId.Create(NewCertificate(999), HashAlgorithmName.SHA256),
+                TestContext.Current.CancellationToken)).Item2);
     }
 
     [Then("paginated inventory and revocations match the memory store")]
@@ -335,24 +551,38 @@ public sealed class RelationalStoresSteps
     {
         var memory = new InMemoryCertificateStore();
         // Include the certificate already recorded by the preceding step.
-        await memory.AddCertificate(_certificates[0], TestContext.Current.CancellationToken);
-        await memory.RemoveCertificate(_certificates[0].SerialNumber, X509RevocationReason.KeyCompromise, TestContext.Current.CancellationToken);
+        const string issuingProfile = "default";
+        await memory.AddCertificate(_certificates[0], issuingProfile, TestContext.Current.CancellationToken);
+        await memory.RemoveCertificate(_certificates[0].SerialNumber, issuingProfile,
+            X509RevocationReason.KeyCompromise,
+            TestContext.Current.CancellationToken);
         for (var i = 1; i <= 105; i++)
         {
             var certificate = NewCertificate(i);
-            await Certificates.AddCertificate(certificate, TestContext.Current.CancellationToken);
-            await memory.AddCertificate(certificate, TestContext.Current.CancellationToken);
-            await Certificates.RemoveCertificate(certificate.SerialNumber, X509RevocationReason.Superseded, TestContext.Current.CancellationToken);
-            await memory.RemoveCertificate(certificate.SerialNumber, X509RevocationReason.Superseded, TestContext.Current.CancellationToken);
+            await Certificates.AddCertificate(certificate, issuingProfile, TestContext.Current.CancellationToken);
+            await memory.AddCertificate(certificate, issuingProfile, TestContext.Current.CancellationToken);
+            await Certificates.RemoveCertificate(certificate.SerialNumber, issuingProfile,
+                X509RevocationReason.Superseded,
+                TestContext.Current.CancellationToken);
+            await memory.RemoveCertificate(certificate.SerialNumber, issuingProfile, X509RevocationReason.Superseded,
+                TestContext.Current.CancellationToken);
         }
+
         for (var page = 0; page < 4; page++)
         {
-            var expected = await memory.GetInventory(page, 40, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
-            var actual = await Certificates.GetInventory(page, 40, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+            var expected = await memory.GetInventory(page, 40, TestContext.Current.CancellationToken)
+                .ToListAsync(TestContext.Current.CancellationToken);
+            var actual = await Certificates.GetInventory(page, 40, TestContext.Current.CancellationToken)
+                .ToListAsync(TestContext.Current.CancellationToken);
             Assert.Equal(expected.Select(c => c.SerialNumber), actual.Select(c => c.SerialNumber));
             Assert.Equal(expected.Select(c => c.RevocationReason), actual.Select(c => c.RevocationReason));
-            var expectedRevoked = await memory.GetRevocationList(null, page, 40, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
-            var actualRevoked = await Certificates.GetRevocationList(null, page, 40, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+            var expectedRevoked = await memory
+                .GetRevocationList(issuingProfile, page, 40, TestContext.Current.CancellationToken)
+                .ToListAsync(TestContext.Current.CancellationToken);
+            var actualRevoked = await Certificates
+                .GetRevocationList(issuingProfile, page, 40, TestContext.Current.CancellationToken)
+                .ToListAsync(TestContext.Current.CancellationToken);
+            Assert.Equal(expected.Select(c => c.SerialNumber), expectedRevoked.Select(c => c.SerialNumber));
             Assert.Equal(expectedRevoked.Select(c => c.SerialNumber), actualRevoked.Select(c => c.SerialNumber));
         }
     }
@@ -364,7 +594,8 @@ public sealed class RelationalStoresSteps
         await Accounts.SaveAccount(account, TestContext.Current.CancellationToken);
         await _database!.MigrateAsync(TestContext.Current.CancellationToken);
         await Reload();
-        Assert.Equal(account.AccountId, (await Accounts.LoadAccount(account.AccountId, TestContext.Current.CancellationToken))?.AccountId);
+        Assert.Equal(account.AccountId,
+            (await Accounts.LoadAccount(account.AccountId, TestContext.Current.CancellationToken))?.AccountId);
         await using var scope = _services.CreateAsyncScope();
         Assert.False(scope.ServiceProvider.GetRequiredService<CaDbContext>().Database.HasPendingModelChanges());
     }
@@ -462,11 +693,17 @@ public sealed class RelationalStoresSteps
             services.AddPostgreSqlStore()
                 .AddAcmeRelationalStore(configuration, "Selected")
                 .AddCaRelationalStore(configuration, "Selected");
+            Assert.DoesNotContain(services, descriptor =>
+                descriptor.ServiceType == typeof(IStoreCaProfiles) &&
+                descriptor.ImplementationType == typeof(RelationalCaProfileStore));
             using var provider = services.BuildServiceProvider();
             using var scope = provider.CreateScope();
-            Assert.Equal(connection, scope.ServiceProvider.GetRequiredService<CaDbContext>().Database.GetConnectionString());
-            Assert.IsType<OpenCertServer.Data.Stores.RelationalAccountStore>(provider.GetRequiredService<IStoreAccounts>());
-            Assert.IsType<OpenCertServer.Data.Stores.RelationalCertificateStore>(provider.GetRequiredService<IStoreCertificates>());
+            Assert.Equal(connection,
+                scope.ServiceProvider.GetRequiredService<CaDbContext>().Database.GetConnectionString());
+            Assert.IsType<OpenCertServer.Data.Stores.RelationalAccountStore>(
+                provider.GetRequiredService<IStoreAccounts>());
+            Assert.IsType<OpenCertServer.Data.Stores.RelationalCertificateStore>(
+                provider.GetRequiredService<IStoreCertificates>());
         }
     }
 
@@ -483,13 +720,16 @@ public sealed class RelationalStoresSteps
                 ["OCS_RELATIONAL_CONN"] = "Host=legacy"
             }).Build();
             var services = new ServiceCollection().AddPostgreSqlStore();
-            Assert.Contains("ConnectionStrings:Missing", Assert.Throws<InvalidOperationException>(
-                () => services.AddAcmeRelationalStore(configuration, "Missing")).Message);
+            Assert.Contains("ConnectionStrings:Missing",
+                Assert
+                    .Throws<InvalidOperationException>(() => services.AddAcmeRelationalStore(configuration, "Missing"))
+                    .Message);
             Assert.Throws<InvalidOperationException>(() => services.AddCaRelationalStore(configuration, "Missing"));
             Assert.Throws<ArgumentException>(() => services.AddAcmeRelationalStore(configuration, " "));
             Assert.Throws<ArgumentException>(() => services.AddCaRelationalStore(configuration, ""));
             Assert.DoesNotContain(services, d => d.ServiceType == typeof(CaDbContext));
         }
+
         var connections = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["ConnectionStrings:Acme"] = "Host=first",
@@ -512,9 +752,11 @@ public sealed class RelationalStoresSteps
             {
                 Assert.Equal(connection, context.Database.GetConnectionString());
             }
+
             Environment.SetEnvironmentVariable(variable, " ");
-            Assert.Contains($"ConnectionStrings:{name}", Assert.Throws<InvalidOperationException>(
-                () => new CaDbContextFactory().CreateDbContext([name])).Message);
+            Assert.Contains($"ConnectionStrings:{name}",
+                Assert.Throws<InvalidOperationException>(() => new CaDbContextFactory().CreateDbContext([name]))
+                    .Message);
             Environment.SetEnvironmentVariable(variable, null);
             Assert.Throws<InvalidOperationException>(() => new CaDbContextFactory().CreateDbContext([name]));
         }
@@ -522,29 +764,5 @@ public sealed class RelationalStoresSteps
         {
             Environment.SetEnvironmentVariable(variable, null);
         }
-    }
-
-    private static async Task<string> RunProcess(ProcessStartInfo start, TimeSpan timeout)
-    {
-        start.RedirectStandardOutput = true;
-        start.RedirectStandardError = true;
-        start.UseShellExecute = false;
-        using var process = Process.Start(start) ?? throw new InvalidOperationException($"Could not start {start.FileName}.");
-        var stdout = process.StandardOutput.ReadToEndAsync();
-        var stderr = process.StandardError.ReadToEndAsync();
-        using var cancellation = new CancellationTokenSource(timeout);
-        try
-        {
-            await process.WaitForExitAsync(cancellation.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            process.Kill(entireProcessTree: true);
-            await process.WaitForExitAsync();
-            throw;
-        }
-        var output = await stdout + await stderr;
-        Assert.True(process.ExitCode == 0, $"{start.FileName} exited with {process.ExitCode}:\n{output}");
-        return output;
     }
 }

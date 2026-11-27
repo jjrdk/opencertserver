@@ -1,3 +1,4 @@
+using DotNet.Testcontainers.Networks;
 using Testcontainers.MsSql;
 using Testcontainers.PostgreSql;
 
@@ -9,14 +10,31 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using OpenCertServer.Ca.Utils.Ca;
 using OpenCertServer.Data;
 using OpenCertServer.Data.MsSql;
 using OpenCertServer.Data.PostgreSql;
+using OpenCertServer.Data.Stores;
 
 internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
 {
     private IContainer? _container;
     public string ConnectionString { get; private set; } = null!;
+
+    /// <summary>The network alias the database is reachable by from containers on its network.</summary>
+    public string Alias { get; } = "db";
+
+    /// <summary>The connection string a sibling container on the database's network uses (host = <see cref="Alias"/>).</summary>
+    public string NetworkConnectionString { get; private set; } = null!;
+
+    /// <summary>The running database container, for attaching a sibling container to its network.</summary>
+    public IContainer Container => _container!;
+
+    /// <summary>The network the database lives on, or null when it runs on Testcontainers' default network.</summary>
+    public INetwork? Network { get; private set; }
+
+    /// <summary>The fixed database name the appliance and the queries target.</summary>
+    public string DatabaseName { get; } = "store_tests";
 
     public IServiceCollection RegisterProvider(IServiceCollection services) => database switch
     {
@@ -26,43 +44,106 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
     };
 
     public async Task StartAsync(CancellationToken cancellationToken)
+        => await StartAsync(null, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Starts the database and migrates it, optionally attaching it to an existing network under <see cref="Alias"/>.</summary>
+    public async Task StartAsync(INetwork? network, CancellationToken cancellationToken)
     {
         var password = $"Ocs!{Convert.ToHexString(RandomNumberGenerator.GetBytes(24))}";
         switch (database)
         {
             case "PostgreSQL":
-                var postgres = new PostgreSqlBuilder("postgres:alpine")
-                    .WithUsername("postgres")
-                    .WithPassword(password)
-                    .WithDatabase("store_tests")
-                    .Build();
-                _container = postgres;
-                await postgres.StartAsync(cancellationToken);
-                ConnectionString = new NpgsqlConnectionStringBuilder(postgres.GetConnectionString())
                 {
-                    Pooling = false
-                }.ConnectionString;
-                break;
+                    var builder = new PostgreSqlBuilder("postgres:alpine")
+                        .WithUsername("postgres")
+                        .WithPassword(password)
+                        .WithDatabase(DatabaseName);
+                    if (network is not null)
+                    {
+                        builder = builder.WithNetwork(network).WithNetworkAliases(Alias);
+                    }
+                    _container = builder.Build();
+                    await _container.StartAsync(cancellationToken);
+                    ConnectionString = new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
+                    {
+                        Pooling = false
+                    }.ConnectionString;
+                    NetworkConnectionString = new NpgsqlConnectionStringBuilder
+                    {
+                        Host = Alias,
+                        Port = 5432,
+                        Username = "postgres",
+                        Password = password,
+                        Database = DatabaseName,
+                        Pooling = false
+                    }.ConnectionString;
+                    Network = network;
+                    break;
+                }
             case "MSSQL":
-                // The module configures MSSQL_SA_PASSWORD and its sqlcmd readiness probe from WithPassword;
-                // overriding the env var or wait strategy makes the probe log in with the wrong password.
-                var msSql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
-                    .WithPassword(password)
-                    .Build();
-                _container = msSql;
-                await msSql.StartAsync(cancellationToken);
-                ConnectionString = new SqlConnectionStringBuilder(msSql.GetConnectionString())
                 {
-                    InitialCatalog = "store_tests",
-                    TrustServerCertificate = true,
-                    Pooling = false
-                }.ConnectionString;
-                break;
+                    // The module configures MSSQL_SA_PASSWORD and its sqlcmd readiness probe from WithPassword;
+                    // overriding the env var or wait strategy makes the probe log in with the wrong password.
+                    var builder = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
+                        .WithPassword(password);
+                    if (network is not null)
+                    {
+                        builder = builder.WithNetwork(network).WithNetworkAliases(Alias);
+                    }
+                    _container = builder.Build();
+                    await _container.StartAsync(cancellationToken);
+                    ConnectionString = new SqlConnectionStringBuilder(_container.GetConnectionString())
+                    {
+                        InitialCatalog = DatabaseName,
+                        TrustServerCertificate = true,
+                        Pooling = false
+                    }.ConnectionString;
+                    // MSSQL encodes the port in the DataSource (SqlConnectionStringBuilder has no Port property).
+                    NetworkConnectionString = new SqlConnectionStringBuilder
+                    {
+                        DataSource = $"{Alias},1433",
+                        UserID = "sa",
+                        Password = password,
+                        InitialCatalog = DatabaseName,
+                        TrustServerCertificate = true,
+                        Pooling = false
+                    }.ConnectionString;
+                    Network = network;
+                    break;
+                }
             default:
                 throw new NotSupportedException($"No relational test database factory is registered for '{database}'.");
         }
 
+        if (database == "PostgreSQL")
+        {
+            await WaitForHostConnectionAsync(cancellationToken);
+        }
         await MigrateAsync(cancellationToken);
+    }
+
+    private async Task WaitForHostConnectionAsync(CancellationToken cancellationToken)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(TimeSpan.FromMinutes(1));
+        while (true)
+        {
+            // Container-local readiness does not establish that Docker's mapped host port is usable.
+            await using var connection = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Timeout = 2
+            }.ConnectionString);
+            try
+            {
+                await connection.OpenAsync(deadline.Token);
+                return;
+            }
+            catch (NpgsqlException exception) when (exception.IsTransient)
+            {
+                await Console.Error.WriteLineAsync($"Waiting for {database} host connection: {exception.Message}");
+                await Task.Delay(TimeSpan.FromSeconds(1), deadline.Token);
+            }
+        }
     }
 
     public Task MigrateAsync(CancellationToken cancellationToken) => MigrateAsync(ConnectionString, cancellationToken);
@@ -81,7 +162,47 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
         return connectionString;
     }
 
-    private async Task MigrateAsync(string connectionString, CancellationToken cancellationToken)
+    /// <summary>Drops an isolated database created by <see cref="CreateIsolatedDatabaseAsync"/>.</summary>
+    public async Task DropIsolatedDatabaseAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        if (database == "PostgreSQL")
+        {
+            var databaseName = new NpgsqlConnectionStringBuilder(connectionString).Database;
+            ArgumentException.ThrowIfNullOrWhiteSpace(databaseName);
+            var quotedDatabaseName = databaseName.Replace("\"", "\"\"", StringComparison.Ordinal);
+            var adminConnectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Database = "postgres"
+            }.ConnectionString;
+            await using var connection = new NpgsqlConnection(adminConnectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"DROP DATABASE IF EXISTS \"{quotedDatabaseName}\"";
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            return;
+        }
+
+        if (database == "MSSQL")
+        {
+            var builder = new SqlConnectionStringBuilder(connectionString);
+            var databaseName = builder.InitialCatalog;
+            var escapedDatabaseName = databaseName.Replace("]", "]]", StringComparison.Ordinal);
+            builder.InitialCatalog = "master";
+            await using var connection = new SqlConnection(builder.ConnectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                $"IF DB_ID(@databaseName) IS NOT NULL BEGIN ALTER DATABASE [{escapedDatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{escapedDatabaseName}]; END";
+            command.Parameters.Add("@databaseName", System.Data.SqlDbType.NVarChar, 128).Value = databaseName;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            return;
+        }
+
+        throw new NotSupportedException($"No relational test database factory is registered for '{database}'.");
+    }
+
+    /// <summary>Runs the schema migration against a connection string (used for isolated and network databases).</summary>
+    public async Task MigrateAsync(string connectionString, CancellationToken cancellationToken)
     {
         if (database == "MSSQL")
         {
@@ -102,6 +223,66 @@ internal sealed class RelationalTestDatabase(string database) : IAsyncDisposable
         provider.GetRequiredService<IRelationalStoreProvider>().Configure(options, connectionString);
         await using var context = new CaDbContext(options.Options);
         await context.Database.MigrateAsync(cancellationToken);
+    }
+
+    public async Task SeedProfilesAsync(
+        string connectionString, IStoreCaProfiles profiles, CancellationToken cancellationToken)
+    {
+        var defaultProfile = await profiles.GetProfile(null, cancellationToken);
+        var allProfiles = await profiles.GetProfiles(cancellationToken).ToListAsync(cancellationToken);
+        await SeedProfilesAsync(connectionString, defaultProfile.Name, allProfiles, cancellationToken);
+    }
+
+    public async Task SeedProfilesAsync(
+        string connectionString, string defaultProfileName, IEnumerable<CaProfile> profiles,
+        CancellationToken cancellationToken)
+    {
+        var services = RegisterProvider(new ServiceCollection());
+        services.AddCaRelationalStore(connectionString);
+        services.AddSingleton<IStoreCaProfiles, RelationalCaProfileStore>();
+        await using var provider = services.BuildServiceProvider();
+        var store = (RelationalCaProfileStore)provider.GetRequiredService<IStoreCaProfiles>();
+        var foundDefault = false;
+        foreach (var profile in profiles)
+        {
+            var isDefault = string.Equals(profile.Name, defaultProfileName, StringComparison.Ordinal);
+            foundDefault |= isDefault;
+            await store.SaveProfileAsync(profile, isDefault, cancellationToken);
+        }
+
+        if (!foundDefault)
+        {
+            throw new InvalidOperationException($"Default CA profile '{defaultProfileName}' was not provided.");
+        }
+    }
+
+    /// <summary>Queries the relational database from the host, asserting a row the appliance seeded. Returns the row count.</summary>
+    public Task<int> QueryRowCountAsync(string sql, CancellationToken cancellationToken)
+        => database switch
+        {
+            "MSSQL" => QueryMssSqlRowCountAsync(sql, cancellationToken),
+            "PostgreSQL" => QueryPostgresRowCountAsync(sql, cancellationToken),
+            _ => throw new NotSupportedException($"No relational test database factory is registered for '{database}'.")
+        };
+
+    private async Task<int> QueryMssSqlRowCountAsync(string sql, CancellationToken cancellationToken)
+    {
+        await using var connection = new SqlConnection(ConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken),
+            System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private async Task<int> QueryPostgresRowCountAsync(string sql, CancellationToken cancellationToken)
+    {
+        await using var connection = new NpgsqlConnection(ConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken),
+            System.Globalization.CultureInfo.InvariantCulture);
     }
 
     public async ValueTask DisposeAsync()
