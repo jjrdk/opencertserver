@@ -8,7 +8,7 @@ using Cake.Frosting;
 using System.IO;
 
 [TaskName("Pack")]
-[IsDependentOn(typeof(BuildTask))]
+[IsDependentOn(typeof(TestsTask))]
 public sealed class PackTask : FrostingTask<BuildContext>
 {
     /// <inheritdoc />
